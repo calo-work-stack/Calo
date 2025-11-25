@@ -536,7 +536,7 @@ export default function AIChatScreen({
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: "#F8F9FA" }]}>
       <LinearGradient
-        colors={["#16A085", "#1ABC9C", "#2ECC71"]}
+        colors={["#10B981", "#059669", "#047857"]}
         style={styles.modernHeader}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -546,10 +546,15 @@ export default function AIChatScreen({
             <Sparkles size={28} color="#FFFFFF" />
           </View>
           <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>
+            <Text style={[styles.headerTitle, { color: "#FFFFFF" }]}>
               {language === "he" ? "צ'אט AI תזונאי" : "AI Nutrition Assistant"}
             </Text>
-            <Text style={styles.headerSubtitle}>
+            <Text
+              style={[
+                styles.headerSubtitle,
+                { color: "rgba(255, 255, 255, 0.9)" },
+              ]}
+            >
               {language === "he"
                 ? "שאל כל שאלה על תזונה"
                 : "Ask any nutrition question"}
@@ -686,14 +691,19 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   modernHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingHorizontal: 22,
+    paddingTop: 18,
+    paddingBottom: 26,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   headerTop: {
     flexDirection: "row",
@@ -740,8 +750,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 8,
     marginBottom: 12,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 18,
+    padding: 18,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.04)",
   },
   profileHeader: {
     flexDirection: "row",
@@ -843,18 +860,25 @@ const styles = StyleSheet.create({
     maxWidth: width - 120,
   },
   messageBubble: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 20,
     backgroundColor: "#FFFFFF",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.05)",
   },
   userBubble: {
     backgroundColor: "#16A085",
     alignSelf: "flex-end",
+    shadowColor: "#16A085",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    borderWidth: 0,
   },
   botBubble: {
     backgroundColor: "#FFFFFF",
@@ -953,19 +977,29 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
     borderTopColor: "#E9ECEF",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 22,
+    paddingVertical: 18,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 12,
+    gap: 14,
     backgroundColor: "#F8F9FA",
-    borderRadius: 24,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    borderWidth: 1,
+    borderRadius: 28,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    borderWidth: 1.5,
     borderColor: "#E9ECEF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   textInput: {
     flex: 1,

@@ -602,7 +602,7 @@ export default function FoodScannerScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <LinearGradient
-        colors={[colors.emerald500, colors.emerald600, colors.emerald700]}
+        colors={["#10B981", "#059669", "#047857"]}
         style={styles.modernHeader}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -612,10 +612,15 @@ export default function FoodScannerScreen() {
             <ScanLine size={28} color="#FFFFFF" />
           </View>
           <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>
+            <Text style={[styles.headerTitle, { color: "#FFFFFF" }]}>
               {language === "he" ? "סורק מזון" : "Food Scanner"}
             </Text>
-            <Text style={styles.headerSubtitle}>
+            <Text
+              style={[
+                styles.headerSubtitle,
+                { color: "rgba(255, 255, 255, 0.9)" },
+              ]}
+            >
               {language === "he"
                 ? "סרוק מזון לניתוח תזונתי"
                 : "Scan food for nutritional analysis"}

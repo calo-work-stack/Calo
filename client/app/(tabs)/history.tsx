@@ -82,7 +82,7 @@ const CATEGORIES = [
     key: "all",
     label: "history.categories.all",
     icon: Target,
-    gradient: ["#0d9488","#0d9488"],
+    gradient: ["#0d9488", "#0d9488"],
   },
   {
     key: "high_protein",
@@ -1743,9 +1743,16 @@ const styles = StyleSheet.create({
   insightsCard: {
     marginHorizontal: 20,
     marginTop: 12,
-    marginBottom: 12,
+    marginBottom: 24,
     borderRadius: 24,
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
   },
 
   insightsBlur: {
@@ -1754,7 +1761,8 @@ const styles = StyleSheet.create({
   },
 
   insightsGradient: {
-    padding: 24,
+    padding: 26,
+    borderRadius: 24,
   },
 
   insightsHeader: {
@@ -1829,44 +1837,65 @@ const styles = StyleSheet.create({
   },
 
   swipeContainer: {
-    marginHorizontal: 20,
-    marginVertical: 6,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
 
   mealCard: {
-    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    marginBottom: 16,
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.03)",
   },
 
   cardContent: {
     flexDirection: "row",
-    padding: 16,
-    alignItems: "center",
+    padding: 18,
+    gap: 14,
   },
 
   cardImageContainer: {
     position: "relative",
-    marginRight: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 
   cardImage: {
-    width: 80,
-    height: 80,
+    width: 90,
+    height: 90,
     borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.5)",
   },
 
   imagePlaceholder: {
-    width: 80,
-    height: 80,
+    width: 90,
+    height: 90,
     borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.3)",
   },
 
   heartBadge: {
     position: "absolute",
-    top: -6,
-    right: -6,
+    top: -4,
+    right: -4,
     width: 26,
     height: 26,
     borderRadius: 13,
@@ -1874,10 +1903,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#EF4444",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowRadius: 6,
+    elevation: 6,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
   },
 
   cardInfo: {
@@ -1978,35 +2009,46 @@ const styles = StyleSheet.create({
   swipeActionContainer: {
     justifyContent: "center",
     alignItems: "center",
+    width: 80,
   },
 
   swipeAction: {
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 32,
-    height: "100%",
-    borderRadius: 20,
+    flex: 1,
+    width: "100%",
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
 
   swipeActionButton: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    gap: 6,
+    paddingHorizontal: 12,
   },
 
   swipeIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.25)",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
     justifyContent: "center",
     alignItems: "center",
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
   },
 
   swipeActionText: {
-    fontSize: 13,
+    color: "#ffffff",
+    fontSize: 11,
     fontWeight: "700",
-    color: "#FFFFFF",
-    letterSpacing: -0.2,
+    textAlign: "center",
+    letterSpacing: 0.3,
   },
 
   expandedSection: {
@@ -2071,19 +2113,33 @@ const styles = StyleSheet.create({
 
   nutritionCard: {
     flex: 1,
-    padding: 14,
-    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    borderRadius: 18,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.05)",
   },
 
   nutritionIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
   },
 
   nutritionValue: {

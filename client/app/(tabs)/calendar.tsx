@@ -99,6 +99,7 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [isEditingEvent, setIsEditingEvent] = useState(false);
+  const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
 
   // Menu logic states
   const [menuStartDate, setMenuStartDate] = useState<Date | null>(null);
@@ -203,11 +204,20 @@ export default function CalendarScreen() {
     }
   }, [error, dispatch]);
 
-  const loadCalendarData = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth() + 1;
-    dispatch(fetchCalendarData({ year, month }));
-    dispatch(getStatistics({ year, month }));
+  const loadCalendarData = async () => {
+    setIsLoadingCalendar(true);
+    try {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth() + 1;
+      await Promise.all([
+        dispatch(fetchCalendarData({ year, month })),
+        dispatch(getStatistics({ year, month })),
+      ]);
+    } catch (error) {
+      console.error("Calendar load error:", error);
+    } finally {
+      setIsLoadingCalendar(false);
+    }
   };
 
   const getDaysInMonth = () => {
@@ -678,7 +688,7 @@ export default function CalendarScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Modern Gradient Header */}
         <LinearGradient
-          colors={[colors.emerald500, colors.emerald600, colors.emerald700]}
+          colors={["#10B981", "#059669", "#047857"]}
           style={styles.modernHeader}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -688,8 +698,17 @@ export default function CalendarScreen() {
               <CalendarIcon size={32} color="#FFFFFF" />
             </View>
             <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>{t.title}</Text>
-              <Text style={styles.headerSubtitle}>{t.subtitle}</Text>
+              <Text style={[styles.headerTitle, { color: "#FFFFFF" }]}>
+                {t.title}
+              </Text>
+              <Text
+                style={[
+                  styles.headerSubtitle,
+                  { color: "rgba(255, 255, 255, 0.9)" },
+                ]}
+              >
+                {t.subtitle}
+              </Text>
             </View>
           </View>
         </LinearGradient>
