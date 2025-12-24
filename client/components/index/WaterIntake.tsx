@@ -136,7 +136,6 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
       backgroundColor: "#ffffff",
       borderRadius: isSmallScreen ? 28 : 32,
       padding: isSmallScreen ? 24 : 32,
-      elevation: 8,
     },
     header: {
       flexDirection: "row",

@@ -530,7 +530,7 @@ export default function AIChatScreen({
   };
 
   if (isLoading) {
-    return <LoadingScreen text={t("ai_chat.loadingAI")} />;
+    return <LoadingScreen text={t("ai_chat.loading")} />;
   }
 
   return (
@@ -691,19 +691,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   modernHeader: {
-    paddingHorizontal: 22,
+    paddingHorizontal: 32,
     paddingTop: 18,
     paddingBottom: 26,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    justifyContent:"center"
   },
   headerTop: {
     flexDirection: "row",
@@ -735,7 +730,6 @@ const styles = StyleSheet.create({
   },
   headerButtons: {
     flexDirection: "row",
-    gap: 8,
   },
   headerButton: {
     width: 44,
