@@ -63,6 +63,7 @@ const createApiInstance = (): AxiosInstance => {
   instance.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
+
       const originalRequest = error.config as any;
 
       // Handle network errors with retry
@@ -900,6 +901,29 @@ export const userAPI = {
   deleteAccount: async () => {
     const response = await api.delete("/user/delete");
     return response.data;
+  },
+
+  requestPasswordChange: async () => {
+    try {
+      const response = await api.post("/user/request-password-change");
+      return response.data;
+    } catch (error) {
+      console.error("💥 Request password change error:", error);
+      throw new APIError("Failed to request password change");
+    }
+  },
+
+  changePassword: async (verificationCode: string, newPassword: string) => {
+    try {
+      const response = await api.post("/user/change-password", {
+        verificationCode,
+        newPassword,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("💥 Change password error:", error);
+      throw new APIError("Failed to change password");
+    }
   },
 
   getUserProfile: async (): Promise<any> => {

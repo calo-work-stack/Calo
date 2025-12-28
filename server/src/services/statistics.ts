@@ -514,7 +514,14 @@ export class StatisticsService {
       sugar: Math.round(averages.sugar / numDays),
       sodium: Math.round(averages.sodium / numDays),
       fluids: Math.round(averages.fluids / numDays),
-    };
+      protein_g: Math.round(averages.protein / numDays),
+      carbs_g: Math.round(averages.carbs / numDays),
+      fats_g: Math.round(averages.fats / numDays),
+      fiber_g: Math.round(averages.fiber / numDays),
+      sugar_g: Math.round(averages.sugar / numDays),
+      sodium_mg: Math.round(averages.sodium / numDays),
+      water_ml: Math.round(averages.fluids / numDays),
+    } as any;
   }
 
   /**

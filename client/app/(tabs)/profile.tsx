@@ -42,6 +42,8 @@ import { router } from "expo-router";
 import { userAPI } from "@/src/services/api";
 import * as ImagePicker from "expo-image-picker";
 import { ToastService } from "@/src/services/totastService";
+import { useTheme } from "@/src/context/ThemeContext";
+import LanguageSelector from "@/components/LanguageSelector";
 
 // Define the interface for menu items
 interface MenuItem {
@@ -64,10 +66,10 @@ export default function ProfileScreen() {
   const { isRTL } = useLanguage();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
+  const { isDark, toggleTheme, colors } = useTheme();
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState({
     pushNotifications: true,
@@ -140,18 +142,11 @@ export default function ProfileScreen() {
       ...prev,
       [key]: !prev[key as keyof typeof prev],
     }));
-    // Here you would typically save to AsyncStorage or send to server
     console.log(
       "🔔 Notification setting changed:",
       key,
       !notificationSettings[key as keyof typeof notificationSettings]
     );
-  };
-
-  const handleDarkModeToggle = (value: boolean) => {
-    setDarkMode(value);
-    // Here you would typically apply the theme change
-    console.log("🌙 Dark mode toggled:", value);
   };
 
   const handleMenuPress = (itemId: string) => {
@@ -329,10 +324,10 @@ export default function ProfileScreen() {
           icon: <Moon size={20} color="#2C3E50" />,
           rightComponent: (
             <Switch
-              value={darkMode}
-              onValueChange={handleDarkModeToggle}
+              value={isDark}
+              onValueChange={toggleTheme}
               trackColor={{ false: "#E9ECEF", true: "#16A085" }}
-              thumbColor={darkMode ? "#FFFFFF" : "#FFFFFF"}
+              thumbColor={isDark ? "#FFFFFF" : "#FFFFFF"}
             />
           ),
         },
@@ -341,7 +336,7 @@ export default function ProfileScreen() {
           title: t("profile.language") || "Language",
           icon: <Globe size={20} color="#2C3E50" />,
           subtitle: isRTL ? "עברית" : "English",
-          onPress: () => handleMenuPress("language"),
+          onPress: () => setShowLanguageModal(true),
         },
       ],
     },
@@ -502,8 +497,13 @@ export default function ProfileScreen() {
   ];
   console.log(user);
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#16A085" />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <StatusBar
+        barStyle={isDark ? "light-content" : "dark-content"}
+        backgroundColor={colors.background}
+      />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={[styles.header, isRTL && styles.headerRTL]}>
@@ -688,6 +688,12 @@ export default function ProfileScreen() {
           </View>
         ))}
       </ScrollView>
+
+      {/* Language Selector Modal */}
+      <LanguageSelector
+        showModal={showLanguageModal}
+        onToggleModal={() => setShowLanguageModal(false)}
+      />
     </SafeAreaView>
   );
 }

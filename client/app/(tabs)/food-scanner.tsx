@@ -63,6 +63,7 @@ import ElementLoader from "@/components/ElementLoader";
 import ButtonLoader from "@/components/ButtonLoader";
 import { ToastService } from "@/src/services/totastService";
 import { useTheme } from "@/src/context/ThemeContext";
+import ScannedProducts from "@/components/ScannedProducts";
 
 const { width, height } = Dimensions.get("window");
 
@@ -152,6 +153,7 @@ export default function FoodScannerScreen() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [scanHistory, setScanHistory] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [showProductsGallery, setShowProductsGallery] = useState(true);
 
   // Animation values
   const slideAnimation = useRef(new Animated.Value(0)).current;
@@ -626,6 +628,12 @@ export default function FoodScannerScreen() {
                 : "Scan food for nutritional analysis"}
             </Text>
           </View>
+          <TouchableOpacity
+            style={styles.galleryButton}
+            onPress={() => setShowProductsGallery(true)}
+          >
+            <Package size={24} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
       </LinearGradient>
 
@@ -1065,6 +1073,12 @@ export default function FoodScannerScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      {/* Products Gallery */}
+      <ScannedProducts
+        visible={showProductsGallery}
+        onClose={() => setShowProductsGallery(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -1100,6 +1114,14 @@ const styles = StyleSheet.create({
   },
   headerTextContainer: {
     flex: 1,
+  },
+  galleryButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 28,

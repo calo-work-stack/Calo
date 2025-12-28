@@ -196,9 +196,9 @@ router.post(
 
       const targetUser = await prisma.user.update({
         where: { email: user_email },
-        data: { 
+        data: {
           is_admin: true,
-          subscription_type: "PREMIUM" // Give them premium access
+          subscription_type: "PREMIUM", // Give them premium access
         },
       });
 
@@ -419,8 +419,8 @@ router.delete(
 router.post("/push-token", authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { pushToken } = req.body;
-    
-    if (!pushToken || typeof pushToken !== 'string') {
+
+    if (!pushToken || typeof pushToken !== "string") {
       return res.status(400).json({
         success: false,
         error: "Valid push token is required",
@@ -437,7 +437,10 @@ router.post("/push-token", authenticateToken, async (req: AuthRequest, res) => {
 
     // Store push token in user metadata or create a separate tokens table
     // For now, just log it (implement proper storage based on your schema)
-    console.log(`📱 Push token received for user ${req.user?.user_id}:`, pushToken.substring(0, 20) + "...");
+    console.log(
+      `📱 Push token received for user ${req.user?.user_id}:`,
+      pushToken.substring(0, 20) + "..."
+    );
 
     res.json({
       success: true,
@@ -591,7 +594,7 @@ router.get("/stats", authenticateToken, async (req: AuthRequest, res) => {
         ),
       ]);
       defaultStats.todayWaterIntake =
-        (todayWaterIntake as any)?._sum?.amount_ml || 0;
+        (todayWaterIntake as any)?._sum?.milliliters_consumed || 0;
     } catch (error) {
       console.warn("⚠️ Failed to fetch water intake, using default");
     }
@@ -654,5 +657,152 @@ router.get("/stats", authenticateToken, async (req: AuthRequest, res) => {
     });
   }
 });
+
+router.post(
+  "/request-password-change",
+  authenticateToken,
+  async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+        });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { user_id: userId },
+        select: { email: true, name: true },
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: "User not found",
+        });
+      }
+
+      const verificationCode = Math.floor(
+        100000 + Math.random() * 900000
+      ).toString();
+
+      await prisma.user.update({
+        where: { user_id: userId },
+        data: {
+          password_reset_code: verificationCode,
+          password_reset_expires: new Date(Date.now() + 10 * 60 * 1000),
+        },
+      });
+
+      console.log(
+        `🔐 Password change verification code for ${user.email}: ${verificationCode}`
+      );
+
+      res.json({
+        success: true,
+        message: "Verification code sent to your email",
+        verificationCode,
+      });
+    } catch (error) {
+      console.error("Error requesting password change:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to process password change request",
+      });
+    }
+  }
+);
+
+router.post(
+  "/change-password",
+  authenticateToken,
+  async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user?.user_id;
+      const { verificationCode, newPassword } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+        });
+      }
+
+      if (!verificationCode || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          error: "Verification code and new password are required",
+        });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          success: false,
+          error: "Password must be at least 6 characters long",
+        });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { user_id: userId },
+        select: {
+          password_reset_code: true,
+          password_reset_expires: true,
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: "User not found",
+        });
+      }
+
+      if (!user.password_reset_code || !user.password_reset_expires) {
+        return res.status(400).json({
+          success: false,
+          error: "No password change request found",
+        });
+      }
+
+      if (new Date() > user.password_reset_expires) {
+        return res.status(400).json({
+          success: false,
+          error: "Verification code has expired",
+        });
+      }
+
+      if (user.password_reset_code !== verificationCode) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid verification code",
+        });
+      }
+
+      const bcrypt = require("bcrypt");
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      await prisma.user.update({
+        where: { user_id: userId },
+        data: {
+          password_hash: hashedPassword,
+          password_reset_code: null,
+          password_reset_expires: null,
+        },
+      });
+
+      res.json({
+        success: true,
+        message: "Password changed successfully",
+      });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to change password",
+      });
+    }
+  }
+);
 
 export { router as userRoutes };

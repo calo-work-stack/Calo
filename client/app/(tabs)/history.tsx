@@ -60,6 +60,8 @@ import {
   TrendingUp,
   Award,
   Zap,
+  Scale,
+  Utensils,
 } from "lucide-react-native";
 import LoadingScreen from "@/components/LoadingScreen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -306,13 +308,15 @@ const SwipeableMealCard = ({
       <LinearGradient
         colors={["#34D399", "#10B981"]}
         style={styles.swipeAction}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
       >
         <TouchableOpacity
           style={styles.swipeActionButton}
           onPress={() => onDuplicate(meal.id || meal.meal_id?.toString())}
         >
           <View style={styles.swipeIconContainer}>
-            <Copy size={22} color="#ffffff" strokeWidth={2.5} />
+            <Copy size={20} color="#ffffff" strokeWidth={2.5} />
           </View>
           <Text style={styles.swipeActionText}>
             {t("history.actions.copy")}
@@ -327,13 +331,15 @@ const SwipeableMealCard = ({
       <LinearGradient
         colors={["#F87171", "#EF4444"]}
         style={styles.swipeAction}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
       >
         <TouchableOpacity
           style={styles.swipeActionButton}
           onPress={() => onDelete(meal.id || meal.meal_id?.toString())}
         >
           <View style={styles.swipeIconContainer}>
-            <Trash2 size={22} color="#ffffff" strokeWidth={2.5} />
+            <Trash2 size={20} color="#ffffff" strokeWidth={2.5} />
           </View>
           <Text style={styles.swipeActionText}>
             {t("history.actions.delete")}
@@ -634,14 +640,14 @@ const SwipeableMealCard = ({
                             ]}
                           >
                             {value}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.nutritionUnit,
-                              { color: colors.textSecondary },
-                            ]}
-                          >
-                            {config.unit}
+                            <Text
+                              style={[
+                                styles.nutritionUnit,
+                                { color: colors.textSecondary },
+                              ]}
+                            >
+                              {config.unit}
+                            </Text>
                           </Text>
                           <Text
                             style={[
@@ -733,58 +739,63 @@ const SwipeableMealCard = ({
                       {
                         key: "taste_rating",
                         label: "history.ratings.taste",
-                        icon: "😋",
+                        Icon: Utensils,
                         color: "#F59E0B",
                       },
                       {
                         key: "satiety_rating",
                         label: "history.ratings.fullness",
-                        icon: "🤤",
+                        Icon: Heart,
                         color: "#10B981",
                       },
                       {
                         key: "energy_rating",
                         label: "history.ratings.energy",
-                        icon: "⚡",
+                        Icon: Zap,
                         color: "#3B82F6",
                       },
                       {
                         key: "heaviness_rating",
                         label: "history.ratings.heaviness",
-                        icon: "🥱",
+                        Icon: Scale,
                         color: "#8B5CF6",
                       },
-                    ].map(({ key, label, icon, color }) => (
-                      <View
-                        key={key}
-                        style={[
-                          styles.ratingItem,
-                          { backgroundColor: colors.background },
-                        ]}
-                      >
-                        <View style={styles.ratingItemHeader}>
-                          <View
-                            style={[
-                              styles.ratingEmojiContainer,
-                              { backgroundColor: color + "15" },
-                            ]}
-                          >
-                            <Text style={styles.ratingEmoji}>{icon}</Text>
+                    ].map(({ key, label, Icon, color }) => {
+                      return (
+                        <View
+                          key={key}
+                          style={[
+                            styles.ratingItem,
+                            { backgroundColor: colors.background },
+                          ]}
+                        >
+                          <View style={styles.ratingItemHeader}>
+                            <View
+                              style={[
+                                styles.ratingEmojiContainer,
+                                { backgroundColor: color + "15" },
+                              ]}
+                            >
+                              <Icon size={18} color={color} strokeWidth={2.5} />
+                            </View>
+                            <Text
+                              style={[
+                                styles.ratingLabel,
+                                { color: colors.text },
+                              ]}
+                            >
+                              {t(label)}
+                            </Text>
                           </View>
-                          <Text
-                            style={[styles.ratingLabel, { color: colors.text }]}
-                          >
-                            {t(label)}
-                          </Text>
+                          {renderStarRating(
+                            localMealData[
+                              key as keyof typeof localMealData
+                            ] as number,
+                            (rating) => handleRatingChange(key, rating)
+                          )}
                         </View>
-                        {renderStarRating(
-                          localMealData[
-                            key as keyof typeof localMealData
-                          ] as number,
-                          (rating) => handleRatingChange(key, rating)
-                        )}
-                      </View>
-                    ))}
+                      );
+                    })}
                   </View>
 
                   <TouchableOpacity
@@ -793,10 +804,7 @@ const SwipeableMealCard = ({
                     disabled={savingRatings}
                     activeOpacity={0.8}
                   >
-                    <LinearGradient
-                      colors={mealPeriodStyle.gradient}
-                      style={styles.saveButtonGradient}
-                    >
+                    <View style={styles.saveButtonGradient}>
                       {savingRatings ? (
                         <ActivityIndicator size="small" color="#ffffff" />
                       ) : (
@@ -811,7 +819,7 @@ const SwipeableMealCard = ({
                           </Text>
                         </>
                       )}
-                    </LinearGradient>
+                    </View>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1058,15 +1066,12 @@ export default function HistoryScreen() {
         <View style={styles.insightsCard}>
           <BlurView intensity={80} tint="light" style={styles.insightsBlur}>
             <LinearGradient
-              colors={selectedCategory?.gradient || ["#8B5CF6", "#7C3AED"]}
+              colors={selectedCategory?.gradient}
               style={styles.insightsGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
               <View style={styles.insightsHeader}>
-                <View style={styles.insightsIconContainer}>
-                  <Award size={26} color="#FFFFFF" strokeWidth={2.5} />
-                </View>
                 <View style={styles.insightsHeaderText}>
                   <Text style={styles.insightsTitle}>
                     {t("history.insights.title")}
@@ -1079,13 +1084,6 @@ export default function HistoryScreen() {
 
               <View style={styles.insightsGrid}>
                 <View style={styles.insightItem}>
-                  <View style={styles.insightIconBg}>
-                    <Target
-                      size={18}
-                      color={selectedCategory?.gradient[0] || "#8B5CF6"}
-                      strokeWidth={2.5}
-                    />
-                  </View>
                   <Text style={styles.insightValue}>
                     {item.data.totalMeals}
                   </Text>
@@ -1095,9 +1093,6 @@ export default function HistoryScreen() {
                 </View>
 
                 <View style={styles.insightItem}>
-                  <View style={styles.insightIconBg}>
-                    <Flame size={18} color="#F59E0B" strokeWidth={2.5} />
-                  </View>
                   <Text style={styles.insightValue}>
                     {item.data.avgCalories}
                   </Text>
@@ -1107,9 +1102,6 @@ export default function HistoryScreen() {
                 </View>
 
                 <View style={styles.insightItem}>
-                  <View style={styles.insightIconBg}>
-                    <Heart size={18} color="#EF4444" strokeWidth={2.5} />
-                  </View>
                   <Text style={styles.insightValue}>
                     {item.data.favoriteMeals}
                   </Text>
@@ -1119,14 +1111,6 @@ export default function HistoryScreen() {
                 </View>
 
                 <View style={styles.insightItem}>
-                  <View style={styles.insightIconBg}>
-                    <Star
-                      size={18}
-                      color="#FBBF24"
-                      strokeWidth={2.5}
-                      fill="#FBBF24"
-                    />
-                  </View>
                   <Text style={styles.insightValue}>{item.data.avgRating}</Text>
                   <Text style={styles.insightLabel}>
                     {t("history.insights.avgRating")}
@@ -1328,7 +1312,7 @@ export default function HistoryScreen() {
               ]}
             >
               <LinearGradient
-                colors={selectedCategory?.gradient || ["#8B5CF6", "#7C3AED"]}
+                colors={selectedCategory?.gradient}
                 style={styles.modalHeader}
               >
                 <View>
@@ -1589,9 +1573,7 @@ export default function HistoryScreen() {
                     activeOpacity={0.8}
                   >
                     <LinearGradient
-                      colors={
-                        selectedCategory?.gradient || ["#8B5CF6", "#7C3AED"]
-                      }
+                      colors={selectedCategory?.gradient}
                       style={styles.applyButtonGradient}
                     >
                       <Zap size={18} color="#FFFFFF" strokeWidth={2.5} />
@@ -1612,7 +1594,7 @@ export default function HistoryScreen() {
           activeOpacity={0.9}
         >
           <LinearGradient
-            colors={selectedCategory?.gradient || ["#8B5CF6", "#7C3AED"]}
+            colors={selectedCategory?.gradient}
             style={styles.floatingGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -1746,11 +1728,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderRadius: 24,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.2)",
   },
@@ -1838,11 +1815,6 @@ const styles = StyleSheet.create({
 
   swipeContainer: {
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
 
   mealCard: {
@@ -1850,11 +1822,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     marginBottom: 16,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
     borderWidth: 1,
     borderColor: "rgba(0, 0, 0, 0.03)",
   },
@@ -1867,11 +1834,6 @@ const styles = StyleSheet.create({
 
   cardImageContainer: {
     position: "relative",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
 
   cardImage: {
@@ -1902,11 +1864,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#EF4444",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#EF4444",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 6,
     borderWidth: 2,
     borderColor: "#FFFFFF",
   },
@@ -2009,46 +1966,52 @@ const styles = StyleSheet.create({
   swipeActionContainer: {
     justifyContent: "center",
     alignItems: "center",
-    width: 80,
+    width: 90,
+    height: "100%",
   },
 
   swipeAction: {
     flex: 1,
     width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
     borderRadius: 16,
+    marginVertical: 4,
+    marginHorizontal: 4,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
   },
 
   swipeActionButton: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    width: "100%",
   },
 
   swipeIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 4,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    marginBottom: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
 
   swipeActionText: {
     color: "#ffffff",
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
     textAlign: "center",
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
   },
 
   expandedSection: {
@@ -2108,26 +2071,19 @@ const styles = StyleSheet.create({
 
   nutritionGrid: {
     flexDirection: "row",
-    gap: 10,
+    flexWrap: "wrap",
+    gap: 8,
   },
-
   nutritionCard: {
-    flex: 1,
+    width: "48.5%",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    borderRadius: 18,
-    gap: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "rgba(0, 0, 0, 0.05)",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    gap: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
   },
-
   nutritionIconContainer: {
     width: 44,
     height: 44,
@@ -2135,11 +2091,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
   },
 
   nutritionValue: {
@@ -2150,9 +2101,9 @@ const styles = StyleSheet.create({
   },
 
   nutritionUnit: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
-    letterSpacing: -0.2,
+    letterSpacing: 0,
     marginBottom: 4,
   },
 
@@ -2241,6 +2192,7 @@ const styles = StyleSheet.create({
   },
 
   saveButtonGradient: {
+    backgroundColor: "#0d9488",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -2443,11 +2395,6 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
   },
 
   modalActions: {
@@ -2497,11 +2444,6 @@ const styles = StyleSheet.create({
     right: 24,
     borderRadius: 30,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 12,
   },
 
   floatingGradient: {

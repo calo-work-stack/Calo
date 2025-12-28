@@ -1,4 +1,23 @@
 {
+  "loading": {
+    "loading": "Loading",
+    "home": "Home",
+    "statistics": "Statistics",
+    "ai_chat": "AI Chat",
+    "calendar": "Calendar",
+    "food_scanner": "Food Scanner",
+    "camera": "Camera",
+    "devices": "Devices",
+    "history": "History",
+    "profile": "Profile",
+    "questionnaire": "Questionnaire",
+    "recommended_menus": "Menus",
+    "sign_in":"Sign In",
+    "sign_up":"Sign Up",
+    "forgot_password":"Forgot Password",
+    "reset_password":"Reset Password",
+    "email_verification":"Email Verficition"
+  },
   "questionnaire": {
     "title": "Health Questionnaire",
     "loading": "Loading questionnaire...",
@@ -466,7 +485,9 @@
     "barcode": "Barcode",
     "image": "Image",
     "scan_history": "Scan History",
-    "no_history": "No scan history",
+    "no_history": "No scan history available",
+    "clear_history": "Clear History",
+    "history_empty": "Your scan history is empty. Start scanning products!",
     "product_not_found": "Product Not Found",
     "product_not_found_message": "We couldn't find this product in our database",
     "scan_failed": "Scan Failed",
@@ -476,7 +497,8 @@
     "take_photo": "Take Photo",
     "image_instructions": "Point the camera to the barcode",
     "photo_food": "Photo the food",
-    "enter_barcode": "Enter Barcode Here..."
+    "enter_barcode": "Enter Barcode Here...",
+    "scanned_products":"Scanned Products"
   },
   "profile": {
     "title": "Profile",
@@ -1178,6 +1200,7 @@
     }
   },
   "common": {
+    "all":"All",  
     "of": "of",
     "next": "Next",
     "save": "Save",

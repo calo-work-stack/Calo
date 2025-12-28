@@ -1,0 +1,659 @@
+# Comprehensive Codebase Documentation
+
+## Project Overview
+
+This is a full-stack nutrition and fitness tracking application built with:
+- **Frontend**: React Native (Expo) with TypeScript
+- **Backend**: Node.js with Express and TypeScript
+- **Database**: PostgreSQL with Prisma ORM (Supabase)
+- **AI Integration**: OpenAI for meal analysis
+
+---
+
+## Error Fixes Applied
+
+### 1. Water Intake Error (FIXED)
+**File**: `server/src/routes/user.ts` (Line 594)
+
+**Issue**: Incorrect field name in water intake aggregation
+```typescript
+// BEFORE (WRONG):
+(todayWaterIntake as any)?._sum?.amount_ml || 0
+
+// AFTER (FIXED):
+(todayWaterIntake as any)?._sum?.milliliters_consumed || 0
+```
+
+**Why**: The database schema uses `milliliters_consumed` as the field name, not `amount_ml`
+
+**Impact**: Water intake stats were always showing 0, even when users tracked water
+
+---
+
+### 2. Statistics Server Error (FIXED)
+**File**: `server/src/routes/statistics.ts`
+
+**Issue**: Missing error handling and timeout management
+
+**Solution**: Added proper error handling, timeout management, and validation
+
+---
+
+### 3. Statistics Page Redesign (COMPLETED)
+**File**: `client/app/(tabs)/statistics.tsx`
+
+**Changes**:
+- Complete redesign with modern UI
+- Real API integration with error handling
+- Loading states and retry functionality
+- Period selection (Today/Week/Month)
+- Real-time data visualization
+- Better color scheme (removed purple, used blues and modern gradients)
+
+---
+
+### 4. History Page (EXISTING - FUNCTIONAL)
+**File**: `client/app/(tabs)/history.tsx`
+
+**Current State**: The history page is already well-designed with:
+- Duolingo-style day circles showing meal completion
+- Visual representation of daily progress
+- Streak tracking
+- Meal detail modals
+- Achievement rewards system
+
+**No changes needed** - This page is working correctly and has excellent UX
+
+---
+
+## Architecture Overview
+
+### Backend Structure (`/server`)
+
+#### Routes (`/server/src/routes/`)
+1. **auth.ts** - Authentication endpoints (signup, signin, email verification, password reset)
+2. **user.ts** - User profile, stats, avatar management
+3. **nutrition.ts** - Meal tracking, water intake, meal CRUD operations
+4. **statistics.ts** - Statistics and analytics endpoints
+5. **dailyGoal.ts** - Daily nutritional goals management
+6. **calendar.ts** - Calendar events and meal scheduling
+7. **chat.ts** - AI chat assistant for nutrition queries
+8. **devices.ts** - Health device integrations (Google Fit, Apple Health)
+9. **mealPlans.ts** - Weekly meal plan management
+10. **recommendedMenu.ts** - AI-generated menu recommendations
+11. **achievements.ts** - Gamification and achievement system
+12. **shoppingLists.ts** - Shopping list management
+13. **admin.ts** - Admin dashboard and user management
+
+#### Services (`/server/src/services/`)
+1. **auth.ts** - Authentication logic (JWT, email verification, password hashing)
+2. **nutrition.ts** - Meal analysis, nutritional calculations
+3. **statistics.ts** - Statistical calculations and data aggregation
+4. **dailyGoal.ts** - Daily goal calculations based on user profile
+5. **openai.ts** - OpenAI API integration for meal analysis
+6. **achievements.ts** - Achievement checking and awarding logic
+7. **aiRecommendations.ts** - AI-powered recommendations
+8. **calendar.ts** - Calendar and scheduling logic
+9. **devices.ts** - Device data synchronization
+10. **mealPlans.ts** - Meal plan generation and management
+11. **recommendedMenu.ts** - Menu recommendation algorithms
+12. **usageTracking.ts** - Track API usage for subscription limits
+13. **cron/enhanced.ts** - Background jobs (daily goals creation, cleanup)
+
+#### Middleware (`/server/src/middleware/`)
+1. **auth.ts** - JWT authentication middleware
+2. **errorHandler.ts** - Global error handling
+
+#### Database (`/server/prisma/`)
+- **schema.prisma** - Database schema definition
+- **migrations/** - Database migration files
+
+---
+
+### Frontend Structure (`/client`)
+
+#### App Routes (`/client/app/`)
+1. **(auth)/** - Authentication screens (signin, signup, password reset)
+2. **(tabs)/** - Main app tabs (dashboard, statistics, history, calendar, profile)
+3. **menu/** - Menu detail and active menu screens
+4. **admin/** - Admin panel screens
+
+#### Components (`/client/components/`)
+1. **camera/** - Food scanning and meal capture components
+2. **history/** - Meal history display components
+3. **index/** - Dashboard widgets (water intake, calorie progress)
+4. **menu/** - Menu creation and display components
+5. **questionnaire/** - Onboarding questionnaire components
+6. **statistics/** - Statistics visualization components
+7. **ui/** - Reusable UI components
+
+#### Services (`/client/src/services/`)
+1. **api.ts** - API client and request handlers
+2. **queryClient.ts** - React Query configuration
+3. **errorHandler.ts** - Error handling utilities
+4. **notifications.ts** - Push notification setup
+
+#### State Management (`/client/src/store/`)
+1. **authSlice.ts** - Authentication state
+2. **mealSlice.ts** - Meal data state
+3. **calendarSlice.ts** - Calendar state
+4. **questionnaireSlice.ts** - Questionnaire state
+
+---
+
+## Key Features
+
+### 1. Authentication System
+**Location**: `server/src/routes/auth.ts`, `client/app/(auth)/`
+
+**Features**:
+- Email/password authentication with JWT
+- Email verification with 6-digit codes
+- Password reset flow
+- Secure token-based sessions
+
+**How it works**:
+1. User signs up → Email verification code sent
+2. User verifies email → JWT token issued
+3. Token stored in Redux and AsyncStorage
+4. Token sent with every API request in Authorization header
+
+**Is it necessary?**: YES - Core feature for user management
+
+---
+
+### 2. Food Scanning & AI Analysis
+**Location**: `server/src/routes/nutrition.ts`, `client/app/(tabs)/food-scanner.tsx`
+
+**Features**:
+- Camera-based meal capture
+- AI-powered nutritional analysis via OpenAI
+- Automatic ingredient detection
+- Nutritional breakdown calculation
+
+**How it works**:
+1. User captures photo of food
+2. Image sent to OpenAI Vision API
+3. AI identifies ingredients and estimates portions
+4. Backend calculates nutritional values
+5. User can edit before saving
+
+**Is it necessary?**: YES - Primary app functionality
+
+---
+
+### 3. Water Intake Tracking
+**Location**: `server/src/routes/nutrition.ts` (POST /water-intake), `client/components/index/WaterIntake.tsx`
+
+**Features**:
+- Track daily water consumption (cups)
+- Visual progress indicator
+- Daily goal tracking
+- Historical data
+
+**Schema**: `WaterIntake` table
+```prisma
+model WaterIntake {
+  id                    String   @id @default(uuid())
+  user_id               String
+  date                  DateTime
+  cups_consumed         Int      @default(0)
+  milliliters_consumed  Int      @default(0)
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+}
+```
+
+**Is it necessary?**: YES - Important health metric
+
+---
+
+### 4. Daily Goals System
+**Location**: `server/src/routes/dailyGoal.ts`, `server/src/services/dailyGoal.ts`
+
+**Features**:
+- Personalized daily nutritional goals
+- Based on user questionnaire (age, weight, height, activity level, goals)
+- BMR and TDEE calculations
+- Automatic goal creation
+
+**How it works**:
+1. User completes questionnaire
+2. Backend calculates BMR using Harris-Benedict equation
+3. Applies activity level multiplier
+4. Adjusts for weight goal (loss/gain/maintenance)
+5. Calculates macro targets (protein, carbs, fats)
+
+**Is it necessary?**: YES - Foundation for progress tracking
+
+---
+
+### 5. Statistics & Analytics
+**Location**: `server/src/routes/statistics.ts`, `server/src/services/statistics.ts`, `client/app/(tabs)/statistics.tsx`
+
+**Features**:
+- Comprehensive nutrition tracking
+- Streak tracking
+- Achievement progress
+- Daily/weekly/monthly views
+- Visual charts and graphs
+
+**Data Points**:
+- Average calories, protein, carbs, fats
+- Water intake
+- Streak days (current, best, weekly)
+- Perfect days, successful days
+- Meal quality scores
+- Achievement unlocks
+
+**Is it necessary?**: YES - Core motivational feature
+
+---
+
+### 6. Meal History
+**Location**: `server/src/routes/nutrition.ts`, `client/app/(tabs)/history.tsx`
+
+**Features**:
+- Visual timeline of meals
+- Duolingo-style day circles
+- Daily completion tracking
+- Meal detail modals
+- Goal achievement visualization
+
+**Is it necessary?**: YES - Essential for tracking progress
+
+---
+
+### 7. AI Chat Assistant
+**Location**: `server/src/routes/chat.ts`, `server/src/services/chat.ts`, `client/app/(tabs)/ai-chat.tsx`
+
+**Features**:
+- Nutrition advice
+- Recipe suggestions
+- Diet questions
+- Meal planning help
+- Context-aware responses
+
+**How it works**:
+1. User sends message
+2. Backend retrieves recent meals and user context
+3. Sends to OpenAI with system prompt
+4. Returns personalized response
+
+**Is it necessary?**: OPTIONAL - Value-add feature
+
+---
+
+### 8. Achievements & Gamification
+**Location**: `server/src/routes/achievements.ts`, `server/src/services/achievements.ts`
+
+**Features**:
+- Unlock achievements for milestones
+- XP and leveling system
+- Streak rewards
+- Progress tracking
+
+**Achievement Types**:
+- First scan
+- Water goals (1, 7, 10, 30 days)
+- Complete days (1, 5, 10, 25, 50, 100)
+- Streaks (3, 7, 14, 30, 100 days)
+- Level milestones (5, 10, 25, 50)
+
+**Is it necessary?**: OPTIONAL - Motivational feature
+
+---
+
+### 9. Meal Plans & Recommendations
+**Location**: `server/src/routes/mealPlans.ts`, `server/src/routes/recommendedMenu.ts`
+
+**Features**:
+- Weekly meal plans
+- AI-generated meal suggestions
+- Based on dietary preferences
+- Nutritional balance
+
+**Is it necessary?**: OPTIONAL - Premium feature
+
+---
+
+### 10. Calendar Integration
+**Location**: `server/src/routes/calendar.ts`, `client/app/(tabs)/calendar.tsx`
+
+**Features**:
+- Meal scheduling
+- Event tracking
+- Historical view
+- Monthly statistics
+
+**Is it necessary?**: OPTIONAL - Planning feature
+
+---
+
+### 11. Shopping Lists
+**Location**: `server/src/routes/shoppingLists.ts`
+
+**Features**:
+- Create shopping lists from meal plans
+- Track purchased items
+- Integration with meal ingredients
+
+**Is it necessary?**: OPTIONAL - Convenience feature
+
+---
+
+### 12. Device Integration
+**Location**: `server/src/routes/devices.ts`, `server/src/services/devices.ts`
+
+**Features**:
+- Google Fit integration
+- Apple Health integration
+- Sync health data
+- Activity tracking
+
+**Is it necessary?**: OPTIONAL - Premium feature
+
+---
+
+### 13. Admin Dashboard
+**Location**: `server/src/routes/admin.ts`, `client/app/admin/`
+
+**Features**:
+- User management
+- System statistics
+- Revenue tracking
+- Subscription management
+
+**Is it necessary?**: YES - For platform management
+
+---
+
+## Database Schema Summary
+
+### Core Tables:
+1. **User** - User accounts and profiles
+2. **UserQuestionnaire** - Onboarding data and preferences
+3. **Meal** - Logged meals and nutritional data
+4. **DailyGoal** - Daily nutritional targets
+5. **WaterIntake** - Water consumption tracking
+6. **UserAchievement** - Unlocked achievements
+7. **Achievement** - Achievement definitions
+8. **MealPlan** - Weekly meal plans
+9. **RecommendedMenu** - AI-generated menus
+10. **ShoppingList** - Shopping list items
+11. **CalendarEvent** - Calendar entries
+12. **Device** - Connected health devices
+13. **ChatMessage** - AI chat history
+
+---
+
+## API Endpoints Summary
+
+### Authentication (`/api/auth`)
+- `POST /signup` - Create account
+- `POST /signin` - Login
+- `POST /verify-email` - Verify email
+- `POST /forgot-password` - Request password reset
+- `POST /reset-password` - Reset password
+- `GET /me` - Get current user
+
+### Nutrition (`/api/nutrition`)
+- `POST /analyze` - Analyze meal photo
+- `POST /save` - Save meal
+- `GET /meals` - Get meals list
+- `POST /water-intake` - Track water
+- `GET /water-intake/:date` - Get water intake
+- `GET /stats/daily` - Daily stats
+- `GET /stats/range` - Range stats
+
+### Statistics (`/api/statistics`)
+- `GET /statistics` - Get statistics
+- `GET /statistics/achievements` - Get achievements
+- `GET /recommendations` - AI recommendations
+
+### Daily Goals (`/api/daily-goals`)
+- `GET /` - Get daily goals
+- `PUT /` - Create/update goals
+- `GET /history` - Historical goals
+
+### User (`/api/user`)
+- `GET /profile` - Get profile
+- `GET /stats` - Get user stats
+- `POST /avatar` - Upload avatar
+- `PUT /profile` - Update profile
+
+### Calendar (`/api/calendar`)
+- `GET /data/:year/:month` - Get calendar data
+- `POST /events` - Create event
+- `GET /events/:date` - Get events
+
+### Meal Plans (`/api/meal-plans`)
+- `GET /current` - Get active plan
+- `GET /recommended` - Get recommendations
+- `POST /:id/activate` - Activate plan
+
+### Admin (`/api/admin`)
+- `GET /stats` - Admin statistics
+- `GET /users` - List all users
+- `POST /users/:id/subscription` - Update subscription
+
+---
+
+## Environment Variables
+
+### Server (`.env`)
+```
+DATABASE_URL=postgresql://...
+OPENAI_API_KEY=sk-...
+JWT_SECRET=...
+PORT=5000
+NODE_ENV=development
+```
+
+### Client (`client/.env`)
+```
+EXPO_PUBLIC_API_URL=http://192.168.x.x:5000/api
+```
+
+---
+
+## Key Algorithms
+
+### 1. BMR Calculation (Harris-Benedict)
+**Location**: `server/src/services/dailyGoal.ts`
+
+**Formula**:
+- Male: BMR = 88.362 + (13.397 × weight_kg) + (4.799 × height_cm) - (5.677 × age)
+- Female: BMR = 447.593 + (9.247 × weight_kg) + (3.098 × height_cm) - (4.330 × age)
+
+### 2. TDEE Calculation
+**Location**: `server/src/services/dailyGoal.ts`
+
+**Formula**: TDEE = BMR × Activity Multiplier
+- Sedentary: 1.2
+- Light: 1.375
+- Moderate: 1.55
+- High: 1.725
+
+### 3. Macro Distribution
+**Location**: `server/src/services/dailyGoal.ts`
+
+**Formulas**:
+- Protein: 1.6g per kg body weight
+- Carbs: 50% of total calories (÷4 cal/g)
+- Fats: 25% of total calories (÷9 cal/g)
+
+### 4. Streak Calculation
+**Location**: `server/src/services/statistics.ts`
+
+**Logic**:
+- Check consecutive days with goal completion
+- Goal = 80%+ of daily calorie target + 8+ cups water
+- Reset on any missed day
+
+### 5. Achievement Progress
+**Location**: `server/src/services/achievements.ts`
+
+**Logic**:
+- Track specific metrics per achievement type
+- Auto-unlock when threshold reached
+- Award XP and level up
+
+---
+
+## Performance Optimizations
+
+### 1. Database Query Optimization
+- Use Prisma's `select` to fetch only needed fields
+- Add database indexes on frequently queried columns
+- Use `Promise.all` for parallel queries
+
+### 2. API Response Caching
+- Cache-Control headers on statistics endpoint
+- ETags for unchanged data
+
+### 3. Frontend State Management
+- Redux for global state
+- React Query for server state
+- Optimistic updates for better UX
+
+### 4. Image Optimization
+- Compress images before upload
+- Use WebP format where supported
+- Lazy load images
+
+---
+
+## Security Measures
+
+### 1. Authentication
+- JWT tokens with expiration
+- Password hashing with bcrypt
+- Email verification required
+
+### 2. Input Validation
+- Zod schema validation on all endpoints
+- SQL injection prevention via Prisma
+- XSS protection via sanitization
+
+### 3. Rate Limiting
+- 100 requests per 15 minutes per IP
+- Increased limits for development
+
+### 4. CORS Configuration
+- Whitelist allowed origins
+- Credentials support enabled
+
+---
+
+## Deployment
+
+### Backend
+1. Set environment variables
+2. Run database migrations: `npx prisma migrate deploy`
+3. Build: `npm run build`
+4. Start: `npm start`
+
+### Frontend
+1. Update API URL in `.env`
+2. Build: `npx expo build:android` or `npx expo build:ios`
+3. Deploy via EAS: `eas build --platform android`
+
+---
+
+## Future Improvements
+
+### Recommended:
+1. Add unit tests (Jest + React Testing Library)
+2. Implement real-time updates (Socket.io)
+3. Add meal photo gallery
+4. Implement social features (friends, sharing)
+5. Add barcode scanner for packaged foods
+6. Integrate with fitness trackers (Fitbit, Garmin)
+7. Add recipe database
+8. Implement meal prep planning
+9. Add grocery delivery integration
+10. Create nutrition coaching features
+
+### Optional:
+1. Add dark mode support
+2. Implement offline mode
+3. Add voice commands
+4. Create widget for home screen
+5. Add meal reminders
+
+---
+
+## Troubleshooting
+
+### Common Issues:
+
+1. **Water intake showing 0**
+   - Fixed: Updated field name from `amount_ml` to `milliliters_consumed`
+
+2. **Statistics not loading**
+   - Check API endpoint is accessible
+   - Verify JWT token is valid
+   - Check database connection
+
+3. **AI meal analysis failing**
+   - Ensure OPENAI_API_KEY is set
+   - Check image size (max 10MB)
+   - Verify OpenAI API quota
+
+4. **Authentication errors**
+   - Clear AsyncStorage
+   - Check JWT_SECRET matches
+   - Verify database connection
+
+---
+
+## Code Quality Standards
+
+### TypeScript
+- Strict mode enabled
+- No `any` types (use proper interfaces)
+- Export types for reusability
+
+### React/React Native
+- Functional components with hooks
+- PropTypes or TypeScript interfaces
+- Proper memo usage for performance
+
+### Backend
+- RESTful API design
+- Proper HTTP status codes
+- Comprehensive error handling
+- Logging for debugging
+
+### Database
+- Use migrations for schema changes
+- Proper indexing
+- Foreign key constraints
+- Default values where appropriate
+
+---
+
+## Conclusion
+
+This application is a comprehensive nutrition tracking platform with AI-powered meal analysis, gamification, and extensive analytics. The codebase is well-structured with clear separation between frontend and backend, proper error handling, and scalable architecture.
+
+**Key Strengths**:
+- Modular architecture
+- Comprehensive feature set
+- AI integration
+- Gamification  
+- Real-time progress tracking
+
+**Areas for Growth**:
+- Add automated testing
+- Implement caching strategy
+- Add real-time features
+- Expand device integrations
+- Add social features
+
+---
+
+**Last Updated**: 2025-12-26
+**Version**: 1.0.0
+**Maintainer**: Development Team
