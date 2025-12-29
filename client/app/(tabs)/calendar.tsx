@@ -194,7 +194,7 @@ export default function CalendarScreen() {
 
   useEffect(() => {
     loadCalendarData();
-  }, [currentDate]);
+  }, [currentDate.getFullYear(), currentDate.getMonth()]);
 
   useEffect(() => {
     if (error) {
@@ -535,8 +535,10 @@ export default function CalendarScreen() {
 
   // Effect to recalculate menu progress when date changes or menu details are set
   useEffect(() => {
-    calculateMenuProgress();
-  }, [menuStartDate, menuDuration, currentDate]); // Include currentDate to re-evaluate progress daily
+    if (menuStartDate || menuDuration > 0) {
+      calculateMenuProgress();
+    }
+  }, [menuStartDate, menuDuration]); // Only recalculate when menu details change
 
   const renderDay = (dayData: DayData | null, index: number) => {
     if (!dayData) {

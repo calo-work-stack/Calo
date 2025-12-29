@@ -17,41 +17,18 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import { Camera, CameraType, CameraView } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import {
   QrCode,
   Camera as CameraIcon,
-  Sparkles,
   Plus,
-  Check,
   X,
-  AlertTriangle,
-  Shield,
-  Heart,
-  Leaf,
-  Zap,
-  Apple,
-  Clock,
   BarChart3,
-  Info,
-  Star,
-  Trash2,
   History,
-  Wheat,
-  Droplet,
-  CircleDot,
   ShoppingCart,
-  Scale,
-  DollarSign,
   Package,
-  Utensils,
-  Eye,
-  RotateCcw,
   ArrowLeft,
-  ChevronRight,
-  CheckCircle,
   ScanLine,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
@@ -133,7 +110,7 @@ export default function FoodScannerScreen() {
   // Camera and scanning states
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [scanMode, setScanMode] = useState<"barcode" | "image">("image");
+  const [scanMode, setScanMode] = useState<"barcode" | "image">("barcode");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
 
@@ -153,7 +130,7 @@ export default function FoodScannerScreen() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [scanHistory, setScanHistory] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [showProductsGallery, setShowProductsGallery] = useState(true);
+  const [showProductsGallery, setShowProductsGallery] = useState(false);
 
   // Animation values
   const slideAnimation = useRef(new Animated.Value(0)).current;
@@ -603,44 +580,95 @@ export default function FoodScannerScreen() {
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <LinearGradient
-        colors={["#10B981", "#059669", "#047857"]}
-        style={styles.modernHeader}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
+      <View style={[styles.modernHeader]}>
         <View style={styles.headerTop}>
-          <View style={styles.headerIconContainer}>
-            <ScanLine size={28} color="#FFFFFF" />
+          {/* Icon Container with theme-aware background */}
+          <View
+            style={[
+              styles.headerIconContainer,
+            ]}
+          >
+            <ScanLine size={28} color={colors.text} strokeWidth={2.5} />
           </View>
+
+          {/* Text Container */}
           <View style={styles.headerTextContainer}>
-            <Text style={[styles.headerTitle, { color: "#FFFFFF" }]}>
-              {language === "he" ? "סורק מזון" : "Food Scanner"}
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
+              {t("food_scanner.title")}
             </Text>
             <Text
               style={[
                 styles.headerSubtitle,
-                { color: "rgba(255, 255, 255, 0.9)" },
+                {
+                  color: colors.subtext,
+                },
               ]}
             >
-              {language === "he"
-                ? "סרוק מזון לניתוח תזונתי"
-                : "Scan food for nutritional analysis"}
+              {t("food_scanner.subtitle")}
             </Text>
           </View>
+
+          {/* Gallery Button with theme-aware styling */}
           <TouchableOpacity
-            style={styles.galleryButton}
+            style={[
+              styles.galleryButton,
+            ]}
             onPress={() => setShowProductsGallery(true)}
+            activeOpacity={0.7}
           >
-            <Package size={24} color="#FFFFFF" />
+            <Package size={24} color={colors.text} strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       {!showResults ? (
         <>
           {/* Camera Scanner */}
           <View style={styles.scannerContainer}>
+            {/* Mode Switcher */}
+            <View style={styles.modeSwitcher}>
+              <TouchableOpacity
+                style={[
+                  styles.modeButton,
+                  scanMode === "image" && styles.modeButtonActive,
+                ]}
+                onPress={() => setScanMode("image")}
+              >
+                <CameraIcon
+                  size={20}
+                  color={scanMode === "image" ? "#FFFFFF" : "#6B7280"}
+                />
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    scanMode === "image" && styles.modeButtonTextActive,
+                  ]}
+                >
+                  {texts.scanImage}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modeButton,
+                  scanMode === "barcode" && styles.modeButtonActive,
+                ]}
+                onPress={() => setScanMode("barcode")}
+              >
+                <QrCode
+                  size={20}
+                  color={scanMode === "barcode" ? "#FFFFFF" : "#6B7280"}
+                />
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    scanMode === "barcode" && styles.modeButtonTextActive,
+                  ]}
+                >
+                  {texts.scanBarcode}
+                </Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.cameraWrapper}>
               {scanMode === "image" ? (
                 <TouchableOpacity
@@ -725,51 +753,6 @@ export default function FoodScannerScreen() {
             <Text style={styles.scanInstructions}>{texts.alignFood}</Text>
           </View>
 
-          {/* Mode Switcher */}
-          <View style={styles.modeSwitcher}>
-            <TouchableOpacity
-              style={[
-                styles.modeButton,
-                scanMode === "image" && styles.modeButtonActive,
-              ]}
-              onPress={() => setScanMode("image")}
-            >
-              <CameraIcon
-                size={20}
-                color={scanMode === "image" ? "#FFFFFF" : "#6B7280"}
-              />
-              <Text
-                style={[
-                  styles.modeButtonText,
-                  scanMode === "image" && styles.modeButtonTextActive,
-                ]}
-              >
-                {texts.scanImage}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.modeButton,
-                scanMode === "barcode" && styles.modeButtonActive,
-              ]}
-              onPress={() => setScanMode("barcode")}
-            >
-              <QrCode
-                size={20}
-                color={scanMode === "barcode" ? "#FFFFFF" : "#6B7280"}
-              />
-              <Text
-                style={[
-                  styles.modeButtonText,
-                  scanMode === "barcode" && styles.modeButtonTextActive,
-                ]}
-              >
-                {texts.scanBarcode}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
           {/* Manual Input */}
           {scanMode === "barcode" && (
             <View style={styles.manualInputContainer}>
@@ -788,7 +771,10 @@ export default function FoodScannerScreen() {
                   disabled={isLoading}
                 >
                   {isLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <ActivityIndicator
+                      size="small"
+                      style={{ backgroundColor: colors.emerald500 }}
+                    />
                   ) : (
                     <Text style={styles.scanButtonText}>{texts.scan}</Text>
                   )}
@@ -1084,175 +1070,127 @@ export default function FoodScannerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+   container: {
     flex: 1,
   },
+
+  /* ================= HEADER ================= */
   modernHeader: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 6,
+    paddingTop: 12,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
   },
   headerTop: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 14,
   },
   headerIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
   },
   headerTextContainer: {
     flex: 1,
   },
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 2,
+  },
   galleryButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#FFFFFF",
-    letterSpacing: -0.5,
-    marginBottom: 2,
-  },
-  backButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: "#F3F4F6",
-  },
-  historyButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: "#F9FAFB",
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.9)",
-    fontWeight: "500",
-  },
+
+  /* ================= SCANNER ================= */
   scannerContainer: {
     flex: 1,
+    paddingTop: 24,
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
-    marginTop: -60,
-    zIndex: 1,
   },
   cameraWrapper: {
-    width: width - 40,
-    height: width - 40,
-    borderRadius: 24,
+    width: width - 48,
+    height: width - 48,
+    borderRadius: 28,
     overflow: "hidden",
-    marginBottom: 20,
+    backgroundColor: "#000",
+    elevation: 10,
   },
   cameraView: {
     flex: 1,
-    backgroundColor: "#F3F4F6",
   },
   cameraOverlay: {
     flex: 1,
-    alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.3)",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.35)",
   },
   scanFrame: {
-    width: 200,
-    height: 200,
-    position: "relative",
-    backgroundColor: "transparent",
+    width: 220,
+    height: 220,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
   },
-  cornerTopLeft: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: 30,
-    height: 30,
-    borderTopWidth: 3,
-    borderLeftWidth: 3,
-    borderColor: "#FFFFFF",
-  },
-  cornerTopRight: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    width: 30,
-    height: 30,
-    borderTopWidth: 3,
-    borderRightWidth: 3,
-    borderColor: "#FFFFFF",
-  },
-  cornerBottomLeft: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    width: 30,
-    height: 30,
-    borderBottomWidth: 3,
-    borderLeftWidth: 3,
-    borderColor: "#FFFFFF",
-  },
-  cornerBottomRight: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 30,
-    height: 30,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
-    borderColor: "#FFFFFF",
-  },
+
+  cornerTopLeft: { display: "none" },
+  cornerTopRight: { display: "none" },
+  cornerBottomLeft: { display: "none" },
+  cornerBottomRight: { display: "none" },
+
   scanLine: {
     position: "absolute",
-    left: 10,
-    right: 10,
+    left: 16,
+    right: 16,
+    top:100,
     height: 2,
-    backgroundColor: "#10B981",
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 0 },
+    backgroundColor: "#34D399",
+    shadowColor: "#34D399",
     shadowOpacity: 0.8,
-    shadowRadius: 4,
+    shadowRadius: 6,
   },
+
   scanIcon: {
-    position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
+    marginTop: 28,
   },
+
   scanInstructions: {
+    marginTop: 20,
     fontSize: 14,
-    color: "#6B7280",
-    textAlign: "center",
-    marginBottom: 24,
+    color: "#94A3B8",
   },
+
+  /* ================= MODE SWITCHER ================= */
   modeSwitcher: {
     flexDirection: "row",
-    backgroundColor: "#F3F4F6",
-    borderRadius: 10,
-    padding: 3,
-    marginHorizontal: 20,
-    marginBottom: 16,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 20,
   },
   modeButton: {
     flex: 1,
-    flexDirection: "row",
+    paddingVertical: 12,
+    borderRadius: 12,
     alignItems: "center",
+    flexDirection: "row",
     justifyContent: "center",
-    paddingVertical: 10,
-    borderRadius: 8,
     gap: 6,
   },
   modeButtonActive: {
@@ -1261,90 +1199,205 @@ const styles = StyleSheet.create({
   modeButtonText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#6B7280",
+    color: "#64748B",
   },
   modeButtonTextActive: {
     color: "#FFFFFF",
   },
+
+  /* ================= INPUT ================= */
   manualInputContainer: {
     paddingHorizontal: 20,
     marginBottom: 20,
   },
   inputWrapper: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
   },
   barcodeInput: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#E2E8F0",
   },
   scanButton: {
     backgroundColor: "#10B981",
-    borderRadius: 16,
-    paddingHorizontal: 28,
-    paddingVertical: 16,
-    alignItems: "center",
+    borderRadius: 14,
+    paddingHorizontal: 24,
     justifyContent: "center",
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
   },
   scanButtonText: {
     color: "#FFFFFF",
-    fontSize: 17,
     fontWeight: "700",
-    letterSpacing: 0.3,
+    fontSize: 16,
   },
+
+  /* ================= RESULTS ================= */
   resultsContainer: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F8FAFC",
   },
   resultsHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: "#F8FAFC",
-  },
-  productCard: {
-    flexDirection: "row",
     padding: 20,
-    alignItems: "center",
+  },
+  backButton: {
     backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 8,
+  },
+  historyButton: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 8,
+  },
+
+  /* ================= PRODUCT CARD ================= */
+  productCard: {
+    margin: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    elevation: 4,
   },
   productImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    marginRight: 16,
+    width: 72,
+    height: 72,
+    borderRadius: 14,
+    marginRight: 14,
   },
   productInfo: {
     flex: 1,
   },
   productName: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#1F2937",
-    marginBottom: 4,
-    letterSpacing: -0.3,
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0F172A",
   },
   productCalories: {
     fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 2,
+    color: "#64748B",
+    marginTop: 4,
   },
   productWeight: {
-    fontSize: 14,
-    color: "#6B7280",
+    fontSize: 13,
+    color: "#94A3B8",
+  },
+
+  /* ================= NUTRITION ================= */
+  nutritionSection: {
+    marginHorizontal: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 12,
+  },
+  nutritionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  nutritionLabel: {
+    width: 70,
+    fontSize: 13,
+    color: "#334155",
+  },
+  nutritionBarContainer: {
+    flex: 1,
+    height: 8,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 8,
+    marginHorizontal: 10,
+  },
+  nutritionBar: {
+    height: "100%",
+    borderRadius: 8,
+  },
+  nutritionValue: {
+    width: 50,
+    textAlign: "right",
+    fontWeight: "600",
+  },
+
+  /* ================= ACTIONS ================= */
+  actionButtons: {
+    flexDirection: "row",
+    gap: 12,
+    padding: 20,
+  },
+  addButton: {
+    flex: 1,
+    backgroundColor: "#10B981",
+    borderRadius: 16,
+    paddingVertical: 16,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
+  addButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  shopButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 3,
+  },
+
+  /* ================= MODALS ================= */
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingContent: {
+    backgroundColor: "#FFFFFF",
+    padding: 28,
+    borderRadius: 20,
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    color: "#334155",
+  },
+
+  /* ================= HISTORY ================= */
+  historyItem: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+  historyItemName: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  historyItemBrand: {
+    fontSize: 13,
+    color: "#64748B",
+  },
+  historyItemDate: {
+    fontSize: 12,
+    color: "#94A3B8",
   },
   healthIndicators: {
     paddingHorizontal: 20,
@@ -1366,48 +1419,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#374151",
   },
-  nutritionSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: "#FFFFFF",
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginBottom: 16,
-  },
   nutritionValues: {
     gap: 16,
-  },
-  nutritionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  nutritionLabel: {
-    fontSize: 14,
-    color: "#374151",
-    width: 60,
-  },
-  nutritionBarContainer: {
-    flex: 1,
-    height: 8,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 4,
-    marginHorizontal: 12,
-    overflow: "hidden",
-  },
-  nutritionBar: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  nutritionValue: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1F2937",
-    width: 50,
-    textAlign: "right",
   },
   ingredientsSection: {
     paddingHorizontal: 20,
@@ -1439,54 +1452,6 @@ const styles = StyleSheet.create({
   ingredientDescription: {
     fontSize: 12,
     color: "#6B7280",
-  },
-  actionButtons: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    gap: 12,
-  },
-  addButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#10B981",
-    borderRadius: 12,
-    paddingVertical: 16,
-    gap: 8,
-  },
-  addButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  shopButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingContent: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 32,
-    alignItems: "center",
-    minWidth: 200,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: "#374151",
-    textAlign: "center",
   },
   noPermissionContainer: {
     flex: 1,
@@ -1536,27 +1501,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 60,
   },
-  historyItem: {
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
   historyItemContent: {
     gap: 4,
-  },
-  historyItemName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1F2937",
-  },
-  historyItemBrand: {
-    fontSize: 14,
-    color: "#6B7280",
-  },
-  historyItemDate: {
-    fontSize: 12,
-    color: "#9CA3AF",
   },
   emptyHistory: {
     flex: 1,
@@ -1570,4 +1516,5 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     textAlign: "center",
   },
+  
 });

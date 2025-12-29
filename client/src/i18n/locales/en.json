@@ -12,11 +12,11 @@
     "profile": "Profile",
     "questionnaire": "Questionnaire",
     "recommended_menus": "Menus",
-    "sign_in":"Sign In",
-    "sign_up":"Sign Up",
-    "forgot_password":"Forgot Password",
-    "reset_password":"Reset Password",
-    "email_verification":"Email Verficition"
+    "sign_in": "Sign In",
+    "sign_up": "Sign Up",
+    "forgot_password": "Forgot Password",
+    "reset_password": "Reset Password",
+    "email_verification": "Email Verficition"
   },
   "questionnaire": {
     "title": "Health Questionnaire",
@@ -292,6 +292,12 @@
       "copy": "Copy",
       "delete": "Delete"
     },
+    "confirm": {
+      "copyTitle": "Copy Meal?",
+      "copyMessage": "This will duplicate the meal to today's date. You can then edit it if needed.",
+      "deleteTitle": "Delete Meal?",
+      "deleteMessage": "This action cannot be undone. The meal will be permanently removed from your history."
+    },
     "filter": {
       "title": "Filter & Sort",
       "subtitle": "Customize your meal view",
@@ -498,7 +504,10 @@
     "image_instructions": "Point the camera to the barcode",
     "photo_food": "Photo the food",
     "enter_barcode": "Enter Barcode Here...",
-    "scanned_products":"Scanned Products"
+    "scanned_products": "Scanned Products",
+    "subtitle": "What are you eating?",
+    "meal_details": "Meal Details",
+    "nutrition_info": "Nutrition Information"
   },
   "profile": {
     "title": "Profile",
@@ -1200,7 +1209,7 @@
     }
   },
   "common": {
-    "all":"All",  
+    "all": "All",
     "of": "of",
     "next": "Next",
     "save": "Save",

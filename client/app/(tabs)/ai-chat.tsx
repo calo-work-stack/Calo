@@ -21,8 +21,6 @@ import {
   AlertTriangle,
   Shield,
   Trash2,
-  Minus,
-  X,
   Sparkles,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
@@ -34,6 +32,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { useSelector } from "react-redux";
 import { RootState } from "@/src/store";
+import { useTheme } from "@/src/context/ThemeContext";
 
 const { width } = Dimensions.get("window");
 
@@ -79,8 +78,8 @@ export default function AIChatScreen({
   const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
   const isRTL = i18n.language === "he";
+  const { theme, colors, isDark } = useTheme();
 
-  // Get common questions based on current language
   const getCommonQuestions = () => [
     t("ai_chat.common_questions.weight_loss"),
     t("ai_chat.common_questions.protein_intake"),
@@ -89,11 +88,9 @@ export default function AIChatScreen({
     t("ai_chat.common_questions.keto_diet"),
   ];
 
-  // Load user profile and chat history on component mount
   useEffect(() => {
     const checkAccess = async () => {
       try {
-        // Check user subscription directly from Redux
         if (!user || user.subscription_type === "FREE") {
           Alert.alert(
             t("common.upgradeRequired") || "Upgrade Required",
@@ -114,7 +111,6 @@ export default function AIChatScreen({
           return;
         }
 
-        // Additional server-side check
         const stats = await nutritionAPI.getUsageStats();
         if (stats.subscriptionType === "FREE") {
           Alert.alert(
@@ -147,7 +143,6 @@ export default function AIChatScreen({
     checkAccess();
   }, [user]);
 
-  // Auto-scroll when messages change
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
@@ -160,7 +155,6 @@ export default function AIChatScreen({
       if (response.success && response.data) {
         const questionnaire = response.data;
 
-        // Extract user profile data from questionnaire
         const profile: UserProfile = {
           allergies: Array.isArray(questionnaire.allergies)
             ? questionnaire.allergies
@@ -221,7 +215,6 @@ export default function AIChatScreen({
         setMessages(chatMessages);
         console.log("✅ Loaded", chatMessages.length, "chat messages");
       } else {
-        // Show welcome message if no chat history
         setMessages([
           {
             id: "welcome",
@@ -234,7 +227,6 @@ export default function AIChatScreen({
       }
     } catch (error) {
       console.error("💥 Error loading chat history:", error);
-      // Show welcome message on error
       setMessages([
         {
           id: "welcome",
@@ -305,13 +297,11 @@ export default function AIChatScreen({
     userProfile.allergies.forEach((allergy) => {
       const allergyLower = allergy.toLowerCase();
 
-      // Check direct match first
       if (messageContent.toLowerCase().includes(allergyLower)) {
         foundAllergens.push(allergy);
         return;
       }
 
-      // Check mapped keywords
       const mappedKeywords = allergenMap[allergyLower];
       if (mappedKeywords) {
         const hasAllergen = mappedKeywords.some((keyword) =>
@@ -351,23 +341,18 @@ export default function AIChatScreen({
 
       console.log("🔍 Full API response structure:", response);
 
-      // Handle both direct response format and nested response format
       let aiResponseContent = "";
       let responseData = null;
 
       if (response.success && response.response) {
-        // Handle nested response format
         responseData = response.response;
         aiResponseContent = response.response.response || response.response;
       } else if (response.response && response.response.response) {
-        // Handle direct response format from server
         responseData = response.response;
         aiResponseContent = response.response.response;
       } else if (response.response && typeof response.response === "string") {
-        // Handle simple string response
         aiResponseContent = response.response;
       } else if (typeof response === "string") {
-        // Handle direct string response
         aiResponseContent = response;
       } else {
         console.error("🚨 Unexpected response format:", response);
@@ -398,7 +383,6 @@ export default function AIChatScreen({
     } catch (error) {
       console.error("💥 Error sending message:", error);
 
-      // Add error message
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         type: "bot",
@@ -428,7 +412,7 @@ export default function AIChatScreen({
               {
                 id: "welcome",
                 type: "bot",
-                content: t("ai_chat.welcomeMessage"),
+                content: t("ai_chat.welcome_message"),
                 timestamp: new Date(),
                 suggestions: getCommonQuestions(),
               },
@@ -436,7 +420,6 @@ export default function AIChatScreen({
             console.log("🗑️ Chat history cleared");
           } catch (error) {
             console.error("💥 Error clearing chat:", error);
-            // Don't show error alert for clearing history
             console.log("⚠️ Failed to clear chat history, but continuing");
           }
         },
@@ -534,140 +517,136 @@ export default function AIChatScreen({
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: "#F8F9FA" }]}>
-      <LinearGradient
-        colors={["#10B981", "#059669", "#047857"]}
-        style={styles.modernHeader}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.headerTop}>
-          <View style={styles.headerIconContainer}>
-            <Sparkles size={28} color="#FFFFFF" />
-          </View>
-          <View style={styles.headerTextContainer}>
-            <Text style={[styles.headerTitle, { color: "#FFFFFF" }]}>
-              {language === "he" ? "צ'אט AI תזונאי" : "AI Nutrition Assistant"}
-            </Text>
-            <Text
-              style={[
-                styles.headerSubtitle,
-                { color: "rgba(255, 255, 255, 0.9)" },
-              ]}
-            >
-              {language === "he"
-                ? "שאל כל שאלה על תזונה"
-                : "Ask any nutrition question"}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity style={styles.headerButton} onPress={clearChat}>
-            <Trash2 size={22} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      {/* Fixed Header - Outside KeyboardAvoidingView */}
+      <View style={styles.headerWrapper}>
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <View style={styles.headerLeft}>
+              <View style={styles.headerTextContainer}>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>
+                  {t("ai_chat.title")}
+                </Text>
 
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
-        contentContainerStyle={styles.messagesContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Profile Card - Only show if user has profile data */}
-        {(userProfile.allergies.length > 0 ||
-          userProfile.medicalConditions.length > 0) && (
-          <View style={styles.profileCard}>
-            <View style={styles.profileHeader}>
-              <Shield size={18} color="#16A085" />
-              <Text style={styles.profileTitle}>
-                {t("ai_chat.safety_profile.title")}
-              </Text>
-            </View>
-            <View style={styles.profileContent}>
-              {userProfile.allergies.length > 0 && (
-                <View style={styles.profileSection}>
-                  <Text style={styles.profileLabel}>
-                    {t("ai_chat.safety_profile.allergies")}
-                  </Text>
-                  <View style={styles.tagContainer}>
-                    {userProfile.allergies.map((allergy, index) => (
-                      <View key={index} style={styles.allergyTag}>
-                        <Text style={styles.allergyTagText}>{allergy}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
-              {userProfile.medicalConditions.length > 0 && (
-                <View style={styles.profileSection}>
-                  <Text style={styles.profileLabel}>
-                    {t("ai_chat.safety_profile.medical")}
-                  </Text>
-                  <View style={styles.tagContainer}>
-                    {userProfile.medicalConditions.map((condition, index) => (
-                      <View key={index} style={styles.medicalTag}>
-                        <Text style={styles.medicalTagText}>{condition}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
-        {messages.map(renderMessage)}
-
-        {isTyping && (
-          <View style={styles.typingIndicator}>
-            <View style={styles.typingRow}>
-              <View style={styles.botIconContainer}>
-                <Bot size={20} color="#16A085" />
-              </View>
-              <View style={styles.typingBubble}>
-                <ActivityIndicator size="small" color="#16A085" />
-                <Text style={styles.typingText}>{t("ai_chat.typing")}</Text>
+                <Text style={[styles.headerSubtitle, { color: colors.text }]}>
+                  {t("ai_chat.subtitle")}
+                </Text>
               </View>
             </View>
+            <TouchableOpacity style={styles.clearButton} onPress={clearChat}>
+              <Trash2 size={20} color={colors.destructive} />
+            </TouchableOpacity>
           </View>
-        )}
-      </ScrollView>
+        </View>
+      </View>
 
-      {/* Input Area */}
+      {/* Scrollable Content with Input */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.inputArea}
+        style={styles.keyboardAvoidingView}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.textInput}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder={t("ai_chat.type_message")}
-            placeholderTextColor="#95A5A6"
-            multiline
-            maxLength={500}
-            textAlign={language === "he" ? "right" : "left"}
-          />
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              (!inputText.trim() || isTyping) && styles.sendButtonDisabled,
-            ]}
-            onPress={sendMessage}
-            disabled={!inputText.trim() || isTyping}
-          >
-            <LinearGradient
-              colors={
-                !inputText.trim() || isTyping
-                  ? ["#BDC3C7", "#95A5A6"]
-                  : ["#16A085", "#1ABC9C"]
-              }
-              style={styles.sendGradient}
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={styles.messagesContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Profile Card */}
+          {(userProfile.allergies.length > 0 ||
+            userProfile.medicalConditions.length > 0) && (
+            <View style={styles.profileCard}>
+              <View style={styles.profileHeader}>
+                <Shield size={18} color="#16A085" />
+                <Text style={styles.profileTitle}>
+                  {t("ai_chat.safety_profile.title")}
+                </Text>
+              </View>
+              <View style={styles.profileContent}>
+                {userProfile.allergies.length > 0 && (
+                  <View style={styles.profileSection}>
+                    <Text style={styles.profileLabel}>
+                      {t("ai_chat.safety_profile.allergies")}
+                    </Text>
+                    <View style={styles.tagContainer}>
+                      {userProfile.allergies.map((allergy, index) => (
+                        <View key={index} style={styles.allergyTag}>
+                          <Text style={styles.allergyTagText}>{allergy}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+                {userProfile.medicalConditions.length > 0 && (
+                  <View style={styles.profileSection}>
+                    <Text style={styles.profileLabel}>
+                      {t("ai_chat.safety_profile.medical")}
+                    </Text>
+                    <View style={styles.tagContainer}>
+                      {userProfile.medicalConditions.map((condition, index) => (
+                        <View key={index} style={styles.medicalTag}>
+                          <Text style={styles.medicalTagText}>{condition}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+
+          {messages.map(renderMessage)}
+
+          {isTyping && (
+            <View style={styles.typingIndicator}>
+              <View style={styles.typingRow}>
+                <View style={styles.botIconContainer}>
+                  <Bot size={20} color="#16A085" />
+                </View>
+                <View style={styles.typingBubble}>
+                  <ActivityIndicator size="small" color="#16A085" />
+                  <Text style={styles.typingText}>{t("ai_chat.typing")}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Input Area */}
+        <View style={styles.inputArea}>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={[
+                styles.textInput,
+                { textAlign: language === "he" ? "right" : "left" },
+              ]}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder={t("ai_chat.type_message")}
+              placeholderTextColor="#95A5A6"
+              multiline
+              maxLength={500}
+            />
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={sendMessage}
+              disabled={!inputText.trim() || isTyping}
             >
-              <Send size={20} color="#FFFFFF" />
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={
+                  !inputText.trim() || isTyping
+                    ? ["#BDC3C7", "#95A5A6"]
+                    : ["#16A085", "#1ABC9C"]
+                }
+                style={styles.sendGradient}
+              >
+                <Send size={20} color="#FFFFFF" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -679,80 +658,63 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8F9FA",
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 16,
+  headerWrapper: {
+    zIndex: 10,
   },
-  loadingText: {
-    fontSize: 16,
-    color: "#7F8C8D",
-    textAlign: "center",
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
-  modernHeader: {
-    paddingHorizontal: 32,
-    paddingTop: 18,
-    paddingBottom: 26,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+  headerContent: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent:"center"
+    justifyContent: "space-between",
   },
-  headerTop: {
+  headerLeft: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-  },
-  headerIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
+    flex: 1,
   },
   headerTextContainer: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
     color: "#FFFFFF",
-    letterSpacing: 0.3,
-    marginBottom: 2,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "rgba(255, 255, 255, 0.9)",
     fontWeight: "500",
+    marginTop: 2,
   },
-  headerButtons: {
-    flexDirection: "row",
-  },
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  clearButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  messagesContainer: {
+    flex: 1,
+  },
+  messagesContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
+  },
   profileCard: {
     backgroundColor: "#FFFFFF",
-    marginHorizontal: 20,
-    marginTop: 8,
-    marginBottom: 12,
+    marginBottom: 16,
     borderRadius: 18,
     padding: 18,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: "rgba(0, 0, 0, 0.04)",
   },
   profileHeader: {
     flexDirection: "row",
@@ -812,14 +774,6 @@ const styles = StyleSheet.create({
     color: "#9B59B6",
     fontWeight: "500",
   },
-  messagesContainer: {
-    flex: 1,
-    marginTop: 16,
-  },
-  messagesContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
   messageContainer: {
     marginBottom: 24,
   },
@@ -858,12 +812,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 20,
     backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(0, 0, 0, 0.05)",
   },
   userBubble: {
     backgroundColor: "#16A085",
@@ -872,7 +820,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
-    borderWidth: 0,
   },
   botBubble: {
     backgroundColor: "#FFFFFF",
@@ -899,7 +846,7 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 16,
-    lineHeight: 20,
+    lineHeight: 24,
     color: "#2C3E50",
   },
   userText: {
@@ -926,8 +873,7 @@ const styles = StyleSheet.create({
   suggestionsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 6,
+    gap: 8,
   },
   suggestionButton: {
     backgroundColor: "#E8F8F5",
@@ -957,10 +903,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   typingText: {
     fontSize: 14,
@@ -968,32 +910,17 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   inputArea: {
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E9ECEF",
-    paddingHorizontal: 22,
-    paddingVertical: 18,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 14,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 28,
+    gap: 12,
+    backgroundColor: "#ffffffff",
+    borderRadius: 24,
     paddingHorizontal: 6,
     paddingVertical: 6,
-    borderWidth: 1.5,
-    borderColor: "#E9ECEF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
   textInput: {
     flex: 1,
@@ -1006,9 +933,6 @@ const styles = StyleSheet.create({
   sendButton: {
     borderRadius: 20,
     overflow: "hidden",
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
   },
   sendGradient: {
     width: 40,

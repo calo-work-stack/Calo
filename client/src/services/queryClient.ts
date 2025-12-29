@@ -48,18 +48,28 @@ const queryClient = new QueryClient({
       },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
 
-      // Cache configuration - very aggressive for immediate updates
-      staleTime: 0, // Always consider data stale for immediate updates
-      gcTime: 2 * 60 * 1000, // 2 minutes - shorter cache garbage collection
+      // ✅ FIXED: Balanced cache configuration for performance
+      // Data stays "fresh" for 2 minutes - prevents unnecessary refetches
+      staleTime: 2 * 60 * 1000, // 2 minutes (was 0 - causing constant refetches!)
 
-      // Refetch configuration - very aggressive for real-time feel
-      refetchOnWindowFocus: true,
-      refetchOnMount: "always", // Always refetch on mount
-      refetchOnReconnect: "always",
+      // Keep unused data in cache for 5 minutes before garbage collection
+      gcTime: 5 * 60 * 1000, // 5 minutes (was 2 minutes)
+
+      // ✅ FIXED: Smart refetch behavior
+      // Only refetch on window focus if data is actually stale
+      refetchOnWindowFocus: true, // Will respect staleTime
+
+      // Only refetch on mount if data is stale (not "always")
+      refetchOnMount: true, // Was "always" - caused refetch even with fresh data!
+
+      // Refetch when connection is restored
+      refetchOnReconnect: true, // Was "always"
+
+      // No automatic background polling
       refetchInterval: false,
 
       // Performance optimizations
-      structuralSharing: true, // Enable structural sharing for better performance
+      structuralSharing: true,
 
       // Network mode - handle offline scenarios
       networkMode: "online",
@@ -67,32 +77,11 @@ const queryClient = new QueryClient({
     mutations: {
       retry: 1,
       networkMode: "online",
-      // Add onSuccess callback for automatic invalidation
-      onSuccess: async (data, variables, context) => {
-        console.log("🔄 Mutation successful, triggering cache refresh");
 
-        // Invalidate all relevant queries immediately
-        await Promise.allSettled([
-          queryClient.invalidateQueries({ queryKey: ["meals"] }),
-          queryClient.invalidateQueries({ queryKey: ["dailyStats"] }),
-          queryClient.invalidateQueries({ queryKey: ["statistics"] }),
-          queryClient.invalidateQueries({ queryKey: ["calendar"] }),
-          queryClient.invalidateQueries({ queryKey: ["recent-meals"] }),
-          queryClient.invalidateQueries({ queryKey: ["globalStats"] }),
-          queryClient.invalidateQueries({ queryKey: ["shoppingList"] }),
-        ]);
-
-        // Force immediate refetch of critical data
-        await Promise.allSettled([
-          queryClient.refetchQueries({ queryKey: ["meals"], type: "all" }),
-          queryClient.refetchQueries({
-            queryKey: ["shoppingList"],
-            type: "all",
-          }),
-        ]);
-
-        console.log("✅ Cache invalidation and refetch completed");
-      },
+      // ✅ REMOVED: Global mutation onSuccess handler
+      // This was causing massive over-invalidation on EVERY mutation
+      // Individual mutations should handle their own invalidations
+      // for better control and performance
     },
   },
 });

@@ -95,6 +95,8 @@ model Session {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  @@index([user_id])
+  @@index([expiresAt])
   @@map("sessions")
 }
 
@@ -282,8 +284,10 @@ model Meal {
   updated_at             DateTime?      @updatedAt
 
   @@index([user_id, created_at])
+  @@index([user_id, upload_time])
   @@index([analysis_status])
   @@index([upload_time])
+  @@index([meal_period])
 }
 
 model NutritionPlan {

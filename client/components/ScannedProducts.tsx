@@ -107,7 +107,7 @@ export default function ScannedProductsGallery({
   const loadProducts = async () => {
     setIsLoading(true);
     try {
-      const response = await api.get("/food-scanner/history");
+      const response = await api.get("/food-scanner/food_scanner");
       if (response.data.success && response.data.data) {
         setProducts(response.data.data);
       }
@@ -299,7 +299,7 @@ export default function ScannedProductsGallery({
               <X size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={[styles.detailHeaderTitle, { color: colors.text }]}>
-              {t("history.meal_details")}
+              {t("food_scanner.meal_details")}
             </Text>
             <View style={{ width: 40 }} />
           </View>
@@ -358,7 +358,7 @@ export default function ScannedProductsGallery({
                         { color: colors.textSecondary },
                       ]}
                     >
-                      {t("history.health_score")}
+                      {t("food_scanner.health_score")}
                     </Text>
                     <Text
                       style={[
@@ -391,7 +391,7 @@ export default function ScannedProductsGallery({
               ]}
             >
               <Text style={[styles.detailSectionTitle, { color: colors.text }]}>
-                {t("history.nutrition_info")}
+                {t("food_scanner.nutrition_info")}
               </Text>
 
               <View style={styles.detailNutritionRow}>
@@ -580,7 +580,7 @@ export default function ScannedProductsGallery({
                   <Text
                     style={[styles.detailSectionTitle, { color: colors.text }]}
                   >
-                    {t("history.ingredients")}
+                    {t("food_scanner.ingredients")}
                   </Text>
                   <Text
                     style={[
@@ -611,7 +611,7 @@ export default function ScannedProductsGallery({
                         { color: "#DC2626", marginBottom: 0 },
                       ]}
                     >
-                      {t("history.allergens")}
+                      {t("food_scanner.allergens")}
                     </Text>
                   </View>
                   <View style={styles.detailAllergensList}>
@@ -731,7 +731,7 @@ export default function ScannedProductsGallery({
               { key: "all", label: t("common.all") },
               { key: "high_score", label: t("statistics.excellent") },
               { key: "low_score", label: t("statistics.warning") },
-              { key: "has_allergens", label: t("history.allergens") },
+              { key: "has_allergens", label: t("food_scanner.allergens") },
             ].map((filter) => (
               <TouchableOpacity
                 key={filter.key}
@@ -777,12 +777,12 @@ export default function ScannedProductsGallery({
             <Text style={[styles.centerTitle, { color: colors.text }]}>
               {searchQuery
                 ? t("food_scanner.product_not_found")
-                : t("food_scanner.no_history")}
+                : t("food_scanner.no_food_scanner")}
             </Text>
             <Text style={[styles.centerText, { color: colors.textSecondary }]}>
               {searchQuery
                 ? t("common.try_again")
-                : t("food_scanner.history_empty")}
+                : t("food_scanner.food_scanner_empty")}
             </Text>
           </View>
         ) : (

@@ -152,12 +152,15 @@ export const fetchCalendarData = createAsyncThunk(
     try {
       console.log("📅 Fetching calendar data for:", year, month);
       const data = await calendarAPI.getCalendarData(year, month);
-      return data;
-    } catch (error) {
-      console.error("💥 Calendar data fetch error:", error);
-      return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to fetch calendar data"
+      console.log(
+        "✅ Calendar data received:",
+        Object.keys(data || {}).length,
+        "days"
       );
+      return data || {};
+    } catch (error: any) {
+      console.error("💥 Calendar data fetch error:", error);
+      return {};
     }
   }
 );
@@ -171,12 +174,11 @@ export const getStatistics = createAsyncThunk(
     try {
       console.log("📊 Fetching statistics for:", year, month);
       const stats = await calendarAPI.getStatistics(year, month);
+      console.log("✅ Statistics received:", stats ? "success" : "null");
       return stats;
-    } catch (error) {
+    } catch (error: any) {
       console.error("💥 Statistics fetch error:", error);
-      return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to fetch statistics"
-      );
+      return null;
     }
   }
 );
@@ -276,13 +278,14 @@ const calendarSlice = createSlice({
       })
       .addCase(fetchCalendarData.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.calendarData = action.payload;
+        state.calendarData = action.payload || {};
         state.error = null;
         state.lastUpdated = new Date().toISOString();
       })
       .addCase(fetchCalendarData.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload as string;
+        state.calendarData = {};
+        console.warn("⚠️ Calendar data fetch rejected, using empty data");
       })
 
       // Get statistics
@@ -290,10 +293,17 @@ const calendarSlice = createSlice({
         // Don't set loading for statistics to avoid UI flicker
       })
       .addCase(getStatistics.fulfilled, (state, action) => {
-        state.statistics = action.payload;
+        if (action.payload) {
+          state.statistics = action.payload;
+        } else {
+          console.warn(
+            "⚠️ Calendar statistics returned null - keeping previous state"
+          );
+        }
       })
       .addCase(getStatistics.rejected, (state, action) => {
-        console.warn("Statistics fetch failed:", action.payload);
+        console.warn("⚠️ Statistics fetch failed (rejected):", action.payload);
+        // Keep existing statistics if fetch fails
       })
 
       // Add event

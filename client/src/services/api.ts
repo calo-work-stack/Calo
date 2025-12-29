@@ -63,7 +63,6 @@ const createApiInstance = (): AxiosInstance => {
   instance.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
-
       const originalRequest = error.config as any;
 
       // Handle network errors with retry
@@ -1156,20 +1155,49 @@ export const chatAPI = {
 export const calendarAPI = {
   async getCalendarData(year: number, month: number): Promise<any> {
     try {
-      const response = await api.get(`/calendar/data/${year}/${month}`);
+      const response = await api.get(`/calendar/data/${year}/${month}`, {
+        timeout: 10000,
+      });
       return response.data.success ? response.data.data : {};
-    } catch (error) {
+    } catch (error: any) {
       console.error("💥 Get calendar data error:", error);
+      if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+        console.warn("⚠️ Calendar data request timed out");
+      }
       return {};
     }
   },
 
   async getStatistics(year: number, month: number): Promise<any> {
     try {
-      const response = await api.get(`/calendar/statistics/${year}/${month}`);
-      return response.data.success ? response.data.data : null;
-    } catch (error) {
+      console.log(`📊 Fetching calendar statistics for ${year}/${month}`);
+      const response = await api.get(`/calendar/statistics/${year}/${month}`, {
+        timeout: 10000,
+      });
+
+      if (response.data.success) {
+        console.log("✅ Calendar statistics fetched successfully");
+        return response.data.data;
+      }
+
+      console.warn(
+        "⚠️ Calendar statistics fetch returned non-success response"
+      );
+      return null;
+    } catch (error: any) {
       console.error("💥 Get calendar statistics error:", error);
+
+      if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+        console.warn("⚠️ Calendar statistics request timed out");
+      } else if (
+        error.code === "ERR_NETWORK" ||
+        error.message?.includes("Network Error")
+      ) {
+        console.warn(
+          "⚠️ Network error while fetching calendar statistics - returning null"
+        );
+      }
+
       return null;
     }
   },
