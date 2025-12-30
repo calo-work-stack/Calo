@@ -9,27 +9,36 @@ import {
   ActivityIndicator,
   TextInput,
   Modal,
-  Animated,
   Platform,
   Dimensions,
+  Animated,
 } from "react-native";
 import {
   Search,
   X,
-  ChevronDown,
   Package,
   AlertTriangle,
   CheckCircle2,
-  Info,
-  Zap,
+  Flame,
+  Activity,
+  Droplets,
+  Leaf,
+  Award,
+  TrendingUp,
+  Calendar,
+  Filter,
+  Grid,
+  List,
 } from "lucide-react-native";
+
+const { width, height } = Dimensions.get("window");
+
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { api } from "@/src/services/api";
 import { ToastService } from "@/src/services/totastService";
-
-const { width } = Dimensions.get("window");
+import { LinearGradient } from "expo-linear-gradient";
 
 interface NutritionData {
   calories: number;
@@ -39,14 +48,6 @@ interface NutritionData {
   fiber?: number;
   sugar?: number;
   sodium?: number;
-  saturated_fat?: number;
-  trans_fat?: number;
-  cholesterol?: number;
-  potassium?: number;
-  calcium?: number;
-  iron?: number;
-  vitamin_c?: number;
-  vitamin_d?: number;
 }
 
 interface ScannedProduct {
@@ -64,41 +65,35 @@ interface ScannedProduct {
   serving_size?: string;
   servings_per_container?: number;
   created_at: string;
-  scan_type: string;
+  scan_type?: string;
   product_name?: string;
 }
 
-interface ScannedProductsGalleryProps {
+interface Props {
   visible: boolean;
   onClose: () => void;
 }
 
-export default function ScannedProductsGallery({
-  visible,
-  onClose,
-}: ScannedProductsGalleryProps) {
+export default function MinimalProductGallery({ visible, onClose }: Props) {
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { colors, isDark } = useTheme();
-
   const [products, setProducts] = useState<ScannedProduct[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<ScannedProduct | null>(
-    null
-  );
-  const [selectedFilter, setSelectedFilter] = useState<string>("all");
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set()
-  );
+  const [selectedProduct, setSelectedProduct] = useState<ScannedProduct | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [fadeAnim] = useState(new Animated.Value(0));
 
   useEffect(() => {
     if (visible) {
       loadProducts();
-      Animated.timing(fadeAnim, {
+      Animated.spring(fadeAnim, {
         toValue: 1,
-        duration: 200,
+        tension: 50,
+        friction: 7,
         useNativeDriver: true,
       }).start();
     }
@@ -107,158 +102,183 @@ export default function ScannedProductsGallery({
   const loadProducts = async () => {
     setIsLoading(true);
     try {
-      const response = await api.get("/food-scanner/food_scanner");
+      console.log("🔍 Loading products from /food-scanner/history");
+      const response = await api.get("/food-scanner/history");
+      
+      console.log("📦 Response:", JSON.stringify(response.data, null, 2));
+      
       if (response.data.success && response.data.data) {
+        console.log("✅ Products loaded:", response.data.data.length);
         setProducts(response.data.data);
+      } else {
+        setProducts([]);
       }
-    } catch (error) {
-      console.error("Error loading products:", error);
+    } catch (error: any) {
+      console.error("❌ Error loading products:", error);
       ToastService.handleError(error, "Load Products");
+      setProducts([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const groupedProducts = useMemo(() => {
+  const categories = useMemo(() => {
+    const cats = new Set(products.map(p => p.category));
+    return ["all", ...Array.from(cats)];
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
     let filtered = [...products];
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (product) =>
-          product.name?.toLowerCase().includes(query) ||
-          product.brand?.toLowerCase().includes(query) ||
-          product.category?.toLowerCase().includes(query)
+        (p) =>
+          p.name?.toLowerCase().includes(query) ||
+          p.brand?.toLowerCase().includes(query) ||
+          p.category?.toLowerCase().includes(query)
       );
     }
 
-    if (selectedFilter !== "all") {
-      if (selectedFilter === "high_score") {
-        filtered = filtered.filter((p) => (p.health_score || 0) >= 70);
-      } else if (selectedFilter === "low_score") {
-        filtered = filtered.filter((p) => (p.health_score || 0) < 50);
-      } else if (selectedFilter === "has_allergens") {
-        filtered = filtered.filter(
-          (p) => p.allergens && p.allergens.length > 0
-        );
-      }
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter((p) => p.category === selectedCategory);
     }
 
-    const grouped: { [key: string]: ScannedProduct[] } = {};
-    filtered.forEach((product) => {
-      const category = product.category || "Other";
-      if (!grouped[category]) {
-        grouped[category] = [];
-      }
-      grouped[category].push(product);
-    });
+    return filtered;
+  }, [products, searchQuery, selectedCategory]);
 
-    return grouped;
-  }, [products, searchQuery, selectedFilter]);
-
-  const toggleCategory = (category: string) => {
-    const newExpanded = new Set(expandedCategories);
-    if (newExpanded.has(category)) {
-      newExpanded.delete(category);
-    } else {
-      newExpanded.add(category);
-    }
-    setExpandedCategories(newExpanded);
-  };
-
-  const getHealthIndicator = (score?: number) => {
-    if (!score) return { color: colors.textTertiary, label: "N/A", icon: Info };
-    if (score >= 70)
-      return { color: "#22C55E", label: "Great", icon: CheckCircle2 };
-    if (score >= 50)
-      return { color: "#F59E0B", label: "OK", icon: AlertTriangle };
-    return { color: "#EF4444", label: "Poor", icon: AlertTriangle };
+  const getScoreColor = (score?: number): string => {
+    if (!score) return "#999999";
+    if (score >= 80) return "#10B981";
+    if (score >= 60) return "#3B82F6";
+    if (score >= 40) return "#F59E0B";
+    return "#EF4444";
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffInDays = Math.floor(
-      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffInDays === 0) return "Today";
     if (diffInDays === 1) return "Yesterday";
     if (diffInDays < 7) return `${diffInDays}d ago`;
-    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)}w ago`;
-    return date.toLocaleDateString();
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  const renderProductItem = (product: ScannedProduct) => {
-    const healthInfo = getHealthIndicator(product.health_score);
-    const HealthIcon = healthInfo.icon;
-
+  const renderGridCard = (product: ScannedProduct) => {
+    const scoreColor = getScoreColor(product.health_score);
+    
     return (
       <TouchableOpacity
         key={product.id}
-        style={[
-          styles.listItem,
-          { backgroundColor: colors.card, borderBottomColor: colors.border },
-        ]}
+        style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
         onPress={() => setSelectedProduct(product)}
-        activeOpacity={0.6}
+        activeOpacity={0.7}
       >
-        <View style={styles.listItemLeft}>
+        <View style={[styles.gridImageContainer, { backgroundColor: colors.surface }]}>
           {product.image_url ? (
             <Image
               source={{ uri: product.image_url }}
-              style={styles.listItemImage}
+              style={styles.gridImage}
+              resizeMode="cover"
             />
           ) : (
-            <View
-              style={[
-                styles.listItemImagePlaceholder,
-                { backgroundColor: colors.surfaceVariant },
-              ]}
-            >
-              <Package size={24} color={colors.textSecondary} />
+            <View style={styles.gridImagePlaceholder}>
+              <Package size={32} color={colors.textTertiary} strokeWidth={1.5} />
             </View>
           )}
+          
+          {product.health_score && (
+            <View style={[styles.scoreChip, { backgroundColor: scoreColor }]}>
+              <Text style={styles.scoreChipText}>{product.health_score}</Text>
+            </View>
+          )}
+        </View>
 
-          <View style={styles.listItemInfo}>
-            <Text
-              style={[styles.listItemName, { color: colors.text }]}
-              numberOfLines={1}
-            >
-              {product.name || product.product_name}
-            </Text>
-            {product.brand && (
-              <Text
-                style={[styles.listItemBrand, { color: colors.textSecondary }]}
-                numberOfLines={1}
-              >
-                {product.brand}
+        <View style={styles.gridContent}>
+          <Text style={[styles.gridBrand, { color: colors.textTertiary }]} numberOfLines={1}>
+            {product.brand || product.category}
+          </Text>
+          <Text style={[styles.gridName, { color: colors.text }]} numberOfLines={2}>
+            {product.name || product.product_name}
+          </Text>
+          
+          <View style={styles.gridStats}>
+            <View style={styles.gridStat}>
+              <Flame size={12} color={colors.textSecondary} />
+              <Text style={[styles.gridStatText, { color: colors.textSecondary }]}>
+                {product.nutrition_per_100g?.calories || 0}
               </Text>
-            )}
-            <View style={styles.listItemStats}>
-              <Text
-                style={[styles.listItemStat, { color: colors.textTertiary }]}
-              >
-                {product.nutrition_per_100g?.calories || 0} cal
-              </Text>
-              <View style={styles.listItemDot} />
-              <Text
-                style={[styles.listItemStat, { color: colors.textTertiary }]}
-              >
-                {formatDate(product.created_at)}
+            </View>
+            <View style={styles.gridStat}>
+              <Activity size={12} color={colors.textSecondary} />
+              <Text style={[styles.gridStatText, { color: colors.textSecondary }]}>
+                {product.nutrition_per_100g?.protein || 0}g
               </Text>
             </View>
           </View>
         </View>
+      </TouchableOpacity>
+    );
+  };
 
-        <View style={styles.listItemRight}>
-          <View
-            style={[
-              styles.healthBadge,
-              { backgroundColor: healthInfo.color + "15" },
-            ]}
-          >
-            <HealthIcon size={14} color={healthInfo.color} />
+  const renderListCard = (product: ScannedProduct) => {
+    const scoreColor = getScoreColor(product.health_score);
+    
+    return (
+      <TouchableOpacity
+        key={product.id}
+        style={[styles.listCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        onPress={() => setSelectedProduct(product)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.listImageContainer, { backgroundColor: colors.surface }]}>
+          {product.image_url ? (
+            <Image
+              source={{ uri: product.image_url }}
+              style={styles.listImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.listImagePlaceholder}>
+              <Package size={24} color={colors.textTertiary} strokeWidth={1.5} />
+            </View>
+          )}
+        </View>
+
+        <View style={styles.listContent}>
+          <View style={styles.listHeader}>
+            <View style={styles.listTitleContainer}>
+              <Text style={[styles.listBrand, { color: colors.textTertiary }]} numberOfLines={1}>
+                {product.brand || product.category}
+              </Text>
+              <Text style={[styles.listName, { color: colors.text }]} numberOfLines={1}>
+                {product.name || product.product_name}
+              </Text>
+            </View>
+            
+            {product.health_score && (
+              <View style={[styles.listScore, { backgroundColor: scoreColor }]}>
+                <Text style={styles.listScoreText}>{product.health_score}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.listFooter}>
+            <View style={styles.listStats}>
+              <Flame size={14} color={colors.textSecondary} />
+              <Text style={[styles.listStatText, { color: colors.textSecondary }]}>
+                {product.nutrition_per_100g?.calories || 0} cal
+              </Text>
+              <Text style={[styles.listDivider, { color: colors.border }]}>•</Text>
+              <Activity size={14} color={colors.textSecondary} />
+              <Text style={[styles.listStatText, { color: colors.textSecondary }]}>
+                {product.nutrition_per_100g?.protein || 0}g protein
+              </Text>
+            </View>
+            
+            <Text style={[styles.listDate, { color: colors.textTertiary }]}>{formatDate(product.created_at)}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -267,7 +287,7 @@ export default function ScannedProductsGallery({
 
   const renderDetailModal = () => {
     if (!selectedProduct) return null;
-    const healthInfo = getHealthIndicator(selectedProduct.health_score);
+    const scoreColor = getScoreColor(selectedProduct.health_score);
 
     return (
       <Modal
@@ -276,385 +296,130 @@ export default function ScannedProductsGallery({
         presentationStyle="pageSheet"
         onRequestClose={() => setSelectedProduct(null)}
       >
-        <View
-          style={[
-            styles.detailContainer,
-            { backgroundColor: colors.background },
-          ]}
-        >
+        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           {/* Simple Header */}
-          <View
-            style={[
-              styles.detailHeader,
-              {
-                backgroundColor: colors.background,
-                borderBottomColor: colors.border,
-              },
-            ]}
-          >
-            <TouchableOpacity
-              onPress={() => setSelectedProduct(null)}
-              style={styles.detailCloseButton}
-            >
-              <X size={24} color={colors.text} />
+          <View style={[styles.modalHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+            <TouchableOpacity onPress={() => setSelectedProduct(null)}>
+              <View style={styles.modalCloseBtn}>
+                <X size={24} color={colors.text} strokeWidth={2} />
+              </View>
             </TouchableOpacity>
-            <Text style={[styles.detailHeaderTitle, { color: colors.text }]}>
-              {t("food_scanner.meal_details")}
-            </Text>
-            <View style={{ width: 40 }} />
           </View>
 
-          <ScrollView
-            style={styles.detailScroll}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Product Header */}
-            <View style={styles.detailProductHeader}>
+          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+            {/* Product Hero */}
+            <View style={[styles.modalHero, { backgroundColor: colors.card }]}>
               {selectedProduct.image_url ? (
                 <Image
                   source={{ uri: selectedProduct.image_url }}
-                  style={styles.detailProductImage}
+                  style={styles.modalImage}
+                  resizeMode="cover"
                 />
               ) : (
-                <View
-                  style={[
-                    styles.detailProductImagePlaceholder,
-                    { backgroundColor: colors.surfaceVariant },
-                  ]}
-                >
-                  <Package size={48} color={colors.textSecondary} />
+                <View style={[styles.modalImagePlaceholder, { backgroundColor: colors.surface }]}>
+                  <Package size={64} color={colors.textTertiary} strokeWidth={1.5} />
                 </View>
               )}
 
-              <Text style={[styles.detailProductName, { color: colors.text }]}>
-                {selectedProduct.name || selectedProduct.product_name}
-              </Text>
-              {selectedProduct.brand && (
-                <Text
-                  style={[
-                    styles.detailProductBrand,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {selectedProduct.brand}
+              <View style={styles.modalProductInfo}>
+                <Text style={[styles.modalBrand, { color: colors.textTertiary }]}>
+                  {selectedProduct.brand || selectedProduct.category}
                 </Text>
-              )}
+                <Text style={[styles.modalName, { color: colors.text }]}>{selectedProduct.name || selectedProduct.product_name}</Text>
 
-              {/* Health Score */}
-              {selectedProduct.health_score && (
-                <View
-                  style={[
-                    styles.detailHealthCard,
-                    {
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <View style={styles.detailHealthLeft}>
-                    <Text
-                      style={[
-                        styles.detailHealthLabel,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {t("food_scanner.health_score")}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.detailHealthValue,
-                        { color: healthInfo.color },
-                      ]}
-                    >
-                      {selectedProduct.health_score}/100
-                    </Text>
+                {selectedProduct.health_score && (
+                  <View style={styles.modalScoreContainer}>
+                    <View style={[styles.modalScoreBadge, { backgroundColor: scoreColor }]}>
+                      <Text style={styles.modalScoreValue}>{selectedProduct.health_score}</Text>
+                      <Text style={styles.modalScoreLabel}>Health Score</Text>
+                    </View>
                   </View>
-                  <View
-                    style={[
-                      styles.detailHealthBadge,
-                      { backgroundColor: healthInfo.color },
-                    ]}
-                  >
-                    <Text style={styles.detailHealthBadgeText}>
-                      {healthInfo.label}
-                    </Text>
-                  </View>
-                </View>
-              )}
+                )}
+              </View>
             </View>
 
-            {/* Nutrition Facts */}
-            <View
-              style={[
-                styles.detailSection,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <Text style={[styles.detailSectionTitle, { color: colors.text }]}>
-                {t("food_scanner.nutrition_info")}
-              </Text>
-
-              <View style={styles.detailNutritionRow}>
-                <Text
-                  style={[
-                    styles.detailNutritionLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {t("meals.calories")}
-                </Text>
-                <Text
-                  style={[styles.detailNutritionValue, { color: colors.text }]}
-                >
-                  {selectedProduct.nutrition_per_100g?.calories || 0}{" "}
-                  {t("meals.kcal")}
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.detailNutritionDivider,
-                  { backgroundColor: colors.border },
-                ]}
-              />
-
-              <View style={styles.detailNutritionRow}>
-                <Text
-                  style={[
-                    styles.detailNutritionLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {t("meals.protein")}
-                </Text>
-                <Text
-                  style={[styles.detailNutritionValue, { color: colors.text }]}
-                >
-                  {selectedProduct.nutrition_per_100g?.protein || 0}g
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.detailNutritionDivider,
-                  { backgroundColor: colors.border },
-                ]}
-              />
-
-              <View style={styles.detailNutritionRow}>
-                <Text
-                  style={[
-                    styles.detailNutritionLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {t("meals.carbs")}
-                </Text>
-                <Text
-                  style={[styles.detailNutritionValue, { color: colors.text }]}
-                >
-                  {selectedProduct.nutrition_per_100g?.carbs || 0}g
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.detailNutritionDivider,
-                  { backgroundColor: colors.border },
-                ]}
-              />
-
-              <View style={styles.detailNutritionRow}>
-                <Text
-                  style={[
-                    styles.detailNutritionLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {t("meals.fat")}
-                </Text>
-                <Text
-                  style={[styles.detailNutritionValue, { color: colors.text }]}
-                >
-                  {selectedProduct.nutrition_per_100g?.fat || 0}g
-                </Text>
-              </View>
-
-              {selectedProduct.nutrition_per_100g?.fiber !== undefined && (
-                <>
-                  <View
-                    style={[
-                      styles.detailNutritionDivider,
-                      { backgroundColor: colors.border },
-                    ]}
-                  />
-                  <View style={styles.detailNutritionRow}>
-                    <Text
-                      style={[
-                        styles.detailNutritionLabel,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {t("meals.fiber")}
+            {/* Nutrition Grid */}
+            <View style={[styles.modalSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.modalSectionTitle, { color: colors.text }]}>Nutrition per 100g</Text>
+              
+              <View style={styles.nutritionGrid}>
+                {[
+                  { icon: Flame, label: "Calories", value: selectedProduct.nutrition_per_100g?.calories || 0, unit: "", color: "#EF4444" },
+                  { icon: Activity, label: "Protein", value: selectedProduct.nutrition_per_100g?.protein || 0, unit: "g", color: "#10B981" },
+                  { icon: Droplets, label: "Carbs", value: selectedProduct.nutrition_per_100g?.carbs || 0, unit: "g", color: "#3B82F6" },
+                  { icon: Leaf, label: "Fat", value: selectedProduct.nutrition_per_100g?.fat || 0, unit: "g", color: "#F59E0B" },
+                ].map((item, index) => (
+                  <View key={index} style={[styles.nutritionCard, { backgroundColor: colors.surface }]}>
+                    <item.icon size={20} color={item.color} strokeWidth={2} />
+                    <Text style={[styles.nutritionValue, { color: colors.text }]}>
+                      {item.value}
+                      <Text style={[styles.nutritionUnit, { color: colors.textTertiary }]}>{item.unit}</Text>
                     </Text>
-                    <Text
-                      style={[
-                        styles.detailNutritionValue,
-                        { color: colors.text },
-                      ]}
-                    >
-                      {selectedProduct.nutrition_per_100g.fiber}g
-                    </Text>
+                    <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>{item.label}</Text>
                   </View>
-                </>
-              )}
+                ))}
+              </View>
 
-              {selectedProduct.nutrition_per_100g?.sugar !== undefined && (
-                <>
-                  <View
-                    style={[
-                      styles.detailNutritionDivider,
-                      { backgroundColor: colors.border },
-                    ]}
-                  />
-                  <View style={styles.detailNutritionRow}>
-                    <Text
-                      style={[
-                        styles.detailNutritionLabel,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {t("meals.sugar")}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.detailNutritionValue,
-                        { color: colors.text },
-                      ]}
-                    >
-                      {selectedProduct.nutrition_per_100g.sugar}g
-                    </Text>
-                  </View>
-                </>
-              )}
-
-              {selectedProduct.nutrition_per_100g?.sodium !== undefined && (
-                <>
-                  <View
-                    style={[
-                      styles.detailNutritionDivider,
-                      { backgroundColor: colors.border },
-                    ]}
-                  />
-                  <View style={styles.detailNutritionRow}>
-                    <Text
-                      style={[
-                        styles.detailNutritionLabel,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {t("meals.sodium")}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.detailNutritionValue,
-                        { color: colors.text },
-                      ]}
-                    >
-                      {selectedProduct.nutrition_per_100g.sodium}mg
-                    </Text>
-                  </View>
-                </>
+              {/* Extra Nutrition */}
+              {(selectedProduct.nutrition_per_100g?.fiber ||
+                selectedProduct.nutrition_per_100g?.sugar) && (
+                <View style={styles.extraNutrition}>
+                  {selectedProduct.nutrition_per_100g?.fiber !== undefined && (
+                    <View style={styles.extraRow}>
+                      <Text style={styles.extraLabel}>Fiber</Text>
+                      <Text style={styles.extraValue}>
+                        {selectedProduct.nutrition_per_100g.fiber}g
+                      </Text>
+                    </View>
+                  )}
+                  {selectedProduct.nutrition_per_100g?.sugar !== undefined && (
+                    <View style={styles.extraRow}>
+                      <Text style={styles.extraLabel}>Sugar</Text>
+                      <Text style={styles.extraValue}>
+                        {selectedProduct.nutrition_per_100g.sugar}g
+                      </Text>
+                    </View>
+                  )}
+                </View>
               )}
             </View>
 
             {/* Ingredients */}
-            {selectedProduct.ingredients &&
-              selectedProduct.ingredients.length > 0 && (
-                <View
-                  style={[
-                    styles.detailSection,
-                    {
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[styles.detailSectionTitle, { color: colors.text }]}
-                  >
-                    {t("food_scanner.ingredients")}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.detailIngredientsText,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {selectedProduct.ingredients.join(", ")}
-                  </Text>
-                </View>
-              )}
+            {selectedProduct.ingredients && selectedProduct.ingredients.length > 0 && (
+              <View style={[styles.modalSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.modalSectionTitle, { color: colors.text }]}>Ingredients</Text>
+                <Text style={[styles.ingredientsText, { color: colors.textSecondary }]}>
+                  {selectedProduct.ingredients.join(", ")}
+                </Text>
+              </View>
+            )}
 
             {/* Allergens */}
-            {selectedProduct.allergens &&
-              selectedProduct.allergens.length > 0 && (
-                <View
-                  style={[
-                    styles.detailSection,
-                    styles.detailAllergenSection,
-                    { backgroundColor: "#FEE2E2", borderColor: "#FCA5A5" },
-                  ]}
-                >
-                  <View style={styles.detailAllergenHeader}>
-                    <AlertTriangle size={20} color="#DC2626" />
-                    <Text
-                      style={[
-                        styles.detailSectionTitle,
-                        { color: "#DC2626", marginBottom: 0 },
-                      ]}
-                    >
-                      {t("food_scanner.allergens")}
-                    </Text>
-                  </View>
-                  <View style={styles.detailAllergensList}>
-                    {selectedProduct.allergens.map((allergen, index) => (
-                      <View key={index} style={styles.detailAllergenItem}>
-                        <View style={styles.detailAllergenDot} />
-                        <Text style={styles.detailAllergenText}>
-                          {allergen}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
+            {selectedProduct.allergens && selectedProduct.allergens.length > 0 && (
+              <View style={[styles.modalSection, styles.allergenSection]}>
+                <View style={styles.allergenHeader}>
+                  <AlertTriangle size={20} color="#EF4444" strokeWidth={2} />
+                  <Text style={styles.allergenTitle}>Contains Allergens</Text>
                 </View>
-              )}
+                <View style={styles.allergenList}>
+                  {selectedProduct.allergens.map((allergen, index) => (
+                    <Text key={index} style={styles.allergenItem}>
+                      • {allergen}
+                    </Text>
+                  ))}
+                </View>
+              </View>
+            )}
 
             {/* Labels */}
             {selectedProduct.labels && selectedProduct.labels.length > 0 && (
-              <View
-                style={[
-                  styles.detailSection,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                ]}
-              >
-                <Text
-                  style={[styles.detailSectionTitle, { color: colors.text }]}
-                >
-                  Certifications
-                </Text>
-                <View style={styles.detailLabelsList}>
+              <View style={[styles.modalSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.modalSectionTitle, { color: colors.text }]}>Certifications</Text>
+                <View style={styles.labelsList}>
                   {selectedProduct.labels.map((label, index) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.detailLabelItem,
-                        { backgroundColor: colors.surfaceVariant },
-                      ]}
-                    >
-                      <CheckCircle2 size={14} color="#22C55E" />
-                      <Text
-                        style={[styles.detailLabelText, { color: colors.text }]}
-                      >
-                        {label}
-                      </Text>
+                    <View key={index} style={styles.labelChip}>
+                      <CheckCircle2 size={14} color="#10B981" strokeWidth={2} />
+                      <Text style={styles.labelText}>{label}</Text>
                     </View>
                   ))}
                 </View>
@@ -676,87 +441,68 @@ export default function ScannedProductsGallery({
       onRequestClose={onClose}
     >
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Minimal Header - NO COLORS, just black/white */}
-        <View
-          style={[
-            styles.header,
-            {
-              backgroundColor: colors.background,
-              borderBottomColor: colors.border,
-            },
-          ]}
-        >
-          <View style={styles.headerContent}>
-            <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-              <X size={24} color={colors.text} />
+        {/* Minimalist Header */}
+        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity onPress={onClose} style={styles.backBtn}>
+              <X size={24} color={colors.text} strokeWidth={2} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
-              {t("food_scanner.scanned_products")}
-            </Text>
-            <View style={{ width: 40 }} />
+            
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Products</Text>
+            
+            <TouchableOpacity
+              onPress={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
+              style={styles.viewToggle}
+            >
+              {viewMode === "grid" ? (
+                <List size={24} color={colors.text} strokeWidth={2} />
+              ) : (
+                <Grid size={24} color={colors.text} strokeWidth={2} />
+              )}
+            </TouchableOpacity>
           </View>
 
-          {/* Search */}
-          <View
-            style={[
-              styles.searchBar,
-              {
-                backgroundColor: colors.surfaceVariant,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <Search size={18} color={colors.textSecondary} />
+          {/* Clean Search */}
+          <View style={[styles.searchBar, { backgroundColor: colors.surfaceVariant }]}>
+            <Search size={20} color={colors.textTertiary} strokeWidth={2} />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
-              placeholder={t("common.search")}
+              placeholder="Search products..."
               placeholderTextColor={colors.textTertiary}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <X size={16} color={colors.textSecondary} />
+                <X size={18} color={colors.textSecondary} strokeWidth={2} />
               </TouchableOpacity>
             )}
           </View>
 
-          {/* Filters */}
+          {/* Category Pills */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filtersContent}
+            contentContainerStyle={styles.categoriesScroll}
           >
-            {[
-              { key: "all", label: t("common.all") },
-              { key: "high_score", label: t("statistics.excellent") },
-              { key: "low_score", label: t("statistics.warning") },
-              { key: "has_allergens", label: t("food_scanner.allergens") },
-            ].map((filter) => (
+            {categories.map((cat) => (
               <TouchableOpacity
-                key={filter.key}
+                key={cat}
                 style={[
-                  styles.filterButton,
-                  {
-                    backgroundColor:
-                      selectedFilter === filter.key ? colors.text : colors.card,
-                    borderColor: colors.border,
-                  },
+                  styles.categoryPill,
+                  { backgroundColor: selectedCategory === cat ? colors.primary : colors.surface },
+                  selectedCategory === cat && styles.categoryPillActive,
                 ]}
-                onPress={() => setSelectedFilter(filter.key)}
+                onPress={() => setSelectedCategory(cat)}
               >
                 <Text
                   style={[
-                    styles.filterButtonText,
-                    {
-                      color:
-                        selectedFilter === filter.key
-                          ? colors.background
-                          : colors.text,
-                    },
+                    styles.categoryPillText,
+                    { color: selectedCategory === cat ? "#FFFFFF" : colors.text },
+                    selectedCategory === cat && styles.categoryPillTextActive,
                   ]}
                 >
-                  {filter.label}
+                  {cat === "all" ? "All" : cat}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -765,87 +511,39 @@ export default function ScannedProductsGallery({
 
         {/* Content */}
         {isLoading ? (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={colors.text} />
-            <Text style={[styles.centerText, { color: colors.textSecondary }]}>
-              {t("common.loading")}
-            </Text>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
           </View>
-        ) : Object.keys(groupedProducts).length === 0 ? (
-          <View style={styles.centerContainer}>
-            <Package size={56} color={colors.textTertiary} />
-            <Text style={[styles.centerTitle, { color: colors.text }]}>
-              {searchQuery
-                ? t("food_scanner.product_not_found")
-                : t("food_scanner.no_food_scanner")}
+        ) : filteredProducts.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Package size={64} color={colors.textTertiary} strokeWidth={1.5} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              {searchQuery ? "No results found" : "No products yet"}
             </Text>
-            <Text style={[styles.centerText, { color: colors.textSecondary }]}>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               {searchQuery
-                ? t("common.try_again")
-                : t("food_scanner.food_scanner_empty")}
+                ? "Try a different search term"
+                : "Start scanning to build your collection"}
             </Text>
           </View>
         ) : (
-          <ScrollView
-            style={styles.listContainer}
-            showsVerticalScrollIndicator={false}
-          >
-            {Object.entries(groupedProducts).map(
-              ([category, categoryProducts]) => (
-                <View key={category}>
-                  <TouchableOpacity
-                    style={[
-                      styles.categoryHeader,
-                      { backgroundColor: colors.surfaceVariant },
-                    ]}
-                    onPress={() => toggleCategory(category)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.categoryHeaderLeft}>
-                      <Text
-                        style={[styles.categoryTitle, { color: colors.text }]}
-                      >
-                        {category}
-                      </Text>
-                      <View
-                        style={[
-                          styles.categoryCount,
-                          { backgroundColor: colors.text },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.categoryCountText,
-                            { color: colors.background },
-                          ]}
-                        >
-                          {categoryProducts.length}
-                        </Text>
-                      </View>
-                    </View>
-                    <ChevronDown
-                      size={20}
-                      color={colors.textSecondary}
-                      style={{
-                        transform: [
-                          {
-                            rotate: expandedCategories.has(category)
-                              ? "180deg"
-                              : "0deg",
-                          },
-                        ],
-                      }}
-                    />
-                  </TouchableOpacity>
-
-                  {(expandedCategories.size === 0 ||
-                    expandedCategories.has(category)) &&
-                    categoryProducts.map(renderProductItem)}
-                </View>
-              )
+          <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+            {viewMode === "grid" ? (
+              <ScrollView
+                contentContainerStyle={styles.gridContainer}
+                showsVerticalScrollIndicator={false}
+              >
+                {filteredProducts.map(renderGridCard)}
+              </ScrollView>
+            ) : (
+              <ScrollView
+                contentContainerStyle={styles.listContainer}
+                showsVerticalScrollIndicator={false}
+              >
+                {filteredProducts.map(renderListCard)}
+              </ScrollView>
             )}
-            <View style={{ height: 20 }} />
-          </ScrollView>
+          </Animated.View>
         )}
 
         {renderDetailModal()}
@@ -857,331 +555,473 @@ export default function ScannedProductsGallery({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#FAFAFA",
   },
   header: {
+    backgroundColor: "#FFFFFF",
     paddingTop: Platform.OS === "ios" ? 50 : 20,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 16,
     borderBottomWidth: 1,
+    borderBottomColor: "#E0E0E0",
   },
-  headerContent: {
+  headerTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 16,
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  headerButton: {
+  backBtn: {
     width: 40,
     height: 40,
     justifyContent: "center",
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    letterSpacing: -0.5,
+  },
+  viewToggle: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 8,
-    marginBottom: 12,
-    borderWidth: 1,
+    backgroundColor: "#F5F5F5",
+    marginHorizontal: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 12,
+    marginBottom: 16,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
+    color: "#1A1A1A",
     fontWeight: "500",
   },
-  filtersContent: {
-    paddingVertical: 4,
+  categoriesScroll: {
+    paddingHorizontal: 20,
     gap: 8,
   },
-  filterButton: {
+  categoryPill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: "#F5F5F5",
   },
-  filterButtonText: {
+  categoryPillActive: {
+    backgroundColor: "#1A1A1A",
+  },
+  categoryPillText: {
     fontSize: 14,
     fontWeight: "600",
+    color: "#666666",
   },
-  centerContainer: {
+  categoryPillTextActive: {
+    color: "#FFFFFF",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
     gap: 12,
   },
-  centerTitle: {
+  emptyTitle: {
     fontSize: 20,
-    fontWeight: "700",
-    marginTop: 8,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    marginTop: 16,
   },
-  centerText: {
+  emptyText: {
     fontSize: 15,
+    color: "#666666",
     textAlign: "center",
   },
-  listContainer: {
-    flex: 1,
-  },
-  categoryHeader: {
+  gridContainer: {
+    padding: 20,
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    flexWrap: "wrap",
+    gap: 16,
   },
-  categoryHeaderLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
+  gridCard: {
+    width: (width - 56) / 2,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
   },
-  categoryTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+  gridImageContainer: {
+    position: "relative",
+    height: 140,
+    backgroundColor: "#F5F5F5",
   },
-  categoryCount: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+  gridImage: {
+    width: "100%",
+    height: "100%",
   },
-  categoryCountText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  listItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  listItemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    gap: 12,
-  },
-  listItemImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
-  },
-  listItemImagePlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
+  gridImagePlaceholder: {
+    width: "100%",
+    height: "100%",
     justifyContent: "center",
     alignItems: "center",
   },
-  listItemInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  listItemName: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  listItemBrand: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  listItemStats: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  listItemStat: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  listItemDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: "#9CA3AF",
-  },
-  listItemRight: {
-    marginLeft: 12,
-  },
-  healthBadge: {
+  scoreChip: {
+    position: "absolute",
+    top: 8,
+    right: 8,
     width: 32,
     height: 32,
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
   },
-  // Detail Modal
-  detailContainer: {
-    flex: 1,
-  },
-  detailHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === "ios" ? 50 : 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-  },
-  detailCloseButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  detailHeaderTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  detailScroll: {
-    flex: 1,
-  },
-  detailProductHeader: {
-    alignItems: "center",
-    paddingVertical: 32,
-    paddingHorizontal: 20,
-  },
-  detailProductImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 16,
-    marginBottom: 20,
-  },
-  detailProductImagePlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  detailProductName: {
-    fontSize: 22,
-    fontWeight: "800",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  detailProductBrand: {
-    fontSize: 16,
-    fontWeight: "500",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  detailHealthCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 8,
-  },
-  detailHealthLeft: {
-    gap: 4,
-  },
-  detailHealthLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  detailHealthValue: {
-    fontSize: 24,
-    fontWeight: "800",
-  },
-  detailHealthBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  detailHealthBadgeText: {
-    fontSize: 14,
+  scoreChipText: {
+    fontSize: 12,
     fontWeight: "700",
     color: "#FFFFFF",
   },
-  detailSection: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 12,
+  gridContent: {
+    padding: 12,
+  },
+  gridBrand: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#999999",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  gridName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    lineHeight: 18,
+    marginBottom: 8,
+    minHeight: 36,
+  },
+  gridStats: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  gridStat: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  gridStatText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#666666",
+  },
+  listContainer: {
+    padding: 20,
+    gap: 12,
+  },
+  listCard: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 12,
+    gap: 12,
     borderWidth: 1,
+    borderColor: "#E0E0E0",
   },
-  detailSectionTitle: {
-    fontSize: 16,
+  listImageContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: "#F5F5F5",
+    overflow: "hidden",
+  },
+  listImage: {
+    width: "100%",
+    height: "100%",
+  },
+  listImagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  listContent: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  listHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  listTitleContainer: {
+    flex: 1,
+  },
+  listBrand: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#999999",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  listName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1A1A1A",
+  },
+  listScore: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  listScoreText: {
+    fontSize: 13,
     fontWeight: "700",
-    marginBottom: 12,
+    color: "#FFFFFF",
   },
-  detailNutritionRow: {
+  listFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
   },
-  detailNutritionLabel: {
-    fontSize: 15,
-    fontWeight: "500",
+  listStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  detailNutritionValue: {
-    fontSize: 15,
+  listStatText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#666666",
+  },
+  listDivider: {
+    fontSize: 12,
+    color: "#CCCCCC",
+  },
+  listDate: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#999999",
+  },
+
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "#FAFAFA",
+  },
+  modalHeader: {
+    paddingTop: Platform.OS === "ios" ? 50 : 20,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E0E0E0",
+  },
+  modalCloseBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+  },
+  modalScroll: {
+    flex: 1,
+  },
+  modalHero: {
+    backgroundColor: "#FFFFFF",
+    padding: 20,
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalImage: {
+    width: 180,
+    height: 180,
+    borderRadius: 20,
+    marginBottom: 20,
+  },
+  modalImagePlaceholder: {
+    width: 180,
+    height: 180,
+    borderRadius: 20,
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalProductInfo: {
+    width: "100%",
+    alignItems: "center",
+  },
+  modalBrand: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#999999",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  modalName: {
+    fontSize: 24,
     fontWeight: "700",
+    color: "#1A1A1A",
+    textAlign: "center",
+    marginBottom: 20,
+    letterSpacing: -0.5,
   },
-  detailNutritionDivider: {
-    height: 1,
+  modalScoreContainer: {
+    width: "100%",
   },
-  detailIngredientsText: {
+  modalScoreBadge: {
+    alignSelf: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 16,
+    alignItems: "center",
+    gap: 4,
+  },
+  modalScoreValue: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  modalScoreLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    opacity: 0.9,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  modalSection: {
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  modalSectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
+  nutritionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  nutritionCard: {
+    width: (width - 88) / 2,
+    backgroundColor: "#F5F5F5",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    gap: 8,
+  },
+  nutritionValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#1A1A1A",
+  },
+  nutritionUnit: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#999999",
+  },
+  nutritionLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#666666",
+  },
+  extraNutrition: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#E0E0E0",
+    gap: 12,
+  },
+  extraRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  extraLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666666",
+  },
+  extraValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1A1A1A",
+  },
+  ingredientsText: {
     fontSize: 14,
     lineHeight: 22,
+    color: "#666666",
     fontWeight: "500",
   },
-  detailAllergenSection: {
+  allergenSection: {
+    backgroundColor: "#FEF2F2",
+    borderColor: "#FCA5A5",
     borderWidth: 2,
   },
-  detailAllergenHeader: {
+  allergenHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     marginBottom: 12,
   },
-  detailAllergensList: {
+  allergenTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#DC2626",
+  },
+  allergenList: {
     gap: 8,
   },
-  detailAllergenItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  detailAllergenDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#DC2626",
-  },
-  detailAllergenText: {
+  allergenItem: {
     fontSize: 14,
     fontWeight: "600",
     color: "#DC2626",
+    lineHeight: 20,
   },
-  detailLabelsList: {
+  labelsList: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
   },
-  detailLabelItem: {
+  labelChip: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    gap: 6,
+    backgroundColor: "#F0FDF4",
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
   },
-  detailLabelText: {
-    fontSize: 14,
+  labelText: {
+    fontSize: 13,
     fontWeight: "600",
+    color: "#166534",
   },
 });

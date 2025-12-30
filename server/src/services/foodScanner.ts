@@ -289,56 +289,105 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
     }
   }
 
-  static async getScanHistory(userId: string): Promise<any[]> {
-    try {
-      // Get both scanned food products and meals created from scanned items
-      const [products, meals] = await Promise.all([
-        prisma.foodProduct.findMany({
-          where: { user_id: userId },
-          orderBy: { created_at: "desc" },
-          take: 25,
-        }),
-        prisma.meal.findMany({
-          where: {
-            user_id: userId,
-            meal_name: { contains: "g)" }, // Meals created from scanner have format "Product (XXXg)"
-          },
-          orderBy: { created_at: "desc" },
-          take: 25,
-        }),
-      ]);
+static async getScanHistory(userId: string): Promise<any[]> {
+  try {
+    console.log("📋 [SCAN_HISTORY] Getting scan history for user:", userId);
+    
+    // Get both scanned food products and meals created from scanned items
+    const [products, meals] = await Promise.all([
+      prisma.foodProduct.findMany({
+        where: { user_id: userId },
+        orderBy: { created_at: "desc" },
+        take: 50,
+      }).catch(() => []),
+      prisma.meal.findMany({
+        where: {
+          user_id: userId,
+          meal_name: { contains: "g)" }, // Meals created from scanner have format "Product (XXXg)"
+        },
+        orderBy: { created_at: "desc" },
+        take: 50,
+      }).catch(() => []),
+    ]);
 
-      // Combine and format the results
-      const history = [
-        ...products.map((product) => ({
-          id: product.product_id,
-          product_name: product.product_name,
-          name: product.product_name,
-          brand: product.brand,
-          category: product.category,
-          barcode: product.barcode,
-          created_at: product.created_at,
-          type: "product",
-        })),
-        ...meals.map((meal) => ({
-          id: meal.meal_id,
-          product_name: meal.meal_name,
-          name: meal.meal_name,
-          category: meal.food_category,
-          created_at: meal.created_at,
-          type: "meal",
-        })),
-      ].sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+    console.log("📊 [SCAN_HISTORY] Found products:", products.length);
+    console.log("📊 [SCAN_HISTORY] Found meals:", meals.length);
 
-      return history.slice(0, 50);
-    } catch (error) {
-      console.error("Error getting scan history:", error);
-      return [];
+    // Combine and format the results - RETURN ALL FIELDS
+    const history = [
+      ...products.map((product) => ({
+        // Original product fields
+        ...product,
+        
+        // Standardized fields for consistency
+        id: product.product_id,
+        name: product.product_name,
+        type: "product",
+        scan_type: "product",
+        
+        // Ensure nutrition data is properly formatted
+        nutrition_per_100g: product.nutrition_per_100g as any,
+        ingredients: product.ingredients as string[],
+        allergens: product.allergens as string[],
+        labels: product.labels as string[],
+      })),
+      ...meals.map((meal) => ({
+        // Original meal fields
+        ...meal,
+        
+        // Standardized fields for consistency
+        id: meal.meal_id,
+        name: meal.meal_name,
+        product_name: meal.meal_name,
+        category: meal.food_category,
+        type: "meal",
+        scan_type: "meal",
+        
+        // Create nutrition_per_100g from meal data (reverse calculation)
+        nutrition_per_100g: {
+          calories: meal.calories || 0,
+          protein: meal.protein_g || 0,
+          carbs: meal.carbs_g || 0,
+          fat: meal.fats_g || 0,
+          fiber: meal.fiber_g || undefined,
+          sugar: meal.sugar_g || undefined,
+          sodium: meal.sodium_mg || undefined,
+          saturated_fat: meal.saturated_fats_g || undefined,
+          cholesterol: meal.cholesterol_mg || undefined,
+        },
+        
+        // Parse JSON fields if they exist
+        ingredients: meal.ingredients ? 
+          (typeof meal.ingredients === 'string' ? JSON.parse(meal.ingredients) : meal.ingredients) : 
+          [],
+        allergens: meal.allergens_json ? 
+          (typeof meal.allergens_json === 'object' && 'allergens' in meal.allergens_json ? 
+            meal.allergens_json.allergens : []) : 
+          [],
+        labels: [],
+        health_score: meal.additives_json && typeof meal.additives_json === 'object' && 'health_score' in meal.additives_json ?
+          meal.additives_json.health_score :
+          undefined,
+        image_url: meal.image_url,
+      })),
+    ].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    console.log("✅ [SCAN_HISTORY] Total history items:", history.length);
+    
+    if (history.length > 0) {
+      console.log("📋 [SCAN_HISTORY] First item sample:", JSON.stringify(history[0], null, 2));
+      console.log("📋 [SCAN_HISTORY] First item keys:", Object.keys(history[0]));
     }
+
+    return history.slice(0, 100); // Increased limit to 100
+  } catch (error) {
+    console.error("❌ [SCAN_HISTORY] Error getting scan history:", error);
+    return [];
   }
+}
 
   private static async getProductFromDatabase(
     barcode: string
