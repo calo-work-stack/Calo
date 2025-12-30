@@ -1,4 +1,4 @@
-/scripts
+scripts
 node_modules/
 .env
-/errors
+errors
