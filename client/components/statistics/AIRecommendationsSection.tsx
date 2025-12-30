@@ -22,9 +22,9 @@ import {
   AlertCircle,
   Info,
   Sparkles,
-  ArrowRight,
-  Eye,
+  Zap,
   Award,
+  Activity,
 } from "lucide-react-native";
 import Animated, {
   FadeInUp,
@@ -50,7 +50,7 @@ interface AIRecommendation {
 
 interface AIRecommendationsSectionProps {
   recommendations?: AIRecommendation[];
-  period: "today" | "week" | "month";
+  period?: "today" | "week" | "month"; // Made optional with default fallback
   colors: {
     primary: string;
     surface: string;
@@ -86,62 +86,72 @@ const getPriorityConfig = (priority: string, colors: any) => {
   switch (priority) {
     case "high":
       return {
-        colors: [colors.error, "#FF5252", "#FF1744"],
-        shadowColor: colors.error,
+        colors: ["#FF6B6B", "#EE5A6F", "#C92A2A"],
+        accentColor: "#FF6B6B",
         icon: AlertCircle,
-        glow: `${colors.error}30`,
+        label: "High Priority",
+        glow: "rgba(255, 107, 107, 0.25)",
       };
     case "medium":
       return {
-        colors: [colors.warning, "#FF9800", "#F57C00"],
-        shadowColor: colors.warning,
+        colors: ["#FFB84D", "#FFA726", "#F57C00"],
+        accentColor: "#FFB84D",
         icon: Info,
-        glow: `${colors.warning}30`,
+        label: "Medium Priority",
+        glow: "rgba(255, 184, 77, 0.25)",
       };
     case "low":
       return {
-        colors: [colors.success, colors.emerald500, colors.emerald600],
-        shadowColor: colors.success,
+        colors: ["#51CF66", "#40C057", "#2F9E44"],
+        accentColor: "#51CF66",
         icon: CheckCircle,
-        glow: `${colors.success}30`,
+        label: "Low Priority",
+        glow: "rgba(81, 207, 102, 0.25)",
       };
     default:
       return {
         colors: [colors.textSecondary, colors.muted, colors.textTertiary],
-        shadowColor: colors.textSecondary,
+        accentColor: colors.textSecondary,
         icon: Info,
-        glow: `${colors.textSecondary}30`,
+        label: "Normal",
+        glow: "rgba(128, 128, 128, 0.25)",
       };
   }
 };
 
-const getRecommendationConfig = (type: string, colors: any) => {
+const getCategoryConfig = (type: string, colors: any) => {
   const configs: Record<string, any> = {
     nutrition_tips: {
       icon: Lightbulb,
-      gradient: [colors.emerald400, colors.emerald500, colors.emerald600],
-      title: "Smart Nutrition",
+      gradient: ["#10B981", "#059669"],
+      title: "Nutrition Tips",
+      color: "#10B981",
     },
     meal_suggestions: {
       icon: Target,
-      gradient: [colors.success, colors.emerald500, colors.emerald600],
-      title: "Meal Ideas",
+      gradient: ["#8B5CF6", "#7C3AED"],
+      title: "Meal Suggestions",
+      color: "#8B5CF6",
     },
     goal_adjustments: {
       icon: TrendingUp,
-      gradient: [colors.info, colors.primary, colors.emerald700],
-      title: "Goal Optimization",
+      gradient: ["#3B82F6", "#2563EB"],
+      title: "Goal Adjustments",
+      color: "#3B82F6",
     },
     behavioral_insights: {
       icon: Brain,
-      gradient: [colors.primary, colors.emerald600, colors.emerald700],
-      title: "Behavior Analysis",
+      gradient: ["#EC4899", "#DB2777"],
+      title: "Behavioral Insights",
+      color: "#EC4899",
     },
   };
   return configs[type] || configs.nutrition_tips;
 };
 
 const extractRecommendationsData = (recData: any): ExtractedRecommendations => {
+  console.log("Extracting recommendations from:", recData);
+
   if (!recData) {
     return {
       nutrition_tips: [],
@@ -158,174 +168,298 @@ const extractRecommendationsData = (recData: any): ExtractedRecommendations => {
     behavioral_insights: [],
   };
 
-  if (typeof recData === "object") {
-    if (Array.isArray(recData.nutrition_tips)) {
-      extractedData.nutrition_tips = recData.nutrition_tips;
-    }
-    if (Array.isArray(recData.meal_suggestions)) {
-      extractedData.meal_suggestions = recData.meal_suggestions;
-    }
-    if (Array.isArray(recData.goal_adjustments)) {
-      extractedData.goal_adjustments = recData.goal_adjustments;
-    }
-    if (Array.isArray(recData.behavioral_insights)) {
-      extractedData.behavioral_insights = recData.behavioral_insights;
-    }
+  // Handle if recData is already in the correct format
+  if (
+    recData.nutrition_tips ||
+    recData.meal_suggestions ||
+    recData.goal_adjustments ||
+    recData.behavioral_insights
+  ) {
+    extractedData = {
+      nutrition_tips: Array.isArray(recData.nutrition_tips)
+        ? recData.nutrition_tips
+        : [],
+      meal_suggestions: Array.isArray(recData.meal_suggestions)
+        ? recData.meal_suggestions
+        : [],
+      goal_adjustments: Array.isArray(recData.goal_adjustments)
+        ? recData.goal_adjustments
+        : [],
+      behavioral_insights: Array.isArray(recData.behavioral_insights)
+        ? recData.behavioral_insights
+        : [],
+    };
+    console.log("Direct format found:", extractedData);
+    return extractedData;
+  }
 
-    if (recData.data) {
-      return extractRecommendationsData(recData.data);
-    }
+  // Check for nested data property
+  if (recData.data && typeof recData.data === "object") {
+    console.log("Found nested data property, recursing...");
+    return extractRecommendationsData(recData.data);
+  }
 
-    if (Array.isArray(recData)) {
-      extractedData.nutrition_tips = recData.slice(
-        0,
-        Math.ceil(recData.length / 2)
-      );
-      extractedData.behavioral_insights = recData.slice(
-        Math.ceil(recData.length / 2)
-      );
+  // If recData is an array of strings
+  if (Array.isArray(recData) && recData.length > 0) {
+    console.log("Array format detected with", recData.length, "items");
+    const stringItems = recData.filter(
+      (item) => typeof item === "string" && item.trim().length > 5
+    );
+    if (stringItems.length > 0) {
+      const quarter = Math.ceil(stringItems.length / 4);
+      extractedData = {
+        nutrition_tips: stringItems.slice(0, quarter),
+        meal_suggestions: stringItems.slice(quarter, quarter * 2),
+        goal_adjustments: stringItems.slice(quarter * 2, quarter * 3),
+        behavioral_insights: stringItems.slice(quarter * 3),
+      };
+      console.log("Array distributed:", extractedData);
+      return extractedData;
     }
+  }
 
-    Object.keys(recData).forEach((key) => {
-      const value = recData[key];
-      if (
-        Array.isArray(value) &&
-        value.length > 0 &&
-        typeof value[0] === "string"
-      ) {
-        if (
-          key.toLowerCase().includes("nutrition") ||
-          key.toLowerCase().includes("food") ||
-          key.toLowerCase().includes("diet")
-        ) {
-          extractedData.nutrition_tips = value;
-        } else if (
-          key.toLowerCase().includes("meal") ||
-          key.toLowerCase().includes("recipe")
-        ) {
-          extractedData.meal_suggestions = value;
-        } else if (
-          key.toLowerCase().includes("goal") ||
-          key.toLowerCase().includes("target")
-        ) {
-          extractedData.goal_adjustments = value;
-        } else if (
-          key.toLowerCase().includes("behavior") ||
-          key.toLowerCase().includes("insight") ||
-          key.toLowerCase().includes("analysis")
-        ) {
-          extractedData.behavioral_insights = value;
-        } else {
-          extractedData.behavioral_insights = [
-            ...extractedData.behavioral_insights,
-            ...value,
-          ];
+  // Scan all object keys and categorize arrays
+  if (typeof recData === "object" && !Array.isArray(recData)) {
+    console.log("Scanning object keys:", Object.keys(recData));
+
+    Object.entries(recData).forEach(([key, value]) => {
+      if (Array.isArray(value) && value.length > 0) {
+        const stringValues = value.filter(
+          (item) => typeof item === "string" && item.trim().length > 5
+        );
+        if (stringValues.length > 0) {
+          const lowerKey = key.toLowerCase();
+          console.log(
+            `Found array in key "${key}" with ${stringValues.length} items`
+          );
+
+          if (
+            lowerKey.includes("nutrition") ||
+            lowerKey.includes("food") ||
+            lowerKey.includes("diet") ||
+            lowerKey.includes("vitamin") ||
+            lowerKey.includes("nutrient")
+          ) {
+            extractedData.nutrition_tips.push(...stringValues);
+          } else if (
+            lowerKey.includes("meal") ||
+            lowerKey.includes("recipe") ||
+            lowerKey.includes("dish") ||
+            lowerKey.includes("breakfast") ||
+            lowerKey.includes("lunch") ||
+            lowerKey.includes("dinner")
+          ) {
+            extractedData.meal_suggestions.push(...stringValues);
+          } else if (
+            lowerKey.includes("goal") ||
+            lowerKey.includes("target") ||
+            lowerKey.includes("objective") ||
+            lowerKey.includes("adjust") ||
+            lowerKey.includes("change")
+          ) {
+            extractedData.goal_adjustments.push(...stringValues);
+          } else if (
+            lowerKey.includes("behavior") ||
+            lowerKey.includes("insight") ||
+            lowerKey.includes("analysis") ||
+            lowerKey.includes("pattern") ||
+            lowerKey.includes("trend")
+          ) {
+            extractedData.behavioral_insights.push(...stringValues);
+          } else {
+            // For generic keys, try to infer from content
+            const contentCheck = stringValues[0]?.toLowerCase() || "";
+            if (
+              contentCheck.includes("eat") ||
+              contentCheck.includes("protein") ||
+              contentCheck.includes("calorie") ||
+              contentCheck.includes("vitamin")
+            ) {
+              extractedData.nutrition_tips.push(...stringValues);
+            } else if (
+              contentCheck.includes("meal") ||
+              contentCheck.includes("breakfast") ||
+              contentCheck.includes("try")
+            ) {
+              extractedData.meal_suggestions.push(...stringValues);
+            } else if (
+              contentCheck.includes("goal") ||
+              contentCheck.includes("increase") ||
+              contentCheck.includes("decrease") ||
+              contentCheck.includes("adjust")
+            ) {
+              extractedData.goal_adjustments.push(...stringValues);
+            } else {
+              extractedData.behavioral_insights.push(...stringValues);
+            }
+          }
         }
       }
     });
   }
 
-  const allEmpty =
-    extractedData.nutrition_tips.length === 0 &&
-    extractedData.meal_suggestions.length === 0 &&
-    extractedData.goal_adjustments.length === 0 &&
-    extractedData.behavioral_insights.length === 0;
+  // Last resort: deep string extraction
+  const totalItems =
+    extractedData.nutrition_tips.length +
+    extractedData.meal_suggestions.length +
+    extractedData.goal_adjustments.length +
+    extractedData.behavioral_insights.length;
 
-  if (allEmpty && recData && typeof recData === "object") {
-    const allValues: string[] = [];
-    const extractStrings = (obj: any) => {
+  if (totalItems === 0 && recData && typeof recData === "object") {
+    console.log(
+      "No categorized data found, performing deep string extraction..."
+    );
+    const allStrings: string[] = [];
+
+    const extractStrings = (obj: any, depth = 0) => {
+      if (depth > 10) return; // Prevent infinite recursion
+
       if (typeof obj === "string" && obj.trim().length > 10) {
-        allValues.push(obj);
+        allStrings.push(obj.trim());
       } else if (Array.isArray(obj)) {
-        obj.forEach((item) => extractStrings(item));
+        obj.forEach((item) => extractStrings(item, depth + 1));
       } else if (typeof obj === "object" && obj !== null) {
-        Object.values(obj).forEach((value) => {
-          extractStrings(value);
-        });
+        Object.values(obj).forEach((value) => extractStrings(value, depth + 1));
       }
     };
 
     extractStrings(recData);
+    console.log("Extracted", allStrings.length, "strings from deep search");
 
-    if (allValues.length > 0) {
-      const quarter = Math.ceil(allValues.length / 4);
-      extractedData.nutrition_tips = allValues.slice(0, quarter);
-      extractedData.meal_suggestions = allValues.slice(quarter, quarter * 2);
-      extractedData.goal_adjustments = allValues.slice(
-        quarter * 2,
-        quarter * 3
-      );
-      extractedData.behavioral_insights = allValues.slice(quarter * 3);
+    if (allStrings.length > 0) {
+      const quarter = Math.ceil(allStrings.length / 4);
+      extractedData = {
+        nutrition_tips: allStrings.slice(0, quarter),
+        meal_suggestions: allStrings.slice(quarter, quarter * 2),
+        goal_adjustments: allStrings.slice(quarter * 2, quarter * 3),
+        behavioral_insights: allStrings.slice(quarter * 3),
+      };
     }
   }
+
+  console.log("Final extracted data:", {
+    nutrition_tips: extractedData.nutrition_tips.length,
+    meal_suggestions: extractedData.meal_suggestions.length,
+    goal_adjustments: extractedData.goal_adjustments.length,
+    behavioral_insights: extractedData.behavioral_insights.length,
+  });
 
   return extractedData;
 };
 
 export const AIRecommendationsSection: React.FC<
   AIRecommendationsSectionProps
-> = ({ recommendations = [], period }) => {
+> = ({
+  recommendations = [],
+  period = "month", // Default to month if not provided
+}) => {
   const [showModal, setShowModal] = useState(false);
   const [selectedRecommendation, setSelectedRecommendation] =
     useState<AIRecommendation | null>(null);
   const { colors } = useTheme();
+
   const filteredRecommendations = useMemo(() => {
-    if (!Array.isArray(recommendations)) {
+    console.log("=== AIRecommendationsSection: Processing Recommendations ===");
+    console.log("Input recommendations:", recommendations);
+    console.log("Period:", period);
+
+    if (!Array.isArray(recommendations) || recommendations.length === 0) {
+      console.log("Recommendations is not an array or empty, returning empty");
       return [];
     }
 
     const now = new Date();
+    now.setHours(23, 59, 59, 999); // End of today
     const filterDate = new Date();
 
+    // Set filter date based on period
     switch (period) {
       case "today":
         filterDate.setHours(0, 0, 0, 0);
+        console.log("Filtering for today since:", filterDate.toISOString());
         break;
       case "week":
         filterDate.setDate(now.getDate() - 7);
+        filterDate.setHours(0, 0, 0, 0);
+        console.log(
+          "Filtering for last 7 days since:",
+          filterDate.toISOString()
+        );
         break;
       case "month":
+      default:
         filterDate.setDate(now.getDate() - 30);
+        filterDate.setHours(0, 0, 0, 0);
+        console.log(
+          "Filtering for last 30 days since:",
+          filterDate.toISOString()
+        );
         break;
     }
 
-    return recommendations
-      .filter((rec) => new Date(rec.date) >= filterDate)
+    const filtered = recommendations
+      .filter((rec) => {
+        if (!rec || !rec.date) {
+          console.log("Invalid recommendation, skipping:", rec);
+          return false;
+        }
+        const recDate = new Date(rec.date);
+        recDate.setHours(0, 0, 0, 0); // Normalize to start of day
+        const passes = recDate >= filterDate;
+        console.log(
+          `Recommendation ${rec.id}: date=${
+            rec.date
+          } (${recDate.toISOString()}), filterDate=${filterDate.toISOString()}, passes=${passes}`
+        );
+        return passes;
+      })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    console.log(
+      `Filtered ${filtered.length} recommendations out of ${recommendations.length}`
+    );
+    if (filtered.length > 0) {
+      console.log("First recommendation structure:", filtered[0]);
+      console.log(
+        "First recommendation.recommendations:",
+        filtered[0].recommendations
+      );
+    }
+
+    return filtered;
   }, [recommendations, period]);
 
   const latestRecommendation = filteredRecommendations[0];
 
   const renderEmptyState = () => (
-    <Animated.View
-      entering={FadeInUp.delay(300)}
-      style={[styles.emptyState, { backgroundColor: colors.card }]}
-    >
+    <View style={styles.emptyState}>
       <LinearGradient
-        colors={[`${colors.primary}1A`, `${colors.emerald500}0D`]}
+        colors={["rgba(16, 185, 129, 0.1)", "rgba(16, 185, 129, 0.05)"]}
         style={styles.emptyGradient}
       >
-        <Animated.View entering={BounceIn.delay(500)}>
-          <Brain size={48} color={colors.primary} />
-        </Animated.View>
-        <Animated.Text
-          entering={FadeInUp.delay(700)}
-          style={[styles.emptyTitle, { color: colors.text }]}
-        >
-          AI Learning Mode
-        </Animated.Text>
-        <Animated.Text
-          entering={FadeInUp.delay(900)}
-          style={[styles.emptySubtitle, { color: colors.textSecondary }]}
-        >
-          Keep tracking your meals and activities.{"\n"}AI recommendations will
-          appear here soon!
-        </Animated.Text>
+        <View style={styles.emptyIconContainer}>
+          <LinearGradient
+            colors={["#10B981", "#059669"]}
+            style={styles.emptyIconGradient}
+          >
+            <Brain size={32} color="white" />
+          </LinearGradient>
+        </View>
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>
+          AI Learning Your Patterns
+        </Text>
+        <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+          Keep logging your meals and activities.{"\n"}
+          Personalized insights coming soon!
+        </Text>
       </LinearGradient>
-    </Animated.View>
+    </View>
   );
 
-  const renderRecommendationPreview = () => {
+  const renderPreviewCard = () => {
+    console.log("=== renderPreviewCard ===");
+    console.log("latestRecommendation:", latestRecommendation);
+
     if (!latestRecommendation) {
       return renderEmptyState();
     }
@@ -334,146 +468,170 @@ export const AIRecommendationsSection: React.FC<
       latestRecommendation.priority_level,
       colors
     );
+
+    console.log(
+      "Calling extractRecommendationsData with:",
+      latestRecommendation.recommendations
+    );
     const extractedRecs = extractRecommendationsData(
       latestRecommendation.recommendations
     );
-    const allTips = [
+    console.log("Extracted recommendations:", extractedRecs);
+
+    const allInsights = [
       ...extractedRecs.nutrition_tips,
       ...extractedRecs.meal_suggestions,
       ...extractedRecs.goal_adjustments,
       ...extractedRecs.behavioral_insights,
-    ];
+    ].filter(Boolean);
 
-    if (allTips.length === 0) {
-      const recDate = new Date(latestRecommendation.date);
-      allTips.push(
-        `AI Analysis from ${recDate.toLocaleDateString()}`,
-        `Priority: ${latestRecommendation.priority_level.toUpperCase()}`,
-        `Confidence: ${Math.round(
-          (latestRecommendation.confidence_score || 0) * 100
-        )}%`
-      );
-    }
+    console.log("All insights combined:", allInsights);
+    console.log("Total insights count:", allInsights.length);
 
     const recDate = new Date(latestRecommendation.date);
+    const confidence = Math.round(
+      (latestRecommendation.confidence_score || 0) * 100
+    );
 
     return (
-      <TouchableOpacity
-        style={[styles.previewContainer, { backgroundColor: colors.surface }]}
+      <AnimatedTouchableOpacity
+        entering={FadeInUp.delay(100)}
         onPress={() => setShowModal(true)}
-        activeOpacity={0.95}
+        activeOpacity={0.92}
       >
-        <LinearGradient
-          colors={[colors.surface, colors.background]}
-          style={styles.previewGradient}
-        >
+        <View style={[styles.previewCard, { backgroundColor: colors.card }]}>
+          {/* Glow effect */}
+          <View
+            style={[
+              styles.previewGlow,
+              { backgroundColor: priorityConfig.glow },
+            ]}
+          />
+
+          {/* Header */}
           <View style={styles.previewHeader}>
             <View style={styles.previewHeaderLeft}>
               <LinearGradient
-                colors={priorityConfig.colors}
-                style={styles.previewPriorityBadge}
+                colors={["#10B981", "#059669"]}
+                style={styles.previewAiIcon}
               >
-                <priorityConfig.icon size={12} color="white" />
-                <Text style={styles.previewPriorityText}>
-                  {latestRecommendation.priority_level.toUpperCase()}
-                </Text>
+                <Sparkles size={16} color="white" />
               </LinearGradient>
-
-              <View style={styles.previewConfidenceContainer}>
-                <Star size={12} color={colors.warning} />
+              <View>
+                <Text style={[styles.previewTitle, { color: colors.text }]}>
+                  AI Insights
+                </Text>
                 <Text
                   style={[
-                    styles.previewConfidenceText,
+                    styles.previewSubtitle,
                     { color: colors.textSecondary },
                   ]}
                 >
-                  {Math.round(
-                    (latestRecommendation.confidence_score || 0) * 100
-                  )}
-                  %
+                  {recDate.toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
                 </Text>
               </View>
             </View>
 
-            <View style={styles.previewViewAllButton}>
-              <ChevronRight size={16} color={colors.primary} />
+            <View style={styles.previewMetrics}>
+              <View
+                style={[
+                  styles.priorityPill,
+                  { backgroundColor: priorityConfig.accentColor + "20" },
+                ]}
+              >
+                <priorityConfig.icon
+                  size={12}
+                  color={priorityConfig.accentColor}
+                />
+                <Text
+                  style={[
+                    styles.priorityText,
+                    { color: priorityConfig.accentColor },
+                  ]}
+                >
+                  {priorityConfig.label}
+                </Text>
+              </View>
             </View>
           </View>
 
-          <LinearGradient
-            colors={[colors.primary, colors.emerald600]}
-            style={styles.previewAiBadge}
-          >
-            <Sparkles size={8} color="white" />
-            <Text style={styles.previewAiText}>AI INSIGHTS</Text>
-          </LinearGradient>
+          {/* Confidence Bar */}
+          <View style={styles.confidenceSection}>
+            <View style={styles.confidenceBar}>
+              <LinearGradient
+                colors={["#10B981", "#059669"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.confidenceFill, { width: `${confidence}%` }]}
+              />
+            </View>
+            <View style={styles.confidenceLabel}>
+              <Star size={12} color="#10B981" fill="#10B981" />
+              <Text
+                style={[styles.confidenceText, { color: colors.textSecondary }]}
+              >
+                {confidence}% Confidence
+              </Text>
+            </View>
+          </View>
 
-          <View style={styles.previewContent}>
-            {allTips.slice(0, 2).map((tip, index) => (
-              <View key={index} style={styles.previewTipRow}>
-                <LinearGradient
-                  colors={priorityConfig.colors}
-                  style={styles.previewTipBullet}
-                >
-                  <View style={styles.previewTipBulletInner} />
-                </LinearGradient>
+          {/* Insights Preview */}
+          <View style={styles.insightsPreview}>
+            {allInsights.slice(0, 2).map((insight, index) => (
+              <View key={index} style={styles.insightRow}>
+                <View style={styles.insightDot}>
+                  <View
+                    style={[
+                      styles.insightDotInner,
+                      { backgroundColor: "#10B981" },
+                    ]}
+                  />
+                </View>
                 <Text
-                  style={[styles.previewTipText, { color: colors.text }]}
+                  style={[styles.insightText, { color: colors.text }]}
                   numberOfLines={2}
                 >
-                  {tip}
+                  {insight}
                 </Text>
               </View>
             ))}
-
-            {allTips.length > 2 && (
-              <View style={styles.previewMoreIndicator}>
-                <Text
-                  style={[styles.previewMoreText, { color: colors.primary }]}
-                >
-                  +{allTips.length - 2} more insights
-                </Text>
-                <ArrowRight size={12} color={colors.primary} />
-              </View>
-            )}
           </View>
 
-          <View
-            style={[styles.previewFooter, { borderTopColor: colors.border }]}
-          >
-            <View style={styles.previewDateContainer}>
-              <Clock size={10} color={colors.textTertiary} />
+          {/* Footer */}
+          <View style={styles.previewFooter}>
+            <View style={styles.insightCount}>
+              <Text style={[styles.insightCountNumber, { color: "#10B981" }]}>
+                {allInsights.length}
+              </Text>
               <Text
-                style={[styles.previewDateText, { color: colors.textTertiary }]}
+                style={[
+                  styles.insightCountLabel,
+                  { color: colors.textSecondary },
+                ]}
               >
-                {recDate.toLocaleDateString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
+                Total Insights
               </Text>
             </View>
 
-            <View style={styles.previewViewAllContainer}>
-              <Text
-                style={[styles.previewViewAllText, { color: colors.primary }]}
-              >
-                View All
-              </Text>
-              <Eye size={12} color={colors.primary} />
+            <View style={styles.viewAllButton}>
+              <Text style={styles.viewAllText}>View All</Text>
+              <ChevronRight size={16} color="white" />
             </View>
           </View>
-        </LinearGradient>
-      </TouchableOpacity>
+        </View>
+      </AnimatedTouchableOpacity>
     );
   };
 
-  const renderAppleStyleList = () => (
+  const renderRecommendationsList = () => (
     <ScrollView
-      style={[styles.newListContainer, { backgroundColor: colors.background }]}
+      style={styles.listContainer}
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.newListContent}
     >
       {filteredRecommendations.map((recommendation, index) => {
         const priorityConfig = getPriorityConfig(
@@ -483,177 +641,135 @@ export const AIRecommendationsSection: React.FC<
         const extractedRecs = extractRecommendationsData(
           recommendation.recommendations
         );
-        const allTips = [
+        const allInsights = [
           ...extractedRecs.nutrition_tips,
           ...extractedRecs.meal_suggestions,
           ...extractedRecs.goal_adjustments,
           ...extractedRecs.behavioral_insights,
-        ];
-
-        if (allTips.length === 0) {
-          const recDate = new Date(recommendation.date);
-          allTips.push(
-            `AI Analysis completed on ${recDate.toLocaleDateString()}`,
-            `Priority Level: ${recommendation.priority_level.toUpperCase()}`,
-            `Confidence Score: ${Math.round(
-              (recommendation.confidence_score || 0) * 100
-            )}%`,
-            "Detailed insights are being processed"
-          );
-        }
+        ].filter(Boolean);
 
         const recDate = new Date(recommendation.date);
+        const confidence = Math.round(
+          (recommendation.confidence_score || 0) * 100
+        );
 
         return (
-          <Animated.View
+          <AnimatedTouchableOpacity
             key={recommendation.id}
-            entering={FadeInUp.delay(index * 100)}
-            style={[styles.newListCard, { backgroundColor: colors.surface }]}
+            entering={FadeInDown.delay(index * 100)}
+            onPress={() => setSelectedRecommendation(recommendation)}
+            activeOpacity={0.92}
           >
-            <TouchableOpacity
-              onPress={() => setSelectedRecommendation(recommendation)}
-              style={styles.newListCardTouchable}
-              activeOpacity={0.7}
-            >
-              <View style={styles.newCardHeader}>
-                <View style={styles.newCardTopRow}>
-                  <View style={styles.newCardDateSection}>
-                    <Text style={[styles.newCardDay, { color: colors.text }]}>
-                      {recDate.toLocaleDateString(undefined, {
-                        day: "numeric",
-                      })}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.newCardMonth,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {recDate.toLocaleDateString(undefined, {
-                        month: "short",
-                      })}
-                    </Text>
-                  </View>
-
-                  <LinearGradient
-                    colors={priorityConfig.colors}
-                    style={styles.newCardPriorityFloat}
+            <View style={[styles.listCard, { backgroundColor: colors.card }]}>
+              {/* Card Header */}
+              <View style={styles.listCardHeader}>
+                <View style={styles.listCardDate}>
+                  <Text style={[styles.listCardDay, { color: colors.text }]}>
+                    {recDate.getDate()}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.listCardMonth,
+                      { color: colors.textSecondary },
+                    ]}
                   >
-                    <priorityConfig.icon size={12} color="white" />
-                    <Text style={styles.newCardPriorityText}>
-                      {recommendation.priority_level.charAt(0).toUpperCase() +
-                        recommendation.priority_level.slice(1)}
-                    </Text>
-                  </LinearGradient>
+                    {recDate
+                      .toLocaleDateString(undefined, { month: "short" })
+                      .toUpperCase()}
+                  </Text>
                 </View>
 
-                <View style={styles.newCardBadgeRow}>
-                  <LinearGradient
-                    colors={[colors.primary, colors.emerald600]}
-                    style={styles.newCardAiBadge}
+                <View style={styles.listCardMeta}>
+                  <View
+                    style={[
+                      styles.listPriorityBadge,
+                      { backgroundColor: priorityConfig.accentColor + "20" },
+                    ]}
                   >
-                    <Sparkles size={8} color="white" />
-                    <Text style={styles.newCardAiText}>AI</Text>
-                  </LinearGradient>
-
-                  <View style={styles.newCardConfidence}>
-                    <Star size={10} color={colors.warning} />
-                    <Text
-                      style={[
-                        styles.newCardConfidenceText,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {Math.round((recommendation.confidence_score || 0) * 100)}
-                      % confidence
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.newCardContent}>
-                <Text
-                  style={[styles.newCardPreviewTitle, { color: colors.text }]}
-                >
-                  Latest Insights
-                </Text>
-
-                {allTips.slice(0, 2).map((tip, tipIndex) => (
-                  <View key={tipIndex} style={styles.newCardTipRow}>
-                    <View
-                      style={[
-                        styles.newCardTipDot,
-                        { backgroundColor: colors.primary },
-                      ]}
+                    <priorityConfig.icon
+                      size={14}
+                      color={priorityConfig.accentColor}
                     />
                     <Text
                       style={[
-                        styles.newCardTipText,
-                        { color: colors.textSecondary },
+                        styles.listPriorityText,
+                        { color: priorityConfig.accentColor },
                       ]}
-                      numberOfLines={2}
                     >
-                      {tip}
+                      {recommendation.priority_level.toUpperCase()}
                     </Text>
                   </View>
-                ))}
 
-                {allTips.length > 2 && (
-                  <View style={styles.newCardMoreSection}>
+                  <View style={styles.listConfidenceBadge}>
+                    <Star size={12} color="#10B981" fill="#10B981" />
                     <Text
                       style={[
-                        styles.newCardMoreText,
-                        { color: colors.primary },
+                        styles.listConfidenceText,
+                        { color: colors.textSecondary },
                       ]}
                     >
-                      +{allTips.length - 2} more insights
+                      {confidence}%
                     </Text>
                   </View>
-                )}
+                </View>
               </View>
 
-              <View
-                style={[
-                  styles.newCardFooter,
-                  { borderTopColor: colors.border },
-                ]}
-              >
-                <View style={styles.newCardFooterLeft}>
-                  <Clock size={10} color={colors.textTertiary} />
+              {/* Insights Count */}
+              <View style={styles.listInsightsHeader}>
+                <Zap size={16} color="#10B981" />
+                <Text
+                  style={[styles.listInsightsTitle, { color: colors.text }]}
+                >
+                  {allInsights.length} Insights Generated
+                </Text>
+              </View>
+
+              {/* Quick Preview */}
+              {allInsights.slice(0, 1).map((insight, idx) => (
+                <View key={idx} style={styles.listQuickPreview}>
                   <Text
                     style={[
-                      styles.newCardFooterTime,
+                      styles.listQuickPreviewText,
+                      { color: colors.textSecondary },
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {insight}
+                  </Text>
+                </View>
+              ))}
+
+              {/* Footer */}
+              <View style={styles.listCardFooter}>
+                <View style={styles.listTimeInfo}>
+                  <Clock size={12} color={colors.textTertiary} />
+                  <Text
+                    style={[
+                      styles.listTimeText,
                       { color: colors.textTertiary },
                     ]}
                   >
-                    {recDate.toLocaleDateString(undefined, {
-                      weekday: "short",
+                    {recDate.toLocaleTimeString(undefined, {
                       hour: "numeric",
                       minute: "2-digit",
                     })}
                   </Text>
                 </View>
-
-                <View style={styles.newCardFooterRight}>
-                  <Text
-                    style={[
-                      styles.newCardFooterAction,
-                      { color: colors.primary },
-                    ]}
-                  >
+                <View style={styles.listViewButton}>
+                  <Text style={[styles.listViewText, { color: "#10B981" }]}>
                     View Details
                   </Text>
-                  <ChevronRight size={12} color={colors.primary} />
+                  <ChevronRight size={14} color="#10B981" />
                 </View>
               </View>
-            </TouchableOpacity>
-          </Animated.View>
+            </View>
+          </AnimatedTouchableOpacity>
         );
       })}
     </ScrollView>
   );
 
-  const renderFullRecommendation = (recommendation: AIRecommendation) => {
+  const renderDetailView = (recommendation: AIRecommendation) => {
     const extractedRecs = extractRecommendationsData(
       recommendation.recommendations
     );
@@ -661,191 +777,164 @@ export const AIRecommendationsSection: React.FC<
       recommendation.priority_level,
       colors
     );
+    const recDate = new Date(recommendation.date);
+    const confidence = Math.round((recommendation.confidence_score || 0) * 100);
 
-    const sections = [
+    const categories = [
       {
         key: "nutrition_tips",
-        title: "Smart Nutrition Tips",
-        items: extractedRecs.nutrition_tips || [],
-        config: getRecommendationConfig("nutrition_tips", colors),
+        items: extractedRecs.nutrition_tips,
+        config: getCategoryConfig("nutrition_tips", colors),
       },
       {
         key: "meal_suggestions",
-        title: "Personalized Meal Ideas",
-        items: extractedRecs.meal_suggestions || [],
-        config: getRecommendationConfig("meal_suggestions", colors),
+        items: extractedRecs.meal_suggestions,
+        config: getCategoryConfig("meal_suggestions", colors),
       },
       {
         key: "goal_adjustments",
-        title: "Goal Optimization",
-        items: extractedRecs.goal_adjustments || [],
-        config: getRecommendationConfig("goal_adjustments", colors),
+        items: extractedRecs.goal_adjustments,
+        config: getCategoryConfig("goal_adjustments", colors),
       },
       {
         key: "behavioral_insights",
-        title: "Behavior Analysis",
-        items: extractedRecs.behavioral_insights || [],
-        config: getRecommendationConfig("behavioral_insights", colors),
+        items: extractedRecs.behavioral_insights,
+        config: getCategoryConfig("behavioral_insights", colors),
       },
-    ];
-
-    const recDate = new Date(recommendation.date);
+    ].filter((cat) => cat.items.length > 0);
 
     return (
       <ScrollView
-        style={[
-          styles.fullRecommendationContainer,
-          { backgroundColor: colors.background },
-        ]}
+        style={styles.detailContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View entering={FadeInDown} style={styles.fullHeader}>
-          <LinearGradient
-            colors={priorityConfig.colors}
-            style={styles.fullHeaderGradient}
-          >
-            <View style={styles.fullHeaderContent}>
-              <Text style={styles.fullHeaderDate}>
+        {/* Detail Header */}
+        <LinearGradient
+          colors={priorityConfig.colors}
+          style={styles.detailHeader}
+        >
+          <View style={styles.detailHeaderContent}>
+            <View style={styles.detailDateSection}>
+              <Text style={styles.detailDateDay}>{recDate.getDate()}</Text>
+              <Text style={styles.detailDateMonth}>
                 {recDate.toLocaleDateString(undefined, {
-                  weekday: "long",
-                  year: "numeric",
                   month: "long",
-                  day: "numeric",
+                  year: "numeric",
                 })}
               </Text>
-              <View style={styles.fullHeaderMeta}>
-                <View style={styles.fullHeaderBadge}>
-                  <priorityConfig.icon size={14} color="white" />
-                  <Text style={styles.fullHeaderBadgeText}>
-                    {recommendation.priority_level.toUpperCase()} PRIORITY
+            </View>
+
+            <View style={styles.detailMetrics}>
+              <View style={styles.detailMetricItem}>
+                <Award size={20} color="white" />
+                <Text style={styles.detailMetricLabel}>Priority</Text>
+                <Text style={styles.detailMetricValue}>
+                  {recommendation.priority_level.toUpperCase()}
+                </Text>
+              </View>
+
+              <View style={styles.detailMetricDivider} />
+
+              <View style={styles.detailMetricItem}>
+                <Activity size={20} color="white" />
+                <Text style={styles.detailMetricLabel}>Confidence</Text>
+                <Text style={styles.detailMetricValue}>{confidence}%</Text>
+              </View>
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* Categories */}
+        <View style={styles.categoriesContainer}>
+          {categories.map((category, index) => (
+            <Animated.View
+              key={category.key}
+              entering={FadeInUp.delay(index * 100)}
+              style={[styles.categoryCard, { backgroundColor: colors.card }]}
+            >
+              {/* Category Header */}
+              <View style={styles.categoryHeader}>
+                <LinearGradient
+                  colors={category.config.gradient}
+                  style={styles.categoryIcon}
+                >
+                  <category.config.icon size={20} color="white" />
+                </LinearGradient>
+                <View style={styles.categoryTitleSection}>
+                  <Text style={[styles.categoryTitle, { color: colors.text }]}>
+                    {category.config.title}
                   </Text>
-                </View>
-                <View style={styles.fullHeaderScore}>
-                  <Award size={14} color="white" />
-                  <Text style={styles.fullHeaderScoreText}>
-                    {Math.round((recommendation.confidence_score || 0) * 100)}%
-                    Confidence
+                  <Text
+                    style={[
+                      styles.categoryCount,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {category.items.length}{" "}
+                    {category.items.length === 1 ? "insight" : "insights"}
                   </Text>
                 </View>
               </View>
-            </View>
-          </LinearGradient>
-        </Animated.View>
 
-        <View style={styles.sectionsContainer}>
-          {sections.map(
-            (section, sectionIndex) =>
-              section.items.length > 0 && (
-                <Animated.View
-                  key={section.key}
-                  entering={FadeInUp.delay(sectionIndex * 200)}
-                  style={[
-                    styles.recommendationSection,
-                    { backgroundColor: colors.surface },
-                  ]}
-                >
-                  <LinearGradient
-                    colors={[colors.surface, colors.background]}
-                    style={styles.sectionGradient}
-                  >
-                    <View style={styles.sectionHeader}>
-                      <LinearGradient
-                        colors={section.config.gradient}
-                        style={styles.sectionIconContainer}
+              {/* Category Items */}
+              <View style={styles.categoryItems}>
+                {category.items.map((item, itemIndex) => (
+                  <View key={itemIndex} style={styles.categoryItem}>
+                    <View style={styles.categoryItemNumber}>
+                      <Text
+                        style={[
+                          styles.categoryItemNumberText,
+                          { color: category.config.color },
+                        ]}
                       >
-                        <section.config.icon size={16} color="white" />
-                      </LinearGradient>
-                      <View style={styles.sectionTitleContainer}>
-                        <Text
-                          style={[styles.sectionTitle, { color: colors.text }]}
-                        >
-                          {section.title}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.sectionCount,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {section.items.length} insights
-                        </Text>
-                      </View>
+                        {itemIndex + 1}
+                      </Text>
                     </View>
-
-                    <View style={styles.sectionContent}>
-                      {section.items.map((item, itemIndex) => (
-                        <Animated.View
-                          key={itemIndex}
-                          entering={SlideInRight.delay(
-                            sectionIndex * 200 + itemIndex * 100
-                          )}
-                          style={styles.recommendationItem}
-                        >
-                          <LinearGradient
-                            colors={section.config.gradient}
-                            style={styles.itemBullet}
-                          >
-                            <View style={styles.itemBulletInner} />
-                          </LinearGradient>
-                          <View style={styles.itemContent}>
-                            <Text
-                              style={[styles.itemText, { color: colors.text }]}
-                            >
-                              {item}
-                            </Text>
-                          </View>
-                        </Animated.View>
-                      ))}
-                    </View>
-                  </LinearGradient>
-                </Animated.View>
-              )
-          )}
+                    <Text
+                      style={[styles.categoryItemText, { color: colors.text }]}
+                    >
+                      {item}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </Animated.View>
+          ))}
         </View>
       </ScrollView>
     );
   };
 
   return (
-    <Animated.View
-      entering={FadeInUp}
-      style={[styles.section, { shadowColor: colors.primary }]}
-    >
-      <LinearGradient
-        colors={[colors.surface, colors.background, colors.surface]}
-        style={styles.sectionGradient}
-      >
-        <Animated.View entering={SlideInRight.delay(100)} style={styles.header}>
-          <View style={styles.headerContent}>
-            <View style={styles.titleContainer}>
-              <View
-                style={[
-                  styles.titleIcon,
-                  { backgroundColor: `${colors.primary}20` },
-                ]}
-              >
-                <Brain size={16} color={colors.primary} />
-              </View>
-              <View>
-                <Text style={[styles.sectionTitleMain, { color: colors.text }]}>
-                  AI Insights
-                </Text>
-                <Text
-                  style={[
-                    styles.sectionSubtitle,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {filteredRecommendations.length} recommendations
-                </Text>
-              </View>
-            </View>
+    <View style={styles.container}>
+      {/* Section Header */}
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <LinearGradient
+            colors={["#10B981", "#059669"]}
+            style={styles.sectionIcon}
+          >
+            <Brain size={24} color="white" />
+          </LinearGradient>
+          <View>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              AI Recommendations
+            </Text>
+            <Text
+              style={[styles.sectionSubtitle, { color: colors.textSecondary }]}
+            >
+              {filteredRecommendations.length}{" "}
+              {filteredRecommendations.length === 1 ? "insight" : "insights"}{" "}
+              available
+            </Text>
           </View>
-        </Animated.View>
+        </View>
+      </View>
 
-        {renderRecommendationPreview()}
-      </LinearGradient>
+      {/* Preview Card */}
+      {renderPreviewCard()}
 
+      {/* List Modal */}
       <Modal
         visible={showModal}
         animationType="slide"
@@ -858,57 +947,32 @@ export const AIRecommendationsSection: React.FC<
             { backgroundColor: colors.background },
           ]}
         >
+          {/* Modal Header */}
           <View
-            style={[
-              styles.appleModalHeader,
-              { backgroundColor: colors.surface },
-            ]}
+            style={[styles.modalHeader, { borderBottomColor: colors.border }]}
           >
-            <View style={styles.appleModalHandle} />
-
-            <View style={styles.appleModalHeaderContent}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalTitleRow}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                All Recommendations
+              </Text>
               <TouchableOpacity
                 onPress={() => setShowModal(false)}
                 style={[
-                  styles.appleModalCloseButton,
+                  styles.modalCloseButton,
                   { backgroundColor: colors.card },
                 ]}
               >
-                <X size={16} color={colors.text} />
+                <X size={20} color={colors.text} />
               </TouchableOpacity>
-
-              <View style={styles.appleModalTitleContainer}>
-                <LinearGradient
-                  colors={[colors.primary, colors.emerald600]}
-                  style={styles.appleModalTitleIcon}
-                >
-                  <Brain size={16} color="white" />
-                </LinearGradient>
-                <View>
-                  <Text
-                    style={[styles.appleModalTitle, { color: colors.text }]}
-                  >
-                    AI Recommendations
-                  </Text>
-                  <Text
-                    style={[
-                      styles.appleModalSubtitle,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {filteredRecommendations.length} insights available
-                  </Text>
-                </View>
-              </View>
-
-              <View style={{ width: 32 }} />
             </View>
           </View>
 
-          {renderAppleStyleList()}
+          {renderRecommendationsList()}
         </View>
       </Modal>
 
+      {/* Detail Modal */}
       <Modal
         visible={!!selectedRecommendation}
         animationType="slide"
@@ -921,204 +985,211 @@ export const AIRecommendationsSection: React.FC<
             { backgroundColor: colors.background },
           ]}
         >
-          <View style={styles.individualModalHeader}>
+          {/* Close Button */}
+          <View style={styles.detailCloseContainer}>
             <TouchableOpacity
               onPress={() => setSelectedRecommendation(null)}
-              style={styles.individualModalClose}
+              style={[
+                styles.detailCloseButton,
+                { backgroundColor: colors.card },
+              ]}
             >
-              <LinearGradient
-                colors={[colors.primary, colors.emerald600]}
-                style={styles.individualModalCloseGradient}
-              >
-                <X size={16} color="white" />
-              </LinearGradient>
+              <X size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
 
-          {selectedRecommendation &&
-            renderFullRecommendation(selectedRecommendation)}
+          {selectedRecommendation && renderDetailView(selectedRecommendation)}
         </View>
       </Modal>
-    </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  section: {
+  container: {
     marginHorizontal: 16,
     marginBottom: 20,
-    borderRadius: 24,
-    overflow: "hidden",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 10,
   },
-  sectionGradient: {
-    padding: 20,
-  },
-  header: {
+  sectionHeader: {
     marginBottom: 16,
   },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  titleContainer: {
+  sectionTitleRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
-  titleIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  sectionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  sectionTitleMain: {
-    fontSize: 20,
+  sectionTitle: {
+    fontSize: 24,
     fontWeight: "700",
     letterSpacing: -0.5,
   },
   sectionSubtitle: {
-    fontSize: 13,
-    marginTop: 2,
+    fontSize: 14,
     fontWeight: "500",
+    marginTop: 2,
   },
+
+  // Empty State
   emptyState: {
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: "hidden",
   },
   emptyGradient: {
+    padding: 40,
+    alignItems: "center",
+  },
+  emptyIconContainer: {
+    marginBottom: 20,
+  },
+  emptyIconGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 40,
-    paddingHorizontal: 24,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginTop: 16,
+    fontSize: 22,
+    fontWeight: "700",
     textAlign: "center",
+    marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 15,
     textAlign: "center",
-    marginTop: 8,
     lineHeight: 22,
   },
-  previewContainer: {
-    borderRadius: 20,
-    overflow: "hidden",
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  previewGradient: {
+
+  // Preview Card
+  previewCard: {
+    borderRadius: 24,
     padding: 20,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+    position: "relative",
+    overflow: "hidden",
+  },
+  previewGlow: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
   },
   previewHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 16,
   },
   previewHeaderLeft: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    flex: 1,
   },
-  previewPriorityBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+  previewAiIcon: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    gap: 6,
-  },
-  previewPriorityText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "white",
-    letterSpacing: 0.5,
-  },
-  previewConfidenceContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  previewConfidenceText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  previewViewAllButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
     alignItems: "center",
     justifyContent: "center",
   },
-  previewAiBadge: {
-    alignSelf: "flex-start",
-    borderRadius: 16,
-    overflow: "hidden",
-    marginBottom: 16,
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  previewSubtitle: {
+    fontSize: 13,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  previewMetrics: {
+    alignItems: "flex-end",
+  },
+  priorityPill: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    borderRadius: 16,
+  },
+  priorityText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  confidenceSection: {
+    marginBottom: 20,
+  },
+  confidenceBar: {
+    height: 6,
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    borderRadius: 3,
+    overflow: "hidden",
+    marginBottom: 8,
+  },
+  confidenceFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  confidenceLabel: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
-  previewAiText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "white",
-    letterSpacing: 1,
+  confidenceText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
-  previewContent: {
+  insightsPreview: {
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  previewTipRow: {
+  insightRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 12,
   },
-  previewTipBullet: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+  insightDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
     alignItems: "center",
     justifyContent: "center",
     marginTop: 2,
   },
-  previewTipBulletInner: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "white",
+  insightDotInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  previewTipText: {
+  insightText: {
     flex: 1,
     fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 22,
     fontWeight: "500",
-  },
-  previewMoreIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingLeft: 34,
-    marginTop: 4,
-  },
-  previewMoreText: {
-    fontSize: 13,
-    fontWeight: "600",
   },
   previewFooter: {
     flexDirection: "row",
@@ -1126,365 +1197,323 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 16,
     borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.05)",
   },
-  previewDateContainer: {
+  insightCount: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "baseline",
     gap: 6,
   },
-  previewDateText: {
-    fontSize: 12,
+  insightCountNumber: {
+    fontSize: 28,
+    fontWeight: "700",
+  },
+  insightCountLabel: {
+    fontSize: 13,
     fontWeight: "500",
   },
-  previewViewAllContainer: {
+  viewAllButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 4,
+    backgroundColor: "#10B981",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
-  previewViewAllText: {
-    fontSize: 13,
-    fontWeight: "600",
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "white",
   },
+
+  // Modal
   modalContainer: {
     flex: 1,
   },
-  appleModalHeader: {
+  modalHeader: {
     paddingTop: 8,
-    paddingBottom: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.05)",
   },
-  appleModalHandle: {
-    width: 36,
+  modalHandle: {
+    width: 40,
     height: 5,
     backgroundColor: "rgba(0,0,0,0.2)",
     borderRadius: 3,
     alignSelf: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  appleModalHeaderContent: {
+  modalTitleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
   },
-  appleModalCloseButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  appleModalTitleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    flex: 1,
-    justifyContent: "center",
-    marginHorizontal: 20,
-  },
-  appleModalTitleIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  appleModalTitle: {
-    fontSize: 18,
+  modalTitle: {
+    fontSize: 20,
     fontWeight: "700",
-    textAlign: "center",
   },
-  appleModalSubtitle: {
-    fontSize: 12,
-    fontWeight: "500",
-    textAlign: "center",
-    marginTop: 2,
-  },
-  newListContainer: {
-    flex: 1,
-  },
-  newListContent: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  newListCard: {
-    marginBottom: 16,
-    borderRadius: 20,
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
-    overflow: "hidden",
-  },
-  newListCardTouchable: {
-    padding: 20,
-  },
-  newCardHeader: {
-    marginBottom: 16,
-  },
-  newCardTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
-  newCardDateSection: {
-    alignItems: "center",
-  },
-  newCardDay: {
-    fontSize: 28,
-    fontWeight: "700",
-    lineHeight: 32,
-  },
-  newCardMonth: {
-    fontSize: 11,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  newCardPriorityFloat: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  newCardPriorityText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "white",
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
-  },
-  newCardBadgeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  newCardAiBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    gap: 4,
-  },
-  newCardAiText: {
-    fontSize: 9,
-    fontWeight: "800",
-    color: "white",
-    letterSpacing: 0.8,
-  },
-  newCardConfidence: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  newCardConfidenceText: {
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  newCardContent: {
-    marginBottom: 16,
-  },
-  newCardPreviewTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    marginBottom: 10,
-    letterSpacing: -0.2,
-  },
-  newCardTipRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 10,
-    paddingRight: 8,
-  },
-  newCardTipDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    marginTop: 7,
-    marginRight: 10,
-    flexShrink: 0,
-  },
-  newCardTipText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "400",
-  },
-  newCardMoreSection: {
-    marginTop: 4,
-    paddingLeft: 15,
-  },
-  newCardMoreText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  newCardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 16,
-    borderTopWidth: 1,
-  },
-  newCardFooterLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  newCardFooterTime: {
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  newCardFooterRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  newCardFooterAction: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  individualModalHeader: {
-    padding: 16,
-    paddingTop: 50,
-    alignItems: "flex-end",
-  },
-  individualModalClose: {
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  individualModalCloseGradient: {
-    width: 36,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  fullRecommendationContainer: {
-    flex: 1,
-  },
-  fullHeader: {
-    marginBottom: 20,
-  },
-  fullHeaderGradient: {
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-  },
-  fullHeaderContent: {
-    alignItems: "center",
-  },
-  fullHeaderDate: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "white",
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  fullHeaderMeta: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  fullHeaderBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 14,
-    gap: 5,
-  },
-  fullHeaderBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "white",
-  },
-  fullHeaderScore: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 14,
-    gap: 5,
-  },
-  fullHeaderScoreText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "white",
-  },
-  sectionsContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
-  recommendationSection: {
-    marginBottom: 16,
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-    padding: 16,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 14,
-    gap: 12,
-  },
-  sectionIconContainer: {
+  modalCloseButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
-  sectionTitleContainer: {
+
+  // List
+  listContainer: {
     flex: 1,
   },
-  sectionTitle: {
+  listCard: {
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 20,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  listCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+  listCardDate: {
+    alignItems: "center",
+    minWidth: 50,
+  },
+  listCardDay: {
+    fontSize: 32,
+    fontWeight: "700",
+    lineHeight: 36,
+  },
+  listCardMonth: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  listCardMeta: {
+    flexDirection: "row",
+    gap: 8,
+    flex: 1,
+    justifyContent: "flex-end",
+    flexWrap: "wrap",
+  },
+  listPriorityBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  listPriorityText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  listConfidenceBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+  },
+  listConfidenceText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  listInsightsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  listInsightsTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  listQuickPreview: {
+    marginBottom: 16,
+    paddingLeft: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: "#10B981",
+  },
+  listQuickPreviewText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  listCardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.05)",
+  },
+  listTimeInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  listTimeText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  listViewButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  listViewText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  // Detail View
+  detailContainer: {
+    flex: 1,
+  },
+  detailCloseContainer: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    zIndex: 10,
+  },
+  detailCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  detailHeader: {
+    paddingTop: 60,
+    paddingBottom: 32,
+    paddingHorizontal: 24,
+  },
+  detailHeaderContent: {
+    alignItems: "center",
+  },
+  detailDateSection: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  detailDateDay: {
+    fontSize: 56,
+    fontWeight: "700",
+    color: "white",
+    lineHeight: 60,
+  },
+  detailDateMonth: {
     fontSize: 16,
     fontWeight: "600",
-    letterSpacing: -0.3,
+    color: "rgba(255,255,255,0.9)",
+    marginTop: 4,
   },
-  sectionCount: {
+  detailMetrics: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 24,
+  },
+  detailMetricItem: {
+    alignItems: "center",
+    gap: 8,
+  },
+  detailMetricLabel: {
     fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.8)",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  detailMetricValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "white",
+  },
+  detailMetricDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: "rgba(255,255,255,0.3)",
+  },
+
+  // Categories
+  categoriesContainer: {
+    padding: 16,
+    paddingTop: 24,
+    gap: 16,
+  },
+  categoryCard: {
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  categoryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 16,
+  },
+  categoryIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryTitleSection: {
+    flex: 1,
+  },
+  categoryTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  categoryCount: {
+    fontSize: 13,
     fontWeight: "500",
     marginTop: 2,
   },
-  sectionContent: {
-    gap: 12,
+  categoryItems: {
+    gap: 16,
   },
-  recommendationItem: {
+  categoryItem: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 12,
   },
-  itemBullet: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+  categoryItemNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 1,
+    marginTop: 2,
   },
-  itemBulletInner: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: "white",
+  categoryItemNumberText: {
+    fontSize: 13,
+    fontWeight: "700",
   },
-  itemContent: {
+  categoryItemText: {
     flex: 1,
-  },
-  itemText: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
     fontWeight: "500",
   },
 });

@@ -893,7 +893,7 @@ export default function StatisticsScreen() {
             user_id: rec.user_id,
           })
         );
-
+        console.log(response.data)
         console.log(
           "✅ Transformed AI recommendations:",
           transformedRecommendations
@@ -1866,7 +1866,7 @@ export default function StatisticsScreen() {
                       <View style={styles.levelDetails}>
                         <Text style={styles.levelText}>
                           {t("statistics.level") || "Level"}{" "}
-                          {gamificationStats.level}
+                          {user?.level}
                         </Text>
                         <Text style={styles.xpText}>
                           {user?.total_points?.toString()} /{" "}
@@ -1978,7 +1978,6 @@ export default function StatisticsScreen() {
                 entering={FadeInDown.delay(700)}
                 style={styles.section}
               >
-                <Text style={styles.sectionTitle}>Achievements</Text>
                 <AchievementsSection
                   achievements={achievements}
                   period={"today"}
@@ -2807,8 +2806,8 @@ const styles = StyleSheet.create({
   },
 
   section: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
+    paddingHorizontal: 5,
+    marginBottom: 22,
   },
   sectionTitle: {
     fontSize: 28,

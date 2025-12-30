@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -22,8 +22,10 @@ import {
   addEvent,
   deleteEvent,
   getStatistics,
+  getEnhancedStatistics,
   clearError,
 } from "../../src/store/calendarSlice";
+import StatisticsCarousel from "@/components/calendar/StatisticsCarousel";
 import { Ionicons } from "@expo/vector-icons";
 import {
   Calendar as CalendarIcon,
@@ -55,7 +57,7 @@ interface DayData {
   fat_goal: number;
   fat_actual: number;
   meal_count: number;
-  quality_score: 0;
+  quality_score: number;
   water_intake_ml: number;
   events: Array<{
     id: string;
@@ -79,7 +81,9 @@ export default function CalendarScreen() {
   const {
     calendarData,
     statistics,
+    enhancedStatistics,
     isLoading,
+    isLoadingEnhancedStats,
     isAddingEvent,
     isDeletingEvent,
     error,
@@ -204,7 +208,7 @@ export default function CalendarScreen() {
     }
   }, [error, dispatch]);
 
-  const loadCalendarData = async () => {
+  const loadCalendarData = useCallback(async () => {
     setIsLoadingCalendar(true);
     try {
       const year = currentDate.getFullYear();
@@ -212,15 +216,16 @@ export default function CalendarScreen() {
       await Promise.all([
         dispatch(fetchCalendarData({ year, month })),
         dispatch(getStatistics({ year, month })),
+        dispatch(getEnhancedStatistics({ year, month })),
       ]);
     } catch (error) {
       console.error("Calendar load error:", error);
     } finally {
       setIsLoadingCalendar(false);
     }
-  };
+  }, [currentDate, dispatch]);
 
-  const getDaysInMonth = () => {
+  const daysInMonth = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
@@ -257,7 +262,7 @@ export default function CalendarScreen() {
     }
 
     return days;
-  };
+  }, [currentDate, calendarData]);
 
   const getProgressPercentage = (actual: number, goal: number) => {
     if (goal === 0) return 0;
@@ -299,25 +304,34 @@ export default function CalendarScreen() {
     return t.needsImprovement;
   };
 
-  const navigateMonth = (direction: number) => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(newDate.getMonth() + direction);
-    setCurrentDate(newDate);
-  };
+  const navigateMonth = useCallback(
+    (direction: number) => {
+      const newDate = new Date(currentDate);
+      newDate.setMonth(newDate.getMonth() + direction);
+      setCurrentDate(newDate);
+    },
+    [currentDate]
+  );
 
-  const handleMonthSelect = (monthIndex: number) => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(monthIndex);
-    setCurrentDate(newDate);
-    setShowMonthPicker(false);
-  };
+  const handleMonthSelect = useCallback(
+    (monthIndex: number) => {
+      const newDate = new Date(currentDate);
+      newDate.setMonth(monthIndex);
+      setCurrentDate(newDate);
+      setShowMonthPicker(false);
+    },
+    [currentDate]
+  );
 
-  const handleYearSelect = (year: number) => {
-    const newDate = new Date(currentDate);
-    newDate.setFullYear(year);
-    setCurrentDate(newDate);
-    setShowYearPicker(false);
-  };
+  const handleYearSelect = useCallback(
+    (year: number) => {
+      const newDate = new Date(currentDate);
+      newDate.setFullYear(year);
+      setCurrentDate(newDate);
+      setShowYearPicker(false);
+    },
+    [currentDate]
+  );
 
   const generateYearRange = () => {
     const currentYear = new Date().getFullYear();
@@ -330,12 +344,12 @@ export default function CalendarScreen() {
 
   const months = t.monthNames;
 
-  const handleDayPress = (dayData: DayData) => {
+  const handleDayPress = useCallback((dayData: DayData) => {
     setSelectedDay(dayData);
     setShowDayModal(true);
-  };
+  }, []);
 
-  const handleAddEvent = (dateStr: string) => {
+  const handleAddEvent = useCallback((dateStr: string) => {
     setSelectedDate(dateStr);
     setEventTitle("");
     setEventType("general");
@@ -343,7 +357,7 @@ export default function CalendarScreen() {
     setSelectedEvent(null);
     setIsEditingEvent(false);
     setShowEventModal(true);
-  };
+  }, []);
 
   const handleEventPress = (event: any, dayData: DayData) => {
     setSelectedEvent({ ...event, date: dayData.date });
@@ -424,8 +438,8 @@ export default function CalendarScreen() {
     ]);
   };
 
-  const calculateMonthStats = (): MonthStats => {
-    const days = getDaysInMonth().filter((day) => day !== null) as DayData[];
+  const monthStats = useMemo((): MonthStats => {
+    const days = daysInMonth.filter((day) => day !== null) as DayData[];
     const totalDays = days.length;
     const successfulDays = days.filter(
       (day) =>
@@ -474,9 +488,7 @@ export default function CalendarScreen() {
       bestStreak,
       currentStreak,
     };
-  };
-
-  const monthStats = calculateMonthStats();
+  }, [daysInMonth]);
 
   // Menu Logic Functions
   const calculateMenuProgress = () => {
@@ -637,51 +649,33 @@ export default function CalendarScreen() {
     );
   };
 
-  const renderStatistics = () => {
-    if (!statistics) return null;
-
+  const renderEnhancedStatistics = () => {
     return (
       <View style={styles.section}>
-        <View style={styles.statsContainer}>
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <CheckCircle size={18} color="#10B981" />
-              <Text style={styles.statValue}>
-                {monthStats.successfulDays}/{monthStats.totalDays}
-              </Text>
-              <Text style={styles.statLabel}>{t.successfulDays}</Text>
-            </View>
-
-            <View style={styles.statItem}>
-              <Target size={18} color="#3B82F6" />
-              <Text style={styles.statValue}>
-                {Math.round(monthStats.averageCompletion)}%
-              </Text>
-              <Text style={styles.statLabel}>{t.averageCompletion}</Text>
-            </View>
-
-            <View style={styles.statItem}>
-              <Award size={18} color="#F59E0B" />
-              <Text style={styles.statValue}>{monthStats.bestStreak}</Text>
-              <Text style={styles.statLabel}>{t.bestStreak}</Text>
-            </View>
-
-            <View style={styles.statItem}>
-              <Flame size={18} color="#EF4444" />
-              <Text style={styles.statValue}>{monthStats.currentStreak}</Text>
-              <Text style={styles.statLabel}>{t.currentStreak}</Text>
-            </View>
-          </View>
-        </View>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: colors.text, marginBottom: 8, paddingHorizontal: 20 },
+          ]}
+        >
+          {language === "he" ? "סטטיסטיקות חודשיות" : "Monthly Statistics"}
+        </Text>
+        <StatisticsCarousel
+          statistics={enhancedStatistics}
+          isLoading={isLoadingEnhancedStats}
+          language={language}
+        />
       </View>
     );
   };
 
-  if (isLoading) {
+  if (isLoading && Object.keys(calendarData).length === 0) {
     return (
       <LoadingScreen text={isRTL ? "טוען לוח שנה" : "Loading Calendar..."} />
     );
   }
+
+  const hasNoData = Object.keys(calendarData).length === 0 && !isLoading;
 
   return (
     <SafeAreaView
@@ -715,8 +709,8 @@ export default function CalendarScreen() {
           </View>
         </LinearGradient>
 
-        {/* Statistics */}
-        {renderStatistics()}
+        {/* Enhanced Statistics Carousel */}
+        {renderEnhancedStatistics()}
 
         {/* Gamification Section */}
         {renderGamificationSection()}
@@ -752,11 +746,24 @@ export default function CalendarScreen() {
           >
             {renderWeekDays()}
             <View style={styles.daysGrid}>
-              {getDaysInMonth().map((dayData, index) =>
-                renderDay(dayData, index)
-              )}
+              {daysInMonth.map((dayData, index) => renderDay(dayData, index))}
             </View>
           </View>
+
+          {/* Empty State for No Data */}
+          {hasNoData && (
+            <View style={styles.emptyStateContainer}>
+              <CalendarIcon size={64} color="#CBD5E0" />
+              <Text style={styles.emptyStateTitle}>
+                {language === "he" ? "אין נתונים עדיין" : "No Data Yet"}
+              </Text>
+              <Text style={styles.emptyStateText}>
+                {language === "he"
+                  ? "התחל לעקוב אחר הארוחות שלך כדי לראות את ההתקדמות שלך כאן"
+                  : "Start tracking your meals to see your progress here"}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Legend */}
@@ -1488,8 +1495,9 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    fontSize: 16,
-    color: "#666",
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
   },
   modernHeader: {
     paddingHorizontal: 20,
@@ -2380,5 +2388,26 @@ const styles = StyleSheet.create({
 
   headerContentRTL: {
     alignItems: "flex-end",
+  },
+
+  // Empty State Styles
+  emptyStateContainer: {
+    alignItems: "center",
+    paddingVertical: 40,
+    marginTop: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#4A5568",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: "#718096",
+    textAlign: "center",
+    paddingHorizontal: 40,
+    lineHeight: 20,
   },
 });

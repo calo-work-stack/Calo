@@ -1215,10 +1215,15 @@ export const calendarAPI = {
         type,
         description,
       });
-      return response.data;
+      if (response.data.success) {
+        return response.data.data;
+      }
+      throw new APIError("Failed to add event");
     } catch (error) {
       console.error("💥 Add event error:", error);
-      throw new APIError("Failed to add event");
+      throw error instanceof APIError
+        ? error
+        : new APIError("Failed to add event");
     }
   },
 
@@ -1239,6 +1244,45 @@ export const calendarAPI = {
     } catch (error) {
       console.error("💥 Delete event error:", error);
       throw new APIError("Failed to delete event");
+    }
+  },
+
+  async getEnhancedStatistics(year: number, month: number): Promise<any> {
+    try {
+      console.log(
+        `📊 Fetching enhanced calendar statistics for ${year}/${month}`
+      );
+      const response = await api.get(
+        `/calendar/statistics/enhanced/${year}/${month}`,
+        {
+          timeout: 15000,
+        }
+      );
+
+      if (response.data.success) {
+        console.log("✅ Enhanced calendar statistics fetched successfully");
+        return response.data.data;
+      }
+
+      console.warn(
+        "⚠️ Enhanced calendar statistics fetch returned non-success response"
+      );
+      return null;
+    } catch (error: any) {
+      console.error("💥 Get enhanced calendar statistics error:", error);
+
+      if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+        console.warn("⚠️ Enhanced calendar statistics request timed out");
+      } else if (
+        error.code === "ERR_NETWORK" ||
+        error.message?.includes("Network Error")
+      ) {
+        console.warn(
+          "⚠️ Network error while fetching enhanced calendar statistics - returning null"
+        );
+      }
+
+      return null;
     }
   },
 };

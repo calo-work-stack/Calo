@@ -126,7 +126,9 @@ interface Achievement {
 interface CalendarState {
   calendarData: Record<string, DayData>;
   statistics: CalendarStats | null;
+  enhancedStatistics: any | null;
   isLoading: boolean;
+  isLoadingEnhancedStats: boolean;
   isAddingEvent: boolean;
   isDeletingEvent: boolean;
   error: string | null;
@@ -136,7 +138,9 @@ interface CalendarState {
 const initialState: CalendarState = {
   calendarData: {},
   statistics: null,
+  enhancedStatistics: null,
   isLoading: false,
+  isLoadingEnhancedStats: false,
   isAddingEvent: false,
   isDeletingEvent: false,
   error: null,
@@ -160,7 +164,8 @@ export const fetchCalendarData = createAsyncThunk(
       return data || {};
     } catch (error: any) {
       console.error("💥 Calendar data fetch error:", error);
-      return {};
+      const message = error?.message || "Failed to fetch calendar data";
+      return rejectWithValue(message);
     }
   }
 );
@@ -178,7 +183,30 @@ export const getStatistics = createAsyncThunk(
       return stats;
     } catch (error: any) {
       console.error("💥 Statistics fetch error:", error);
-      return null;
+      const message = error?.message || "Failed to fetch statistics";
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const getEnhancedStatistics = createAsyncThunk(
+  "calendar/getEnhancedStatistics",
+  async (
+    { year, month }: { year: any; month: number },
+    { rejectWithValue }
+  ) => {
+    try {
+      console.log("📊 Fetching enhanced statistics for:", year, month);
+      const stats = await calendarAPI.getEnhancedStatistics(year, month);
+      console.log(
+        "✅ Enhanced statistics received:",
+        stats ? "success" : "null"
+      );
+      return stats;
+    } catch (error: any) {
+      console.error("💥 Enhanced statistics fetch error:", error);
+      const message = error?.message || "Failed to fetch enhanced statistics";
+      return rejectWithValue(message);
     }
   }
 );
@@ -284,8 +312,9 @@ const calendarSlice = createSlice({
       })
       .addCase(fetchCalendarData.rejected, (state, action) => {
         state.isLoading = false;
-        state.calendarData = {};
-        console.warn("⚠️ Calendar data fetch rejected, using empty data");
+        state.error =
+          (action.payload as string) || "Failed to fetch calendar data";
+        console.warn("⚠️ Calendar data fetch rejected:", state.error);
       })
 
       // Get statistics
@@ -302,8 +331,28 @@ const calendarSlice = createSlice({
         }
       })
       .addCase(getStatistics.rejected, (state, action) => {
-        console.warn("⚠️ Statistics fetch failed (rejected):", action.payload);
-        // Keep existing statistics if fetch fails
+        console.warn("⚠️ Statistics fetch failed:", action.payload);
+        state.error =
+          (action.payload as string) || "Failed to fetch statistics";
+      })
+
+      // Get enhanced statistics
+      .addCase(getEnhancedStatistics.pending, (state) => {
+        state.isLoadingEnhancedStats = true;
+      })
+      .addCase(getEnhancedStatistics.fulfilled, (state, action) => {
+        state.isLoadingEnhancedStats = false;
+        if (action.payload) {
+          state.enhancedStatistics = action.payload;
+        } else {
+          console.warn("⚠️ Enhanced statistics returned null");
+        }
+      })
+      .addCase(getEnhancedStatistics.rejected, (state, action) => {
+        state.isLoadingEnhancedStats = false;
+        console.warn("⚠️ Enhanced statistics fetch failed:", action.payload);
+        state.error =
+          (action.payload as string) || "Failed to fetch enhanced statistics";
       })
 
       // Add event
@@ -318,7 +367,7 @@ const calendarSlice = createSlice({
         // Update the calendar data with the new event
         if (state.calendarData[date]) {
           state.calendarData[date].events.push({
-            id: event.event_id,
+            id: event.id,
             title: event.title,
             type: event.type,
             created_at: event.created_at,
@@ -356,7 +405,7 @@ const calendarSlice = createSlice({
         const { date, events } = action.payload;
         if (state.calendarData[date]) {
           state.calendarData[date].events = events.map((event: any) => ({
-            id: event.event_id,
+            id: event.id,
             title: event.title,
             type: event.type,
             created_at: event.created_at,

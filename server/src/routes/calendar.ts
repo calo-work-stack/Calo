@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { CalendarService } from "../services/calendar";
+import { calendarStatsService } from "../services/calendarStats";
 import { authenticateToken, AuthRequest } from "../middleware/auth";
 
 const router = Router();
@@ -84,6 +85,51 @@ router.get("/statistics/:year/:month", async (req: AuthRequest, res) => {
     });
   }
 });
+
+// Get enhanced statistics for a specific month
+router.get(
+  "/statistics/enhanced/:year/:month",
+  async (req: AuthRequest, res) => {
+    try {
+      const { year, month } = req.params;
+
+      // Validate year and month
+      const yearNum = parseInt(year);
+      const monthNum = parseInt(month);
+
+      if (isNaN(yearNum) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid year or month provided",
+        });
+      }
+
+      console.log("📊 Get enhanced statistics request for:", yearNum, monthNum);
+
+      const statistics =
+        await calendarStatsService.getEnhancedStatistics(
+          req.user.user_id,
+          yearNum,
+          monthNum
+        );
+
+      res.json({
+        success: true,
+        data: statistics,
+      });
+    } catch (error) {
+      console.error("💥 Get enhanced statistics error:", error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch enhanced statistics";
+      res.status(500).json({
+        success: false,
+        error: message,
+      });
+    }
+  }
+);
 
 // Add event to a specific date
 router.post("/events", async (req: AuthRequest, res) => {
