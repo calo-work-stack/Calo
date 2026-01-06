@@ -456,7 +456,7 @@ export default function DevicesScreen() {
     <ErrorBoundary>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header */}
-        <LinearGradient
+        <View
           colors={
             isDark
               ? [colors.emerald700, colors.emerald600]
@@ -482,7 +482,7 @@ export default function DevicesScreen() {
           >
             {t("devices.subtitle")}
           </Text>
-        </LinearGradient>
+        </View>
 
         <ScrollView
           style={styles.scrollView}

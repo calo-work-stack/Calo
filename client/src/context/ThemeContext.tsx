@@ -3,153 +3,154 @@ import { useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Refined teal color scheme for nutrition app (using emerald names)
-const tintColorLight = "#0d9488"; // teal-600 (vibrant and professional)
-const tintColorDark = "#5eead4"; // teal-300 (softer for dark mode)
+const tintColorLight = "#009EAD"; // from your teal accent (#009EAD)
+const tintColorDark = "#05A9B8"; // from your teal bg (#05A9B8)
 
 export const Colors = {
   light: {
-    destructive: "#ef4444",
+    destructive: "#FF3B30", // from ERROR red (#FF3B30)
     // Core text and backgrounds
-    text: "#1f2937", // gray-800 (warmer black for readability)
-    background: "#ffffff", // pure white for cleanliness
+    text: "#2B2B2B", // TEXT_PRIMARY (#2B2B2B)
+    background: "#FFFFFF", // WHITE (#FFFFFF)
     tint: tintColorLight,
 
     // Icons and interactive elements
-    icon: "#6b7280", // gray-500 (neutral icons)
-    tabIconDefault: "#9ca3af", // gray-400 (inactive tabs)
-    tabIconSelected: tintColorLight, // teal-600 (active)
-    tabInactive: "#d1d5db", // gray-300 (subtle inactive)
+    icon: "#6E6E73", // ICON (#6E6E73)
+    tabIconDefault: "#8E8E93", // TEXT_SECONDARY (#8E8E93)
+    tabIconSelected: tintColorLight,
+    tabInactive: "#D1D1D6", // DIVIDER (#D1D1D6)
 
     // Borders and surfaces
-    border: "#e5e7eb", // gray-200 (clean borders)
-    card: "#f9fafb", // gray-50 (subtle card background)
-    surface: "#ffffff", // pure white surfaces
-    surfaceVariant: "#f3f4f6", // gray-100 (variant surfaces)
-    onSurface: "#111827", // gray-900 (strong contrast)
-    onSurfaceVariant: "#6b7280", // gray-500 (muted on surface)
-    outline: "#d1d5db", // gray-300 (subtle outlines)
+    border: "#D1D1D6", // DIVIDER (#D1D1D6)
+    card: "#F9F9F9", // CARD (#F9F9F9)
+    surface: "#FFFFFF", // WHITE (#FFFFFF)
+    surfaceVariant: "#F9F9F9", // CARD (#F9F9F9) as variant
+    onSurface: "#2B2B2B", // TEXT_PRIMARY (#2B2B2B)
+    onSurfaceVariant: "#6E6E73", // ICON (#6E6E73)
+    outline: "#D1D1D6", // DIVIDER (#D1D1D6)
 
     // Brand colors
-    primary: tintColorLight, // teal-600
-    primaryContainer: "#ccfbf1", // teal-100 (container background)
-    onPrimary: "#ffffff", // white text on primary
-    onPrimaryContainer: "#042f2e", // teal-900 (text on primary container)
-    primaryLight: "#99f6e4", // teal-200 (soft accent)
-    success: "#0d9488", // teal-600 (success states)
-    disabled: "#d1d5db",
+    primary: tintColorLight, // TEAL_ACCENT (#009EAD)
+    primaryContainer: "#05A9B8", // TEAL_BG (#05A9B8)
+    onPrimary: "#FFFFFF", // WHITE (#FFFFFF)
+    onPrimaryContainer: "#2B2B2B", // TEXT_PRIMARY (#2B2B2B)
+    primaryLight: "#34C759", // SUCCESS (#34C759)
+    success: "#34C759", // SUCCESS (#34C759)
+    disabled: "#D1D1D6", // DIVIDER (#D1D1D6)
 
-    // Emerald variations (now using teal values)
-    emerald: "#0d9488", // teal-600 (main brand)
-    emerald50: "#f0fdfa", // teal-50 (very light)
-    emerald100: "#ccfbf1", // teal-100 (light)
-    emerald200: "#99f6e4", // teal-200 (soft)
-    emerald500: "#14b8a6", // teal-500
-    emerald600: "#0d9488", // teal-600 (main)
-    emerald700: "#0f766e", // teal-700 (dark)
+    // Emerald variations (using teal values)
+    emerald: "#009EAD", // TEAL_ACCENT (#009EAD)
+    emerald50: "#F9F9F9", // CARD (#F9F9F9)
+    emerald100: "#05A9B8", // TEAL_BG (#05A9B8)
+    emerald200: "#34C759", // SUCCESS (#34C759)
+    emerald500: "#009EAD", // TEAL_ACCENT (#009EAD)
+    emerald600: "#05A9B8", // TEAL_BG (#05A9B8)
+    emerald700: "#2B2B2B", // TEXT_PRIMARY (#2B2B2B)
 
     // Secondary text
-    textSecondary: "#6b7280", // gray-500 (muted text)
-    textTertiary: "#9ca3af", // gray-400 (very subtle)
-    subtext: "#6b7280", // gray-500 (subtext for labels, captions)
-    muted: "#9ca3af", // gray-400 (muted elements, placeholders)
+    textSecondary: "#8E8E93", // TEXT_SECONDARY (#8E8E93)
+    textTertiary: "#6E6E73", // ICON (#6E6E73)
+    subtext: "#8E8E93", // TEXT_SECONDARY (#8E8E93)
+    muted: "#D1D1D6", // DIVIDER (#D1D1D6)
 
     // Special elements
-    shadow: "#000000", // shadow color
+    shadow: "#000000", // Black shadow
     glass: "rgba(255, 255, 255, 0.85)",
     glassStroke: "rgba(255, 255, 255, 0.3)",
     backdrop: "rgba(0, 0, 0, 0.05)",
 
     // Status colors
-    error: "#ef4444", // red-500
-    warning: "#f59e0b", // amber-500
-    info: "#3b82f6", // blue-500
+    error: "#FF3B30", // ERROR (#FF3B30)
+    warning: "#FF9F0A", // WARNING (#FF9F0A)
+    info: "#009EAD", // TEAL_ACCENT (#009EAD)
   },
+
   dark: {
-    destructive: "#f87171",
+    destructive: "#FF453A", // ERROR dark (#FF453A)
     // Core text and backgrounds
-    text: "#f9fafb", // gray-50 (soft white)
-    background: "#111827", // gray-900 (rich black)
+    text: "#FFFFFF", // WHITE (#FFFFFF)
+    background: "#044E57", // dark teal bg (#044E57)
     tint: tintColorDark,
 
     // Icons and interactive elements
-    icon: "#9ca3af", // gray-400 (visible icons)
-    tabIconDefault: "#6b7280", // gray-500 (inactive tabs)
-    tabIconSelected: tintColorDark, // teal-300 (active)
-    tabInactive: "#4b5563", // gray-600 (muted inactive)
+    icon: "#AEAEB2", // lighter icon (#AEAEB2)
+    tabIconDefault: "#8E8E93", // TEXT_SECONDARY (#8E8E93)
+    tabIconSelected: tintColorDark,
+    tabInactive: "#3A3A3C", // dark divider (#3A3A3C)
 
     // Borders and surfaces
-    border: "#374151", // gray-700 (visible borders)
-    card: "#1f2937", // gray-800 (elevated surfaces)
-    surface: "#1f2937", // gray-800 (card surfaces)
-    surfaceVariant: "#374151", // gray-700 (variant surfaces)
-    onSurface: "#f3f4f6", // gray-100 (high contrast)
-    onSurfaceVariant: "#d1d5db", // gray-300 (muted on surface)
-    outline: "#4b5563", // gray-600 (subtle outlines)
+    border: "#3A3A3C", // dark divider (#3A3A3C)
+    card: "#2C2C2E", // dark card (#2C2C2E)
+    surface: "#2C2C2E", // dark card surface (#2C2C2E)
+    surfaceVariant: "#3A3A3C", // dark divider (#3A3A3C)
+    onSurface: "#FFFFFF", // WHITE (#FFFFFF)
+    onSurfaceVariant: "#AEAEB2", // lighter icon (#AEAEB2)
+    outline: "#3A3A3C", // dark divider (#3A3A3C)
 
     // Brand colors
-    primary: tintColorDark, // teal-300
-    primaryContainer: "#134e4a", // teal-800 (container background)
-    onPrimary: "#042f2e", // teal-900 (text on primary)
-    onPrimaryContainer: "#ccfbf1", // teal-100 (text on primary container)
-    primaryLight: "#042f2e", // teal-900 (dark mode accent)
-    success: "#5eead4", // teal-300 (success states)
-    disabled: "#4b5563",
+    primary: tintColorDark, // TEAL_BG (#05A9B8)
+    primaryContainer: "#044E57", // darker teal (#044E57)
+    onPrimary: "#FFFFFF", // WHITE (#FFFFFF)
+    onPrimaryContainer: "#2C2C2E", // dark card (#2C2C2E)
+    primaryLight: "#30D158", // SUCCESS bright (#30D158)
+    success: "#30D158", // SUCCESS bright (#30D158)
+    disabled: "#3A3A3C", // dark divider (#3A3A3C)
 
-    // Emerald variations (now using teal values)
-    emerald: "#5eead4", // teal-300 (adjusted for dark)
-    emerald50: "#042f2e", // teal-900 (darkest)
-    emerald100: "#134e4a", // teal-800
-    emerald200: "#0f766e", // teal-700
-    emerald500: "#5eead4", // teal-300 (main for dark)
-    emerald600: "#14b8a6", // teal-500
-    emerald700: "#7dd3fc", // teal-200 (lighter for dark)
+    // Emerald variations (using teal values)
+    emerald: "#05A9B8", // TEAL_BG (#05A9B8)
+    emerald50: "#2C2C2E", // dark card (#2C2C2E)
+    emerald100: "#044E57", // darker teal (#044E57)
+    emerald200: "#30D158", // SUCCESS bright (#30D158)
+    emerald500: "#05A9B8", // TEAL_BG (#05A9B8)
+    emerald600: "#009EAD", // TEAL_ACCENT (#009EAD)
+    emerald700: "#6E6E73", // ICON (#6E6E73)
 
     // Secondary text
-    textSecondary: "#d1d5db", // gray-300 (readable secondary)
-    textTertiary: "#9ca3af", // gray-400 (subtle text)
-    subtext: "#9ca3af", // gray-400 (subtext for labels, captions)
-    muted: "#6b7280", // gray-500 (muted elements, placeholders)
+    textSecondary: "#AEAEB2", // lighter icon (#AEAEB2)
+    textTertiary: "#8E8E93", // TEXT_SECONDARY (#8E8E93)
+    subtext: "#8E8E93", // TEXT_SECONDARY (#8E8E93)
+    muted: "#6E6E73", // ICON (#6E6E73)
 
     // Special elements
-    shadow: "#000000", // shadow color
-    glass: "rgba(31, 41, 55, 0.8)", // gray-800 glass
-    glassStroke: "rgba(75, 85, 99, 0.3)", // gray-600 stroke
-    backdrop: "rgba(0, 0, 0, 0.4)",
+    shadow: "#000000",
+    glass: "rgba(44, 44, 46, 0.85)", // dark glass effect
+    glassStroke: "rgba(58, 58, 60, 0.3)",
+    backdrop: "rgba(0, 0, 0, 0.3)",
 
     // Status colors
-    error: "#f87171", // red-400 (softer for dark)
-    warning: "#fbbf24", // amber-400
-    info: "#60a5fa", // blue-400
+    error: "#FF453A", // ERROR dark (#FF453A)
+    warning: "#FF9F0A", // WARNING (#FF9F0A)
+    info: "#05A9B8", // TEAL_BG (#05A9B8)
   },
 };
 
 export const EmeraldSpectrum = {
   // Teal-based color spectrum (keeping emerald names for compatibility)
-  emerald50: "#f0fdfa", // teal-50 - Lightest background
-  emerald100: "#ccfbf1", // teal-100 - Very light hover bg
-  emerald200: "#99f6e4", // teal-200 - Soft light borders
-  emerald300: "#5eead4", // teal-300 - Medium light icons
-  emerald400: "#2dd4bf", // teal-400 - Slightly muted base
-  emerald500: "#14b8a6", // teal-500 - Main brand color
-  emerald600: "#0d9488", // teal-600 - Slightly darker hover
-  emerald700: "#0f766e", // teal-700 - Darker active states
-  emerald800: "#134e4a", // teal-800 - Much darker text contrast
-  emerald900: "#042f2e", // teal-900 - Deep dark mode bg
-  emerald950: "#022c22", // Custom deep teal - Very deep headers, dark accents
+  emerald50: "#F9F9F9", // CARD (#F9F9F9)
+  emerald100: "#05A9B8", // TEAL_BG (#05A9B8)
+  emerald200: "#34C759", // SUCCESS (#34C759)
+  emerald300: "#009EAD", // TEAL_ACCENT (#009EAD)
+  emerald400: "#2B2B2B", // TEXT_PRIMARY (#2B2B2B)
+  emerald500: "#009EAD", // TEAL_ACCENT (#009EAD)
+  emerald600: "#05A9B8", // TEAL_BG (#05A9B8)
+  emerald700: "#2B2B2B", // TEXT_PRIMARY (#2B2B2B)
+  emerald800: "#044E57", // darker teal (#044E57)
+  emerald900: "#2C2C2E", // dark card (#2C2C2E)
+  emerald950: "#000000", // black for deep accents
 
   // Semantic mappings (still using emerald names for compatibility)
-  fresh: "#14b8a6", // teal-500 - main color
-  healthy: "#2dd4bf", // teal-400 - slightly lighter
-  natural: "#5eead4", // teal-300 - medium-light
-  organic: "#99f6e4", // teal-200 - soft & light
-  growth: "#0f766e", // teal-700 - deeper tone
-  vitality: "#0d9488", // teal-600 - energetic tone
+  fresh: "#009EAD", // TEAL_ACCENT (#009EAD)
+  healthy: "#05A9B8", // TEAL_BG (#05A9B8)
+  natural: "#34C759", // SUCCESS (#34C759)
+  organic: "#F9F9F9", // CARD (#F9F9F9)
+  growth: "#2B2B2B", // TEXT_PRIMARY (#2B2B2B)
+  vitality: "#009EAD", // TEAL_ACCENT (#009EAD)
 
   // Additional mappings
-  nutrition: "#14b8a6", // teal-500 - main nutrition accent
-  supplement: "#2dd4bf", // teal-400 - secondary
-  goal: "#0f766e", // teal-700 - progress tracking
-  progress: "#0d9488", // teal-600 - ongoing progress
+  nutrition: "#009EAD", // TEAL_ACCENT (#009EAD)
+  supplement: "#05A9B8", // TEAL_BG (#05A9B8)
+  goal: "#2B2B2B", // TEXT_PRIMARY (#2B2B2B)
+  progress: "#34C759", // SUCCESS (#34C759)
 };
 
 interface ThemeContextType {
@@ -208,7 +209,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   const colors = isDark ? Colors.dark : Colors.light;
   const theme = isDark ? "dark" : "light";
 
-  // Don't render children until theme is loaded to prevent flash
   if (!isLoaded) {
     return null;
   }

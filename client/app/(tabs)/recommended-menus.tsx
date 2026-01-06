@@ -105,7 +105,7 @@ const FilterModal = ({
                     styles.filterOption,
                     {
                       backgroundColor: isSelected
-                        ? colors.emerald500
+                        ? colors.d
                         : colors.surface,
                     },
                   ]}
@@ -173,10 +173,10 @@ const MenuCard = ({
         style={[styles.menuImageHeader, { backgroundColor: colors.surface }]}
       >
         <View style={styles.menuImageContent}>
-          <ChefHat size={32} color={colors.emerald500} />
+          <ChefHat size={32} color={colors.d} />
           <View style={styles.menuBadges}>
             <View
-              style={[styles.badge, { backgroundColor: colors.emerald500 }]}
+              style={[styles.badge, { backgroundColor: colors.d }]}
             >
               <Calendar size={12} color="#ffffff" />
               <Text style={styles.badgeText}>{menu.days_count}d</Text>
@@ -291,7 +291,7 @@ const MenuCard = ({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.startButton, { backgroundColor: colors.emerald500 }]}
+            style={[styles.startButton, { backgroundColor: colors.d }]}
             onPress={() => onStart(menu.menu_id)}
           >
             <Play size={16} color="#ffffff" />
@@ -309,7 +309,7 @@ const MenuCard = ({
 const ActivePlanCard = ({ plan, colors, language, onContinue }: any) => {
   return (
     <View
-      style={[styles.activePlanCard, { backgroundColor: colors.emerald500 }]}
+      style={[styles.activePlanCard, { backgroundColor: colors.d }]}
     >
       <View style={styles.activePlanHeader}>
         <View style={styles.activePlanBadge}>
@@ -384,12 +384,12 @@ const QuickStats = ({ menus, colors, language }: any) => {
         <Text style={[styles.statsTitle, { color: colors.text }]}>
           {language === "he" ? "סיכום תפריטים" : "Menu Overview"}
         </Text>
-        <Award size={20} color={colors.emerald500} />
+        <Award size={20} color={colors.d} />
       </View>
 
       <View style={styles.statsGrid}>
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.emerald500 }]}>
+          <Text style={[styles.statValue, { color: colors.d }]}>
             {stats.totalMenus}
           </Text>
           <Text style={[styles.statLabel, { color: colors.icon }]}>
@@ -398,7 +398,7 @@ const QuickStats = ({ menus, colors, language }: any) => {
         </View>
 
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.emerald500 }]}>
+          <Text style={[styles.statValue, { color: colors.d }]}>
             {stats.avgCalories}
           </Text>
           <Text style={[styles.statLabel, { color: colors.icon }]}>
@@ -407,7 +407,7 @@ const QuickStats = ({ menus, colors, language }: any) => {
         </View>
 
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.emerald500 }]}>
+          <Text style={[styles.statValue, { color: colors.d }]}>
             {stats.totalMeals}
           </Text>
           <Text style={[styles.statLabel, { color: colors.icon }]}>
@@ -416,7 +416,7 @@ const QuickStats = ({ menus, colors, language }: any) => {
         </View>
 
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.emerald500 }]}>
+          <Text style={[styles.statValue, { color: colors.d }]}>
             ₪{stats.avgCost}
           </Text>
           <Text style={[styles.statLabel, { color: colors.icon }]}>
@@ -465,7 +465,7 @@ const CategoryPills = ({ colors, language }: any) => {
             style={[
               styles.categoryPill,
               {
-                backgroundColor: isActive ? colors.emerald500 : colors.surface,
+                backgroundColor: isActive ? colors.d : colors.surface,
               },
             ]}
             onPress={() => setSelectedCategory(category.key)}
@@ -973,7 +973,7 @@ export default function RecommendedMenusScreen() {
                 styles.submitButton,
                 {
                   backgroundColor:
-                    feedbackForm.rating > 0 ? colors.emerald500 : colors.border,
+                    feedbackForm.rating > 0 ? colors.d : colors.border,
                 },
               ]}
               onPress={handleFeedbackSubmit}
@@ -1036,8 +1036,8 @@ export default function RecommendedMenusScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[colors.emerald500]}
-            tintColor={colors.emerald500}
+            colors={[colors.d]}
+            tintColor={colors.d}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -1073,7 +1073,7 @@ export default function RecommendedMenusScreen() {
           <TouchableOpacity
             style={[
               styles.createMenuButton,
-              { backgroundColor: colors.emerald500 },
+              { backgroundColor: colors.d },
             ]}
             onPress={() => setShowEnhancedCreation(true)}
             disabled={isGenerating}
@@ -1118,7 +1118,7 @@ export default function RecommendedMenusScreen() {
               <View
                 style={[styles.emptyIcon, { backgroundColor: colors.surface }]}
               >
-                <ChefHat size={48} color={colors.emerald500} />
+                <ChefHat size={48} color={colors.d} />
               </View>
               <Text style={[styles.emptyTitle, { color: colors.text }]}>
                 {searchQuery.trim()
@@ -1143,7 +1143,7 @@ export default function RecommendedMenusScreen() {
                 <TouchableOpacity
                   style={[
                     styles.emptyButton,
-                    { backgroundColor: colors.emerald500 },
+                    { backgroundColor: colors.d },
                   ]}
                   onPress={() => setShowEnhancedCreation(true)}
                 >
