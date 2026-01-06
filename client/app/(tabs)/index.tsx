@@ -400,29 +400,29 @@ const HomeScreen = React.memo(() => {
       return {
         text: "Good Morning",
         icon: currentHour <= 7 ? Coffee : Sun,
-        color: "#F59E0B",
-        bgColor: "#FEF3C7",
+        color: colors.warning,
+        bgColor: isDark ? colors.primaryContainer : "#FEF3C7",
       };
     } else if (currentHour >= 12 && currentHour < 17) {
       return {
         text: "Good Afternoon",
         icon: Sun,
-        color: "#EAB308",
-        bgColor: "#FEF9C3",
+        color: colors.warning,
+        bgColor: isDark ? colors.primaryContainer : "#FEF9C3",
       };
     } else if (currentHour >= 17 && currentHour < 22) {
       return {
         text: "Good Evening",
         icon: Sun,
-        color: "#F97316",
-        bgColor: "#FED7AA",
+        color: colors.warning,
+        bgColor: isDark ? colors.primaryContainer : "#FED7AA",
       };
     } else {
       return {
         text: "Good Night",
         icon: Sun,
-        color: "#6366F1",
-        bgColor: "#E0E7FF",
+        color: colors.primary,
+        bgColor: isDark ? colors.primaryContainer : "#E0E7FF",
       };
     }
   };
@@ -486,13 +486,19 @@ const HomeScreen = React.memo(() => {
 
   if (dataError && retryCount > 0) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{dataError}</Text>
+      <View
+        style={[styles.errorContainer, { backgroundColor: colors.background }]}
+      >
+        <Text style={[styles.errorText, { color: colors.error }]}>
+          {dataError}
+        </Text>
         <TouchableOpacity
-          style={styles.retryButton}
+          style={[styles.retryButton, { backgroundColor: colors.primary }]}
           onPress={() => loadAllData(true)}
         >
-          <Text style={styles.retryButtonText}>Retry</Text>
+          <Text style={[styles.retryButtonText, { color: colors.onPrimary }]}>
+            Retry
+          </Text>
         </TouchableOpacity>
       </View>
     );
@@ -500,8 +506,13 @@ const HomeScreen = React.memo(() => {
 
   return (
     <ErrorBoundary>
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
+        <StatusBar
+          barStyle={isDark ? "light-content" : "dark-content"}
+          backgroundColor={colors.background}
+        />
 
         <XPNotification
           visible={showXPNotification}
@@ -521,8 +532,8 @@ const HomeScreen = React.memo(() => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={["#10B981"]}
-              tintColor="#10B981"
+              colors={[colors.primary]}
+              tintColor={colors.primary}
             />
           }
         >
@@ -537,17 +548,24 @@ const HomeScreen = React.memo(() => {
                   }}
                   style={styles.profileImage}
                 />
-                <View style={styles.onlineIndicator} />
+                <View
+                  style={[
+                    styles.onlineIndicator,
+                    { backgroundColor: colors.success },
+                  ]}
+                />
               </View>
               <View style={styles.headerInfo}>
-                <Text style={styles.dateText}>{getCurrentDate()}</Text>
+                <Text style={[styles.dateText, { color: colors.text }]}>
+                  {getCurrentDate()}
+                </Text>
               </View>
             </View>
           </View>
 
           <View style={styles.greetingCard}>
             <LinearGradient
-              colors={["#10B981", "#059669"]}
+              colors={[colors.primary, colors.primaryContainer]}
               style={styles.greetingGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -563,14 +581,39 @@ const HomeScreen = React.memo(() => {
                     <IconComponent size={24} color={greeting.color} />
                   </View>
                   <View>
-                    <Text style={styles.greetingText}>{greeting.text}</Text>
-                    <Text style={styles.greetingName}>{user?.name}!</Text>
+                    <Text
+                      style={[
+                        styles.greetingText,
+                        { color: colors.onPrimary, opacity: 0.9 },
+                      ]}
+                    >
+                      {greeting.text}
+                    </Text>
+                    <Text
+                      style={[styles.greetingName, { color: colors.onPrimary }]}
+                    >
+                      {user?.name}!
+                    </Text>
                   </View>
                 </View>
                 <View style={styles.greetingStats}>
-                  <View style={styles.statBadge}>
-                    <Star size={16} color="#FFD700" fill="#FFD700" />
-                    <Text style={styles.statBadgeText}>
+                  <View
+                    style={[
+                      styles.statBadge,
+                      { backgroundColor: colors.glass },
+                    ]}
+                  >
+                    <Star
+                      size={16}
+                      color={colors.warning}
+                      fill={colors.warning}
+                    />
+                    <Text
+                      style={[
+                        styles.statBadgeText,
+                        { color: colors.onPrimary },
+                      ]}
+                    >
                       Level {user?.level || 1}
                     </Text>
                   </View>
@@ -596,109 +639,247 @@ const HomeScreen = React.memo(() => {
           />
 
           <View style={styles.statsSection}>
-            <Text style={styles.sectionTitle}>Your Progress</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Your Progress
+            </Text>
             <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
+              <View
+                style={[
+                  styles.statCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
                 <View style={styles.statCardHeader}>
                   <View
-                    style={[styles.statIcon, { backgroundColor: "#FEF3C7" }]}
+                    style={[
+                      styles.statIcon,
+                      {
+                        backgroundColor: isDark
+                          ? colors.primaryContainer
+                          : "#FEF3C7",
+                      },
+                    ]}
                   >
-                    <Trophy size={20} color="#F59E0B" />
+                    <Trophy size={20} color={colors.warning} />
                   </View>
-                  <Text style={styles.statCardTitle}>Total XP</Text>
+                  <Text
+                    style={[
+                      styles.statCardTitle,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    Total XP
+                  </Text>
                 </View>
-                <Text style={styles.statCardValue}>
+                <Text style={[styles.statCardValue, { color: colors.text }]}>
                   {(user?.total_points || 0).toLocaleString()}
                 </Text>
-                <Text style={styles.statCardSubtext}>Keep it up!</Text>
+                <Text
+                  style={[
+                    styles.statCardSubtext,
+                    { color: colors.textTertiary },
+                  ]}
+                >
+                  Keep it up!
+                </Text>
               </View>
 
-              <View style={styles.statCard}>
+              <View
+                style={[
+                  styles.statCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
                 <View style={styles.statCardHeader}>
                   <View
-                    style={[styles.statIcon, { backgroundColor: "#FEE2E2" }]}
+                    style={[
+                      styles.statIcon,
+                      {
+                        backgroundColor: isDark
+                          ? colors.primaryContainer
+                          : "#FEE2E2",
+                      },
+                    ]}
                   >
-                    <Flame size={20} color="#EF4444" />
+                    <Flame size={20} color={colors.error} />
                   </View>
-                  <Text style={styles.statCardTitle}>Streak</Text>
+                  <Text
+                    style={[
+                      styles.statCardTitle,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    Streak
+                  </Text>
                 </View>
-                <Text style={styles.statCardValue}>
+                <Text style={[styles.statCardValue, { color: colors.text }]}>
                   {user?.current_streak || 0}
                 </Text>
-                <Text style={styles.statCardSubtext}>days in a row</Text>
+                <Text
+                  style={[
+                    styles.statCardSubtext,
+                    { color: colors.textTertiary },
+                  ]}
+                >
+                  days in a row
+                </Text>
               </View>
             </View>
           </View>
 
           <View style={styles.actionsSection}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Quick Actions
+            </Text>
             <View style={styles.actionsGrid}>
               <TouchableOpacity
-                style={styles.actionCard}
+                style={[
+                  styles.actionCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => router.push("/(tabs)/camera")}
               >
                 <View
-                  style={[styles.actionIcon, { backgroundColor: "#F0FDF4" }]}
+                  style={[
+                    styles.actionIcon,
+                    {
+                      backgroundColor: isDark
+                        ? colors.primaryContainer
+                        : colors.emerald50,
+                    },
+                  ]}
                 >
-                  <Camera size={24} color="#10B981" />
+                  <Camera size={24} color={colors.primary} />
                 </View>
-                <Text style={styles.actionText}>Add Meal</Text>
+                <Text style={[styles.actionText, { color: colors.text }]}>
+                  Add Meal
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.actionCard}
+                style={[
+                  styles.actionCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => router.push("/(tabs)/food-scanner")}
               >
                 <View
-                  style={[styles.actionIcon, { backgroundColor: "#EFF6FF" }]}
+                  style={[
+                    styles.actionIcon,
+                    {
+                      backgroundColor: isDark
+                        ? colors.primaryContainer
+                        : "#EFF6FF",
+                    },
+                  ]}
                 >
-                  <Target size={24} color="#3B82F6" />
+                  <Target size={24} color={colors.primary} />
                 </View>
-                <Text style={styles.actionText}>Scan Food</Text>
+                <Text style={[styles.actionText, { color: colors.text }]}>
+                  Scan Food
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.actionCard}
+                style={[
+                  styles.actionCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={handleOpenShoppingList}
               >
                 <View
-                  style={[styles.actionIcon, { backgroundColor: "#FEF3C7" }]}
+                  style={[
+                    styles.actionIcon,
+                    {
+                      backgroundColor: isDark
+                        ? colors.primaryContainer
+                        : "#FEF3C7",
+                    },
+                  ]}
                 >
-                  <ShoppingCart size={24} color="#F59E0B" />
+                  <ShoppingCart size={24} color={colors.warning} />
                 </View>
-                <Text style={styles.actionText}>Shopping</Text>
+                <Text style={[styles.actionText, { color: colors.text }]}>
+                  Shopping
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.actionCard}
+                style={[
+                  styles.actionCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => router.push("/(tabs)/statistics")}
               >
                 <View
-                  style={[styles.actionIcon, { backgroundColor: "#F3E8FF" }]}
+                  style={[
+                    styles.actionIcon,
+                    {
+                      backgroundColor: isDark
+                        ? colors.primaryContainer
+                        : "#F3E8FF",
+                    },
+                  ]}
                 >
-                  <TrendingUp size={24} color="#8B5CF6" />
+                  <TrendingUp size={24} color={colors.primary} />
                 </View>
-                <Text style={styles.actionText}>Statistics</Text>
+                <Text style={[styles.actionText, { color: colors.text }]}>
+                  Statistics
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.activitySection}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Today's Meals</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Today's Meals
+              </Text>
               <TouchableOpacity
                 style={styles.viewAllButton}
                 onPress={() => console.log("View all meals")}
               >
-                <Text style={styles.viewAllText}>View All</Text>
-                <ChevronRight size={16} color="#10B981" />
+                <Text style={[styles.viewAllText, { color: colors.primary }]}>
+                  View All
+                </Text>
+                <ChevronRight size={16} color={colors.primary} />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.activityList}>
+            <View
+              style={[
+                styles.activityList,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
               {isLoading ? (
-                <View style={styles.activityItem}>
-                  <Text style={styles.activityTitle}>Loading meals...</Text>
+                <View
+                  style={[
+                    styles.activityItem,
+                    { borderBottomColor: colors.border },
+                  ]}
+                >
+                  <Text style={[styles.activityTitle, { color: colors.text }]}>
+                    Loading meals...
+                  </Text>
                 </View>
               ) : processedMealsData.recentMeals.length > 0 ? (
                 processedMealsData.recentMeals.map((meal, index) => (
@@ -706,6 +887,7 @@ const HomeScreen = React.memo(() => {
                     key={meal.meal_id || `meal-${index}`}
                     style={[
                       styles.activityItem,
+                      { borderBottomColor: colors.border },
                       index === processedMealsData.recentMeals.length - 1 &&
                         styles.lastActivityItem,
                     ]}
@@ -719,44 +901,91 @@ const HomeScreen = React.memo(() => {
                       <View
                         style={[
                           styles.activityIcon,
-                          { backgroundColor: "#F0FDF4" },
+                          {
+                            backgroundColor: isDark
+                              ? colors.primaryContainer
+                              : colors.emerald50,
+                          },
                         ]}
                       >
-                        <Camera size={20} color="#10B981" />
+                        <Camera size={20} color={colors.primary} />
                       </View>
                     )}
                     <View style={styles.activityContent}>
-                      <Text style={styles.activityTitle}>
+                      <Text
+                        style={[styles.activityTitle, { color: colors.text }]}
+                      >
                         {meal.name || "Unknown Meal"}
                       </Text>
-                      <Text style={styles.activityTime}>
+                      <Text
+                        style={[
+                          styles.activityTime,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         {meal.created_at && formatTime(meal.created_at)}
                       </Text>
                     </View>
-                    <Text style={styles.activityCalories}>
+                    <Text
+                      style={[
+                        styles.activityCalories,
+                        { color: colors.primary },
+                      ]}
+                    >
                       {meal.calories || 0} kcal
                     </Text>
                   </TouchableOpacity>
                 ))
               ) : (
-                <View style={styles.activityItem}>
+                <View
+                  style={[
+                    styles.activityItem,
+                    { borderBottomColor: colors.border },
+                  ]}
+                >
                   <View
                     style={[
                       styles.activityIcon,
-                      { backgroundColor: "#F3F4F6" },
+                      { backgroundColor: colors.card },
                     ]}
                   >
-                    <Target size={20} color="#9CA3AF" />
+                    <Target size={20} color={colors.textTertiary} />
                   </View>
                   <View style={styles.activityContent}>
-                    <Text style={styles.activityTitle}>No meals today</Text>
-                    <Text style={styles.activityTime}>Add your first meal</Text>
+                    <Text
+                      style={[styles.activityTitle, { color: colors.text }]}
+                    >
+                      No meals today
+                    </Text>
+                    <Text
+                      style={[
+                        styles.activityTime,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Add your first meal
+                    </Text>
                   </View>
                   <TouchableOpacity
-                    style={styles.activityBadge}
+                    style={[
+                      styles.activityBadge,
+                      {
+                        backgroundColor: isDark
+                          ? colors.primaryContainer
+                          : colors.emerald50,
+                        borderColor: colors.primary,
+                      },
+                    ]}
                     onPress={() => console.log("Add meal")}
                   >
-                    <Text style={styles.activityBadgeText}>Add Meal</Text>
+                    <Text
+                      style={[
+                        styles.activityBadgeText,
+                        { color: colors.primary },
+                      ]}
+                    >
+                      Add Meal
+                    </Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -780,7 +1009,6 @@ export default HomeScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFA",
   },
   scrollView: {
     flex: 1,
@@ -807,7 +1035,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#F3F4F6",
   },
   onlineIndicator: {
     position: "absolute",
@@ -816,7 +1043,6 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: "#10B981",
     borderWidth: 2,
     borderColor: "#FFFFFF",
   },
@@ -826,7 +1052,6 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#374151",
   },
   greetingCard: {
     marginHorizontal: 20,
@@ -856,12 +1081,10 @@ const styles = StyleSheet.create({
   },
   greetingText: {
     fontSize: 16,
-    color: "rgba(255, 255, 255, 0.9)",
     fontWeight: "500",
   },
   greetingName: {
     fontSize: 24,
-    color: "#FFFFFF",
     fontWeight: "700",
     marginTop: 2,
   },
@@ -871,14 +1094,12 @@ const styles = StyleSheet.create({
   statBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     gap: 6,
   },
   statBadgeText: {
-    color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -893,7 +1114,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#111827",
     marginBottom: 16,
   },
   statsGrid: {
@@ -902,11 +1122,9 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 20,
     borderWidth: 0.5,
-    borderColor: "#F3F4F6",
   },
   statCardHeader: {
     flexDirection: "row",
@@ -924,17 +1142,14 @@ const styles = StyleSheet.create({
   statCardTitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#6B7280",
   },
   statCardValue: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#111827",
     marginBottom: 4,
   },
   statCardSubtext: {
     fontSize: 12,
-    color: "#9CA3AF",
     fontWeight: "500",
   },
   actionsSection: {
@@ -948,12 +1163,10 @@ const styles = StyleSheet.create({
   },
   actionCard: {
     width: (width - 56) / 2,
-    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 20,
     alignItems: "center",
     borderWidth: 0.5,
-    borderColor: "#F3F4F6",
   },
   actionIcon: {
     width: 56,
@@ -966,7 +1179,6 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#374151",
     textAlign: "center",
   },
   activitySection: {
@@ -987,20 +1199,16 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#10B981",
   },
   activityList: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     borderWidth: 0.5,
-    borderColor: "#F3F4F6",
   },
   activityItem: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
   },
   lastActivityItem: {
     borderBottomWidth: 0,
@@ -1025,31 +1233,25 @@ const styles = StyleSheet.create({
   activityTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#111827",
     marginBottom: 2,
   },
   activityTime: {
     fontSize: 14,
-    color: "#6B7280",
     fontWeight: "500",
   },
   activityCalories: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#10B981",
   },
   activityBadge: {
-    backgroundColor: "#F0FDF4",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#BBF7D0",
   },
   activityBadgeText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#059669",
   },
   bottomSpacing: {
     height: 20,
@@ -1059,23 +1261,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    backgroundColor: "#FFFFFF",
   },
   errorText: {
     fontSize: 16,
-    color: "#DC2626",
     textAlign: "center",
     marginBottom: 20,
     fontWeight: "500",
   },
   retryButton: {
-    backgroundColor: "#10B981",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,
   },
   retryButtonText: {
-    color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 16,
   },

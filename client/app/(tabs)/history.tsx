@@ -27,7 +27,6 @@ import {
   removeMeal,
 } from "@/src/store/mealSlice";
 import { useTranslation } from "react-i18next";
-import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useMealDataRefresh } from "@/hooks/useMealDataRefresh";
 import {
@@ -57,7 +56,6 @@ import {
   Apple,
   Sparkles,
   TrendingUp,
-  Award,
   Zap,
   Scale,
   Utensils,
@@ -65,51 +63,50 @@ import {
 import LoadingScreen from "@/components/LoadingScreen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Swipeable from "react-native-gesture-handler/Swipeable";
-import { nutritionAPI } from "@/src/services/api";
 import ManualMealAddition from "@/components/history/ManualMealAddition";
 import { FilterOptions } from "@/src/types/history";
 
 const { width } = Dimensions.get("window");
-const CARD_WIDTH = width - 40;
 
 const CATEGORIES = [
   {
     key: "all",
     label: "history.categories.all",
     icon: Target,
-    gradient: ["#0d9488", "#0d9488"],
+    color: "#009EAD",
   },
   {
     key: "high_protein",
     label: "history.categories.highProtein",
     icon: Dumbbell,
-    gradient: ["#EF4444", "#DC2626"],
+    color: "#FF3B30",
   },
   {
     key: "high_carb",
     label: "history.categories.highCarb",
     icon: Wheat,
-    gradient: ["#F59E0B", "#D97706"],
+    color: "#FF9F0A",
   },
   {
     key: "high_fat",
     label: "history.categories.highFat",
     icon: Droplets,
-    gradient: ["#3B82F6", "#2563EB"],
+    color: "#05A9B8",
   },
   {
     key: "balanced",
     label: "history.categories.balanced",
     icon: Activity,
-    gradient: ["#10B981", "#059669"],
+    color: "#34C759",
   },
   {
     key: "low_calorie",
     label: "history.categories.lowCalorie",
     icon: Flame,
-    gradient: ["#F97316", "#EA580C"],
+    color: "#FF9F0A",
   },
 ];
+
 const DATE_RANGES = [
   { key: "all", label: "history.timeRanges.all", icon: Calendar },
   { key: "today", label: "history.timeRanges.today", icon: Calendar },
@@ -121,55 +118,45 @@ const NUTRITION_ICONS = {
   calories: {
     icon: Flame,
     name: "nutrition.calories",
-    color: "#F59E0B",
+    color: "#FF9F0A",
     unit: "kcal",
   },
   protein: {
     icon: Dumbbell,
     name: "nutrition.protein",
-    color: "#EF4444",
+    color: "#FF3B30",
     unit: "g",
   },
-  carbs: { icon: Wheat, name: "nutrition.carbs", color: "#10B981", unit: "g" },
-  fat: { icon: Droplets, name: "nutrition.fat", color: "#3B82F6", unit: "g" },
+  carbs: { icon: Wheat, name: "nutrition.carbs", color: "#34C759", unit: "g" },
+  fat: { icon: Droplets, name: "nutrition.fat", color: "#05A9B8", unit: "g" },
 };
 
-const getMealPeriodStyle = (mealPeriod: string) => {
+const getMealPeriodStyle = (mealPeriod: string, colors: any) => {
   const baseStyles = {
     breakfast: {
-      gradient: ["#FBBF24", "#F59E0B"],
-      iconColor: "#F59E0B",
-      textColor: "#92400E",
+      iconColor: "#FF9F0A",
       icon: Sunrise,
-      bgColor: "#FEF3C7",
+      bgColor: colors.isDark ? "rgba(255, 159, 10, 0.2)" : "#FFF4E6",
     },
     lunch: {
-      gradient: ["#F87171", "#EF4444"],
-      iconColor: "#EF4444",
-      textColor: "#991B1B",
+      iconColor: "#FF3B30",
       icon: Sun,
-      bgColor: "#FEE2E2",
+      bgColor: colors.isDark ? "rgba(255, 59, 48, 0.2)" : "#FFE5E5",
     },
     dinner: {
-      gradient: ["#34D399", "#10B981"],
-      iconColor: "#10B981",
-      textColor: "#065F46",
+      iconColor: "#34C759",
       icon: Sunset,
-      bgColor: "#D1FAE5",
+      bgColor: colors.isDark ? "rgba(52, 199, 89, 0.2)" : "#E6F7E6",
     },
     snack: {
-      gradient: ["#FB923C", "#F97316"],
-      iconColor: "#F97316",
-      textColor: "#9A3412",
+      iconColor: "#FF9F0A",
       icon: Apple,
-      bgColor: "#FED7AA",
+      bgColor: colors.isDark ? "rgba(255, 159, 10, 0.2)" : "#FFF4E6",
     },
     late_night: {
-      gradient: ["#60A5FA", "#3B82F6"],
-      iconColor: "#3B82F6",
-      textColor: "#1E3A8A",
+      iconColor: "#05A9B8",
       icon: Moon,
-      bgColor: "#DBEAFE",
+      bgColor: colors.isDark ? "rgba(5, 169, 184, 0.2)" : "#E6F7F7",
     },
   };
 
@@ -178,11 +165,9 @@ const getMealPeriodStyle = (mealPeriod: string) => {
 
   if (!style) {
     return {
-      gradient: ["#9CA3AF", "#6B7280"],
-      iconColor: "#6B7280",
-      textColor: "#374151",
+      iconColor: colors.icon,
       icon: Coffee,
-      bgColor: "#F3F4F6",
+      bgColor: colors.surfaceVariant,
     };
   }
 
@@ -196,7 +181,7 @@ const SwipeableMealCard = ({
   onToggleFavorite,
 }: any) => {
   const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const dispatch = useDispatch<AppDispatch>();
   const [isExpanded, setIsExpanded] = useState(false);
   const [savingRatings, setSavingRatings] = useState(false);
@@ -215,7 +200,8 @@ const SwipeableMealCard = ({
   const animatedHeight = useState(new Animated.Value(0))[0];
   const scaleAnim = useState(new Animated.Value(1))[0];
   const mealPeriodStyle = getMealPeriodStyle(
-    meal.meal_period || meal.mealPeriod || "other"
+    meal.meal_period || meal.mealPeriod || "other",
+    { ...colors, isDark }
   );
   const MealIcon = mealPeriodStyle.icon;
 
@@ -299,58 +285,6 @@ const SwipeableMealCard = ({
     }
   };
 
-  const handleCopyPress = () => {
-    setShowCopyConfirm(true);
-    swipeableRef.current?.close();
-  };
-
-  const handleDeletePress = () => {
-    setShowDeleteConfirm(true);
-    swipeableRef.current?.close();
-  };
-
-  const confirmCopy = () => {
-    setShowCopyConfirm(false);
-    onDuplicate(meal.id || meal.meal_id?.toString());
-  };
-
-  const confirmDelete = () => {
-    setShowDeleteConfirm(false);
-    onDelete(meal.id || meal.meal_id?.toString());
-  };
-
-  const renderLeftActions = () => (
-    <View style={styles.swipeActionWrapper}>
-      <TouchableOpacity
-        style={styles.swipeActionButton}
-        onPress={handleCopyPress}
-        activeOpacity={0.85}
-      >
-        <View style={styles.swipeActionGradient}>
-          <View style={styles.swipeIconWrapper}>
-            <Copy size={24} color={colors.success} strokeWidth={2.5} />
-          </View>
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderRightActions = () => (
-    <View style={styles.swipeActionWrapper}>
-      <TouchableOpacity
-        style={styles.swipeActionButton}
-        onPress={handleDeletePress}
-        activeOpacity={0.85}
-      >
-        <View style={styles.swipeActionGradient}>
-          <View style={styles.swipeIconWrapper}>
-            <Trash2 size={24} color={colors.destructive} strokeWidth={2.5} />
-          </View>
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
-
   const renderStarRating = (
     rating: number,
     onPress: (rating: number) => void
@@ -366,8 +300,8 @@ const SwipeableMealCard = ({
           >
             <Star
               size={20}
-              color={star <= rating ? "#FBBF24" : "#E5E7EB"}
-              fill={star <= rating ? "#FBBF24" : "transparent"}
+              color={star <= rating ? "#FF9F0A" : colors.muted}
+              fill={star <= rating ? "#FF9F0A" : "transparent"}
               strokeWidth={2}
             />
           </TouchableOpacity>
@@ -406,6 +340,58 @@ const SwipeableMealCard = ({
 
   const ingredients = getIngredients();
 
+  const renderLeftActions = () => (
+    <View style={styles.swipeActionWrapper}>
+      <TouchableOpacity
+        style={styles.swipeActionButton}
+        onPress={() => {
+          setShowCopyConfirm(true);
+          swipeableRef.current?.close();
+        }}
+        activeOpacity={0.85}
+      >
+        <View
+          style={[
+            styles.swipeIconWrapper,
+            {
+              backgroundColor: isDark
+                ? "rgba(52, 199, 89, 0.3)"
+                : "rgba(52, 199, 89, 0.2)",
+            },
+          ]}
+        >
+          <Copy size={24} color={colors.success} strokeWidth={2.5} />
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderRightActions = () => (
+    <View style={styles.swipeActionWrapper}>
+      <TouchableOpacity
+        style={styles.swipeActionButton}
+        onPress={() => {
+          setShowDeleteConfirm(true);
+          swipeableRef.current?.close();
+        }}
+        activeOpacity={0.85}
+      >
+        <View
+          style={[
+            styles.swipeIconWrapper,
+            {
+              backgroundColor: isDark
+                ? "rgba(255, 59, 48, 0.3)"
+                : "rgba(255, 59, 48, 0.2)",
+            },
+          ]}
+        >
+          <Trash2 size={24} color={colors.destructive} strokeWidth={2.5} />
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <View style={styles.swipeContainer}>
       <Swipeable
@@ -418,7 +404,12 @@ const SwipeableMealCard = ({
         overshootRight={false}
         friction={2}
       >
-        <View style={[styles.mealCard, { backgroundColor: colors.card }]}>
+        <View
+          style={[
+            styles.mealCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
           <TouchableOpacity
             style={styles.cardContent}
             onPress={() => setIsExpanded(!isExpanded)}
@@ -428,15 +419,31 @@ const SwipeableMealCard = ({
               {meal.image_url ? (
                 <Image
                   source={{ uri: meal.image_url }}
-                  style={styles.cardImage}
+                  style={[styles.cardImage, { borderColor: colors.border }]}
                 />
               ) : (
-                <View style={styles.imagePlaceholder}>
-                  <Camera size={32} color="#FFFFFF" strokeWidth={2} />
+                <View
+                  style={[
+                    styles.imagePlaceholder,
+                    {
+                      backgroundColor: colors.surfaceVariant,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Camera size={32} color={colors.icon} strokeWidth={2} />
                 </View>
               )}
               {localMealData.is_favorite && (
-                <View style={styles.heartBadge}>
+                <View
+                  style={[
+                    styles.heartBadge,
+                    {
+                      backgroundColor: colors.destructive,
+                      borderColor: colors.card,
+                    },
+                  ]}
+                >
                   <Heart
                     size={14}
                     color="#FFFFFF"
@@ -472,12 +479,28 @@ const SwipeableMealCard = ({
               </View>
 
               <View style={styles.mealMetaRow}>
-                <View style={styles.caloriesBadge}>
-                  <Flame size={14} color="#F59E0B" strokeWidth={2.5} />
-                  <Text style={styles.caloriesText}>
+                <View
+                  style={[
+                    styles.caloriesBadge,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(255, 159, 10, 0.2)"
+                        : "#FFF4E6",
+                    },
+                  ]}
+                >
+                  <Flame size={14} color="#FF9F0A" strokeWidth={2.5} />
+                  <Text style={[styles.caloriesText, { color: colors.text }]}>
                     {Math.round(meal.calories || 0)}
                   </Text>
-                  <Text style={styles.caloriesUnit}>kcal</Text>
+                  <Text
+                    style={[
+                      styles.caloriesUnit,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    kcal
+                  </Text>
                 </View>
 
                 <Text
@@ -499,11 +522,13 @@ const SwipeableMealCard = ({
                       key={i}
                       size={11}
                       color={
-                        i < localMealData.taste_rating ? "#FBBF24" : "#E5E7EB"
+                        i < localMealData.taste_rating
+                          ? "#FF9F0A"
+                          : colors.muted
                       }
                       fill={
                         i < localMealData.taste_rating
-                          ? "#FBBF24"
+                          ? "#FF9F0A"
                           : "transparent"
                       }
                       strokeWidth={2}
@@ -521,8 +546,10 @@ const SwipeableMealCard = ({
                     styles.favoriteButton,
                     {
                       backgroundColor: localMealData.is_favorite
-                        ? "#FEE2E2"
-                        : colors.background,
+                        ? isDark
+                          ? "rgba(255, 59, 48, 0.2)"
+                          : "#FFE5E5"
+                        : colors.surfaceVariant,
                     },
                   ]}
                   activeOpacity={0.7}
@@ -531,10 +558,14 @@ const SwipeableMealCard = ({
                     size={20}
                     color={
                       localMealData.is_favorite
-                        ? "#EF4444"
-                        : colors.textSecondary
+                        ? colors.destructive
+                        : colors.icon
                     }
-                    fill={localMealData.is_favorite ? "#EF4444" : "transparent"}
+                    fill={
+                      localMealData.is_favorite
+                        ? colors.destructive
+                        : "transparent"
+                    }
                     strokeWidth={2.5}
                   />
                 </TouchableOpacity>
@@ -546,28 +577,20 @@ const SwipeableMealCard = ({
                   {
                     backgroundColor: isExpanded
                       ? mealPeriodStyle.bgColor
-                      : colors.background,
+                      : colors.surfaceVariant,
                   },
                 ]}
               >
                 {isExpanded ? (
                   <ChevronUp
                     size={18}
-                    color={
-                      isExpanded
-                        ? mealPeriodStyle.iconColor
-                        : colors.textSecondary
-                    }
+                    color={isExpanded ? mealPeriodStyle.iconColor : colors.icon}
                     strokeWidth={3}
                   />
                 ) : (
                   <ChevronDown
                     size={18}
-                    color={
-                      isExpanded
-                        ? mealPeriodStyle.iconColor
-                        : colors.textSecondary
-                    }
+                    color={isExpanded ? mealPeriodStyle.iconColor : colors.icon}
                     strokeWidth={3}
                   />
                 )}
@@ -589,7 +612,9 @@ const SwipeableMealCard = ({
           >
             {isExpanded && (
               <View style={styles.expandedContent}>
-                <View style={styles.divider} />
+                <View
+                  style={[styles.divider, { backgroundColor: colors.border }]}
+                />
 
                 <View style={styles.nutritionSection}>
                   <View style={styles.sectionHeader}>
@@ -619,13 +644,17 @@ const SwipeableMealCard = ({
                           key={key}
                           style={[
                             styles.nutritionCard,
-                            { backgroundColor: colors.background },
+                            { backgroundColor: colors.surfaceVariant },
                           ]}
                         >
                           <View
                             style={[
                               styles.nutritionIconContainer,
-                              { backgroundColor: config.color + "15" },
+                              {
+                                backgroundColor: isDark
+                                  ? `${config.color}30`
+                                  : `${config.color}15`,
+                              },
                             ]}
                           >
                             <IconComponent
@@ -670,18 +699,40 @@ const SwipeableMealCard = ({
                       <View
                         style={[
                           styles.sectionIconBg,
-                          { backgroundColor: "#DCFCE7" },
+                          {
+                            backgroundColor: isDark
+                              ? "rgba(52, 199, 89, 0.2)"
+                              : "#E6F7E6",
+                          },
                         ]}
                       >
-                        <Apple size={16} color="#10B981" strokeWidth={2.5} />
+                        <Apple
+                          size={16}
+                          color={colors.success}
+                          strokeWidth={2.5}
+                        />
                       </View>
                       <Text
                         style={[styles.sectionTitle, { color: colors.text }]}
                       >
                         {t("history.ingredients")}
                       </Text>
-                      <View style={styles.countBadge}>
-                        <Text style={styles.countBadgeText}>
+                      <View
+                        style={[
+                          styles.countBadge,
+                          {
+                            backgroundColor: isDark
+                              ? "rgba(52, 199, 89, 0.2)"
+                              : "#E6F7E6",
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.countBadgeText,
+                            { color: colors.success },
+                          ]}
+                        >
                           {ingredients.length}
                         </Text>
                       </View>
@@ -703,9 +754,21 @@ const SwipeableMealCard = ({
                         return (
                           <View
                             key={`ingredient-${index}`}
-                            style={styles.ingredientChip}
+                            style={[
+                              styles.ingredientChip,
+                              {
+                                backgroundColor: isDark
+                                  ? "rgba(52, 199, 89, 0.2)"
+                                  : "#E6F7E6",
+                              },
+                            ]}
                           >
-                            <Text style={styles.ingredientText}>
+                            <Text
+                              style={[
+                                styles.ingredientText,
+                                { color: colors.success },
+                              ]}
+                            >
                               {ingredientName}
                             </Text>
                           </View>
@@ -720,14 +783,18 @@ const SwipeableMealCard = ({
                     <View
                       style={[
                         styles.sectionIconBg,
-                        { backgroundColor: "#FEF3C7" },
+                        {
+                          backgroundColor: isDark
+                            ? "rgba(255, 159, 10, 0.2)"
+                            : "#FFF4E6",
+                        },
                       ]}
                     >
                       <Star
                         size={16}
-                        color="#F59E0B"
+                        color="#FF9F0A"
                         strokeWidth={2.5}
-                        fill="#F59E0B"
+                        fill="#FF9F0A"
                       />
                     </View>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -741,62 +808,61 @@ const SwipeableMealCard = ({
                         key: "taste_rating",
                         label: "history.ratings.taste",
                         Icon: Utensils,
-                        color: "#F59E0B",
+                        color: "#FF9F0A",
                       },
                       {
                         key: "satiety_rating",
                         label: "history.ratings.fullness",
                         Icon: Heart,
-                        color: "#10B981",
+                        color: "#34C759",
                       },
                       {
                         key: "energy_rating",
                         label: "history.ratings.energy",
                         Icon: Zap,
-                        color: "#3B82F6",
+                        color: "#05A9B8",
                       },
                       {
                         key: "heaviness_rating",
                         label: "history.ratings.heaviness",
                         Icon: Scale,
-                        color: "#8B5CF6",
+                        color: "#009EAD",
                       },
-                    ].map(({ key, label, Icon, color }) => {
-                      return (
-                        <View
-                          key={key}
-                          style={[
-                            styles.ratingItem,
-                            { backgroundColor: colors.background },
-                          ]}
-                        >
-                          <View style={styles.ratingItemHeader}>
-                            <View
-                              style={[
-                                styles.ratingEmojiContainer,
-                                { backgroundColor: color + "15" },
-                              ]}
-                            >
-                              <Icon size={18} color={color} strokeWidth={2.5} />
-                            </View>
-                            <Text
-                              style={[
-                                styles.ratingLabel,
-                                { color: colors.text },
-                              ]}
-                            >
-                              {t(label)}
-                            </Text>
+                    ].map(({ key, label, Icon, color }) => (
+                      <View
+                        key={key}
+                        style={[
+                          styles.ratingItem,
+                          { backgroundColor: colors.surfaceVariant },
+                        ]}
+                      >
+                        <View style={styles.ratingItemHeader}>
+                          <View
+                            style={[
+                              styles.ratingEmojiContainer,
+                              {
+                                backgroundColor: isDark
+                                  ? `${color}30`
+                                  : `${color}15`,
+                              },
+                            ]}
+                          >
+                            <Icon size={18} color={color} strokeWidth={2.5} />
                           </View>
-                          {renderStarRating(
-                            localMealData[
-                              key as keyof typeof localMealData
-                            ] as number,
-                            (rating) => handleRatingChange(key, rating)
-                          )}
+                          <Text
+                            style={[styles.ratingLabel, { color: colors.text }]}
+                          >
+                            {t(label)}
+                          </Text>
                         </View>
-                      );
-                    })}
+                        {renderStarRating(
+                          localMealData[
+                            key as keyof typeof localMealData
+                          ] as number,
+                          (rating) => handleRatingChange(key, rating)
+                        )}
+                      </View>
+                    ))}
                   </View>
 
                   <TouchableOpacity
@@ -805,7 +871,12 @@ const SwipeableMealCard = ({
                     disabled={savingRatings}
                     activeOpacity={0.8}
                   >
-                    <View style={styles.saveButtonGradient}>
+                    <View
+                      style={[
+                        styles.saveButtonGradient,
+                        { backgroundColor: colors.primary },
+                      ]}
+                    >
                       {savingRatings ? (
                         <ActivityIndicator size="small" color="#ffffff" />
                       ) : (
@@ -835,15 +906,23 @@ const SwipeableMealCard = ({
         transparent={true}
         onRequestClose={() => setShowCopyConfirm(false)}
       >
-        <BlurView intensity={40} tint="dark" style={styles.confirmModalOverlay}>
+        <BlurView
+          intensity={40}
+          tint={isDark ? "dark" : "light"}
+          style={styles.confirmModalOverlay}
+        >
           <View style={[styles.confirmModal, { backgroundColor: colors.card }]}>
             <View
               style={[
                 styles.confirmIconContainer,
-                { backgroundColor: "#DCFCE7" },
+                {
+                  backgroundColor: isDark
+                    ? "rgba(52, 199, 89, 0.2)"
+                    : "#E6F7E6",
+                },
               ]}
             >
-              <Copy size={32} color="#10B981" strokeWidth={2.5} />
+              <Copy size={32} color={colors.success} strokeWidth={2.5} />
             </View>
             <Text style={[styles.confirmTitle, { color: colors.text }]}>
               {t("history.confirm.copyTitle")}
@@ -857,7 +936,10 @@ const SwipeableMealCard = ({
               <TouchableOpacity
                 style={[
                   styles.confirmCancelButton,
-                  { backgroundColor: colors.background },
+                  {
+                    backgroundColor: colors.surfaceVariant,
+                    borderColor: colors.border,
+                  },
                 ]}
                 onPress={() => setShowCopyConfirm(false)}
                 activeOpacity={0.7}
@@ -870,10 +952,18 @@ const SwipeableMealCard = ({
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.confirmButton}
-                onPress={confirmCopy}
+                onPress={() => {
+                  setShowCopyConfirm(false);
+                  onDuplicate(meal.id || meal.meal_id?.toString());
+                }}
                 activeOpacity={0.8}
               >
-                <View style={styles.confirmButtonGradient}>
+                <View
+                  style={[
+                    styles.confirmButtonGradient,
+                    { backgroundColor: colors.success },
+                  ]}
+                >
                   <Copy size={18} color="#FFFFFF" strokeWidth={2.5} />
                   <Text style={styles.confirmButtonText}>
                     {t("history.actions.copy")}
@@ -891,15 +981,23 @@ const SwipeableMealCard = ({
         transparent={true}
         onRequestClose={() => setShowDeleteConfirm(false)}
       >
-        <BlurView intensity={40} tint="dark" style={styles.confirmModalOverlay}>
+        <BlurView
+          intensity={40}
+          tint={isDark ? "dark" : "light"}
+          style={styles.confirmModalOverlay}
+        >
           <View style={[styles.confirmModal, { backgroundColor: colors.card }]}>
             <View
               style={[
                 styles.confirmIconContainer,
-                { backgroundColor: "#FEE2E2" },
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255, 59, 48, 0.2)"
+                    : "#FFE5E5",
+                },
               ]}
             >
-              <Trash2 size={32} color="#EF4444" strokeWidth={2.5} />
+              <Trash2 size={32} color={colors.destructive} strokeWidth={2.5} />
             </View>
             <Text style={[styles.confirmTitle, { color: colors.text }]}>
               {t("history.confirm.deleteTitle")}
@@ -913,7 +1011,10 @@ const SwipeableMealCard = ({
               <TouchableOpacity
                 style={[
                   styles.confirmCancelButton,
-                  { backgroundColor: colors.background },
+                  {
+                    backgroundColor: colors.surfaceVariant,
+                    borderColor: colors.border,
+                  },
                 ]}
                 onPress={() => setShowDeleteConfirm(false)}
                 activeOpacity={0.7}
@@ -926,10 +1027,18 @@ const SwipeableMealCard = ({
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.confirmButton}
-                onPress={confirmDelete}
+                onPress={() => {
+                  setShowDeleteConfirm(false);
+                  onDelete(meal.id || meal.meal_id?.toString());
+                }}
                 activeOpacity={0.8}
               >
-                <View style={styles.confirmButtonGradient}>
+                <View
+                  style={[
+                    styles.confirmButtonGradient,
+                    { backgroundColor: colors.destructive },
+                  ]}
+                >
                   <Trash2 size={18} color="#FFFFFF" strokeWidth={2.5} />
                   <Text style={styles.confirmButtonText}>
                     {t("history.actions.delete")}
@@ -946,7 +1055,7 @@ const SwipeableMealCard = ({
 
 export default function HistoryScreen() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const dispatch = useDispatch<AppDispatch>();
   const { meals, isLoading } = useSelector((state: RootState) => state.meal);
   const { refreshAllMealData, refreshMealData } = useMealDataRefresh();
@@ -961,7 +1070,6 @@ export default function HistoryScreen() {
     maxCalories: 2000,
     showFavoritesOnly: false,
   });
-
   const [showManualMealModal, setShowManualMealModal] = useState(false);
 
   useEffect(() => {
@@ -983,9 +1091,7 @@ export default function HistoryScreen() {
     async (mealId: string) => {
       try {
         const result = await dispatch(toggleMealFavorite(mealId)).unwrap();
-        if (result) {
-          refreshMealData();
-        }
+        if (result) refreshMealData();
       } catch (error) {
         console.error("Failed to toggle favorite:", error);
         Alert.alert(
@@ -1031,7 +1137,6 @@ export default function HistoryScreen() {
 
   const filteredMeals = useMemo(() => {
     if (!meals) return [];
-
     return meals.filter((meal: any) => {
       if (searchQuery.trim() !== "") {
         const query = searchQuery.toLowerCase();
@@ -1081,18 +1186,13 @@ export default function HistoryScreen() {
       }
 
       const calories = meal.calories || 0;
-      if (calories < filters.minCalories || calories > filters.maxCalories) {
+      if (calories < filters.minCalories || calories > filters.maxCalories)
         return false;
-      }
-
-      if (filters.showFavoritesOnly && !meal.is_favorite) {
-        return false;
-      }
+      if (filters.showFavoritesOnly && !meal.is_favorite) return false;
 
       if (filters.dateRange !== "all") {
         const mealDate = new Date(meal.created_at || meal.upload_time);
         const now = new Date();
-
         switch (filters.dateRange) {
           case "today":
             if (mealDate.toDateString() !== now.toDateString()) return false;
@@ -1107,14 +1207,12 @@ export default function HistoryScreen() {
             break;
         }
       }
-
       return true;
     });
   }, [meals, searchQuery, filters]);
 
   const insights = useMemo(() => {
     if (!filteredMeals.length) return null;
-
     const totalCalories = filteredMeals.reduce(
       (sum: number, meal: any) => sum + (meal.calories || 0),
       0
@@ -1143,9 +1241,7 @@ export default function HistoryScreen() {
 
   const listData = useMemo(() => {
     const data = [];
-    if (insights) {
-      data.push({ type: "insights", data: insights });
-    }
+    if (insights) data.push({ type: "insights", data: insights });
     return data.concat(
       filteredMeals.map((meal: any) => ({ type: "meal", data: meal }))
     );
@@ -1156,48 +1252,85 @@ export default function HistoryScreen() {
   const renderItem = ({ item }: { item: any }) => {
     if (item.type === "insights") {
       return (
-        <View style={styles.insightsCard}>
-          <BlurView intensity={80} tint="light" style={styles.insightsBlur}>
-            <View style={styles.insightsGradient}>
+        <View style={[styles.insightsCard, { borderColor: colors.border }]}>
+          <BlurView
+            intensity={80}
+            tint={isDark ? "dark" : "light"}
+            style={styles.insightsBlur}
+          >
+            <View
+              style={[
+                styles.insightsGradient,
+                { backgroundColor: colors.primary },
+              ]}
+            >
               <View style={styles.insightsHeader}>
                 <View style={styles.insightsHeaderText}>
-                  <Text style={styles.insightsTitle}>
+                  <Text
+                    style={[styles.insightsTitle, { color: colors.onPrimary }]}
+                  >
                     {t("history.insights.title")}
                   </Text>
                 </View>
               </View>
-
               <View style={styles.insightsGrid}>
                 <View style={styles.insightItem}>
-                  <Text style={styles.insightValue}>
+                  <Text
+                    style={[styles.insightValue, { color: colors.onPrimary }]}
+                  >
                     {item.data.totalMeals}
                   </Text>
-                  <Text style={styles.insightLabel}>
+                  <Text
+                    style={[
+                      styles.insightLabel,
+                      { color: colors.onPrimary, opacity: 0.9 },
+                    ]}
+                  >
                     {t("history.insights.totalMeals")}
                   </Text>
                 </View>
-
                 <View style={styles.insightItem}>
-                  <Text style={styles.insightValue}>
+                  <Text
+                    style={[styles.insightValue, { color: colors.onPrimary }]}
+                  >
                     {item.data.avgCalories}
                   </Text>
-                  <Text style={styles.insightLabel}>
+                  <Text
+                    style={[
+                      styles.insightLabel,
+                      { color: colors.onPrimary, opacity: 0.9 },
+                    ]}
+                  >
                     {t("history.insights.avgCalories")}
                   </Text>
                 </View>
-
                 <View style={styles.insightItem}>
-                  <Text style={styles.insightValue}>
+                  <Text
+                    style={[styles.insightValue, { color: colors.onPrimary }]}
+                  >
                     {item.data.favoriteMeals}
                   </Text>
-                  <Text style={styles.insightLabel}>
+                  <Text
+                    style={[
+                      styles.insightLabel,
+                      { color: colors.onPrimary, opacity: 0.9 },
+                    ]}
+                  >
                     {t("history.insights.favorites")}
                   </Text>
                 </View>
-
                 <View style={styles.insightItem}>
-                  <Text style={styles.insightValue}>{item.data.avgRating}</Text>
-                  <Text style={styles.insightLabel}>
+                  <Text
+                    style={[styles.insightValue, { color: colors.onPrimary }]}
+                  >
+                    {item.data.avgRating}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.insightLabel,
+                      { color: colors.onPrimary, opacity: 0.9 },
+                    ]}
+                  >
                     {t("history.insights.avgRating")}
                   </Text>
                 </View>
@@ -1207,7 +1340,6 @@ export default function HistoryScreen() {
         </View>
       );
     }
-
     return (
       <SwipeableMealCard
         key={item.data.meal_id}
@@ -1243,12 +1375,13 @@ export default function HistoryScreen() {
           </View>
 
           <View style={styles.searchContainer}>
-            <View style={[styles.searchBar, { backgroundColor: colors.card }]}>
-              <Search
-                size={20}
-                color={colors.textSecondary}
-                strokeWidth={2.5}
-              />
+            <View
+              style={[
+                styles.searchBar,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Search size={20} color={colors.icon} strokeWidth={2.5} />
               <TextInput
                 style={[styles.searchInput, { color: colors.text }]}
                 placeholder={t("history.searchPlaceholder")}
@@ -1258,20 +1391,30 @@ export default function HistoryScreen() {
               />
               {searchQuery.length > 0 && (
                 <TouchableOpacity onPress={() => setSearchQuery("")}>
-                  <X size={18} color={colors.textSecondary} strokeWidth={2.5} />
+                  <X size={18} color={colors.icon} strokeWidth={2.5} />
                 </TouchableOpacity>
               )}
             </View>
 
             <TouchableOpacity
-              style={[styles.filterButton, { backgroundColor: colors.card }]}
+              style={[
+                styles.filterButton,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
               onPress={() => setShowFilters(true)}
               activeOpacity={0.7}
             >
-              <Filter size={20} color={colors.background} strokeWidth={2.5} />
+              <Filter size={20} color={colors.primary} strokeWidth={2.5} />
               {(filters.category !== "all" ||
                 filters.dateRange !== "all" ||
-                filters.showFavoritesOnly) && <View style={styles.filterDot} />}
+                filters.showFavoritesOnly) && (
+                <View
+                  style={[
+                    styles.filterDot,
+                    { backgroundColor: colors.destructive },
+                  ]}
+                />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -1283,7 +1426,6 @@ export default function HistoryScreen() {
             {CATEGORIES.map((category) => {
               const isSelected = filters.category === category.key;
               const IconComponent = category.icon;
-
               return (
                 <TouchableOpacity
                   key={category.key}
@@ -1293,7 +1435,12 @@ export default function HistoryScreen() {
                   activeOpacity={0.7}
                 >
                   {isSelected ? (
-                    <View style={styles.categoryPill}>
+                    <View
+                      style={[
+                        styles.categoryPill,
+                        { backgroundColor: category.color },
+                      ]}
+                    >
                       <IconComponent
                         size={14}
                         color="#FFFFFF"
@@ -1307,12 +1454,15 @@ export default function HistoryScreen() {
                     <View
                       style={[
                         styles.categoryPillUnselected,
-                        { backgroundColor: colors.card },
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        },
                       ]}
                     >
                       <IconComponent
                         size={14}
-                        color={colors.textSecondary}
+                        color={colors.icon}
                         strokeWidth={2.5}
                       />
                       <Text
@@ -1344,8 +1494,8 @@ export default function HistoryScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                colors={[selectedCategory?.gradient[0] || "#8B5CF6"]}
-                tintColor={selectedCategory?.gradient[0] || "#8B5CF6"}
+                colors={[selectedCategory?.color || colors.primary]}
+                tintColor={selectedCategory?.color || colors.primary}
                 progressBackgroundColor={colors.card}
               />
             }
@@ -1355,7 +1505,7 @@ export default function HistoryScreen() {
             <View
               style={[styles.emptyStateIcon, { backgroundColor: colors.card }]}
             >
-              <Camera size={56} color={colors.textSecondary} strokeWidth={2} />
+              <Camera size={56} color={colors.icon} strokeWidth={2} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
               {t("history.emptyState.title")}
@@ -1376,26 +1526,51 @@ export default function HistoryScreen() {
           transparent={true}
           onRequestClose={() => setShowFilters(false)}
         >
-          <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
+          <BlurView
+            intensity={50}
+            tint={isDark ? "dark" : "light"}
+            style={styles.modalOverlay}
+          >
             <View
               style={[
                 styles.filterModal,
                 { backgroundColor: colors.background },
               ]}
             >
-              <View style={styles.modalHeader}>
+              <View
+                style={[
+                  styles.modalHeader,
+                  { backgroundColor: colors.primary },
+                ]}
+              >
                 <View>
-                  <Text style={styles.modalTitle}>
+                  <Text
+                    style={[styles.modalTitle, { color: colors.onPrimary }]}
+                  >
                     {t("history.filter.title")}
                   </Text>
-                  <Text style={styles.modalSubtitle}>Customize your view</Text>
+                  <Text
+                    style={[
+                      styles.modalSubtitle,
+                      { color: colors.onPrimary, opacity: 0.9 },
+                    ]}
+                  >
+                    Customize your view
+                  </Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => setShowFilters(false)}
-                  style={styles.closeButton}
+                  style={[
+                    styles.closeButton,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.2)"
+                        : "rgba(255,255,255,0.3)",
+                    },
+                  ]}
                   activeOpacity={0.7}
                 >
-                  <X size={22} color="#FFFFFF" strokeWidth={2.5} />
+                  <X size={22} color={colors.onPrimary} strokeWidth={2.5} />
                 </TouchableOpacity>
               </View>
 
@@ -1420,10 +1595,12 @@ export default function HistoryScreen() {
                             styles.filterCategoryChip,
                             {
                               backgroundColor: isSelected
-                                ? category.gradient[0] + "20"
+                                ? isDark
+                                  ? `${category.color}30`
+                                  : `${category.color}20`
                                 : colors.card,
                               borderColor: isSelected
-                                ? category.gradient[0]
+                                ? category.color
                                 : colors.border,
                             },
                           ]}
@@ -1437,11 +1614,7 @@ export default function HistoryScreen() {
                         >
                           <IconComponent
                             size={16}
-                            color={
-                              isSelected
-                                ? category.gradient[0]
-                                : colors.textSecondary
-                            }
+                            color={isSelected ? category.color : colors.icon}
                             strokeWidth={2.5}
                           />
                           <Text
@@ -1449,7 +1622,7 @@ export default function HistoryScreen() {
                               styles.categoryChipText,
                               {
                                 color: isSelected
-                                  ? category.gradient[0]
+                                  ? category.color
                                   : colors.text,
                               },
                             ]}
@@ -1479,10 +1652,12 @@ export default function HistoryScreen() {
                             styles.dateRangeChip,
                             {
                               backgroundColor: isSelected
-                                ? selectedCategory?.gradient[0] + "20"
+                                ? isDark
+                                  ? `${selectedCategory?.color}30`
+                                  : `${selectedCategory?.color}20`
                                 : colors.card,
                               borderColor: isSelected
-                                ? selectedCategory?.gradient[0]
+                                ? selectedCategory?.color
                                 : colors.border,
                             },
                           ]}
@@ -1497,9 +1672,7 @@ export default function HistoryScreen() {
                           <IconComponent
                             size={16}
                             color={
-                              isSelected
-                                ? selectedCategory?.gradient[0]
-                                : colors.textSecondary
+                              isSelected ? selectedCategory?.color : colors.icon
                             }
                             strokeWidth={2.5}
                           />
@@ -1508,7 +1681,7 @@ export default function HistoryScreen() {
                               styles.dateRangeChipText,
                               {
                                 color: isSelected
-                                  ? selectedCategory?.gradient[0]
+                                  ? selectedCategory?.color
                                   : colors.text,
                               },
                             ]}
@@ -1527,10 +1700,12 @@ export default function HistoryScreen() {
                       styles.favoritesToggle,
                       {
                         backgroundColor: filters.showFavoritesOnly
-                          ? "#FEE2E2"
+                          ? isDark
+                            ? "rgba(255, 59, 48, 0.2)"
+                            : "#FFE5E5"
                           : colors.card,
                         borderColor: filters.showFavoritesOnly
-                          ? "#EF4444"
+                          ? colors.destructive
                           : colors.border,
                       },
                     ]}
@@ -1548,17 +1723,19 @@ export default function HistoryScreen() {
                           styles.toggleIconBg,
                           {
                             backgroundColor: filters.showFavoritesOnly
-                              ? "#FFFFFF"
-                              : colors.background,
+                              ? isDark
+                                ? "rgba(255, 59, 48, 0.3)"
+                                : "#FFFFFF"
+                              : colors.surfaceVariant,
                           },
                         ]}
                       >
                         <Heart
                           size={18}
-                          color="#EF4444"
+                          color={colors.destructive}
                           fill={
                             filters.showFavoritesOnly
-                              ? "#EF4444"
+                              ? colors.destructive
                               : "transparent"
                           }
                           strokeWidth={2.5}
@@ -1588,8 +1765,8 @@ export default function HistoryScreen() {
                         styles.toggleSwitch,
                         {
                           backgroundColor: filters.showFavoritesOnly
-                            ? "#EF4444"
-                            : "#D1D5DB",
+                            ? colors.destructive
+                            : colors.muted,
                         },
                       ]}
                     >
@@ -1641,7 +1818,12 @@ export default function HistoryScreen() {
                     onPress={() => setShowFilters(false)}
                     activeOpacity={0.8}
                   >
-                    <View style={styles.applyButtonGradient}>
+                    <View
+                      style={[
+                        styles.applyButtonGradient,
+                        { backgroundColor: colors.primary },
+                      ]}
+                    >
                       <Zap size={18} color="#FFFFFF" strokeWidth={2.5} />
                       <Text style={styles.applyButtonText}>
                         {t("history.filter.apply")}
@@ -1655,13 +1837,11 @@ export default function HistoryScreen() {
         </Modal>
 
         <TouchableOpacity
-          style={styles.floatingButton}
+          style={[styles.floatingButton, { backgroundColor: colors.primary }]}
           onPress={() => setShowManualMealModal(true)}
           activeOpacity={0.9}
         >
-          <View>
-            <Plus size={24} color="#FFFFFF" strokeWidth={3} />
-          </View>
+          <Plus size={24} color="#FFFFFF" strokeWidth={3} />
         </TouchableOpacity>
 
         <ManualMealAddition
@@ -1678,40 +1858,22 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-
-  headerTop: {
-    marginBottom: 20,
-  },
-
+  container: { flex: 1 },
+  header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
+  headerTop: { marginBottom: 20 },
   headerTitle: {
     fontSize: 34,
     fontWeight: "800",
     letterSpacing: -0.8,
     marginBottom: 2,
   },
-
-  headerSubtitle: {
-    fontSize: 15,
-    fontWeight: "500",
-    letterSpacing: -0.2,
-  },
-
+  headerSubtitle: { fontSize: 15, fontWeight: "500", letterSpacing: -0.2 },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     marginBottom: 16,
   },
-
   searchBar: {
     flex: 1,
     flexDirection: "row",
@@ -1720,15 +1882,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     height: 44,
     gap: 10,
+    borderWidth: 1,
   },
-
   searchInput: {
     flex: 1,
     fontSize: 16,
     fontWeight: "500",
     letterSpacing: -0.2,
   },
-
   filterButton: {
     width: 44,
     height: 44,
@@ -1736,8 +1897,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     position: "relative",
+    borderWidth: 1,
   },
-
   filterDot: {
     position: "absolute",
     top: 8,
@@ -1745,13 +1906,8 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#EF4444",
   },
-
-  categoriesContent: {
-    gap: 8,
-  },
-
+  categoriesContent: { gap: 8 },
   categoryPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -1760,7 +1916,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: 6,
   },
-
   categoryPillUnselected: {
     flexDirection: "row",
     alignItems: "center",
@@ -1768,142 +1923,56 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     gap: 6,
+    borderWidth: 1,
   },
-
   categoryPillTextSelected: {
     fontSize: 14,
     fontWeight: "700",
     color: "#FFFFFF",
     letterSpacing: -0.2,
   },
-
-  categoryPillText: {
-    fontSize: 14,
-    fontWeight: "600",
-    letterSpacing: -0.2,
-  },
-
+  categoryPillText: { fontSize: 14, fontWeight: "600", letterSpacing: -0.2 },
   insightsCard: {
     marginTop: 12,
     marginBottom: 24,
     borderRadius: 24,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
   },
-
-  insightsBlur: {
-    borderRadius: 24,
-    overflow: "hidden",
-  },
-
-  insightsGradient: {
-    padding: 26,
-    borderRadius: 24,
-    backgroundColor: "#065F46",
-  },
-
+  insightsBlur: { borderRadius: 24, overflow: "hidden" },
+  insightsGradient: { padding: 26, borderRadius: 24 },
   insightsHeader: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 24,
     gap: 14,
   },
-
-  insightsIconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.25)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  insightsHeaderText: {
-    flex: 1,
-  },
-
+  insightsHeaderText: { flex: 1 },
   insightsTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#FFFFFF",
     letterSpacing: -0.5,
     marginBottom: 2,
   },
-
-  insightsSubtitle: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "600",
-    letterSpacing: -0.2,
-  },
-
-  insightsGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-
-  insightItem: {
-    alignItems: "center",
-    flex: 1,
-  },
-
-  insightIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-
+  insightsGrid: { flexDirection: "row", justifyContent: "space-between" },
+  insightItem: { alignItems: "center", flex: 1 },
   insightValue: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#FFFFFF",
     letterSpacing: -0.5,
     marginBottom: 4,
   },
-
   insightLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "rgba(255,255,255,0.9)",
     textAlign: "center",
     letterSpacing: -0.2,
   },
-
-  swipeContainer: {
-    marginBottom: 16,
-  },
-
-  mealCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(0, 0, 0, 0.03)",
-  },
-
-  cardContent: {
-    flexDirection: "row",
-    padding: 18,
-    gap: 14,
-  },
-
-  cardImageContainer: {
-    position: "relative",
-  },
-
-  cardImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.5)",
-  },
-
+  swipeContainer: { marginBottom: 16 },
+  mealCard: { borderRadius: 24, overflow: "hidden", borderWidth: 1 },
+  cardContent: { flexDirection: "row", padding: 18, gap: 14 },
+  cardImageContainer: { position: "relative" },
+  cardImage: { width: 90, height: 90, borderRadius: 18, borderWidth: 2 },
   imagePlaceholder: {
     width: 90,
     height: 90,
@@ -1911,9 +1980,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.3)",
   },
-
   heartBadge: {
     position: "absolute",
     top: -4,
@@ -1921,36 +1988,24 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: "#EF4444",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#FFFFFF",
   },
-
-  cardInfo: {
-    flex: 1,
-  },
-
+  cardInfo: { flex: 1 },
   mealHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: 10,
   },
-
-  mealTitleRow: {
-    flex: 1,
-    marginRight: 8,
-  },
-
+  mealTitleRow: { flex: 1, marginRight: 8 },
   mealName: {
     fontSize: 17,
     fontWeight: "700",
     letterSpacing: -0.3,
     lineHeight: 22,
   },
-
   mealPeriodBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -1958,14 +2013,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 10,
   },
-
   mealMetaRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 8,
   },
-
   caloriesBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -1973,40 +2026,12 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 10,
     gap: 5,
-    backgroundColor: "#FEF3C7",
   },
-
-  caloriesText: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#92400E",
-    letterSpacing: -0.3,
-  },
-
-  caloriesUnit: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#B45309",
-    letterSpacing: -0.2,
-  },
-
-  mealDate: {
-    fontSize: 13,
-    fontWeight: "600",
-    letterSpacing: -0.2,
-  },
-
-  quickRatingRow: {
-    flexDirection: "row",
-    gap: 3,
-  },
-
-  cardActions: {
-    flexDirection: "column",
-    gap: 8,
-    marginLeft: 8,
-  },
-
+  caloriesText: { fontSize: 15, fontWeight: "800", letterSpacing: -0.3 },
+  caloriesUnit: { fontSize: 12, fontWeight: "700", letterSpacing: -0.2 },
+  mealDate: { fontSize: 13, fontWeight: "600", letterSpacing: -0.2 },
+  quickRatingRow: { flexDirection: "row", gap: 3 },
+  cardActions: { flexDirection: "column", gap: 8, marginLeft: 8 },
   favoriteButton: {
     width: 40,
     height: 40,
@@ -2014,7 +2039,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   expandButton: {
     width: 40,
     height: 40,
@@ -2022,13 +2046,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   swipeActionWrapper: {
     justifyContent: "center",
     alignItems: "center",
     marginVertical: 0,
   },
-
   swipeActionButton: {
     width: 80,
     height: "100%",
@@ -2036,31 +2058,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginHorizontal: 10,
   },
-
-  swipeActionGradient: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 20,
-  },
-
   swipeIconWrapper: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
     justifyContent: "center",
     alignItems: "center",
   },
-
   confirmModalOverlay: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
   },
-
   confirmModal: {
     width: "88%",
     maxWidth: 380,
@@ -2068,7 +2078,6 @@ const styles = StyleSheet.create({
     padding: 32,
     alignItems: "center",
   },
-
   confirmIconContainer: {
     width: 88,
     height: 88,
@@ -2077,7 +2086,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 24,
   },
-
   confirmTitle: {
     fontSize: 24,
     fontWeight: "800",
@@ -2085,7 +2093,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     letterSpacing: -0.6,
   },
-
   confirmMessage: {
     fontSize: 16,
     fontWeight: "500",
@@ -2095,13 +2102,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     opacity: 0.8,
   },
-
-  confirmActions: {
-    flexDirection: "row",
-    gap: 12,
-    width: "100%",
-  },
-
+  confirmActions: { flexDirection: "row", gap: 12, width: "100%" },
   confirmCancelButton: {
     flex: 1,
     paddingVertical: 16,
@@ -2109,21 +2110,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "rgba(0,0,0,0.08)",
   },
-
-  confirmCancelText: {
-    fontSize: 17,
-    fontWeight: "700",
-    letterSpacing: -0.4,
-  },
-
-  confirmButton: {
-    flex: 1,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-
+  confirmCancelText: { fontSize: 17, fontWeight: "700", letterSpacing: -0.4 },
+  confirmButton: { flex: 1, borderRadius: 16, overflow: "hidden" },
   confirmButtonGradient: {
     flexDirection: "row",
     paddingVertical: 16,
@@ -2131,36 +2120,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
   },
-
   confirmButtonText: {
     fontSize: 17,
     fontWeight: "800",
     color: "#FFFFFF",
     letterSpacing: -0.4,
   },
-
-  expandedSection: {
-    overflow: "hidden",
-  },
-
-  expandedContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-
-  divider: {
-    height: 1,
-    backgroundColor: "#F3F4F6",
-    marginBottom: 16,
-  },
-
+  expandedSection: { overflow: "hidden" },
+  expandedContent: { paddingHorizontal: 16, paddingBottom: 16 },
+  divider: { height: 1, marginBottom: 16 },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 14,
     gap: 10,
   },
-
   sectionIconBg: {
     width: 36,
     height: 36,
@@ -2168,37 +2142,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   sectionTitle: {
     fontSize: 17,
     fontWeight: "700",
     letterSpacing: -0.3,
     flex: 1,
   },
-
-  countBadge: {
-    backgroundColor: "#DCFCE7",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-
-  countBadgeText: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#065F46",
-    letterSpacing: -0.2,
-  },
-
-  nutritionSection: {
-    marginBottom: 20,
-  },
-
-  nutritionGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
+  countBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  countBadgeText: { fontSize: 13, fontWeight: "800", letterSpacing: -0.2 },
+  nutritionSection: { marginBottom: 20 },
+  nutritionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   nutritionCard: {
     width: "48.5%",
     alignItems: "center",
@@ -2207,7 +2160,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 14,
     gap: 6,
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
   },
   nutritionIconContainer: {
     width: 44,
@@ -2217,59 +2169,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 6,
   },
-
   nutritionValue: {
     fontSize: 20,
     fontWeight: "800",
     letterSpacing: -0.5,
     marginBottom: 2,
   },
-
   nutritionUnit: {
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0,
     marginBottom: 4,
   },
-
   nutritionLabel: {
     fontSize: 11,
     fontWeight: "700",
     textAlign: "center",
     letterSpacing: -0.2,
   },
-
-  ingredientsSection: {
-    marginBottom: 20,
-  },
-
-  ingredientsScrollContainer: {
-    gap: 8,
-  },
-
+  ingredientsSection: { marginBottom: 20 },
+  ingredientsScrollContainer: { gap: 8 },
   ingredientChip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 12,
-    backgroundColor: "#DCFCE7",
   },
-
-  ingredientText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#065F46",
-    letterSpacing: -0.2,
-  },
-
-  ratingSection: {
-    marginBottom: 0,
-  },
-
-  ratingsContainer: {
-    gap: 10,
-    marginBottom: 16,
-  },
-
+  ingredientText: { fontSize: 13, fontWeight: "700", letterSpacing: -0.2 },
+  ratingSection: { marginBottom: 0 },
+  ratingsContainer: { gap: 10, marginBottom: 16 },
   ratingItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -2277,7 +2204,6 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 16,
   },
-
   ratingItemHeader: {
     flexDirection: "row",
     alignItems: "center",

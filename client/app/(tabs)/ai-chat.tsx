@@ -327,7 +327,9 @@ export default function AIChatScreen({
               ]}
             >
               {msg.hasWarning && (
-                <View style={s.warnBanner}>
+                <View
+                  style={[s.warnBanner, { borderBottomColor: colors.error }]}
+                >
                   <AlertTriangle size={12} color={colors.error} />
                   <Text style={[s.warnText, { color: colors.error }]}>
                     {t("ai_chat.allergen_warning")}
@@ -495,7 +497,13 @@ export default function AIChatScreen({
                       {userProfile.allergies.map((a, i) => (
                         <View
                           key={i}
-                          style={[s.allergyTag, { borderColor: colors.error }]}
+                          style={[
+                            s.allergyTag,
+                            {
+                              borderColor: colors.error,
+                              backgroundColor: colors.error + "20",
+                            },
+                          ]}
                         >
                           <Text style={[s.allergyTxt, { color: colors.error }]}>
                             {a}
@@ -519,7 +527,13 @@ export default function AIChatScreen({
                       {userProfile.medicalConditions.map((c, i) => (
                         <View
                           key={i}
-                          style={[s.medTag, { borderColor: colors.warning }]}
+                          style={[
+                            s.medTag,
+                            {
+                              borderColor: colors.warning,
+                              backgroundColor: colors.warning + "20",
+                            },
+                          ]}
                         >
                           <Text style={[s.medTxt, { color: colors.warning }]}>
                             {c}
@@ -535,7 +549,7 @@ export default function AIChatScreen({
         </View>
         <ScrollView
           ref={scrollViewRef}
-          style={[{ flex: 1, backgroundColor: colors.background }]}
+          style={{ flex: 1, backgroundColor: colors.background }}
           contentContainerStyle={{
             paddingHorizontal: 14,
             paddingTop: 12,
@@ -571,14 +585,7 @@ export default function AIChatScreen({
             </View>
           )}
         </ScrollView>
-        <View
-          style={[
-            s.inputArea,
-            {
-              backgroundColor: colors.background,
-            },
-          ]}
-        >
+        <View style={[s.inputArea, { backgroundColor: colors.background }]}>
           <View style={[s.inputCont, { backgroundColor: colors.card }]}>
             <TextInput
               style={[
@@ -587,25 +594,21 @@ export default function AIChatScreen({
               ]}
               value={inputText}
               onChangeText={setInputText}
-              placeholder={t("ai_chat.type_message")}
-              placeholderTextColor={colors.muted}
+              placeholder={t("ai_chat.placeholder")}
+              placeholderTextColor={colors.textTertiary}
               multiline
-              maxLength={500}
             />
-            <TouchableOpacity
-              style={s.sendBtn}
-              onPress={sendMessage}
-              disabled={!inputText.trim() || isTyping}
-            >
+            <TouchableOpacity style={s.sendBtn} onPress={sendMessage}>
               <LinearGradient
-                colors={
-                  !inputText.trim() || isTyping
-                    ? [colors.disabled, colors.disabled]
-                    : [emeraldSpectrum.emerald500, emeraldSpectrum.emerald600]
-                }
-                style={s.sendGrad}
+                colors={[
+                  emeraldSpectrum.emerald400,
+                  emeraldSpectrum.emerald600,
+                ]}
+                start={[0, 0]}
+                end={[1, 1]}
+                style={s.sendGradient}
               >
-                <Send size={18} color="#FFF" />
+                <Send size={16} color="#fff" />
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -617,139 +620,130 @@ export default function AIChatScreen({
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    borderBottomWidth: 1,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
+  header: { borderBottomWidth: 1, paddingBottom: 8 },
   hContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 8,
+    padding: 12,
   },
   hContentRTL: { flexDirection: "row-reverse" },
-  hLeft: { flexDirection: "row", alignItems: "center", flex: 1, gap: 10 },
+  hLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   hLeftRTL: { flexDirection: "row-reverse" },
   iconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
   },
-  hTitle: { fontSize: 16, fontWeight: "600" },
-  hSub: { fontSize: 11, marginTop: 1 },
+  hTitle: { fontWeight: "700", fontSize: 16 },
+  hSub: { fontSize: 12 },
   clearBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
   },
-  profCard: { marginTop: 10, borderRadius: 14, padding: 12 },
+  profCard: { marginTop: 12, borderRadius: 12, padding: 12 },
   profHdr: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
     gap: 6,
+    marginBottom: 8,
   },
-  profTitle: { fontSize: 12, fontWeight: "600" },
+  profTitle: { fontWeight: "600", fontSize: 14 },
   profSec: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
+    gap: 8,
     flexWrap: "wrap",
-    gap: 6,
   },
-  profLbl: { fontSize: 11 },
+  profLbl: { fontSize: 12, fontWeight: "500" },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   allergyTag: {
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderWidth: 1,
+    borderRadius: 8,
   },
-  allergyTxt: { fontSize: 10, fontWeight: "500" },
+  allergyTxt: { fontSize: 10 },
   medTag: {
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderWidth: 1,
+    borderRadius: 8,
   },
-  medTxt: { fontSize: 10, fontWeight: "500" },
-  msgContainer: { marginBottom: 12 },
+  medTxt: { fontSize: 10 },
+  msgContainer: { marginVertical: 4 },
   msgRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  userLTR: { flexDirection: "row-reverse" },
-  userRTL: { flexDirection: "row" },
-  botRTL: { flexDirection: "row-reverse" },
   botIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
   },
   userIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    overflow: "hidden",
   },
-  profImg: { width: 32, height: 32, borderRadius: 16 },
-  msgContent: { flex: 1, maxWidth: width - 80 },
-  bubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16 },
-  warnBubble: { borderLeftWidth: 2, backgroundColor: "rgba(239, 68, 68, 0.1)" },
+  profImg: { width: 28, height: 28, borderRadius: 14 },
+  msgContent: { flex: 1 },
+  bubble: { padding: 10, borderRadius: 12 },
+  warnBubble: { borderWidth: 1, borderColor: "#FF0000" },
   warnBanner: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 6,
-    paddingBottom: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(239, 68, 68, 0.3)",
-    gap: 4,
+    padding: 4,
+    borderBottomWidth: 2,
+    borderRadius: 4,
+    marginBottom: 4,
   },
-  warnText: { fontSize: 10, fontWeight: "600" },
-  msgText: { fontSize: 14, lineHeight: 20 },
-  time: { fontSize: 9, marginTop: 4 },
-  suggests: { marginTop: 10 },
-  sugLabel: { fontSize: 11, fontWeight: "500", marginBottom: 6 },
+  warnText: { fontSize: 10, marginLeft: 4 },
+  msgText: { fontSize: 14 },
+  time: { fontSize: 10, marginTop: 4 },
+  suggests: { marginTop: 6 },
+  sugLabel: { fontSize: 12, marginBottom: 4 },
   sugGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   sugBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderWidth: 1,
+    borderRadius: 8,
   },
-  sugBtnText: { fontSize: 11 },
+  sugBtnText: { fontSize: 12 },
   typeBubble: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
-  typeText: { fontSize: 13 },
-  inputArea: { paddingHorizontal: 14, paddingVertical: 10 },
+  typeText: { fontSize: 12 },
+  inputArea: { padding: 12 },
   inputCont: {
     flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 8,
+    alignItems: "center",
     borderRadius: 24,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
-  input: { flex: 1, fontSize: 14, paddingVertical: 8, maxHeight: 100 },
-  sendBtn: { width: 36, height: 36, borderRadius: 18, overflow: "hidden" },
-  sendGrad: {
+  input: { flex: 1, maxHeight: 100, fontSize: 14 },
+  sendBtn: { marginLeft: 8 },
+  sendGradient: {
     width: 36,
     height: 36,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 18,
   },
+  userLTR: { justifyContent: "flex-end" },
+  userRTL: { justifyContent: "flex-start" },
+  botRTL: { flexDirection: "row-reverse" },
 });

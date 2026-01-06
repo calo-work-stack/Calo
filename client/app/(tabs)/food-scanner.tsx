@@ -469,10 +469,10 @@ export default function FoodScannerScreen() {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return "#10B981";
-    if (score >= 60) return "#F59E0B";
-    if (score >= 40) return "#EF4444";
-    return "#DC2626";
+    if (score >= 80) return colors.success;
+    if (score >= 60) return colors.warning;
+    if (score >= 40) return colors.error;
+    return colors.destructive;
   };
 
   const scanLineTranslateY = scanLineAnimation.interpolate({
@@ -524,10 +524,15 @@ export default function FoodScannerScreen() {
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <View style={[styles.modernHeader]}>
+      <View style={styles.modernHeader}>
         <View style={styles.headerTop}>
           {/* Icon Container with theme-aware background */}
-          <View style={[styles.headerIconContainer]}>
+          <View
+            style={[
+              styles.headerIconContainer,
+              { backgroundColor: colors.glass },
+            ]}
+          >
             <ScanLine size={28} color={colors.text} strokeWidth={2.5} />
           </View>
 
@@ -540,7 +545,8 @@ export default function FoodScannerScreen() {
               style={[
                 styles.headerSubtitle,
                 {
-                  color: colors.subtext,
+                  color: colors.text,
+                  opacity: 0.75,
                 },
               ]}
             >
@@ -550,7 +556,7 @@ export default function FoodScannerScreen() {
 
           {/* Gallery Button with theme-aware styling */}
           <TouchableOpacity
-            style={[styles.galleryButton]}
+            style={[styles.galleryButton, { backgroundColor: colors.glass }]}
             onPress={() => setShowProductsGallery(true)}
             activeOpacity={0.7}
           >
@@ -564,22 +570,33 @@ export default function FoodScannerScreen() {
           {/* Camera Scanner */}
           <View style={styles.scannerContainer}>
             {/* Mode Switcher */}
-            <View style={styles.modeSwitcher}>
+            <View
+              style={[styles.modeSwitcher, { backgroundColor: colors.card }]}
+            >
               <TouchableOpacity
                 style={[
                   styles.modeButton,
-                  scanMode === "image" && styles.modeButtonActive,
+                  scanMode === "image" && { backgroundColor: colors.primary },
                 ]}
                 onPress={() => setScanMode("image")}
               >
                 <CameraIcon
                   size={20}
-                  color={scanMode === "image" ? "#FFFFFF" : "#6B7280"}
+                  color={
+                    scanMode === "image"
+                      ? colors.onPrimary
+                      : colors.textSecondary
+                  }
                 />
                 <Text
                   style={[
                     styles.modeButtonText,
-                    scanMode === "image" && styles.modeButtonTextActive,
+                    {
+                      color:
+                        scanMode === "image"
+                          ? colors.onPrimary
+                          : colors.textSecondary,
+                    },
                   ]}
                 >
                   {texts.scanImage}
@@ -589,18 +606,27 @@ export default function FoodScannerScreen() {
               <TouchableOpacity
                 style={[
                   styles.modeButton,
-                  scanMode === "barcode" && styles.modeButtonActive,
+                  scanMode === "barcode" && { backgroundColor: colors.primary },
                 ]}
                 onPress={() => setScanMode("barcode")}
               >
                 <QrCode
                   size={20}
-                  color={scanMode === "barcode" ? "#FFFFFF" : "#6B7280"}
+                  color={
+                    scanMode === "barcode"
+                      ? colors.onPrimary
+                      : colors.textSecondary
+                  }
                 />
                 <Text
                   style={[
                     styles.modeButtonText,
-                    scanMode === "barcode" && styles.modeButtonTextActive,
+                    {
+                      color:
+                        scanMode === "barcode"
+                          ? colors.onPrimary
+                          : colors.textSecondary,
+                    },
                   ]}
                 >
                   {texts.scanBarcode}
@@ -614,7 +640,9 @@ export default function FoodScannerScreen() {
                   onPress={handleImageScan}
                 >
                   <View style={styles.cameraOverlay}>
-                    <View style={styles.scanFrame}>
+                    <View
+                      style={[styles.scanFrame, { borderColor: colors.glass }]}
+                    >
                       <View style={styles.cornerTopLeft} />
                       <View style={styles.cornerTopRight} />
                       <View style={styles.cornerBottomLeft} />
@@ -624,6 +652,7 @@ export default function FoodScannerScreen() {
                         style={[
                           styles.scanLine,
                           {
+                            backgroundColor: colors.emerald100,
                             transform: [{ translateY: scanLineTranslateY }],
                           },
                         ]}
@@ -638,7 +667,7 @@ export default function FoodScannerScreen() {
                         },
                       ]}
                     >
-                      <CameraIcon size={40} color="#FFFFFF" />
+                      <CameraIcon size={40} color={colors.onPrimary} />
                     </Animated.View>
                   </View>
                 </TouchableOpacity>
@@ -657,7 +686,9 @@ export default function FoodScannerScreen() {
                   }}
                 >
                   <View style={styles.cameraOverlay}>
-                    <View style={styles.scanFrame}>
+                    <View
+                      style={[styles.scanFrame, { borderColor: colors.glass }]}
+                    >
                       <View style={styles.cornerTopLeft} />
                       <View style={styles.cornerTopRight} />
                       <View style={styles.cornerBottomLeft} />
@@ -667,6 +698,7 @@ export default function FoodScannerScreen() {
                         style={[
                           styles.scanLine,
                           {
+                            backgroundColor: colors.success,
                             transform: [{ translateY: scanLineTranslateY }],
                           },
                         ]}
@@ -681,14 +713,18 @@ export default function FoodScannerScreen() {
                         },
                       ]}
                     >
-                      <QrCode size={40} color="#FFFFFF" />
+                      <QrCode size={40} color={colors.onPrimary} />
                     </Animated.View>
                   </View>
                 </CameraView>
               )}
             </View>
 
-            <Text style={styles.scanInstructions}>{texts.alignFood}</Text>
+            <Text
+              style={[styles.scanInstructions, { color: colors.textSecondary }]}
+            >
+              {texts.alignFood}
+            </Text>
           </View>
 
           {/* Manual Input */}
@@ -696,25 +732,39 @@ export default function FoodScannerScreen() {
             <View style={styles.manualInputContainer}>
               <View style={styles.inputWrapper}>
                 <TextInput
-                  style={styles.barcodeInput}
+                  style={[
+                    styles.barcodeInput,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      color: colors.text,
+                    },
+                  ]}
                   placeholder={texts.enterBarcode}
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.textSecondary}
                   value={barcodeInput}
                   onChangeText={setBarcodeInput}
                   keyboardType="numeric"
                 />
                 <TouchableOpacity
-                  style={styles.scanButton}
+                  style={[
+                    styles.scanButton,
+                    { backgroundColor: colors.primary },
+                  ]}
                   onPress={handleBarcodeSearch}
                   disabled={isLoading}
                 >
                   {isLoading ? (
-                    <ActivityIndicator
-                      size="small"
-                      style={{ backgroundColor: colors.emerald500 }}
-                    />
+                    <ActivityIndicator size="small" color={colors.onPrimary} />
                   ) : (
-                    <Text style={styles.scanButtonText}>{texts.scan}</Text>
+                    <Text
+                      style={[
+                        styles.scanButtonText,
+                        { color: colors.onPrimary },
+                      ]}
+                    >
+                      {texts.scan}
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -722,24 +772,39 @@ export default function FoodScannerScreen() {
           )}
         </>
       ) : (
-        <ScrollView style={styles.resultsContainer}>
+        <ScrollView
+          style={[
+            styles.resultsContainer,
+            { backgroundColor: colors.background },
+          ]}
+        >
           {/* Header */}
           <View style={styles.resultsHeader}>
-            <TouchableOpacity style={styles.backButton} onPress={handleRescan}>
-              <ArrowLeft size={24} color="#1F2937" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Details</Text>
             <TouchableOpacity
-              style={styles.historyButton}
+              style={[styles.backButton, { backgroundColor: colors.surface }]}
+              onPress={handleRescan}
+            >
+              <ArrowLeft size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
+              Details
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.historyButton,
+                { backgroundColor: colors.surface },
+              ]}
               onPress={() => setShowHistoryModal(true)}
             >
-              <History size={24} color="#6B7280" />
+              <History size={24} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
           {/* Product Card */}
           {scanResult && (
-            <View style={styles.productCard}>
+            <View
+              style={[styles.productCard, { backgroundColor: colors.surface }]}
+            >
               <Image
                 source={{
                   uri:
@@ -749,10 +814,15 @@ export default function FoodScannerScreen() {
                 style={styles.productImage}
               />
               <View style={styles.productInfo}>
-                <Text style={styles.productName}>
+                <Text style={[styles.productName, { color: colors.text }]}>
                   {scanResult.product.name}
                 </Text>
-                <Text style={styles.productCalories}>
+                <Text
+                  style={[
+                    styles.productCalories,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   {Math.round(
                     (scanResult.product.nutrition_per_100g.calories *
                       quantity) /
@@ -760,73 +830,89 @@ export default function FoodScannerScreen() {
                   )}{" "}
                   Kcal
                 </Text>
-                <Text style={styles.productWeight}>{quantity} grams</Text>
+                <Text
+                  style={[styles.productWeight, { color: colors.textTertiary }]}
+                >
+                  {quantity} grams
+                </Text>
               </View>
             </View>
           )}
 
           {/* Health Indicators */}
           {scanResult && (
-            <View style={styles.healthIndicators}>
+            <View
+              style={[
+                styles.healthIndicators,
+                { backgroundColor: colors.surface },
+              ]}
+            >
               <View style={styles.healthIndicator}>
                 <View
-                  style={[styles.healthDot, { backgroundColor: "#10B981" }]}
+                  style={[
+                    styles.healthDot,
+                    { backgroundColor: colors.success },
+                  ]}
                 />
-                <Text style={styles.healthText}>Rich in proteins</Text>
+                <Text style={[styles.healthText, { color: colors.text }]}>
+                  Rich in proteins
+                </Text>
               </View>
               <View style={styles.healthIndicator}>
                 <View
-                  style={[styles.healthDot, { backgroundColor: "#10B981" }]}
+                  style={[
+                    styles.healthDot,
+                    { backgroundColor: colors.success },
+                  ]}
                 />
-                <Text style={styles.healthText}>
+                <Text style={[styles.healthText, { color: colors.text }]}>
                   Rich in Vitamins & Minerals
                 </Text>
               </View>
               <View style={styles.healthIndicator}>
                 <View
-                  style={[styles.healthDot, { backgroundColor: "#F59E0B" }]}
+                  style={[
+                    styles.healthDot,
+                    { backgroundColor: colors.warning },
+                  ]}
                 />
-                <Text style={styles.healthText}>Rich in Anti Oxidants</Text>
+                <Text style={[styles.healthText, { color: colors.text }]}>
+                  Rich in Anti Oxidants
+                </Text>
               </View>
             </View>
           )}
 
           {/* Nutrition Values */}
           {scanResult && (
-            <View style={styles.nutritionSection}>
-              <Text style={styles.sectionTitle}>Nutrition values</Text>
+            <View
+              style={[
+                styles.nutritionSection,
+                { backgroundColor: colors.surface },
+              ]}
+            >
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Nutrition values
+              </Text>
               <View style={styles.nutritionValues}>
                 <View style={styles.nutritionRow}>
-                  <Text style={styles.nutritionLabel}>Protein</Text>
-                  <View style={styles.nutritionBarContainer}>
-                    <View
-                      style={[
-                        styles.nutritionBar,
-                        { width: "70%", backgroundColor: "#10B981" },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.nutritionValue}>
-                    {Math.round(
-                      (scanResult.product.nutrition_per_100g.protein *
-                        quantity) /
-                        100
-                    )}{" "}
-                    gm
+                  <Text style={[styles.nutritionLabel, { color: colors.text }]}>
+                    Protein
                   </Text>
-                </View>
-
-                <View style={styles.nutritionRow}>
-                  <Text style={styles.nutritionLabel}>Fats</Text>
-                  <View style={styles.nutritionBarContainer}>
+                  <View
+                    style={[
+                      styles.nutritionBarContainer,
+                      { backgroundColor: colors.border },
+                    ]}
+                  >
                     <View
                       style={[
                         styles.nutritionBar,
-                        { width: "40%", backgroundColor: "#10B981" },
+                        { width: "70%", backgroundColor: colors.success },
                       ]}
                     />
                   </View>
-                  <Text style={styles.nutritionValue}>
+                  <Text style={[styles.nutritionValue, { color: colors.text }]}>
                     {Math.round(
                       (scanResult.product.nutrition_per_100g.fat * quantity) /
                         100
@@ -836,16 +922,23 @@ export default function FoodScannerScreen() {
                 </View>
 
                 <View style={styles.nutritionRow}>
-                  <Text style={styles.nutritionLabel}>Fibers</Text>
-                  <View style={styles.nutritionBarContainer}>
+                  <Text style={[styles.nutritionLabel, { color: colors.text }]}>
+                    Fibers
+                  </Text>
+                  <View
+                    style={[
+                      styles.nutritionBarContainer,
+                      { backgroundColor: colors.border },
+                    ]}
+                  >
                     <View
                       style={[
                         styles.nutritionBar,
-                        { width: "30%", backgroundColor: "#10B981" },
+                        { width: "30%", backgroundColor: colors.success },
                       ]}
                     />
                   </View>
-                  <Text style={styles.nutritionValue}>
+                  <Text style={[styles.nutritionValue, { color: colors.text }]}>
                     {Math.round(
                       ((scanResult.product.nutrition_per_100g.fiber || 0) *
                         quantity) /
@@ -856,16 +949,23 @@ export default function FoodScannerScreen() {
                 </View>
 
                 <View style={styles.nutritionRow}>
-                  <Text style={styles.nutritionLabel}>Sugar</Text>
-                  <View style={styles.nutritionBarContainer}>
+                  <Text style={[styles.nutritionLabel, { color: colors.text }]}>
+                    Sugar
+                  </Text>
+                  <View
+                    style={[
+                      styles.nutritionBarContainer,
+                      { backgroundColor: colors.border },
+                    ]}
+                  >
                     <View
                       style={[
                         styles.nutritionBar,
-                        { width: "50%", backgroundColor: "#F59E0B" },
+                        { width: "50%", backgroundColor: colors.warning },
                       ]}
                     />
                   </View>
-                  <Text style={styles.nutritionValue}>
+                  <Text style={[styles.nutritionValue, { color: colors.text }]}>
                     {Math.round(
                       ((scanResult.product.nutrition_per_100g.sugar || 0) *
                         quantity) /
@@ -876,16 +976,25 @@ export default function FoodScannerScreen() {
                 </View>
 
                 <View style={styles.nutritionRow}>
-                  <Text style={styles.nutritionLabel}>Vitamins</Text>
-                  <View style={styles.nutritionBarContainer}>
+                  <Text style={[styles.nutritionLabel, { color: colors.text }]}>
+                    Vitamins
+                  </Text>
+                  <View
+                    style={[
+                      styles.nutritionBarContainer,
+                      { backgroundColor: colors.border },
+                    ]}
+                  >
                     <View
                       style={[
                         styles.nutritionBar,
-                        { width: "35%", backgroundColor: "#10B981" },
+                        { width: "35%", backgroundColor: colors.success },
                       ]}
                     />
                   </View>
-                  <Text style={styles.nutritionValue}>4 gm</Text>
+                  <Text style={[styles.nutritionValue, { color: colors.text }]}>
+                    4 gm
+                  </Text>
                 </View>
               </View>
             </View>
@@ -893,8 +1002,15 @@ export default function FoodScannerScreen() {
 
           {/* Ingredients */}
           {scanResult && scanResult.product.ingredients.length > 0 && (
-            <View style={styles.ingredientsSection}>
-              <Text style={styles.sectionTitle}>Ingredients Identified</Text>
+            <View
+              style={[
+                styles.ingredientsSection,
+                { backgroundColor: colors.surface },
+              ]}
+            >
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Ingredients Identified
+              </Text>
               <View style={styles.ingredientsList}>
                 {scanResult.product.ingredients
                   .slice(0, 2)
@@ -905,8 +1021,20 @@ export default function FoodScannerScreen() {
                         style={styles.ingredientImage}
                       />
                       <View style={styles.ingredientInfo}>
-                        <Text style={styles.ingredientName}>{ingredient}</Text>
-                        <Text style={styles.ingredientDescription}>
+                        <Text
+                          style={[
+                            styles.ingredientName,
+                            { color: colors.text },
+                          ]}
+                        >
+                          {ingredient}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.ingredientDescription,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           Rich in Proteins
                         </Text>
                       </View>
@@ -919,18 +1047,20 @@ export default function FoodScannerScreen() {
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
             <TouchableOpacity
-              style={styles.addButton}
+              style={[styles.addButton, { backgroundColor: colors.primary }]}
               onPress={handleAddToMealHistory}
             >
-              <Plus size={20} color="#FFFFFF" />
-              <Text style={styles.addButtonText}>Add to Meal</Text>
+              <Plus size={20} color={colors.onPrimary} />
+              <Text style={[styles.addButtonText, { color: colors.onPrimary }]}>
+                Add to Meal
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.shopButton}
+              style={[styles.shopButton, { backgroundColor: colors.surface }]}
               onPress={handleAddToShoppingList}
             >
-              <ShoppingCart size={20} color="#6B7280" />
+              <ShoppingCart size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -943,9 +1073,16 @@ export default function FoodScannerScreen() {
       {isLoading && (
         <Modal visible={isLoading} transparent animationType="fade">
           <View style={styles.loadingOverlay}>
-            <View style={styles.loadingContent}>
-              <ActivityIndicator size="large" color="#10B981" />
-              <Text style={styles.loadingText}>{loadingText}</Text>
+            <View
+              style={[
+                styles.loadingContent,
+                { backgroundColor: colors.surface },
+              ]}
+            >
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.loadingText, { color: colors.text }]}>
+                {loadingText}
+              </Text>
             </View>
           </View>
         </Modal>
@@ -958,29 +1095,58 @@ export default function FoodScannerScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowHistoryModal(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+        <SafeAreaView
+          style={[
+            styles.modalContainer,
+            { backgroundColor: colors.background },
+          ]}
+        >
+          <View
+            style={[styles.modalHeader, { borderBottomColor: colors.border }]}
+          >
             <TouchableOpacity onPress={() => setShowHistoryModal(false)}>
-              <X size={24} color="#1F2937" />
+              <X size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>{texts.history}</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {texts.history}
+            </Text>
             <View style={{ width: 24 }} />
           </View>
 
           <ScrollView style={styles.historyContent}>
             {isLoadingHistory ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#10B981" />
+                <ActivityIndicator size="large" color={colors.primary} />
               </View>
             ) : scanHistory.length > 0 ? (
               scanHistory.map((item, index) => (
-                <View key={index} style={styles.historyItem}>
+                <View
+                  key={index}
+                  style={[
+                    styles.historyItem,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
                   <View style={styles.historyItemContent}>
-                    <Text style={styles.historyItemName}>
+                    <Text
+                      style={[styles.historyItemName, { color: colors.text }]}
+                    >
                       {item.product_name || item.name}
                     </Text>
-                    <Text style={styles.historyItemBrand}>{item.brand}</Text>
-                    <Text style={styles.historyItemDate}>
+                    <Text
+                      style={[
+                        styles.historyItemBrand,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {item.brand}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.historyItemDate,
+                        { color: colors.textTertiary },
+                      ]}
+                    >
                       {new Date(item.created_at).toLocaleDateString()}
                     </Text>
                   </View>
@@ -988,8 +1154,13 @@ export default function FoodScannerScreen() {
               ))
             ) : (
               <View style={styles.emptyHistory}>
-                <BarChart3 size={64} color="#D1D5DB" />
-                <Text style={styles.emptyHistoryText}>
+                <BarChart3 size={64} color={colors.muted} />
+                <Text
+                  style={[
+                    styles.emptyHistoryText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   {t("food_scanner.no_scan_history") || "No scan history"}
                 </Text>
               </View>
@@ -1029,7 +1200,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1039,19 +1209,16 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#FFFFFF",
     letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: "rgba(255,255,255,0.75)",
     marginTop: 2,
   },
   galleryButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1084,7 +1251,6 @@ const styles = StyleSheet.create({
     height: 220,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.4)",
   },
 
   cornerTopLeft: { display: "none" },
@@ -1098,8 +1264,6 @@ const styles = StyleSheet.create({
     right: 16,
     top: 100,
     height: 2,
-    backgroundColor: "#34D399",
-    shadowColor: "#34D399",
     shadowOpacity: 0.8,
     shadowRadius: 6,
   },
@@ -1111,13 +1275,11 @@ const styles = StyleSheet.create({
   scanInstructions: {
     marginTop: 20,
     fontSize: 14,
-    color: "#94A3B8",
   },
 
   /* ================= MODE SWITCHER ================= */
   modeSwitcher: {
     flexDirection: "row",
-    backgroundColor: "#F1F5F9",
     borderRadius: 14,
     padding: 4,
     marginBottom: 20,
@@ -1131,16 +1293,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
   },
-  modeButtonActive: {
-    backgroundColor: "#10B981",
-  },
   modeButtonText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#64748B",
-  },
-  modeButtonTextActive: {
-    color: "#FFFFFF",
   },
 
   /* ================= INPUT ================= */
@@ -1154,22 +1309,18 @@ const styles = StyleSheet.create({
   },
   barcodeInput: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
   },
   scanButton: {
-    backgroundColor: "#10B981",
     borderRadius: 14,
     paddingHorizontal: 24,
     justifyContent: "center",
   },
   scanButtonText: {
-    color: "#FFFFFF",
     fontWeight: "700",
     fontSize: 16,
   },
@@ -1177,7 +1328,6 @@ const styles = StyleSheet.create({
   /* ================= RESULTS ================= */
   resultsContainer: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
   },
   resultsHeader: {
     flexDirection: "row",
@@ -1186,12 +1336,10 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   backButton: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 8,
   },
   historyButton: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 8,
   },
@@ -1199,7 +1347,6 @@ const styles = StyleSheet.create({
   /* ================= PRODUCT CARD ================= */
   productCard: {
     margin: 20,
-    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 16,
     flexDirection: "row",
@@ -1218,22 +1365,18 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#0F172A",
   },
   productCalories: {
     fontSize: 14,
-    color: "#64748B",
     marginTop: 4,
   },
   productWeight: {
     fontSize: 13,
-    color: "#94A3B8",
   },
 
   /* ================= NUTRITION ================= */
   nutritionSection: {
     marginHorizontal: 20,
-    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 16,
   },
@@ -1250,12 +1393,10 @@ const styles = StyleSheet.create({
   nutritionLabel: {
     width: 70,
     fontSize: 13,
-    color: "#334155",
   },
   nutritionBarContainer: {
     flex: 1,
     height: 8,
-    backgroundColor: "#E5E7EB",
     borderRadius: 8,
     marginHorizontal: 10,
   },
@@ -1277,7 +1418,6 @@ const styles = StyleSheet.create({
   },
   addButton: {
     flex: 1,
-    backgroundColor: "#10B981",
     borderRadius: 16,
     paddingVertical: 16,
     flexDirection: "row",
@@ -1286,7 +1426,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   addButtonText: {
-    color: "#FFFFFF",
     fontWeight: "700",
     fontSize: 16,
   },
@@ -1294,7 +1433,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
     elevation: 3,
@@ -1308,19 +1446,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingContent: {
-    backgroundColor: "#FFFFFF",
     padding: 28,
     borderRadius: 20,
     alignItems: "center",
   },
   loadingText: {
     marginTop: 12,
-    color: "#334155",
   },
 
   /* ================= HISTORY ================= */
   historyItem: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -1331,16 +1466,13 @@ const styles = StyleSheet.create({
   },
   historyItemBrand: {
     fontSize: 13,
-    color: "#64748B",
   },
   historyItemDate: {
     fontSize: 12,
-    color: "#94A3B8",
   },
   healthIndicators: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: "#FFFFFF",
   },
   healthIndicator: {
     flexDirection: "row",
@@ -1355,7 +1487,6 @@ const styles = StyleSheet.create({
   },
   healthText: {
     fontSize: 14,
-    color: "#374151",
   },
   nutritionValues: {
     gap: 16,
@@ -1363,7 +1494,6 @@ const styles = StyleSheet.create({
   ingredientsSection: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: "#FFFFFF",
   },
   ingredientsList: {
     gap: 12,
@@ -1384,12 +1514,10 @@ const styles = StyleSheet.create({
   ingredientName: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#1F2937",
     marginBottom: 2,
   },
   ingredientDescription: {
     fontSize: 12,
-    color: "#6B7280",
   },
   noPermissionContainer: {
     flex: 1,
@@ -1413,7 +1541,6 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
   },
   modalHeader: {
     flexDirection: "row",
@@ -1422,12 +1549,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#1F2937",
   },
   historyContent: {
     flex: 1,
@@ -1451,7 +1576,6 @@ const styles = StyleSheet.create({
   emptyHistoryText: {
     marginTop: 16,
     fontSize: 16,
-    color: "#6B7280",
     textAlign: "center",
   },
 });

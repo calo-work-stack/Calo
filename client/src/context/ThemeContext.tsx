@@ -66,61 +66,61 @@ export const Colors = {
   },
 
   dark: {
-    destructive: "#FF453A", // ERROR dark (#FF453A)
+    destructive: "#FF453A",
     // Core text and backgrounds
-    text: "#FFFFFF", // WHITE (#FFFFFF)
-    background: "#044E57", // dark teal bg (#044E57)
+    text: "#FFFFFF", // WHITE
+    background: "#001A22", // VERY DARK TEAL (slightly tinted)
     tint: tintColorDark,
 
     // Icons and interactive elements
-    icon: "#AEAEB2", // lighter icon (#AEAEB2)
-    tabIconDefault: "#8E8E93", // TEXT_SECONDARY (#8E8E93)
+    icon: "#AEAEB2",
+    tabIconDefault: "#8E8E93",
     tabIconSelected: tintColorDark,
-    tabInactive: "#3A3A3C", // dark divider (#3A3A3C)
+    tabInactive: "#3A3A3C",
 
     // Borders and surfaces
-    border: "#3A3A3C", // dark divider (#3A3A3C)
-    card: "#2C2C2E", // dark card (#2C2C2E)
-    surface: "#2C2C2E", // dark card surface (#2C2C2E)
-    surfaceVariant: "#3A3A3C", // dark divider (#3A3A3C)
-    onSurface: "#FFFFFF", // WHITE (#FFFFFF)
-    onSurfaceVariant: "#AEAEB2", // lighter icon (#AEAEB2)
-    outline: "#3A3A3C", // dark divider (#3A3A3C)
+    border: "#3A3A3C",
+    card: "#2C2C2E", // dark teal card
+    surface: "#2C2C2E", // dark teal surface
+    surfaceVariant: "#3A3A3C", // dark teal variant
+    onSurface: "#FFFFFF",
+    onSurfaceVariant: "#AEAEB2",
+    outline: "#3A3A3C",
 
     // Brand colors
-    primary: tintColorDark, // TEAL_BG (#05A9B8)
-    primaryContainer: "#044E57", // darker teal (#044E57)
-    onPrimary: "#FFFFFF", // WHITE (#FFFFFF)
-    onPrimaryContainer: "#2C2C2E", // dark card (#2C2C2E)
-    primaryLight: "#30D158", // SUCCESS bright (#30D158)
-    success: "#30D158", // SUCCESS bright (#30D158)
-    disabled: "#3A3A3C", // dark divider (#3A3A3C)
+    primary: tintColorDark,
+    primaryContainer: "#044E57", // dark teal
+    onPrimary: "#FFFFFF",
+    onPrimaryContainer: "#2C2C2E",
+    primaryLight: "#30D158",
+    success: "#30D158",
+    disabled: "#3A3A3C",
 
-    // Emerald variations (using teal values)
-    emerald: "#05A9B8", // TEAL_BG (#05A9B8)
-    emerald50: "#2C2C2E", // dark card (#2C2C2E)
-    emerald100: "#044E57", // darker teal (#044E57)
-    emerald200: "#30D158", // SUCCESS bright (#30D158)
-    emerald500: "#05A9B8", // TEAL_BG (#05A9B8)
-    emerald600: "#009EAD", // TEAL_ACCENT (#009EAD)
-    emerald700: "#6E6E73", // ICON (#6E6E73)
+    // Emerald variations (teal colors stay)
+    emerald: "#05A9B8",
+    emerald50: "#2C2C2E",
+    emerald100: "#044E57",
+    emerald200: "#30D158",
+    emerald500: "#05A9B8",
+    emerald600: "#009EAD",
+    emerald700: "#6E6E73",
 
     // Secondary text
-    textSecondary: "#AEAEB2", // lighter icon (#AEAEB2)
-    textTertiary: "#8E8E93", // TEXT_SECONDARY (#8E8E93)
-    subtext: "#8E8E93", // TEXT_SECONDARY (#8E8E93)
-    muted: "#6E6E73", // ICON (#6E6E73)
+    textSecondary: "#AEAEB2",
+    textTertiary: "#8E8E93",
+    subtext: "#8E8E93",
+    muted: "#6E6E73",
 
     // Special elements
     shadow: "#000000",
-    glass: "rgba(44, 44, 46, 0.85)", // dark glass effect
+    glass: "rgba(44, 44, 46, 0.85)",
     glassStroke: "rgba(58, 58, 60, 0.3)",
     backdrop: "rgba(0, 0, 0, 0.3)",
 
     // Status colors
-    error: "#FF453A", // ERROR dark (#FF453A)
-    warning: "#FF9F0A", // WARNING (#FF9F0A)
-    info: "#05A9B8", // TEAL_BG (#05A9B8)
+    error: "#FF453A",
+    warning: "#FF9F0A",
+    info: "#05A9B8",
   },
 };
 

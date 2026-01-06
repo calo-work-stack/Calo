@@ -11,9 +11,9 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
-  withSequence,
 } from "react-native-reanimated";
 import Svg, { Path, Defs, LinearGradient, Stop } from "react-native-svg";
+import { useTheme } from "@/src/context/ThemeContext";
 
 const { width } = Dimensions.get("window");
 const isSmallScreen = width < 400;
@@ -30,18 +30,23 @@ const WaterCupIcon: React.FC<{
   size: number;
   filled?: boolean;
   waterLevel?: number;
-}> = ({ size, filled = false, waterLevel = 0 }) => {
+  colors: any;
+}> = ({ size, filled = false, waterLevel = 0, colors }) => {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Defs>
         <LinearGradient id="waterGradient" x1="0%" y1="100%" x2="0%" y2="0%">
-          <Stop offset="0%" stopColor="#06b6d4" stopOpacity="1" />
-          <Stop offset="100%" stopColor="#0891b2" stopOpacity="1" />
+          <Stop offset="0%" stopColor={colors.primary} stopOpacity="1" />
+          <Stop
+            offset="100%"
+            stopColor={colors.primaryContainer}
+            stopOpacity="1"
+          />
         </LinearGradient>
       </Defs>
       <Path
         d="M6 22L4 2h16l-2 20H6z"
-        stroke={filled ? "#0891b2" : "#e2e8f0"}
+        stroke={filled ? colors.primary : colors.border}
         strokeWidth="1.5"
         fill="none"
       />
@@ -65,13 +70,13 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
   onDecrement,
   disabled = false,
 }) => {
+  const { colors, isDark } = useTheme();
   const progress = Math.min((currentCups / maxCups) * 100, 100);
   const currentMl = currentCups * 250;
   const targetMl = maxCups * 250;
   const isComplete = currentCups >= maxCups;
 
   const progressWidth = useSharedValue(0);
-  const badgeScale = useSharedValue(0);
   const badgeOpacity = useSharedValue(0);
   const cupScales = Array.from({ length: maxCups }, () => useSharedValue(0));
 
@@ -111,7 +116,6 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
   }));
 
   const animatedBadgeStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: badgeScale.value }],
     opacity: badgeOpacity.value,
   }));
 
@@ -133,9 +137,11 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
       alignSelf: "center",
     },
     card: {
-      backgroundColor: "#ffffff",
+      backgroundColor: colors.surface,
       borderRadius: isSmallScreen ? 28 : 32,
       padding: isSmallScreen ? 24 : 32,
+      borderWidth: 0.5,
+      borderColor: colors.border,
     },
     header: {
       flexDirection: "row",
@@ -153,7 +159,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
       width: isSmallScreen ? 64 : 72,
       height: isSmallScreen ? 64 : 72,
       borderRadius: isSmallScreen ? 20 : 24,
-      backgroundColor: "#f0fdff",
+      backgroundColor: isDark ? colors.primaryContainer : colors.emerald50,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -163,12 +169,12 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     title: {
       fontSize: isSmallScreen ? 22 : 26,
       fontWeight: "800",
-      color: "#0f172a",
+      color: colors.text,
       letterSpacing: -0.5,
     },
     subtitle: {
       fontSize: isSmallScreen ? 13 : 14,
-      color: "#64748b",
+      color: colors.textSecondary,
       fontWeight: "600",
       marginTop: 4,
       letterSpacing: 0.1,
@@ -179,16 +185,13 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
       gap: 8,
       paddingHorizontal: isSmallScreen ? 16 : 20,
       paddingVertical: isSmallScreen ? 10 : 12,
-      backgroundColor: "#ecfeff",
+      backgroundColor: isDark ? colors.primaryContainer : colors.emerald50,
       borderRadius: 100,
-    },
-    trophy: {
-      fontSize: isSmallScreen ? 18 : 20,
     },
     badgeText: {
       fontSize: isSmallScreen ? 13 : 14,
       fontWeight: "800",
-      color: "#0e7490",
+      color: colors.primary,
       letterSpacing: 0.2,
     },
     progressSection: {
@@ -207,24 +210,24 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     currentCups: {
       fontSize: isSmallScreen ? 40 : 48,
       fontWeight: "800",
-      color: "#0f172a",
+      color: colors.text,
       letterSpacing: -2,
     },
     maxCups: {
       fontSize: isSmallScreen ? 20 : 24,
       fontWeight: "700",
-      color: "#94a3b8",
+      color: colors.textSecondary,
     },
     cupsLabel: {
       fontSize: isSmallScreen ? 16 : 18,
       fontWeight: "600",
-      color: "#64748b",
+      color: colors.textSecondary,
       letterSpacing: 0.1,
       marginLeft: 4,
     },
     mlText: {
       fontSize: isSmallScreen ? 13 : 14,
-      color: "#94a3b8",
+      color: colors.textTertiary,
       fontWeight: "600",
       marginTop: 6,
       letterSpacing: 0.1,
@@ -235,12 +238,12 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     percentage: {
       fontSize: isSmallScreen ? 28 : 36,
       fontWeight: "800",
-      color: "#06b6d4",
+      color: colors.primary,
       letterSpacing: -1,
     },
     completeText: {
       fontSize: isSmallScreen ? 11 : 12,
-      color: "#64748b",
+      color: colors.textSecondary,
       fontWeight: "700",
       letterSpacing: 1,
       textTransform: "uppercase",
@@ -248,13 +251,13 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     },
     progressBarContainer: {
       height: isSmallScreen ? 12 : 16,
-      backgroundColor: "#f1f5f9",
+      backgroundColor: colors.border,
       borderRadius: isSmallScreen ? 6 : 8,
       overflow: "hidden",
     },
     progressBarFill: {
       height: "100%",
-      backgroundColor: "#06b6d4",
+      backgroundColor: colors.primary,
       borderRadius: isSmallScreen ? 6 : 8,
     },
     cupsVisual: {
@@ -281,10 +284,10 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
       justifyContent: "center",
     },
     buttonActive: {
-      backgroundColor: "#ecfeff",
+      backgroundColor: isDark ? colors.primaryContainer : colors.emerald50,
     },
     buttonDisabled: {
-      backgroundColor: "#f1f5f9",
+      backgroundColor: colors.card,
     },
     controlsCenter: {
       minWidth: isSmallScreen ? 120 : 140,
@@ -293,12 +296,12 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     controlsCups: {
       fontSize: isSmallScreen ? 28 : 32,
       fontWeight: "800",
-      color: "#0f172a",
+      color: colors.text,
       letterSpacing: -1,
     },
     controlsMl: {
       fontSize: isSmallScreen ? 13 : 14,
-      color: "#64748b",
+      color: colors.textSecondary,
       fontWeight: "600",
       marginTop: 4,
       letterSpacing: 0.1,
@@ -307,27 +310,27 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
       marginTop: isSmallScreen ? 24 : 28,
       paddingTop: isSmallScreen ? 24 : 28,
       borderTopWidth: 1,
-      borderTopColor: "#e2e8f0",
+      borderTopColor: colors.border,
     },
     tipsContainer: {
       flexDirection: "row",
       alignItems: "flex-start",
       gap: 14,
-      backgroundColor: "#f0fdff",
+      backgroundColor: isDark ? colors.primaryContainer : colors.emerald50,
       padding: isSmallScreen ? 16 : 20,
       borderRadius: isSmallScreen ? 18 : 20,
       borderWidth: 1,
-      borderColor: "#cffafe",
+      borderColor: colors.border,
     },
     tipIcon: {
       width: isSmallScreen ? 40 : 44,
       height: isSmallScreen ? 40 : 44,
       borderRadius: isSmallScreen ? 12 : 14,
-      backgroundColor: "#ffffff",
+      backgroundColor: colors.surface,
       alignItems: "center",
       justifyContent: "center",
       borderWidth: 1,
-      borderColor: "#a5f3fc",
+      borderColor: colors.border,
     },
     tipEmoji: {
       fontSize: isSmallScreen ? 18 : 20,
@@ -337,13 +340,13 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     },
     tipText: {
       fontSize: isSmallScreen ? 13 : 14,
-      color: "#164e63",
+      color: colors.text,
       lineHeight: isSmallScreen ? 20 : 22,
       letterSpacing: 0.1,
     },
     tipBold: {
       fontWeight: "800",
-      color: "#0e7490",
+      color: colors.primary,
     },
   });
 
@@ -357,6 +360,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
                 size={isSmallScreen ? 36 : 42}
                 filled={true}
                 waterLevel={progress}
+                colors={colors}
               />
             </View>
             <View style={styles.titleContainer}>
@@ -415,6 +419,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
                     size={isSmallScreen ? 36 : 44}
                     filled={index < currentCups}
                     waterLevel={index < currentCups ? 100 : 0}
+                    colors={colors}
                   />
                 </Animated.View>
               </TouchableOpacity>

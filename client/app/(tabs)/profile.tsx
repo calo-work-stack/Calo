@@ -94,7 +94,6 @@ export default function ProfileScreen() {
   };
 
   const handleExitPlan = () => {
-    // Show confirmation toast with action
     ToastService.warning(
       "Confirm Plan Change",
       "Tap again to downgrade to Free plan and lose premium features.",
@@ -217,7 +216,6 @@ export default function ProfileScreen() {
       );
 
       if (response.success) {
-        // Update user in Redux store
         dispatch(
           updateUser({
             avatar_url: response.avatar_url,
@@ -243,19 +241,19 @@ export default function ProfileScreen() {
         {
           id: "editProfile",
           title: t("profile.edit_profile") || "Edit Profile",
-          icon: <Edit size={20} color="#2C3E50" />,
+          icon: <Edit size={20} color={colors.icon} />,
           onPress: () => handleMenuPress("editProfile"),
         },
         {
           id: "changeAvatar",
           title: "Change Avatar",
-          icon: <Camera size={20} color="#2C3E50" />,
+          icon: <Camera size={20} color={colors.icon} />,
           onPress: handleAvatarPress,
         },
         {
           id: "personalData",
           title: t("profile.personal_data") || "Personal Data",
-          icon: <Target size={20} color="#2C3E50" />,
+          icon: <Target size={20} color={colors.icon} />,
           onPress: () => handleMenuPress("personalData"),
         },
       ],
@@ -266,7 +264,7 @@ export default function ProfileScreen() {
         {
           id: "changePlan",
           title: "Change Plan",
-          icon: <Edit size={20} color="#2C3E50" />,
+          icon: <Edit size={20} color={colors.icon} />,
           onPress: handleChangePlan,
           subtitle: `Current: ${user?.subscription_type || "FREE"}`,
         },
@@ -275,7 +273,7 @@ export default function ProfileScreen() {
               {
                 id: "exitPlan",
                 title: "Exit Current Plan",
-                icon: <LogOut size={20} color="#E74C3C" />,
+                icon: <LogOut size={20} color={colors.error} />,
                 onPress: handleExitPlan,
                 danger: true,
               },
@@ -289,37 +287,35 @@ export default function ProfileScreen() {
         {
           id: "notifications",
           title: t("profile.notifications") || "Notifications",
-          icon: <Bell size={20} color="#2C3E50" />,
+          icon: <Bell size={20} color={colors.icon} />,
           rightComponent: (
             <Switch
               value={notificationSettings.pushNotifications}
               onValueChange={() =>
                 handleNotificationToggle("pushNotifications")
               }
-              trackColor={{ false: "#E9ECEF", true: "#16A085" }}
-              thumbColor={
-                notificationSettings.pushNotifications ? "#FFFFFF" : "#FFFFFF"
-              }
+              trackColor={{ false: colors.muted, true: colors.primary }}
+              thumbColor={colors.surface}
             />
           ),
         },
         {
           id: "darkMode",
           title: "Dark Mode",
-          icon: <Moon size={20} color="#2C3E50" />,
+          icon: <Moon size={20} color={colors.icon} />,
           rightComponent: (
             <Switch
               value={isDark}
               onValueChange={toggleTheme}
-              trackColor={{ false: "#E9ECEF", true: "#16A085" }}
-              thumbColor={isDark ? "#FFFFFF" : "#FFFFFF"}
+              trackColor={{ false: colors.muted, true: colors.primary }}
+              thumbColor={colors.surface}
             />
           ),
         },
         {
           id: "language",
           title: t("profile.language") || "Language",
-          icon: <Globe size={20} color="#2C3E50" />,
+          icon: <Globe size={20} color={colors.icon} />,
           subtitle: isRTL ? "עברית" : "English",
           onPress: () => setShowLanguageModal(true),
         },
@@ -331,13 +327,13 @@ export default function ProfileScreen() {
         {
           id: "support",
           title: t("profile.support") || "Help Center",
-          icon: <HelpCircle size={20} color="#2C3E50" />,
+          icon: <HelpCircle size={20} color={colors.icon} />,
           onPress: () => handleMenuPress("support"),
         },
         {
           id: "about",
           title: t("profile.about") || "About",
-          icon: <User size={20} color="#2C3E50" />,
+          icon: <User size={20} color={colors.icon} />,
           onPress: () => handleMenuPress("about"),
         },
       ],
@@ -348,7 +344,7 @@ export default function ProfileScreen() {
         {
           id: "privacy",
           title: t("profile.privacy") || "Privacy Policy",
-          icon: <Shield size={20} color="#2C3E50" />,
+          icon: <Shield size={20} color={colors.icon} />,
           onPress: () => handleMenuPress("privacy"),
         },
       ],
@@ -359,7 +355,7 @@ export default function ProfileScreen() {
         {
           id: "signOut",
           title: t("profile.signout") || "Sign Out",
-          icon: <LogOut size={20} color="#E74C3C" />,
+          icon: <LogOut size={20} color={colors.error} />,
           onPress: handleSignOut,
           danger: true,
         },
@@ -373,13 +369,29 @@ export default function ProfileScreen() {
         return <EditProfile onClose={() => setActiveSection(null)} />;
       case "notifications":
         return (
-          <View style={styles.sectionContent}>
-            <Text style={styles.sectionContentTitle}>
+          <View
+            style={[
+              styles.sectionContent,
+              { backgroundColor: colors.surfaceVariant },
+            ]}
+          >
+            <Text style={[styles.sectionContentTitle, { color: colors.text }]}>
               Notification Settings
             </Text>
             {Object.entries(notificationSettings).map(([key, value]) => (
-              <View key={key} style={styles.notificationItem}>
-                <Text style={styles.notificationLabel}>
+              <View
+                key={key}
+                style={[
+                  styles.notificationItem,
+                  { borderBottomColor: colors.border },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.notificationLabel,
+                    { color: colors.onSurface },
+                  ]}
+                >
                   {key
                     .replace(/([A-Z])/g, " $1")
                     .replace(/^./, (str) => str.toUpperCase())}
@@ -387,8 +399,8 @@ export default function ProfileScreen() {
                 <Switch
                   value={value}
                   onValueChange={() => handleNotificationToggle(key)}
-                  trackColor={{ false: "#E9ECEF", true: "#16A085" }}
-                  thumbColor={value ? "#FFFFFF" : "#FFFFFF"}
+                  trackColor={{ false: colors.muted, true: colors.primary }}
+                  thumbColor={colors.surface}
                 />
               </View>
             ))}
@@ -396,9 +408,21 @@ export default function ProfileScreen() {
         );
       case "privacy":
         return (
-          <View style={styles.sectionContent}>
-            <Text style={styles.sectionContentTitle}>Privacy Settings</Text>
-            <Text style={styles.sectionContentText}>
+          <View
+            style={[
+              styles.sectionContent,
+              { backgroundColor: colors.surfaceVariant },
+            ]}
+          >
+            <Text style={[styles.sectionContentTitle, { color: colors.text }]}>
+              Privacy Settings
+            </Text>
+            <Text
+              style={[
+                styles.sectionContentText,
+                { color: colors.textSecondary },
+              ]}
+            >
               Privacy settings and data management options would be displayed
               here.
               {"\n\n"}• Data export and deletion
@@ -410,9 +434,21 @@ export default function ProfileScreen() {
         );
       case "support":
         return (
-          <View style={styles.sectionContent}>
-            <Text style={styles.sectionContentTitle}>Help & Support</Text>
-            <Text style={styles.sectionContentText}>
+          <View
+            style={[
+              styles.sectionContent,
+              { backgroundColor: colors.surfaceVariant },
+            ]}
+          >
+            <Text style={[styles.sectionContentTitle, { color: colors.text }]}>
+              Help & Support
+            </Text>
+            <Text
+              style={[
+                styles.sectionContentText,
+                { color: colors.textSecondary },
+              ]}
+            >
               Welcome to your nutrition tracking app! Here are some helpful
               tips:
               {"\n\n"}• Use the camera to scan your meals for automatic
@@ -426,9 +462,21 @@ export default function ProfileScreen() {
         );
       case "about":
         return (
-          <View style={styles.sectionContent}>
-            <Text style={styles.sectionContentTitle}>About This App</Text>
-            <Text style={styles.sectionContentText}>
+          <View
+            style={[
+              styles.sectionContent,
+              { backgroundColor: colors.surfaceVariant },
+            ]}
+          >
+            <Text style={[styles.sectionContentTitle, { color: colors.text }]}>
+              About This App
+            </Text>
+            <Text
+              style={[
+                styles.sectionContentText,
+                { color: colors.textSecondary },
+              ]}
+            >
               Nutrition Tracker v1.0.0
               {"\n\n"}A comprehensive nutrition tracking application that helps
               you monitor your daily food intake, track your health goals, and
@@ -459,7 +507,7 @@ export default function ProfileScreen() {
       case "GOLD":
         return { color: "#FF6B35", text: "GOLD" };
       default:
-        return { color: "#8E8E93", text: "FREE" };
+        return { color: colors.tabIconDefault, text: "FREE" };
     }
   };
 
@@ -467,20 +515,20 @@ export default function ProfileScreen() {
     {
       label: "AI Requests",
       value: (user?.ai_requests_count || 0).toString(),
-      icon: <Target size={20} color="#E74C3C" />,
+      icon: <Target size={20} color={colors.error} />,
     },
     {
       label: "Member Since",
       value: formatDate(user?.created_at ?? ""),
-      icon: <Scale size={20} color="#9B59B6" />,
+      icon: <Scale size={20} color={colors.warning} />,
     },
     {
       label: "Profile Status",
       value: user?.is_questionnaire_completed ? "Complete" : "Incomplete",
-      icon: <Activity size={20} color="#16A085" />,
+      icon: <Activity size={20} color={colors.primary} />,
     },
   ];
-  console.log(user);
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -493,10 +541,22 @@ export default function ProfileScreen() {
         {/* Header */}
         <View style={[styles.header, isRTL && styles.headerRTL]}>
           <View>
-            <Text style={[styles.title, isRTL && styles.titleRTL]}>
+            <Text
+              style={[
+                styles.title,
+                { color: colors.text },
+                isRTL && styles.titleRTL,
+              ]}
+            >
               {t("profile.title") || "Profile"}
             </Text>
-            <Text style={[styles.subtitle, isRTL && styles.subtitleRTL]}>
+            <Text
+              style={[
+                styles.subtitle,
+                { color: colors.textSecondary },
+                isRTL && styles.subtitleRTL,
+              ]}
+            >
               {t("profile.subtitle") || "Manage your account and preferences"}
             </Text>
           </View>
@@ -505,7 +565,7 @@ export default function ProfileScreen() {
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <LinearGradient
-            colors={["#16A085", "#1ABC9C"]}
+            colors={[colors.primary, colors.primaryContainer]}
             style={styles.profileGradient}
           >
             <TouchableOpacity
@@ -522,28 +582,47 @@ export default function ProfileScreen() {
                   }}
                 />
               ) : (
-                <View style={[styles.avatarImage, styles.avatarPlaceholder]}>
-                  <Text style={styles.avatarPlaceholderText}>
+                <View
+                  style={[
+                    styles.avatarImage,
+                    styles.avatarPlaceholder,
+                    { backgroundColor: colors.surfaceVariant },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.avatarPlaceholderText,
+                      { color: colors.primary },
+                    ]}
+                  >
                     {(user?.name || "U").charAt(0).toUpperCase()}
                   </Text>
                 </View>
               )}
               <View style={styles.avatarOverlay}>
                 {isUploadingAvatar ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={colors.onPrimary} />
                 ) : (
-                  <Camera size={16} color="#FFFFFF" />
+                  <Camera size={16} color={colors.onPrimary} />
                 )}
               </View>
             </TouchableOpacity>
             <View style={[styles.profileInfo, isRTL && styles.profileInfoRTL]}>
               <Text
-                style={[styles.profileName, isRTL && styles.profileNameRTL]}
+                style={[
+                  styles.profileName,
+                  { color: colors.onPrimary },
+                  isRTL && styles.profileNameRTL,
+                ]}
               >
                 {user?.name || "User Name"}
               </Text>
               <Text
-                style={[styles.profileEmail, isRTL && styles.profileEmailRTL]}
+                style={[
+                  styles.profileEmail,
+                  { color: colors.onPrimary },
+                  isRTL && styles.profileEmailRTL,
+                ]}
               >
                 {user?.email || "user@example.com"}
               </Text>
@@ -557,7 +636,9 @@ export default function ProfileScreen() {
                   },
                 ]}
               >
-                <Text style={styles.subscriptionText}>
+                <Text
+                  style={[styles.subscriptionText, { color: colors.onPrimary }]}
+                >
                   {getSubscriptionBadge(user?.subscription_type ?? "").text}
                 </Text>
               </View>
@@ -567,26 +648,40 @@ export default function ProfileScreen() {
 
         {/* Profile Stats */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
+          <Text
+            style={[
+              styles.sectionTitle,
+              { color: colors.text },
+              isRTL && styles.sectionTitleRTL,
+            ]}
+          >
             {t("profile.stats") || "Statistics"}
           </Text>
           <View style={styles.statsContainer}>
             {profileStats.map((stat, index) => (
               <View key={index} style={styles.statCard}>
                 <LinearGradient
-                  colors={["#F8F9FA", "#FFFFFF"]}
+                  colors={[colors.card, colors.surface]}
                   style={styles.statGradient}
                 >
                   <View style={styles.statHeader}>
                     {stat.icon}
                     <Text
-                      style={[styles.statLabel, isRTL && styles.statLabelRTL]}
+                      style={[
+                        styles.statLabel,
+                        { color: colors.onSurface },
+                        isRTL && styles.statLabelRTL,
+                      ]}
                     >
                       {stat.label}
                     </Text>
                   </View>
                   <Text
-                    style={[styles.statValue, isRTL && styles.statValueRTL]}
+                    style={[
+                      styles.statValue,
+                      { color: colors.success },
+                      isRTL && styles.statValueRTL,
+                    ]}
                   >
                     {stat.value}
                   </Text>
@@ -600,17 +695,29 @@ export default function ProfileScreen() {
         {menuSections.map((section, sectionIndex) => (
           <View key={sectionIndex} style={styles.section}>
             <Text
-              style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
+              style={[
+                styles.sectionTitle,
+                { color: colors.text },
+                isRTL && styles.sectionTitleRTL,
+              ]}
             >
               {section.title}
             </Text>
-            <View style={styles.menuContainer}>
+            <View
+              style={[
+                styles.menuContainer,
+                { backgroundColor: colors.surface },
+              ]}
+            >
               {section.items.map((item, itemIndex) => (
                 <View key={itemIndex}>
                   <TouchableOpacity
                     style={[
                       styles.menuItem,
-                      activeSection === item.id && styles.menuItemActive,
+                      { borderBottomColor: colors.border },
+                      activeSection === item.id && {
+                        backgroundColor: colors.surfaceVariant,
+                      },
                     ]}
                     onPress={item.onPress}
                     activeOpacity={0.8}
@@ -624,7 +731,10 @@ export default function ProfileScreen() {
                       <View
                         style={[
                           styles.menuItemIcon,
-                          item.danger && styles.menuItemIconDanger,
+                          { backgroundColor: colors.card },
+                          item.danger && {
+                            backgroundColor: colors.error + "20",
+                          },
                         ]}
                       >
                         {item.icon}
@@ -633,7 +743,8 @@ export default function ProfileScreen() {
                         <Text
                           style={[
                             styles.menuItemTitle,
-                            item.danger && styles.menuItemTitleDanger,
+                            { color: colors.text },
+                            item.danger && { color: colors.error },
                             isRTL && styles.menuItemTitleRTL,
                           ]}
                         >
@@ -643,6 +754,7 @@ export default function ProfileScreen() {
                           <Text
                             style={[
                               styles.menuItemSubtitle,
+                              { color: colors.textSecondary },
                               isRTL && styles.menuItemSubtitleRTL,
                             ]}
                           >
@@ -654,9 +766,9 @@ export default function ProfileScreen() {
                     <View style={styles.menuItemRight}>
                       {item.rightComponent ||
                         (isRTL ? (
-                          <ChevronRight size={20} color="#BDC3C7" />
+                          <ChevronRight size={20} color={colors.icon} />
                         ) : (
-                          <ChevronLeft size={20} color="#BDC3C7" />
+                          <ChevronLeft size={20} color={colors.icon} />
                         ))}
                     </View>
                   </TouchableOpacity>
@@ -694,7 +806,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: "800",
-    color: "#0F172A",
     letterSpacing: -0.5,
   },
   titleRTL: {
@@ -702,7 +813,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: "#64748B",
     marginTop: 6,
   },
   subtitleRTL: {
@@ -730,7 +840,6 @@ const styles = StyleSheet.create({
     borderRadius: 42,
     borderWidth: 3,
     borderColor: "rgba(255,255,255,0.35)",
-    backgroundColor: "#E5E7EB",
   },
   avatarPlaceholder: {
     justifyContent: "center",
@@ -739,7 +848,6 @@ const styles = StyleSheet.create({
   avatarPlaceholderText: {
     fontSize: 34,
     fontWeight: "800",
-    color: "#16A085",
   },
   avatarOverlay: {
     position: "absolute",
@@ -764,15 +872,14 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#FFFFFF",
   },
   profileNameRTL: {
     textAlign: "right",
   },
   profileEmail: {
     fontSize: 14,
-    color: "rgba(255,255,255,0.85)",
     marginTop: 4,
+    opacity: 0.85,
   },
   profileEmailRTL: {
     textAlign: "right",
@@ -785,7 +892,6 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   subscriptionText: {
-    color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.6,
@@ -799,7 +905,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#0F172A",
     marginBottom: 14,
   },
   sectionTitleRTL: {
@@ -825,7 +930,6 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#334155",
     marginLeft: 10,
   },
   statLabelRTL: {
@@ -835,7 +939,6 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#10B981",
   },
   statValueRTL: {
     textAlign: "right",
@@ -843,7 +946,6 @@ const styles = StyleSheet.create({
 
   /* ================= MENU ================= */
   menuContainer: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     overflow: "hidden",
   },
@@ -854,10 +956,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-  },
-  menuItemActive: {
-    backgroundColor: "#F8FAFC",
   },
   menuItemLeft: {
     flexDirection: "row",
@@ -871,28 +969,19 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "#F1F5F9",
     justifyContent: "center",
     alignItems: "center",
     marginHorizontal: 14,
   },
-  menuItemIconDanger: {
-    backgroundColor: "#FEE2E2",
-  },
   menuItemTitle: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#0F172A",
-  },
-  menuItemTitleDanger: {
-    color: "#DC2626",
   },
   menuItemTitleRTL: {
     textAlign: "right",
   },
   menuItemSubtitle: {
     fontSize: 13,
-    color: "#64748B",
     marginTop: 2,
   },
   menuItemSubtitleRTL: {
@@ -905,19 +994,15 @@ const styles = StyleSheet.create({
   /* ================= EXPANDED CONTENT ================= */
   sectionContent: {
     padding: 18,
-    backgroundColor: "#F8FAFC",
     borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
   },
   sectionContentTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#0F172A",
     marginBottom: 14,
   },
   sectionContentText: {
     fontSize: 14,
-    color: "#475569",
     lineHeight: 22,
   },
 
@@ -928,12 +1013,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
   },
   notificationLabel: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#334155",
     flex: 1,
   },
 });

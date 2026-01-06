@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 import { Droplets } from "lucide-react-native";
+import { useTheme } from "@/src/context/ThemeContext";
 
 const { width } = Dimensions.get("window");
 const isSmallScreen = width < 400;
@@ -95,6 +96,7 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
 }) => {
   const scrollViewRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const { colors, isDark } = useTheme();
 
   const nutrition: NutritionData = nutritionProp || {
     calories: caloriesProp ?? defaultNutrition.calories,
@@ -124,8 +126,8 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
       value: nutrition.calories,
       target: nutrition.targetCalories,
       unit: "kcal",
-      color: "#10B981",
-      gradient: ["#10B981", "#059669"],
+      color: colors.success,
+      gradient: [colors.success, colors.primaryContainer],
     },
   ];
 
@@ -135,8 +137,8 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
       value: waterIntake.current,
       target: waterIntake.target,
       unit: "cups",
-      color: "#06B6D4",
-      gradient: ["#06B6D4", "#0891B2"],
+      color: colors.primary,
+      gradient: [colors.primary, colors.primaryContainer],
     });
   }
 
@@ -162,8 +164,8 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
       value: nutrition.fat,
       target: nutrition.targetFat,
       unit: "g",
-      color: "#F59E0B",
-      gradient: ["#F59E0B", "#D97706"],
+      color: colors.warning,
+      gradient: [colors.warning, "#D97706"],
     }
   );
 
@@ -195,8 +197,8 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
       value: nutrition.sodium,
       target: nutrition.targetSodium,
       unit: "mg",
-      color: "#EF4444",
-      gradient: ["#EF4444", "#DC2626"],
+      color: colors.error,
+      gradient: [colors.error, colors.destructive],
     });
   }
 
@@ -237,8 +239,8 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
       value: nutrition.vitaminA,
       target: nutrition.targetVitaminA,
       unit: "%",
-      color: "#F59E0B",
-      gradient: ["#F59E0B", "#D97706"],
+      color: colors.warning,
+      gradient: [colors.warning, "#D97706"],
     });
   }
 
@@ -251,8 +253,8 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
       value: nutrition.vitaminC,
       target: nutrition.targetVitaminC,
       unit: "%",
-      color: "#10B981",
-      gradient: ["#10B981", "#059669"],
+      color: colors.success,
+      gradient: [colors.success, colors.primaryContainer],
     });
   }
 
@@ -276,8 +278,8 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
       value: nutrition.iron,
       target: nutrition.targetIron,
       unit: "%",
-      color: "#64748B",
-      gradient: ["#64748B", "#475569"],
+      color: colors.textSecondary,
+      gradient: [colors.textSecondary, colors.textTertiary],
     });
   }
 
@@ -293,6 +295,188 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
     scrollViewRef.current?.scrollTo({ x: index * width, animated: true });
     setActiveIndex(index);
   };
+
+  const styles = StyleSheet.create({
+    container: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      overflow: "hidden",
+      borderWidth: 0.5,
+      borderColor: colors.border,
+    },
+    cardContainer: {
+      paddingBottom: isSmallScreen ? 20 : 32,
+      paddingTop: isSmallScreen ? 20 : 24,
+    },
+    circleSection: {
+      marginBottom: isSmallScreen ? 20 : 32,
+    },
+    caloriesWrapper: {
+      alignItems: "center",
+    },
+    statsRowBottom: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: isSmallScreen ? 20 : 28,
+      paddingHorizontal: isSmallScreen ? 24 : 32,
+      gap: isSmallScreen ? 16 : 24,
+    },
+    statColumnBottom: {
+      alignItems: "center",
+      flex: 1,
+    },
+    statDivider: {
+      width: 1,
+      height: isSmallScreen ? 32 : 40,
+      backgroundColor: colors.border,
+    },
+    statNumberBottom: {
+      fontSize: isSmallScreen ? 24 : 28,
+      fontWeight: "700",
+      color: colors.text,
+      marginBottom: 4,
+    },
+    statLabelBottom: {
+      fontSize: isSmallScreen ? 12 : 13,
+      color: colors.textSecondary,
+      fontWeight: "600",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    circleContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+    },
+    centerTextContainer: {
+      position: "absolute",
+      alignItems: "center",
+    },
+    centerNumber: {
+      fontSize: isSmallScreen ? 32 : 44,
+      fontWeight: "800",
+      color: colors.text,
+      marginBottom: 4,
+    },
+    unitText: {
+      fontSize: isSmallScreen ? 16 : 22,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    centerLabel: {
+      fontSize: isSmallScreen ? 12 : 13,
+      color: colors.textSecondary,
+      fontWeight: "500",
+    },
+    remainingText: {
+      fontSize: isSmallScreen ? 11 : 12,
+      fontWeight: "700",
+      marginTop: 4,
+    },
+    singleCircleContainer: {
+      alignItems: "center",
+    },
+    cardTitle: {
+      fontSize: isSmallScreen ? 20 : 26,
+      fontWeight: "700",
+      color: colors.text,
+      marginBottom: isSmallScreen ? 16 : 20,
+    },
+    progressPercentage: {
+      marginTop: isSmallScreen ? 16 : 20,
+    },
+    percentageText: {
+      fontSize: isSmallScreen ? 15 : 17,
+      fontWeight: "700",
+    },
+    pagination: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      paddingVertical: isSmallScreen ? 16 : 20,
+      gap: 6,
+    },
+    paginationDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.muted,
+    },
+    paginationDotActive: {
+      width: 28,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.primary,
+    },
+    additionalNutrition: {
+      paddingHorizontal: isSmallScreen ? 16 : 24,
+      paddingBottom: isSmallScreen ? 20 : 24,
+    },
+    sectionTitle: {
+      fontSize: isSmallScreen ? 16 : 18,
+      fontWeight: "700",
+      color: colors.text,
+      marginBottom: isSmallScreen ? 12 : 16,
+    },
+    nutritionList: {
+      gap: isSmallScreen ? 12 : 14,
+    },
+    nutritionRow: {
+      gap: 8,
+    },
+    nutritionRowHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    nutritionDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    nutritionRowTitle: {
+      fontSize: isSmallScreen ? 13 : 14,
+      fontWeight: "600",
+      color: colors.text,
+      flex: 1,
+    },
+    nutritionRowValue: {
+      fontSize: isSmallScreen ? 12 : 13,
+      fontWeight: "700",
+      color: colors.textSecondary,
+    },
+    nutritionProgressBar: {
+      height: 6,
+      backgroundColor: colors.border,
+      borderRadius: 3,
+      overflow: "hidden",
+    },
+    nutritionProgressFill: {
+      height: "100%",
+      borderRadius: 3,
+    },
+    waterHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: isSmallScreen ? 12 : 16,
+      marginBottom: isSmallScreen ? 16 : 20,
+    },
+    waterIconContainer: {
+      width: isSmallScreen ? 48 : 56,
+      height: isSmallScreen ? 48 : 56,
+      borderRadius: isSmallScreen ? 12 : 14,
+      backgroundColor: isDark ? colors.primaryContainer : colors.emerald50,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    waterSubtitle: {
+      fontSize: isSmallScreen ? 13 : 14,
+      color: colors.textSecondary,
+      fontWeight: "600",
+      marginTop: 2,
+    },
+  });
 
   return (
     <View style={styles.container}>
@@ -321,6 +505,8 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
             remainingCalories={remainingCalories}
             onWaterIncrement={waterIntake?.onIncrement}
             onWaterDecrement={waterIntake?.onDecrement}
+            colors={colors}
+            isDark={isDark}
           />
         ))}
       </ScrollView>
@@ -343,7 +529,7 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
           <Text style={styles.sectionTitle}>Additional Nutrition</Text>
           <View style={styles.nutritionList}>
             {nutritionCards.slice(4).map((card) => (
-              <NutritionRow key={card.title} card={card} />
+              <NutritionRow key={card.title} card={card} colors={colors} />
             ))}
           </View>
         </View>
@@ -364,6 +550,8 @@ const NutritionCardView: React.FC<{
   remainingCalories: number;
   onWaterIncrement?: () => void;
   onWaterDecrement?: () => void;
+  colors: any;
+  isDark: boolean;
 }> = ({
   card,
   size,
@@ -374,8 +562,8 @@ const NutritionCardView: React.FC<{
   isWater,
   burnedCalories,
   remainingCalories,
-  onWaterIncrement,
-  onWaterDecrement,
+  colors,
+  isDark,
 }) => {
   const progress = Math.min((card.value / card.target) * 100, 100);
   const circumference = 2 * Math.PI * radius;
@@ -383,6 +571,95 @@ const NutritionCardView: React.FC<{
   const remaining = Math.max(card.target - card.value, 0);
   const currentMl = card.value * 250;
   const targetMl = card.target * 250;
+
+  const styles = StyleSheet.create({
+    cardContainer: { width },
+    circleSection: { marginBottom: isSmallScreen ? 20 : 32 },
+    caloriesWrapper: { alignItems: "center" },
+    statsRowBottom: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: isSmallScreen ? 20 : 28,
+      paddingHorizontal: isSmallScreen ? 24 : 32,
+      gap: isSmallScreen ? 16 : 24,
+    },
+    statColumnBottom: { alignItems: "center", flex: 1 },
+    statDivider: {
+      width: 1,
+      height: isSmallScreen ? 32 : 40,
+      backgroundColor: colors.border,
+    },
+    statNumberBottom: {
+      fontSize: isSmallScreen ? 24 : 28,
+      fontWeight: "700",
+      color: colors.text,
+      marginBottom: 4,
+    },
+    statLabelBottom: {
+      fontSize: isSmallScreen ? 12 : 13,
+      color: colors.textSecondary,
+      fontWeight: "600",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    circleContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+    },
+    centerTextContainer: { position: "absolute", alignItems: "center" },
+    centerNumber: {
+      fontSize: isSmallScreen ? 32 : 44,
+      fontWeight: "800",
+      color: colors.text,
+      marginBottom: 4,
+    },
+    unitText: {
+      fontSize: isSmallScreen ? 16 : 22,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    centerLabel: {
+      fontSize: isSmallScreen ? 12 : 13,
+      color: colors.textSecondary,
+      fontWeight: "500",
+    },
+    remainingText: {
+      fontSize: isSmallScreen ? 11 : 12,
+      fontWeight: "700",
+      marginTop: 4,
+    },
+    singleCircleContainer: { alignItems: "center" },
+    cardTitle: {
+      fontSize: isSmallScreen ? 20 : 26,
+      fontWeight: "700",
+      color: colors.text,
+      marginBottom: isSmallScreen ? 16 : 20,
+    },
+    progressPercentage: { marginTop: isSmallScreen ? 16 : 20 },
+    percentageText: { fontSize: isSmallScreen ? 15 : 17, fontWeight: "700" },
+    waterHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: isSmallScreen ? 12 : 16,
+      marginBottom: isSmallScreen ? 16 : 20,
+    },
+    waterIconContainer: {
+      width: isSmallScreen ? 48 : 56,
+      height: isSmallScreen ? 48 : 56,
+      borderRadius: isSmallScreen ? 12 : 14,
+      backgroundColor: isDark ? colors.primaryContainer : colors.emerald50,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    waterSubtitle: {
+      fontSize: isSmallScreen ? 13 : 14,
+      color: colors.textSecondary,
+      fontWeight: "600",
+      marginTop: 2,
+    },
+  });
 
   return (
     <View style={[styles.cardContainer, { width }]}>
@@ -407,7 +684,7 @@ const NutritionCardView: React.FC<{
                   cx={center}
                   cy={center}
                   r={radius}
-                  stroke="#F3F4F6"
+                  stroke={colors.border}
                   strokeWidth={strokeWidth}
                   fill="none"
                 />
@@ -453,7 +730,10 @@ const NutritionCardView: React.FC<{
           <View style={styles.singleCircleContainer}>
             <View style={styles.waterHeader}>
               <View style={styles.waterIconContainer}>
-                <Droplets size={isSmallScreen ? 26 : 30} color="#06B6D4" />
+                <Droplets
+                  size={isSmallScreen ? 26 : 30}
+                  color={colors.primary}
+                />
               </View>
               <View>
                 <Text style={styles.cardTitle}>{card.title} Intake</Text>
@@ -481,7 +761,7 @@ const NutritionCardView: React.FC<{
                   cx={center}
                   cy={center}
                   r={radius}
-                  stroke="#F3F4F6"
+                  stroke={colors.border}
                   strokeWidth={strokeWidth}
                   fill="none"
                 />
@@ -533,7 +813,7 @@ const NutritionCardView: React.FC<{
                   cx={center}
                   cy={center}
                   r={radius}
-                  stroke="#F3F4F6"
+                  stroke={colors.border}
                   strokeWidth={strokeWidth}
                   fill="none"
                 />
@@ -580,8 +860,35 @@ const NutritionCardView: React.FC<{
   );
 };
 
-const NutritionRow: React.FC<{ card: NutritionCard }> = ({ card }) => {
+const NutritionRow: React.FC<{ card: NutritionCard; colors: any }> = ({
+  card,
+  colors,
+}) => {
   const progress = Math.min((card.value / card.target) * 100, 100);
+
+  const styles = StyleSheet.create({
+    nutritionRow: { gap: 8 },
+    nutritionRowHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+    nutritionDot: { width: 6, height: 6, borderRadius: 3 },
+    nutritionRowTitle: {
+      fontSize: isSmallScreen ? 13 : 14,
+      fontWeight: "600",
+      color: colors.text,
+      flex: 1,
+    },
+    nutritionRowValue: {
+      fontSize: isSmallScreen ? 12 : 13,
+      fontWeight: "700",
+      color: colors.textSecondary,
+    },
+    nutritionProgressBar: {
+      height: 6,
+      backgroundColor: colors.border,
+      borderRadius: 3,
+      overflow: "hidden",
+    },
+    nutritionProgressFill: { height: "100%", borderRadius: 3 },
+  });
 
   return (
     <View style={styles.nutritionRow}>
@@ -604,186 +911,5 @@ const NutritionRow: React.FC<{ card: NutritionCard }> = ({ card }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  cardContainer: {
-    paddingBottom: isSmallScreen ? 20 : 32,
-    paddingTop: isSmallScreen ? 20 : 24,
-  },
-  circleSection: {
-    marginBottom: isSmallScreen ? 20 : 32,
-  },
-  caloriesWrapper: {
-    alignItems: "center",
-  },
-  statsRowBottom: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: isSmallScreen ? 20 : 28,
-    paddingHorizontal: isSmallScreen ? 24 : 32,
-    gap: isSmallScreen ? 16 : 24,
-  },
-  statColumnBottom: {
-    alignItems: "center",
-    flex: 1,
-  },
-  statDivider: {
-    width: 1,
-    height: isSmallScreen ? 32 : 40,
-    backgroundColor: "#E5E7EB",
-  },
-  statNumberBottom: {
-    fontSize: isSmallScreen ? 24 : 28,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 4,
-  },
-  statLabelBottom: {
-    fontSize: isSmallScreen ? 12 : 13,
-    color: "#6B7280",
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  circleContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  centerTextContainer: {
-    position: "absolute",
-    alignItems: "center",
-  },
-  centerNumber: {
-    fontSize: isSmallScreen ? 32 : 44,
-    fontWeight: "800",
-    color: "#111827",
-    marginBottom: 4,
-  },
-  unitText: {
-    fontSize: isSmallScreen ? 16 : 22,
-    fontWeight: "600",
-    color: "#6B7280",
-  },
-  centerLabel: {
-    fontSize: isSmallScreen ? 12 : 13,
-    color: "#6B7280",
-    fontWeight: "500",
-  },
-  remainingText: {
-    fontSize: isSmallScreen ? 11 : 12,
-    fontWeight: "700",
-    marginTop: 4,
-  },
-  singleCircleContainer: {
-    alignItems: "center",
-  },
-  cardTitle: {
-    fontSize: isSmallScreen ? 20 : 26,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: isSmallScreen ? 16 : 20,
-  },
-  progressPercentage: {
-    marginTop: isSmallScreen ? 16 : 20,
-  },
-  percentageText: {
-    fontSize: isSmallScreen ? 15 : 17,
-    fontWeight: "700",
-  },
-  pagination: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: isSmallScreen ? 16 : 20,
-    gap: 6,
-  },
-  paginationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#D1D5DB",
-    transitionDuration: "all 0.3s ease",
-  },
-  paginationDotActive: {
-    width: 28,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#10B981",
-  },
-  additionalNutrition: {
-    paddingHorizontal: isSmallScreen ? 16 : 24,
-    paddingBottom: isSmallScreen ? 20 : 24,
-  },
-  sectionTitle: {
-    fontSize: isSmallScreen ? 16 : 18,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: isSmallScreen ? 12 : 16,
-  },
-  nutritionList: {
-    gap: isSmallScreen ? 12 : 14,
-  },
-  nutritionRow: {
-    gap: 8,
-  },
-  nutritionRowHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  nutritionDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  nutritionRowTitle: {
-    fontSize: isSmallScreen ? 13 : 14,
-    fontWeight: "600",
-    color: "#111827",
-    flex: 1,
-  },
-  nutritionRowValue: {
-    fontSize: isSmallScreen ? 12 : 13,
-    fontWeight: "700",
-    color: "#6B7280",
-  },
-  nutritionProgressBar: {
-    height: 6,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  nutritionProgressFill: {
-    height: "100%",
-    borderRadius: 3,
-  },
-  waterHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: isSmallScreen ? 12 : 16,
-    marginBottom: isSmallScreen ? 16 : 20,
-  },
-  waterIconContainer: {
-    width: isSmallScreen ? 48 : 56,
-    height: isSmallScreen ? 48 : 56,
-    borderRadius: isSmallScreen ? 12 : 14,
-    backgroundColor: "#ECFEFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  waterSubtitle: {
-    fontSize: isSmallScreen ? 13 : 14,
-    color: "#6B7280",
-    fontWeight: "600",
-    marginTop: 2,
-  },
-});
 
 export default CircularCaloriesProgress;
