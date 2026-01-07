@@ -346,12 +346,8 @@ const HomeScreen = React.memo(() => {
       setDataError(null);
 
       try {
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Request timeout")), 15000)
-        );
-
         const [mealsResult, goalsResult] = await Promise.allSettled([
-          Promise.race([dispatch(fetchMeals()).unwrap(), timeoutPromise]),
+          dispatch(fetchMeals()).unwrap(),
           loadDailyGoals(),
         ]);
 

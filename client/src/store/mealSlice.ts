@@ -48,14 +48,12 @@ export const processImage = async (imageUri: string): Promise<string> => {
       let imageData: string;
 
       if (imageUri.startsWith("data:")) {
-        // Extract base64 from data URL
         imageData = imageUri.split(",")[1];
         console.log(
           "Extracted base64 from data URL, length:",
           imageData.length
         );
       } else {
-        // Fetch the image and convert to base64
         const response = await fetch(imageUri);
         if (!response.ok) {
           throw new Error(
@@ -66,7 +64,6 @@ export const processImage = async (imageUri: string): Promise<string> => {
         const blob = await response.blob();
         console.log("Image blob size:", blob.size, "bytes, type:", blob.type);
 
-        // Convert blob to base64
         const base64Result = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onloadend = () => {
@@ -76,7 +73,6 @@ export const processImage = async (imageUri: string): Promise<string> => {
               return;
             }
 
-            // Extract base64 part (remove data:image/...;base64, prefix)
             const base64 = result.split(",")[1];
             if (!base64) {
               reject(new Error("Failed to extract base64 from result"));
@@ -96,10 +92,8 @@ export const processImage = async (imageUri: string): Promise<string> => {
 
       // Compress image if it's too large (limit to ~1MB base64)
       if (imageData.length > 1400000) {
-        // ~1MB in base64
         console.log("Image too large, compressing...");
 
-        // Create an image element to resize
         const img = new Image();
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
@@ -107,7 +101,6 @@ export const processImage = async (imageUri: string): Promise<string> => {
         const compressedBase64 = await new Promise<string>(
           (resolve, reject) => {
             img.onload = () => {
-              // Calculate new dimensions (max 800px on longest side)
               const maxDimension = 800;
               let { width, height } = img;
 
@@ -129,7 +122,6 @@ export const processImage = async (imageUri: string): Promise<string> => {
 
               ctx.drawImage(img, 0, 0, width, height);
 
-              // Convert to base64 with quality compression
               const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.7);
               const compressedBase64 = compressedDataUrl.split(",")[1];
 
@@ -161,22 +153,18 @@ export const processImage = async (imageUri: string): Promise<string> => {
       );
     }
   } else {
-    // Native processing (React Native) - Updated for new Expo FileSystem API
+    // Native processing
     try {
       console.log("Processing native image:", imageUri);
 
-      // Using the new File API
       const file = new File(imageUri);
-
-      // Check if file exists using the new API
       const fileInfo = file.info();
+
       if (!fileInfo.exists) {
         throw new Error("Image file does not exist");
       }
 
       console.log("Image file size:", fileInfo.size);
-
-      // Read as base64 using the new API
       const base64 = file.base64();
 
       console.log("Native image processed, base64 length:", base64.length);
@@ -207,12 +195,10 @@ export const analyzeMeal = createAsyncThunk(
     try {
       console.log("Starting meal analysis with base64 data...");
 
-      // Validate input
       if (!params.imageBase64 || params.imageBase64.trim() === "") {
         throw new Error("Image data is empty or invalid");
       }
 
-      // Clean base64 string - handle both data URLs and raw base64
       let cleanBase64 = params.imageBase64;
       if (params.imageBase64.startsWith("data:")) {
         cleanBase64 = params.imageBase64.split(",")[1];
@@ -220,7 +206,6 @@ export const analyzeMeal = createAsyncThunk(
 
       console.log("Base64 data length:", cleanBase64.length);
 
-      // Make the API call with proper error handling
       const response = await nutritionAPI.analyzeMeal(
         cleanBase64,
         params.updateText,
@@ -231,16 +216,13 @@ export const analyzeMeal = createAsyncThunk(
       console.log("API response received:", response);
 
       if (response && response.success && response.data) {
-        // Validate API response data
         try {
           const validatedData = MealAnalysisSchema.parse(response.data);
           console.log("Data validation successful");
         } catch (validationError) {
           console.warn("API response validation failed:", validationError);
-          // Continue anyway, but log the issue
         }
 
-        // Ensure ingredients array is properly formatted
         if (
           response.data.ingredients &&
           Array.isArray(response.data.ingredients)
@@ -260,7 +242,7 @@ export const analyzeMeal = createAsyncThunk(
         }
 
         const pendingMeal: PendingMeal = {
-          image_base_64: cleanBase64, // Keep in memory only, don't persist
+          image_base_64: cleanBase64,
           analysis: {
             ...response.data,
             meal_period:
@@ -270,19 +252,32 @@ export const analyzeMeal = createAsyncThunk(
         };
         console.log("Pending meal created:", pendingMeal);
 
-        // Save ONLY analysis to storage (NEVER store base64 images in AsyncStorage!)
+        // CRITICAL FIX: Only save small analysis data, NEVER base64
         try {
           const storageData = {
             analysis: pendingMeal.analysis,
             timestamp: pendingMeal.timestamp,
           };
-          const serializedMeal = JSON.stringify(storageData);
 
-          await AsyncStorage.setItem(PENDING_MEAL_KEY, serializedMeal);
-          console.log("Pending meal analysis saved to storage successfully");
+          // Check size before saving
+          const serializedMeal = JSON.stringify(storageData);
+          const sizeKB = (serializedMeal.length * 2) / 1024;
+
+          if (sizeKB > 50) {
+            console.warn(
+              `⚠️ Analysis data too large (${sizeKB.toFixed(
+                1
+              )}KB), not persisting`
+            );
+          } else {
+            await AsyncStorage.setItem(PENDING_MEAL_KEY, serializedMeal);
+            console.log(
+              `✅ Pending meal analysis saved (${sizeKB.toFixed(1)}KB)`
+            );
+          }
         } catch (storageError: any) {
           console.warn("Failed to save pending meal to storage:", storageError);
-          // Continue without storage - meal is still in memory and will be posted
+          // Continue without storage - meal is still in memory
         }
 
         console.log("Analysis completed successfully");
@@ -314,7 +309,6 @@ export const analyzeMeal = createAsyncThunk(
         errorMessage = error;
       }
 
-      // Enhanced error handling with specific AI service messages
       if (
         errorMessage.includes("Network Error") ||
         errorMessage.includes("ERR_NETWORK")
@@ -347,12 +341,10 @@ export const validateAndFixBase64Image = (
   base64String: string
 ): string | null => {
   try {
-    // Check if it's already a complete data URL
     if (base64String.startsWith("data:image/")) {
       return base64String;
     }
 
-    // If it's just the base64 part, add the data URL prefix
     if (base64String.match(/^[A-Za-z0-9+/]*={0,2}$/)) {
       return `data:image/jpeg;base64,${base64String}`;
     }
@@ -378,7 +370,6 @@ export const updateMeal = createAsyncThunk(
 
       if (response && response.success && response.data) {
         console.log("Meal updated successfully");
-        // Refetch all meals to ensure consistency
         dispatch(fetchMeals());
         return response.data;
       } else {
@@ -424,7 +415,7 @@ export const postMeal = createAsyncThunk(
       );
 
       if (response) {
-        // Clean up storage
+        // Clean up storage after successful post
         try {
           await AsyncStorage.removeItem(PENDING_MEAL_KEY);
           console.log("Pending meal removed from storage");
@@ -436,7 +427,6 @@ export const postMeal = createAsyncThunk(
         }
 
         console.log("Meal posted successfully");
-        // Refetch meals to ensure we have the latest data from server
         dispatch(fetchMeals());
         return response;
       }
@@ -476,8 +466,6 @@ export const fetchMeals = createAsyncThunk(
   }
 );
 
-// NEW THUNKS FOR HISTORY FEATURES
-
 export const saveMealFeedback = createAsyncThunk(
   "meal/saveMealFeedback",
   async (
@@ -500,24 +488,11 @@ export const saveMealFeedback = createAsyncThunk(
       const response = await nutritionAPI.saveMealFeedback(mealId, feedback);
       console.log("✅ Feedback saved successfully");
 
-      // Refetch meals to ensure we have updated data
       dispatch(fetchMeals());
 
       return { mealId, feedback };
     } catch (error) {
       console.error("💥 Save feedback error:", error);
-      // Attempt to fix the read-only property error by ensuring feedback is applied correctly
-      if (
-        error instanceof Error &&
-        error.message.includes("Cannot assign to read-only property")
-      ) {
-        // This specific error might be due to how Redux Toolkit immutably updates state.
-        // The fetchMeals() call should ideally handle updating the UI with the latest data.
-        // If the feedback itself was the issue, the API call might have failed before it reached the state update.
-        console.warn(
-          "Encountered read-only property error, but proceeding with fetchMeals."
-        );
-      }
       return rejectWithValue("Failed to save feedback");
     }
   }
@@ -531,7 +506,6 @@ export const toggleMealFavorite = createAsyncThunk(
       const response = await nutritionAPI.toggleMealFavorite(mealId);
       console.log("✅ Favorite toggled successfully");
 
-      // Refetch meals to ensure we have updated data
       dispatch(fetchMeals());
 
       return { mealId, isFavorite: response.data.isFavorite };
@@ -553,7 +527,6 @@ export const duplicateMeal = createAsyncThunk(
       console.log("✅ Meal duplicated successfully");
 
       if (response.success && response.data) {
-        // Refetch meals to ensure we have all updated data
         dispatch(fetchMeals());
         return response.data;
       } else {
@@ -571,7 +544,6 @@ export const removeMeal = createAsyncThunk(
   async (mealId: string, { rejectWithValue, dispatch }) => {
     try {
       await nutritionAPI.removeMeal(mealId);
-      // Refetch meals to ensure consistency
       dispatch(fetchMeals());
       return mealId;
     } catch (error: any) {
@@ -581,25 +553,55 @@ export const removeMeal = createAsyncThunk(
   }
 );
 
+// CRITICAL FIX: Completely rewritten loadPendingMeal with proper error handling
 export const loadPendingMeal = createAsyncThunk(
   "meal/loadPendingMeal",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("Loading pending meal from storage...");
+      console.log("📥 Loading pending meal from storage...");
 
-      // Check storage health before loading
+      // First, check storage health
       const hasSpace = await StorageCleanupService.checkAvailableStorage();
       if (!hasSpace) {
-        console.warn("⚠️ Storage issues detected, skipping pending meal load");
+        console.warn("⚠️ Storage issues detected, running emergency cleanup");
+        await StorageCleanupService.emergencyCleanup();
         return null;
       }
 
-      const stored = await AsyncStorage.getItem(PENDING_MEAL_KEY);
+      // CRITICAL FIX: Wrap AsyncStorage.getItem in try-catch (CursorWindow can still happen)
+      let stored: string | null = null;
+      try {
+        stored = await AsyncStorage.getItem(PENDING_MEAL_KEY);
+      } catch (storageError: any) {
+        console.error(
+          "🚨 CursorWindow error reading pendingMeal:",
+          storageError
+        );
+
+        // If it's a CursorWindow error, run emergency cleanup
+        if (
+          storageError.message &&
+          storageError.message.includes("CursorWindow")
+        ) {
+          console.log("🔥 CursorWindow detected, running emergency cleanup");
+          await StorageCleanupService.emergencyCleanup();
+        }
+
+        // Try to remove the corrupted key
+        try {
+          await AsyncStorage.removeItem(PENDING_MEAL_KEY);
+          console.log("🗑️ Removed corrupted pendingMeal key");
+        } catch (removeError) {
+          console.warn("Failed to remove corrupted key:", removeError);
+        }
+
+        return null;
+      }
 
       if (stored && stored.trim() !== "") {
         try {
           const storedData = JSON.parse(stored);
-          console.log("Pending meal loaded from storage:", storedData);
+          console.log("📦 Pending meal loaded from storage");
 
           // Validate the loaded data structure
           if (
@@ -618,40 +620,44 @@ export const loadPendingMeal = createAsyncThunk(
             }
 
             // Reconstruct pending meal (without image since it's not stored)
-            const pendingMeal = {
+            const pendingMeal: PendingMeal = {
               analysis: storedData.analysis,
               timestamp: storedData.timestamp,
-              image_base_64: "", // Image not persisted, will be empty on reload
+              image_base_64: "", // Image not persisted
             };
 
             return pendingMeal;
           } else {
-            console.warn("Invalid pending meal structure, clearing storage");
+            console.warn("❌ Invalid pending meal structure, clearing storage");
             await AsyncStorage.removeItem(PENDING_MEAL_KEY);
             return null;
           }
         } catch (parseError) {
-          console.error(
-            "Failed to parse pending meal from storage:",
-            parseError
-          );
+          console.error("❌ Failed to parse pending meal:", parseError);
+
           // Clear corrupted data
-          await AsyncStorage.removeItem(PENDING_MEAL_KEY);
+          try {
+            await AsyncStorage.removeItem(PENDING_MEAL_KEY);
+            console.log("🗑️ Cleared corrupted pending meal data");
+          } catch (removeError) {
+            console.warn("Failed to clear corrupted data:", removeError);
+          }
+
           return null;
         }
       } else {
-        console.log("No pending meal found in storage");
+        console.log("📭 No pending meal found in storage");
         return null;
       }
-    } catch (error) {
-      console.error("Load pending meal error:", error);
+    } catch (error: any) {
+      console.error("❌ Load pending meal error:", error);
 
-      // If it's a storage error, try to clear corrupted data
+      // If it's any storage error, run emergency cleanup
       try {
-        await AsyncStorage.removeItem(PENDING_MEAL_KEY);
-        console.log("🗑️ Cleared corrupted pending meal data");
-      } catch (clearError) {
-        console.warn("Failed to clear corrupted data:", clearError);
+        console.log("🚨 Running emergency cleanup due to load error");
+        await StorageCleanupService.emergencyCleanup();
+      } catch (cleanupError) {
+        console.error("Emergency cleanup failed:", cleanupError);
       }
 
       return null;
@@ -668,7 +674,6 @@ const mealSlice = createSlice({
     },
     clearPendingMeal: (state) => {
       state.pendingMeal = null;
-      // Clear from storage asynchronously
       AsyncStorage.removeItem(PENDING_MEAL_KEY).catch((error) => {
         console.warn("Failed to remove pending meal from storage:", error);
       });
@@ -693,113 +698,45 @@ const mealSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Analyze meal cases
       .addCase(analyzeMeal.pending, (state) => {
         state.isAnalyzing = true;
         state.error = null;
-        console.log("Analysis started...");
       })
       .addCase(analyzeMeal.fulfilled, (state, action) => {
         state.isAnalyzing = false;
         state.pendingMeal = action.payload;
         state.error = null;
-        console.log("Analysis completed successfully");
       })
       .addCase(analyzeMeal.rejected, (state, action) => {
         state.isAnalyzing = false;
         state.error = action.payload as string;
-        console.log("Analysis failed:", action.payload);
       })
-
-      // Update meal cases
       .addCase(updateMeal.pending, (state) => {
         state.isUpdating = true;
         state.error = null;
-        console.log("Update started...");
       })
       .addCase(updateMeal.fulfilled, (state, action) => {
         state.isUpdating = false;
         state.error = null;
-        // Clear pending meal after successful update
         state.pendingMeal = null;
-        console.log("Update completed successfully");
-
-        // Trigger immediate cache invalidation
-        import("../services/queryClient").then(({ queryClient }) => {
-          // Cancel and clear immediately
-          queryClient.cancelQueries({ queryKey: ["meals"] });
-          queryClient.removeQueries({ queryKey: ["meals"] });
-          queryClient.removeQueries({ queryKey: ["dailyStats"] });
-          queryClient.removeQueries({ queryKey: ["statistics"] });
-
-          // Force immediate refetch
-          queryClient.refetchQueries({ queryKey: ["meals"], type: "all" });
-          queryClient.refetchQueries({ queryKey: ["dailyStats"], type: "all" });
-          queryClient.refetchQueries({ queryKey: ["statistics"], type: "all" });
-        });
       })
       .addCase(updateMeal.rejected, (state, action) => {
         state.isUpdating = false;
         state.error = action.payload as string;
-        console.log("Update failed:", action.payload);
       })
-
-      // Post meal cases
       .addCase(postMeal.pending, (state) => {
         state.isPosting = true;
         state.error = null;
-        console.log("Posting meal...");
       })
       .addCase(postMeal.fulfilled, (state, action) => {
         state.isPosting = false;
         state.pendingMeal = null;
         state.error = null;
-        console.log("Meal posted successfully");
-
-        // Trigger immediate cache invalidation and data refresh
-        import("../services/queryClient").then(({ queryClient }) => {
-          const today = new Date().toISOString().split("T")[0];
-
-          // Cancel all ongoing queries first
-          queryClient.cancelQueries();
-
-          // Remove stale data completely
-          queryClient.removeQueries({ queryKey: ["meals"] });
-          queryClient.removeQueries({ queryKey: ["dailyStats"] });
-          queryClient.removeQueries({ queryKey: ["statistics"] });
-          queryClient.removeQueries({ queryKey: ["recent-meals"] });
-          queryClient.removeQueries({ queryKey: ["achievements"] });
-
-          // Force immediate refetch with no cache
-          queryClient.refetchQueries({
-            queryKey: ["meals"],
-            type: "all",
-            exact: false,
-          });
-          queryClient.refetchQueries({
-            queryKey: ["dailyStats"],
-            type: "all",
-            exact: false,
-          });
-          queryClient.refetchQueries({
-            queryKey: ["statistics"],
-            type: "all",
-            exact: false,
-          });
-        });
-
-        // Also dispatch fetchMeals to update Redux state immediately
-        import("./index").then(({ store }) => {
-          store.dispatch({ type: "meal/fetchMeals/pending" });
-        });
       })
       .addCase(postMeal.rejected, (state, action) => {
         state.isPosting = false;
         state.error = action.payload as string;
-        console.log("Meal posting failed:", action.payload);
       })
-
-      // Fetch meals cases
       .addCase(fetchMeals.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -818,116 +755,66 @@ const mealSlice = createSlice({
       })
       .addCase(removeMeal.fulfilled, (state, action) => {
         state.isLoading = false;
-        // Meals will be updated by fetchMeals dispatch
-
-        // Trigger immediate cache invalidation
-        import("../services/queryClient").then(({ queryClient }) => {
-          const today = new Date().toISOString().split("T")[0];
-          queryClient.cancelQueries({ queryKey: ["meals"] });
-          queryClient.removeQueries({ queryKey: ["meals"] });
-          queryClient.removeQueries({ queryKey: ["dailyStats", today] });
-          queryClient.refetchQueries({ queryKey: ["meals"] });
-          queryClient.refetchQueries({ queryKey: ["dailyStats", today] });
-        });
       })
       .addCase(removeMeal.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       })
-
-      // Save meal feedback cases
       .addCase(saveMealFeedback.pending, (state) => {
         state.isSavingFeedback = true;
         state.error = null;
       })
       .addCase(saveMealFeedback.fulfilled, (state, action) => {
         state.isSavingFeedback = false;
-        console.log("Feedback saved successfully");
-
-        // Trigger immediate cache invalidation
-        import("../services/queryClient").then(({ queryClient }) => {
-          queryClient.cancelQueries({ queryKey: ["meals"] });
-          queryClient.removeQueries({ queryKey: ["meals"] });
-          queryClient.refetchQueries({ queryKey: ["meals"] });
-        });
       })
       .addCase(saveMealFeedback.rejected, (state, action) => {
         state.isSavingFeedback = false;
         state.error = action.payload as string;
       })
-
-      // Toggle meal favorite cases
       .addCase(toggleMealFavorite.pending, (state) => {
         state.isTogglingFavorite = true;
         state.error = null;
       })
       .addCase(toggleMealFavorite.fulfilled, (state, action) => {
         state.isTogglingFavorite = false;
-        console.log("Favorite toggled successfully");
-
-        // Trigger immediate cache invalidation
-        import("../services/queryClient").then(({ queryClient }) => {
-          queryClient.cancelQueries({ queryKey: ["meals"] });
-          queryClient.removeQueries({ queryKey: ["meals"] });
-          queryClient.refetchQueries({ queryKey: ["meals"] });
-        });
       })
       .addCase(toggleMealFavorite.rejected, (state, action) => {
         state.isTogglingFavorite = false;
         state.error = action.payload as string;
       })
-
-      // Duplicate meal cases
       .addCase(duplicateMeal.pending, (state) => {
         state.isDuplicating = true;
         state.error = null;
       })
       .addCase(duplicateMeal.fulfilled, (state, action) => {
         state.isDuplicating = false;
-        console.log("Meal duplicated successfully");
-
-        // Trigger immediate cache invalidation
-        import("../services/queryClient").then(({ queryClient }) => {
-          const today = new Date().toISOString().split("T")[0];
-          queryClient.cancelQueries({ queryKey: ["meals"] });
-          queryClient.removeQueries({ queryKey: ["meals"] });
-          queryClient.removeQueries({ queryKey: ["dailyStats", today] });
-          queryClient.refetchQueries({ queryKey: ["meals"] });
-          queryClient.refetchQueries({ queryKey: ["dailyStats", today] });
-        });
       })
       .addCase(duplicateMeal.rejected, (state, action) => {
         state.isDuplicating = false;
         state.error = action.payload as string;
       })
-
-      // Load pending meal cases
       .addCase(loadPendingMeal.pending, (state) => {
-        // Don't show loading for this background operation
+        // Don't show loading for background operation
       })
       .addCase(loadPendingMeal.fulfilled, (state, action) => {
         if (action.payload) {
           state.pendingMeal = action.payload;
-          console.log("Pending meal restored from storage");
+          console.log("✅ Pending meal restored from storage");
         }
       })
       .addCase(loadPendingMeal.rejected, (state, action) => {
         // Don't set error for storage loading failures
-        console.warn("Failed to load pending meal:", action.payload);
+        console.warn("⚠️ Failed to load pending meal:", action.payload);
       });
   },
 });
 
-// Add meal deletion thunk
 export const deleteMeal = createAsyncThunk(
   "meals/delete",
   async (mealId: string, { rejectWithValue, dispatch }) => {
     try {
       await mealAPI.deleteMeal(mealId);
-
-      // Refresh all meal-related data after deletion
       dispatch(fetchMeals());
-
       return mealId;
     } catch (error: any) {
       return rejectWithValue(
@@ -944,4 +831,5 @@ export const {
   setPendingMealForUpdate,
   updateMealLocally,
 } = mealSlice.actions;
+
 export default mealSlice.reducer;
