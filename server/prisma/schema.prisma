@@ -75,6 +75,9 @@ model User {
   // MenuReview relation
   menuReviews MenuReview[]
 
+  // IngredientCheck relation
+  ingredientChecks IngredientCheck[]
+
   active_meal_plan_id String?
   active_menu_id      String?
 
@@ -504,10 +507,13 @@ model RecommendedMeal {
   prep_time_minutes Int?
   cooking_method    String?
   instructions      String?
+  image_url         String?
+  language          String?    @default("en")
 
   // Relations
   menu        RecommendedMenu         @relation(fields: [menu_id], references: [menu_id], onDelete: Cascade)
   ingredients RecommendedIngredient[]
+  ingredientChecks IngredientCheck[]
 
   @@index([menu_id])
   @@index([day_number, meal_type])
@@ -525,9 +531,29 @@ model RecommendedIngredient {
 
   // Relations
   meal RecommendedMeal @relation(fields: [meal_id], references: [meal_id], onDelete: Cascade)
+  ingredientChecks IngredientCheck[]
 
   @@index([meal_id])
   @@map("recommended_ingredients")
+}
+
+model IngredientCheck {
+  check_id      String    @id @default(cuid())
+  user_id       String
+  ingredient_id String
+  meal_id       String
+  checked       Boolean   @default(false)
+  checked_at    DateTime?
+
+  // Relations
+  user       User                  @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  ingredient RecommendedIngredient @relation(fields: [ingredient_id], references: [ingredient_id], onDelete: Cascade)
+  meal       RecommendedMeal       @relation(fields: [meal_id], references: [meal_id], onDelete: Cascade)
+
+  @@unique([user_id, ingredient_id, meal_id])
+  @@index([user_id])
+  @@index([meal_id])
+  @@map("ingredient_checks")
 }
 
 model CalendarEvent {
@@ -874,7 +900,10 @@ model MenuReview {
   id              String   @id @default(cuid())
   menu_id         String
   user_id         String
+  type            String?  @default("completed") // "completed" or "failed"
   rating          Int
+  feedback        String?
+  reason          String?  // Why user couldn't complete (for failed reviews)
   liked           String?
   disliked        String?
   suggestions     String?

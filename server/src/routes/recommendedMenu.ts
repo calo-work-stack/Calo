@@ -1219,73 +1219,94 @@ router.post(
         Math.min(30, parseInt(preferences.duration_days?.toString() || "7"))
       );
 
-      const prompt = `Create a personalized ${sanitizedDuration}-day meal plan using these available ingredients: ${ingredientsList}.
+      const customName = preferences.custom_name?.trim() || null;
 
-IMPORTANT LANGUAGE RULES:
-- The ingredients contain ${menuLanguage} text
-- You MUST respond in ${menuLanguage} for ALL text fields (menu_name, description, meal names, instructions)
-- Detect ingredient language automatically and respond in the SAME language
-- If ingredients are in Hebrew, use Hebrew for the entire response
-- If ingredients are in English, use English for the entire response
-- DO NOT mix languages in the response
-- DO NOT apologize or ask for clarification - just create the menu
+      const prompt = `You are a world-class chef and nutritionist. Create an exceptional ${sanitizedDuration}-day meal plan that showcases creative, delicious, and nutritious recipes.
 
-Preferences:
-- Cuisine: ${preferences.cuisine}
-- Dietary restrictions: ${preferences.dietary_restrictions.join(", ") || "None"}
-- Meals per day: ${preferences.meal_count}
-- Cooking difficulty: ${preferences.cooking_difficulty}
-- Budget range: ${preferences.budget_range}
+🍽️ AVAILABLE INGREDIENTS:
+${ingredientsList}
 
-User profile: ${
-        userQuestionnaire
-          ? `Age: ${userQuestionnaire.age}, Goal: ${userQuestionnaire.main_goal}, Activity: ${userQuestionnaire.physical_activity_level}`
-          : "Not available"
-      }
+📋 USER PREFERENCES:
+- Cuisine Style: ${preferences.cuisine} (embrace authentic flavors and traditional cooking methods)
+- Dietary Requirements: ${preferences.dietary_restrictions.join(", ") || "None - No restrictions"}
+- Meals per Day: ${preferences.meal_count} (balanced throughout the day)
+- Cooking Difficulty: ${preferences.cooking_difficulty} (${preferences.cooking_difficulty === 'easy' ? 'simple, quick recipes' : preferences.cooking_difficulty === 'medium' ? 'moderately challenging' : 'complex, gourmet techniques'})
+- Budget: ${preferences.budget_range} (${preferences.budget_range === 'budget' ? 'cost-effective ingredients' : preferences.budget_range === 'moderate' ? 'balanced quality and cost' : 'premium ingredients welcome'})
+- Custom Name Request: ${customName || 'Create an appealing name'}
 
-CRITICAL REQUIREMENTS:
-1. RESPOND IN ${menuLanguage} ONLY
-2. Use as many of the provided ingredients as possible
-3. Create balanced, nutritious meals
-4. Include cooking instructions in ${menuLanguage}
-5. Generate a concise, appealing menu name in ${menuLanguage} (max 3 words)
-6. If dietary restrictions conflict with ingredients (e.g., tuna with vegetarian), automatically adjust by using vegetarian alternatives
-7. DO NOT return conversational text - ONLY return valid JSON
+👤 USER PROFILE:
+${userQuestionnaire ? `- Age: ${userQuestionnaire.age} years
+- Primary Goal: ${userQuestionnaire.main_goal} (optimize nutrition for this goal)
+- Activity Level: ${userQuestionnaire.physical_activity_level}
+- Daily Cooking Time: ${userQuestionnaire.daily_cooking_time || '30 minutes'}
+- Preferences: ${userQuestionnaire.liked_foods?.join(', ') || 'No specific preferences'}
+- Dislikes: ${userQuestionnaire.disliked_foods?.join(', ') || 'None'}
+- Allergies: ${userQuestionnaire.allergies?.join(', ') || 'None'}` : '- Standard nutrition requirements'}
 
-Return VALID JSON in this format:
+🎯 LANGUAGE RULE:
+Respond in ${menuLanguage} for ALL text (menu name, descriptions, instructions, ingredient names).
+
+✨ RECIPE QUALITY STANDARDS:
+1. CREATE RESTAURANT-QUALITY DISHES: Each meal should be exciting, flavorful, and memorable
+2. MAXIMIZE INGREDIENT USE: Creatively incorporate the provided ingredients across multiple meals
+3. BALANCE NUTRITION: Hit macro targets while ensuring variety and satisfaction
+4. DETAILED INSTRUCTIONS: Step-by-step cooking guidance that anyone can follow
+5. SMART MEAL PLANNING: Prep ingredients once, use in multiple meals when possible
+6. FLAVOR PROFILES: Layer flavors with herbs, spices, and proper cooking techniques
+7. VISUAL APPEAL: Describe plating and presentation tips
+8. TIME-EFFICIENT: Batch cooking tips and prep-ahead suggestions
+
+🥗 MEAL CREATION GUIDELINES:
+- BREAKFAST: Energizing, protein-rich, prep time 10-20 minutes
+- LUNCH: Satisfying, balanced, can be prepared ahead, 20-30 minutes
+- DINNER: Main event, flavorful, family-friendly, 30-45 minutes
+- SNACKS: Quick, nutritious, portable options
+
+💡 MENU NAMING:
+${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 word name in ${menuLanguage} that captures the menu's essence (e.g., "Mediterranean Magic", "Fresh Week Fusion", "Protein Power Plan")`}
+
+⚠️ CRITICAL:
+- Return ONLY valid JSON, no conversational text
+- If dietary conflicts exist, intelligently substitute (e.g., tofu for chicken in vegetarian)
+- Ensure all quantities are realistic and practical
+- Include estimated costs in local currency (₪)
+
+📊 REQUIRED JSON FORMAT:
 {
-  "menu_name": "Short descriptive name",
-  "description": "Brief description",
-  "total_calories": number,
-  "total_protein": number,
-  "total_carbs": number,
-  "total_fat": number,
-  "days_count": ${preferences.duration_days},
-  "estimated_cost": number,
+  "menu_name": "${customName || 'Creative 2-3 word name'}",
+  "description": "Compelling 1-2 sentence description highlighting key benefits and flavors",
+  "total_calories": <sum of all meals>,
+  "total_protein": <sum in grams>,
+  "total_carbs": <sum in grams>,
+  "total_fat": <sum in grams>,
+  "days_count": ${sanitizedDuration},
+  "estimated_cost": <total cost in ₪>,
   "meals": [
     {
-      "name": "Meal name",
-      "meal_type": "BREAKFAST/LUNCH/DINNER",
-      "day_number": 1,
-      "calories": number,
-      "protein": number,
-      "carbs": number,
-      "fat": number,
-      "prep_time_minutes": number,
-      "cooking_method": "method",
-      "instructions": "detailed instructions",
+      "name": "Descriptive, appetizing meal name",
+      "meal_type": "BREAKFAST|LUNCH|DINNER|SNACK",
+      "day_number": <1-${sanitizedDuration}>,
+      "calories": <realistic calorie count>,
+      "protein": <grams>,
+      "carbs": <grams>,
+      "fat": <grams>,
+      "prep_time_minutes": <realistic time>,
+      "cooking_method": "Specific method (e.g., 'Pan-searing and roasting', 'Slow cooker', 'Stir-frying')",
+      "instructions": "Detailed step-by-step: 1. Prep ingredients... 2. Heat pan... 3. Cook... 4. Season... 5. Plate and serve. Include temperatures, cooking times, and pro tips.",
       "ingredients": [
         {
-          "name": "ingredient name",
-          "quantity": number,
-          "unit": "unit",
-          "category": "category",
-          "estimated_cost": number
+          "name": "Precise ingredient name",
+          "quantity": <precise amount>,
+          "unit": "g|ml|piece|tbsp|tsp|cup",
+          "category": "protein|vegetable|grain|dairy|fruit|spice|fat",
+          "estimated_cost": <cost in ₪>
         }
       ]
     }
   ]
-}`;
+}
+
+🚀 PERFORMANCE NOTE: Generate this menu efficiently with rich detail in under 10 seconds.`;
 
       if (!openai) {
         return res.status(503).json({
@@ -1295,18 +1316,20 @@ Return VALID JSON in this format:
         });
       }
 
+      // Optimize OpenAI call for speed and quality
       const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o-mini", // Fast and cost-effective
         messages: [
           {
             role: "system",
             content:
-              "You are a professional nutritionist and chef. Create detailed, practical meal plans using available ingredients. Focus on nutrition balance, flavor, and realistic cooking instructions.",
+              "You are an award-winning chef and certified nutritionist specializing in personalized meal planning. You create restaurant-quality recipes with precise nutritional data and detailed cooking instructions. Always return valid JSON without any conversational text.",
           },
           { role: "user", content: prompt },
         ],
         max_completion_tokens: 16000,
-        temperature: 0.8,
+        temperature: 0.7, // Slightly lower for more consistent, focused output
+        response_format: { type: "json_object" }, // Force JSON output
       });
 
       const aiContent = response.choices[0]?.message?.content;
@@ -1430,8 +1453,32 @@ Return VALID JSON in this format:
         },
       });
 
-      // Save meals
+      // Save meals with AI-generated images
       for (const meal of parsedMenu.meals) {
+        // Generate meal image using DALL-E
+        let imageUrl = null;
+        try {
+          if (openai) {
+            console.log(`🎨 Generating image for meal: ${meal.name}`);
+            const imagePrompt = `A professional food photography shot of ${meal.name}, ${meal.cooking_method || 'beautifully plated'}, restaurant quality, appetizing, high resolution, clean background, natural lighting`;
+
+            const imageResponse = await openai.images.generate({
+              model: "dall-e-3",
+              prompt: imagePrompt,
+              n: 1,
+              size: "1024x1024",
+              quality: "standard",
+              style: "natural",
+            });
+
+            imageUrl = imageResponse.data[0]?.url || null;
+            console.log(`✅ Image generated for ${meal.name}`);
+          }
+        } catch (imageError) {
+          console.error(`⚠️ Failed to generate image for ${meal.name}:`, imageError);
+          // Continue without image - not critical
+        }
+
         const savedMeal = await prisma.recommendedMeal.create({
           data: {
             menu_id: savedMenu.menu_id,
@@ -1445,6 +1492,8 @@ Return VALID JSON in this format:
             prep_time_minutes: meal.prep_time_minutes || 30,
             cooking_method: meal.cooking_method || "",
             instructions: meal.instructions || "",
+            image_url: imageUrl,
+            language: menuLanguage,
           },
         });
 
@@ -1503,6 +1552,225 @@ Return VALID JSON in this format:
           process.env.NODE_ENV === "development" && error instanceof Error
             ? error.stack
             : undefined,
+      });
+    }
+  }
+);
+
+// Get meal plan with progress (ingredient checks)
+router.get(
+  "/:planId/with-progress",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user!.userId;
+      const { planId } = req.params;
+
+      // Get the menu with all meals and ingredients
+      const menu = await prisma.recommendedMenu.findUnique({
+        where: {
+          menu_id: planId,
+          user_id: userId,
+        },
+        include: {
+          meals: {
+            include: {
+              ingredients: true,
+            },
+            orderBy: [{ day_number: "asc" }, { meal_type: "asc" }],
+          },
+        },
+      });
+
+      if (!menu) {
+        return res.status(404).json({
+          success: false,
+          error: "Menu not found",
+        });
+      }
+
+      // Get all ingredient checks for this user's menu
+      const mealIds = menu.meals.map((m) => m.meal_id);
+      const ingredientChecks = await prisma.ingredientCheck.findMany({
+        where: {
+          user_id: userId,
+          meal_id: { in: mealIds },
+        },
+      });
+
+      // Transform data to match frontend expectations
+      const daysMap = new Map<number, any>();
+
+      menu.meals.forEach((meal) => {
+        const dayNumber = meal.day_number;
+
+        if (!daysMap.has(dayNumber)) {
+          // Calculate date for this day
+          const startDate = menu.start_date
+            ? new Date(menu.start_date)
+            : new Date();
+          const dayDate = new Date(startDate);
+          dayDate.setDate(startDate.getDate() + dayNumber - 1);
+
+          daysMap.set(dayNumber, {
+            day: dayNumber,
+            date: dayDate.toISOString(),
+            meals: [],
+          });
+        }
+
+        daysMap.get(dayNumber).meals.push({
+          meal_id: meal.meal_id,
+          meal_type: meal.meal_type,
+          name: meal.name,
+          description: meal.name,
+          calories: meal.calories,
+          protein: meal.protein,
+          carbs: meal.carbs,
+          fat: meal.fat,
+          ingredients: meal.ingredients.map((ing) => ({
+            ingredient_id: ing.ingredient_id,
+            name: ing.name,
+            quantity: `${ing.quantity} ${ing.unit}`,
+          })),
+          instructions: meal.instructions || "",
+          image_url: meal.image_url,
+        });
+      });
+
+      const transformedData = {
+        plan_id: menu.menu_id,
+        name: menu.title,
+        duration: menu.days_count,
+        start_date: menu.start_date?.toISOString() || new Date().toISOString(),
+        end_date: menu.end_date?.toISOString() || new Date().toISOString(),
+        status: menu.is_active ? "active" : "completed",
+        days: Array.from(daysMap.values()),
+        ingredient_checks: ingredientChecks,
+      };
+
+      res.json({
+        success: true,
+        data: transformedData,
+      });
+    } catch (error) {
+      console.error("Error fetching menu with progress:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch menu",
+      });
+    }
+  }
+);
+
+// Toggle ingredient check
+router.post(
+  "/:planId/ingredients/:ingredientId/check",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user!.userId;
+      const { planId, ingredientId } = req.params;
+      const { meal_id, checked } = req.body;
+
+      if (!meal_id) {
+        return res.status(400).json({
+          success: false,
+          error: "meal_id is required",
+        });
+      }
+
+      // Upsert ingredient check
+      const ingredientCheck = await prisma.ingredientCheck.upsert({
+        where: {
+          user_id_ingredient_id_meal_id: {
+            user_id: userId,
+            ingredient_id: ingredientId,
+            meal_id: meal_id,
+          },
+        },
+        update: {
+          checked,
+          checked_at: checked ? new Date() : null,
+        },
+        create: {
+          user_id: userId,
+          ingredient_id: ingredientId,
+          meal_id: meal_id,
+          checked,
+          checked_at: checked ? new Date() : null,
+        },
+      });
+
+      res.json({
+        success: true,
+        data: ingredientCheck,
+      });
+    } catch (error) {
+      console.error("Error updating ingredient check:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to update ingredient check",
+      });
+    }
+  }
+);
+
+// Submit menu review
+router.post(
+  "/:planId/review",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user!.userId;
+      const { planId } = req.params;
+      const { type, rating, feedback, reason } = req.body;
+
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({
+          success: false,
+          error: "Rating must be between 1 and 5",
+        });
+      }
+
+      if (!type || !["completed", "failed"].includes(type)) {
+        return res.status(400).json({
+          success: false,
+          error: "Type must be 'completed' or 'failed'",
+        });
+      }
+
+      // Create review
+      const review = await prisma.menuReview.create({
+        data: {
+          menu_id: planId,
+          user_id: userId,
+          type,
+          rating,
+          feedback: feedback || null,
+          reason: reason || null,
+        },
+      });
+
+      // Update menu status
+      await prisma.recommendedMenu.update({
+        where: {
+          menu_id: planId,
+        },
+        data: {
+          is_active: false,
+        },
+      });
+
+      res.json({
+        success: true,
+        data: review,
+      });
+    } catch (error) {
+      console.error("Error submitting review:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to submit review",
       });
     }
   }

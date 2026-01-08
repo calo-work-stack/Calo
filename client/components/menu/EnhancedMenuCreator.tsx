@@ -129,7 +129,7 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
     setTotalEstimatedCost(total);
   }, [selectedIngredients]);
 
-  // Cuisine options with enhanced styling
+  // Expanded cuisine options with enhanced styling
   const cuisineOptions = [
     {
       id: "mediterranean",
@@ -173,9 +173,30 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
       color: "#7c2d12",
       description: "Rich spices, lentils, rice",
     },
+    {
+      id: "japanese",
+      name: "Japanese",
+      icon: "🍣",
+      color: "#b91c1c",
+      description: "Seafood, rice, umami flavors",
+    },
+    {
+      id: "middle_eastern",
+      name: "Middle Eastern",
+      icon: "🥙",
+      color: "#92400e",
+      description: "Hummus, pita, aromatic spices",
+    },
+    {
+      id: "french",
+      name: "French",
+      icon: "🥐",
+      color: "#1e40af",
+      description: "Elegant, butter, wine-based",
+    },
   ];
 
-  // Dietary restrictions
+  // Expanded dietary restrictions
   const dietaryOptions = [
     { id: "vegetarian", name: "Vegetarian", icon: Leaf, color: "#16a34a" },
     { id: "vegan", name: "Vegan", icon: Leaf, color: "#15803d" },
@@ -183,6 +204,10 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
     { id: "keto", name: "Keto", icon: Flame, color: "#dc2626" },
     { id: "low_carb", name: "Low Carb", icon: Flame, color: "#ea580c" },
     { id: "dairy_free", name: "Dairy Free", icon: X, color: "#7c3aed" },
+    { id: "paleo", name: "Paleo", icon: Flame, color: "#92400e" },
+    { id: "pescatarian", name: "Pescatarian", icon: Utensils, color: "#0891b2" },
+    { id: "halal", name: "Halal", icon: Check, color: "#047857" },
+    { id: "kosher", name: "Kosher", icon: Check, color: "#1d4ed8" },
   ];
 
   // Filter shopping list based on search
@@ -270,29 +295,12 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
     setIsGenerating(true);
     isGeneratingRef.current = true;
     try {
-      // Enhanced prompt for better, shorter menu names
-      const enhancedPrompt = `Create a concise, catchy menu name (max 3 words) and personalized meal plan. 
+      // Enhanced prompt optimized for quality and speed
+      const enhancedPrompt = customMenuName
+        ? `USER SPECIFIED EXACT MENU NAME: "${customMenuName}"`
+        : `Create a catchy 2-3 word menu name that captures the essence of this ${menuPreferences.cuisine} ${menuPreferences.duration_days}-day plan.`;
 
-MENU NAME REQUIREMENTS:
-- Maximum 3 words
-- Examples: "Fresh Week", "Comfort Classics", "Mediterranean Magic", "Asian Fusion", "Healthy Haven"
-- Make it appealing and memorable
-
-MENU DETAILS:
-- Cuisine: ${menuPreferences.cuisine}
-- Duration: ${menuPreferences.duration_days} days
-- Dietary restrictions: ${
-        menuPreferences.dietary_restrictions.join(", ") || "None"
-      }
-- Budget: ${menuPreferences.budget_range}
-- Cooking difficulty: ${menuPreferences.cooking_difficulty}
-
-BASE INGREDIENTS TO USE:
-${selectedIngredients
-  .map((ing) => `${ing.name} (${ing.quantity} ${ing.unit})`)
-  .join(", ")}
-
-Generate a balanced, nutritious meal plan that makes creative use of these ingredients.`;
+      console.log("🎯 Starting menu generation with enhanced prompt...");
 
       const menuData = {
         preferences: {
@@ -878,26 +886,49 @@ Generate a balanced, nutritious meal plan that makes creative use of these ingre
         </View>
       )}
 
-      {/* Generate Button */}
+      {/* Generate Button with Progress */}
       <TouchableOpacity
         style={[
           styles.generateButton,
           {
             backgroundColor: colors.emerald500,
-            opacity: isGenerating ? 0.7 : 1,
+            opacity: isGenerating ? 0.9 : 1,
           },
         ]}
         onPress={generateMenu}
         disabled={isGenerating}
+        activeOpacity={0.8}
       >
-        {isGenerating ? (
-          <ActivityIndicator size="small" color="#ffffff" />
-        ) : (
-          <ChefHat size={20} color="#ffffff" />
-        )}
-        <Text style={styles.generateButtonText}>
-          {isGenerating ? "Generating..." : "Generate Menu"}
-        </Text>
+        <LinearGradient
+          colors={
+            isGenerating
+              ? [colors.emerald600, colors.emerald500]
+              : [colors.emerald500, colors.emerald600]
+          }
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.generateButtonGradient}
+        >
+          {isGenerating ? (
+            <>
+              <ActivityIndicator size="small" color="#ffffff" />
+              <Text style={styles.generateButtonText}>
+                Creating Your Menu...
+              </Text>
+              <Text style={styles.generateButtonSubtext}>
+                AI is crafting restaurant-quality recipes
+              </Text>
+            </>
+          ) : (
+            <>
+              <ChefHat size={24} color="#ffffff" />
+              <Text style={styles.generateButtonText}>Generate Menu</Text>
+              <Text style={styles.generateButtonSubtext}>
+                Powered by AI • ~10-15 seconds
+              </Text>
+            </>
+          )}
+        </LinearGradient>
       </TouchableOpacity>
     </View>
   );
@@ -1270,18 +1301,33 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   generateButton: {
-    flexDirection: "row",
+    borderRadius: 16,
+    marginTop: 20,
+    overflow: "hidden",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+  },
+  generateButtonGradient: {
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
-    borderRadius: 12,
-    marginTop: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
     gap: 8,
   },
   generateButtonText: {
     color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  generateButtonSubtext: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    fontWeight: "500",
   },
   navigation: {
     flexDirection: "row",
