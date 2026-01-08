@@ -553,14 +553,12 @@ export const removeMeal = createAsyncThunk(
   }
 );
 
-// CRITICAL FIX: Completely rewritten loadPendingMeal with proper error handling
 export const loadPendingMeal = createAsyncThunk(
   "meal/loadPendingMeal",
   async (_, { rejectWithValue }) => {
     try {
       console.log("📥 Loading pending meal from storage...");
 
-      // First, check storage health
       const hasSpace = await StorageCleanupService.checkAvailableStorage();
       if (!hasSpace) {
         console.warn("⚠️ Storage issues detected, running emergency cleanup");
@@ -568,7 +566,6 @@ export const loadPendingMeal = createAsyncThunk(
         return null;
       }
 
-      // CRITICAL FIX: Wrap AsyncStorage.getItem in try-catch (CursorWindow can still happen)
       let stored: string | null = null;
       try {
         stored = await AsyncStorage.getItem(PENDING_MEAL_KEY);
@@ -578,7 +575,6 @@ export const loadPendingMeal = createAsyncThunk(
           storageError
         );
 
-        // If it's a CursorWindow error, run emergency cleanup
         if (
           storageError.message &&
           storageError.message.includes("CursorWindow")
@@ -587,7 +583,6 @@ export const loadPendingMeal = createAsyncThunk(
           await StorageCleanupService.emergencyCleanup();
         }
 
-        // Try to remove the corrupted key
         try {
           await AsyncStorage.removeItem(PENDING_MEAL_KEY);
           console.log("🗑️ Removed corrupted pendingMeal key");
@@ -603,13 +598,11 @@ export const loadPendingMeal = createAsyncThunk(
           const storedData = JSON.parse(stored);
           console.log("📦 Pending meal loaded from storage");
 
-          // Validate the loaded data structure
           if (
             storedData &&
             typeof storedData === "object" &&
             storedData.timestamp
           ) {
-            // Check if the pending meal is too old (more than 24 hours)
             const now = Date.now();
             const ageHours = (now - storedData.timestamp) / (1000 * 60 * 60);
 
@@ -619,11 +612,10 @@ export const loadPendingMeal = createAsyncThunk(
               return null;
             }
 
-            // Reconstruct pending meal (without image since it's not stored)
             const pendingMeal: PendingMeal = {
               analysis: storedData.analysis,
               timestamp: storedData.timestamp,
-              image_base_64: "", // Image not persisted
+              image_base_64: "",
             };
 
             return pendingMeal;
@@ -635,7 +627,6 @@ export const loadPendingMeal = createAsyncThunk(
         } catch (parseError) {
           console.error("❌ Failed to parse pending meal:", parseError);
 
-          // Clear corrupted data
           try {
             await AsyncStorage.removeItem(PENDING_MEAL_KEY);
             console.log("🗑️ Cleared corrupted pending meal data");
@@ -652,7 +643,6 @@ export const loadPendingMeal = createAsyncThunk(
     } catch (error: any) {
       console.error("❌ Load pending meal error:", error);
 
-      // If it's any storage error, run emergency cleanup
       try {
         console.log("🚨 Running emergency cleanup due to load error");
         await StorageCleanupService.emergencyCleanup();
@@ -661,6 +651,21 @@ export const loadPendingMeal = createAsyncThunk(
       }
 
       return null;
+    }
+  }
+);
+
+export const deleteMeal = createAsyncThunk(
+  "meals/delete",
+  async (mealId: string, { rejectWithValue, dispatch }) => {
+    try {
+      await mealAPI.deleteMeal(mealId);
+      dispatch(fetchMeals());
+      return mealId;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error || error.message || "Failed to delete meal"
+      );
     }
   }
 );
@@ -694,6 +699,197 @@ const mealSlice = createSlice({
     },
     updateMealLocally: (state, action) => {
       state.meals = action.payload;
+    },
+
+    // ==================== INGREDIENT MANAGEMENT ACTIONS ====================
+
+    // Update all ingredients at once and recalculate totals
+    updatePendingMealIngredients: (state, action: PayloadAction<any[]>) => {
+      if (state.pendingMeal?.analysis) {
+        state.pendingMeal.analysis.ingredients = action.payload;
+
+        // Recalculate total nutrition based on new ingredients
+        const totalCalories = action.payload.reduce(
+          (sum, ing) => sum + (Number(ing.calories) || 0),
+          0
+        );
+        const totalProtein = action.payload.reduce(
+          (sum, ing) =>
+            sum + (Number(ing.protein) || Number(ing.protein_g) || 0),
+          0
+        );
+        const totalCarbs = action.payload.reduce(
+          (sum, ing) => sum + (Number(ing.carbs) || Number(ing.carbs_g) || 0),
+          0
+        );
+        const totalFat = action.payload.reduce(
+          (sum, ing) => sum + (Number(ing.fat) || Number(ing.fats_g) || 0),
+          0
+        );
+        const totalFiber = action.payload.reduce(
+          (sum, ing) => sum + (Number(ing.fiber) || Number(ing.fiber_g) || 0),
+          0
+        );
+        const totalSugar = action.payload.reduce(
+          (sum, ing) => sum + (Number(ing.sugar) || Number(ing.sugar_g) || 0),
+          0
+        );
+        const totalSodium = action.payload.reduce(
+          (sum, ing) =>
+            sum + (Number(ing.sodium_mg) || Number(ing.sodium) || 0),
+          0
+        );
+
+        // Update the analysis totals
+        state.pendingMeal.analysis.calories = totalCalories;
+        state.pendingMeal.analysis.protein_g = totalProtein;
+        state.pendingMeal.analysis.carbs_g = totalCarbs;
+        state.pendingMeal.analysis.fats_g = totalFat;
+        state.pendingMeal.analysis.fiber_g = totalFiber;
+        state.pendingMeal.analysis.sugar_g = totalSugar;
+        state.pendingMeal.analysis.sodium_g = totalSodium;
+
+        console.log(
+          "✅ Pending meal ingredients and totals updated in Redux state"
+        );
+      }
+    },
+
+    // Update a single ingredient at a specific index
+    updateSingleIngredient: (
+      state,
+      action: PayloadAction<{ index: number; ingredient: any }>
+    ) => {
+      if (state.pendingMeal?.analysis?.ingredients) {
+        const { index, ingredient } = action.payload;
+        if (
+          index >= 0 &&
+          index < state.pendingMeal.analysis.ingredients.length
+        ) {
+          state.pendingMeal.analysis.ingredients[index] = ingredient;
+
+          // Recalculate totals
+          const ingredients = state.pendingMeal.analysis.ingredients;
+          const totalCalories = ingredients.reduce(
+            (sum, ing) => sum + (Number(ing.calories) || 0),
+            0
+          );
+          const totalProtein = ingredients.reduce(
+            (sum, ing) => sum + (Number(ing.protein) || 0),
+            0
+          );
+          const totalCarbs = ingredients.reduce(
+            (sum, ing) => sum + (Number(ing.carbs) || 0),
+            0
+          );
+          const totalFat = ingredients.reduce(
+            (sum, ing) => sum + (Number(ing.fat) || 0),
+            0
+          );
+          const totalFiber = ingredients.reduce(
+            (sum, ing) => sum + (Number(ing.fiber) || 0),
+            0
+          );
+          const totalSugar = ingredients.reduce(
+            (sum, ing) => sum + (Number(ing.sugar) || 0),
+            0
+          );
+
+          state.pendingMeal.analysis.calories = totalCalories;
+          state.pendingMeal.analysis.protein_g = totalProtein;
+          state.pendingMeal.analysis.carbs_g = totalCarbs;
+          state.pendingMeal.analysis.fats_g = totalFat;
+          state.pendingMeal.analysis.fiber_g = totalFiber;
+          state.pendingMeal.analysis.sugar_g = totalSugar;
+
+          console.log(
+            `✅ Ingredient at index ${index} removed from Redux state`
+          );
+        }
+      }
+    },
+    addIngredientToPendingMeal: (
+      state: MealState,
+      action: PayloadAction<any>
+    ) => {
+      if (!state.pendingMeal?.analysis) return;
+
+      const analysis = state.pendingMeal.analysis;
+
+      if (!analysis.ingredients) {
+        analysis.ingredients = [];
+      }
+
+      analysis.ingredients.push(action.payload);
+
+      const ingredients = analysis.ingredients;
+
+      analysis.calories = ingredients.reduce(
+        (sum, ing) => sum + (Number(ing.calories) || 0),
+        0
+      );
+      analysis.protein_g = ingredients.reduce(
+        (sum, ing) => sum + (Number(ing.protein) || 0),
+        0
+      );
+      analysis.carbs_g = ingredients.reduce(
+        (sum, ing) => sum + (Number(ing.carbs) || 0),
+        0
+      );
+      analysis.fats_g = ingredients.reduce(
+        (sum, ing) => sum + (Number(ing.fat) || 0),
+        0
+      );
+      analysis.fiber_g = ingredients.reduce(
+        (sum, ing) => sum + (Number(ing.fiber) || 0),
+        0
+      );
+      analysis.sugar_g = ingredients.reduce(
+        (sum, ing) => sum + (Number(ing.sugar) || 0),
+        0
+      );
+
+      console.log("✅ New ingredient added to Redux state");
+    },
+
+    removeIngredientFromPendingMeal: (
+      state: MealState,
+      action: PayloadAction<number>
+    ) => {
+      const analysis = state.pendingMeal?.analysis;
+      if (!analysis?.ingredients) return;
+
+      const ingredients = analysis.ingredients; // ✅ now NON-optional
+      const index = action.payload;
+
+      if (index < 0 || index >= ingredients.length) return;
+
+      ingredients.splice(index, 1);
+
+      analysis.calories = ingredients.reduce(
+        (sum, ing) => sum + (Number(ing.calories) || 0),
+        0
+      );
+      analysis.protein_g = ingredients.reduce(
+        (sum, ing) => sum + (Number(ing.protein) || 0),
+        0
+      );
+      analysis.carbs_g = ingredients.reduce(
+        (sum, ing) => sum + (Number(ing.carbs) || 0),
+        0
+      );
+      analysis.fats_g = ingredients.reduce(
+        (sum, ing) => sum + (Number(ing.fat) || 0),
+        0
+      );
+      analysis.fiber_g = ingredients.reduce(
+        (sum, ing) => sum + (Number(ing.fiber) || 0),
+        0
+      );
+      analysis.sugar_g = ingredients.reduce(
+        (sum, ing) => sum + (Number(ing.sugar) || 0),
+        0
+      );
     },
   },
   extraReducers: (builder) => {
@@ -805,31 +1001,31 @@ const mealSlice = createSlice({
       .addCase(loadPendingMeal.rejected, (state, action) => {
         // Don't set error for storage loading failures
         console.warn("⚠️ Failed to load pending meal:", action.payload);
+      })
+      .addCase(deleteMeal.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(deleteMeal.fulfilled, (state, action) => {
+        state.isLoading = false;
+      })
+      .addCase(deleteMeal.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
       });
   },
 });
 
-export const deleteMeal = createAsyncThunk(
-  "meals/delete",
-  async (mealId: string, { rejectWithValue, dispatch }) => {
-    try {
-      await mealAPI.deleteMeal(mealId);
-      dispatch(fetchMeals());
-      return mealId;
-    } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.error || error.message || "Failed to delete meal"
-      );
-    }
-  }
-);
-
+// Export all actions including the new ingredient management actions
 export const {
   clearError,
   clearPendingMeal,
   setPendingMeal,
   setPendingMealForUpdate,
   updateMealLocally,
+  updatePendingMealIngredients,
+  updateSingleIngredient,
+  addIngredientToPendingMeal,
+  removeIngredientFromPendingMeal,
 } = mealSlice.actions;
 
 export default mealSlice.reducer;
