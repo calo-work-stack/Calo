@@ -2,6 +2,19 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
+// Import optimizedStorage for safe operations, but keep AsyncStorage for getAllKeys
+// which doesn't benefit from optimization
+let optimizedStorage: any = null;
+
+// Lazy load to avoid circular dependency
+const getOptimizedStorage = async () => {
+  if (!optimizedStorage) {
+    const module = await import("./optimizedStorage");
+    optimizedStorage = module.optimizedStorage;
+  }
+  return optimizedStorage;
+};
+
 export interface StorageInfo {
   totalSize: number;
   usedSize: number;
@@ -478,22 +491,33 @@ export class StorageCleanupService {
       const keys = await AsyncStorage.getAllKeys();
       let totalUsedSize = 0;
       const largeItems: Array<{ key: string; size: number }> = [];
+      const storage = await getOptimizedStorage();
 
       for (const key of keys) {
         try {
-          const value = await AsyncStorage.getItem(key);
+          // Use optimizedStorage to safely get items without CursorWindow errors
+          const value = await storage.getItem(key);
           const itemSize = value ? new Blob([value]).size : 0;
           totalUsedSize += itemSize;
 
           if (itemSize > this.LARGE_ITEM_THRESHOLD) {
             largeItems.push({ key, size: itemSize });
           }
-        } catch (error) {
-          console.warn(`Failed to get size for key ${key}:`, error);
-          try {
-            await AsyncStorage.removeItem(key);
-          } catch (e) {
-            // Ignore removal errors
+        } catch (error: any) {
+          // If we hit CursorWindow error, mark this item as oversized and remove it
+          if (error?.message?.includes("CursorWindow") || error?.message?.includes("row too big")) {
+            console.warn(`🚨 CursorWindow error for key ${key}, marking for removal`);
+            largeItems.push({ key, size: this.MAX_ITEM_SIZE * 2 }); // Mark as oversized
+
+            // Try to remove the problematic item
+            try {
+              await storage.removeItem(key);
+              console.log(`🗑️ Removed oversized item: ${key}`);
+            } catch (e) {
+              console.error(`Failed to remove oversized item ${key}:`, e);
+            }
+          } else {
+            console.warn(`Failed to get size for key ${key}:`, error);
           }
         }
       }

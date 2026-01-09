@@ -27,6 +27,9 @@ export const MealAnalysisSchema = z.object({
   fiber_g: z.number().optional(),
   sugar_g: z.number().optional(),
   sodium_g: z.number().optional(),
+  // Non-food detection fields
+  isFood: z.boolean().optional(),
+  notFoodReason: z.string().optional(),
   // Add other fields from your API response
   healthScore: z.string().optional(),
   cooking_method: z.string().optional(),

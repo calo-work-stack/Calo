@@ -6,9 +6,9 @@ import {
   MealAnalysisSchema,
 } from "../types";
 import { nutritionAPI, mealAPI } from "../services/api";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { StorageCleanupService } from "@/src/utils/storageCleanup";
+import { optimizedStorage } from "@/src/utils/optimizedStorage";
 import { File } from "expo-file-system";
 
 interface MealState {
@@ -210,7 +210,7 @@ export const analyzeMeal = createAsyncThunk(
         cleanBase64,
         params.updateText,
         params.editedIngredients || [],
-        params.language || "en",
+        params.language || "english",
         params.mealType
       );
       console.log("API response received:", response);
@@ -270,10 +270,16 @@ export const analyzeMeal = createAsyncThunk(
               )}KB), not persisting`
             );
           } else {
-            await AsyncStorage.setItem(PENDING_MEAL_KEY, serializedMeal);
-            console.log(
-              `✅ Pending meal analysis saved (${sizeKB.toFixed(1)}KB)`
-            );
+            // Use optimizedStorage with storage cleanup validation
+            const canStore = await StorageCleanupService.checkStorageBeforeOperation();
+            if (canStore) {
+              await optimizedStorage.setItem(PENDING_MEAL_KEY, serializedMeal);
+              console.log(
+                `✅ Pending meal analysis saved (${sizeKB.toFixed(1)}KB)`
+              );
+            } else {
+              console.warn("⚠️ Storage unavailable, skipping persistence");
+            }
           }
         } catch (storageError: any) {
           console.warn("Failed to save pending meal to storage:", storageError);
@@ -417,7 +423,7 @@ export const postMeal = createAsyncThunk(
       if (response) {
         // Clean up storage after successful post
         try {
-          await AsyncStorage.removeItem(PENDING_MEAL_KEY);
+          await optimizedStorage.removeItem(PENDING_MEAL_KEY);
           console.log("Pending meal removed from storage");
         } catch (storageError) {
           console.warn(
@@ -568,7 +574,7 @@ export const loadPendingMeal = createAsyncThunk(
 
       let stored: string | null = null;
       try {
-        stored = await AsyncStorage.getItem(PENDING_MEAL_KEY);
+        stored = await optimizedStorage.getItem(PENDING_MEAL_KEY);
       } catch (storageError: any) {
         console.error(
           "🚨 CursorWindow error reading pendingMeal:",
@@ -584,7 +590,7 @@ export const loadPendingMeal = createAsyncThunk(
         }
 
         try {
-          await AsyncStorage.removeItem(PENDING_MEAL_KEY);
+          await optimizedStorage.removeItem(PENDING_MEAL_KEY);
           console.log("🗑️ Removed corrupted pendingMeal key");
         } catch (removeError) {
           console.warn("Failed to remove corrupted key:", removeError);
@@ -608,7 +614,7 @@ export const loadPendingMeal = createAsyncThunk(
 
             if (ageHours > 24) {
               console.log("⏰ Pending meal is too old, clearing it");
-              await AsyncStorage.removeItem(PENDING_MEAL_KEY);
+              await optimizedStorage.removeItem(PENDING_MEAL_KEY);
               return null;
             }
 
@@ -621,14 +627,14 @@ export const loadPendingMeal = createAsyncThunk(
             return pendingMeal;
           } else {
             console.warn("❌ Invalid pending meal structure, clearing storage");
-            await AsyncStorage.removeItem(PENDING_MEAL_KEY);
+            await optimizedStorage.removeItem(PENDING_MEAL_KEY);
             return null;
           }
         } catch (parseError) {
           console.error("❌ Failed to parse pending meal:", parseError);
 
           try {
-            await AsyncStorage.removeItem(PENDING_MEAL_KEY);
+            await optimizedStorage.removeItem(PENDING_MEAL_KEY);
             console.log("🗑️ Cleared corrupted pending meal data");
           } catch (removeError) {
             console.warn("Failed to clear corrupted data:", removeError);
@@ -679,7 +685,7 @@ const mealSlice = createSlice({
     },
     clearPendingMeal: (state) => {
       state.pendingMeal = null;
-      AsyncStorage.removeItem(PENDING_MEAL_KEY).catch((error) => {
+      optimizedStorage.removeItem(PENDING_MEAL_KEY).catch((error) => {
         console.warn("Failed to remove pending meal from storage:", error);
       });
     },

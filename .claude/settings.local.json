@@ -8,7 +8,10 @@
       "Bash(npm run prisma:generate:*)",
       "Bash(git -C \"c:\\\\Code\\\\Work\\\\Calo\\\\Calo\" diff --name-only HEAD)",
       "Bash(ls:*)",
-      "Bash(git -C \"c:\\\\Code\\\\Work\\\\Calo\\\\Calo\" log --oneline)"
+      "Bash(git -C \"c:\\\\Code\\\\Work\\\\Calo\\\\Calo\" log --oneline)",
+      "Bash(npx rg \"from \"\"@react-native-async-storage/async-storage\"\"\" --type ts --type tsx -l)",
+      "Bash(npx tsc:*)",
+      "Bash(tail:*)"
     ]
   }
 }

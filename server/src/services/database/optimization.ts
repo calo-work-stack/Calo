@@ -199,7 +199,7 @@ export class DatabaseOptimizationService {
     try {
       console.log("⚡ Optimizing database performance...");
 
-      // Run ANALYZE to update table statistics (can run in transaction)
+      // Run ANALYZE to update table statistics
       try {
         await prisma.$executeRaw`ANALYZE;`;
         console.log("✅ Database ANALYZE completed");
@@ -207,25 +207,11 @@ export class DatabaseOptimizationService {
         console.log("⚠️ ANALYZE operation failed:", analyzeError);
       }
 
-      // Run VACUUM outside of any transaction
-      try {
-        // Ensure we're not in a transaction by disconnecting and reconnecting
-        await prisma.$disconnect();
-        await prisma.$connect();
-
-        // Now run VACUUM outside of transaction
-        await prisma.$executeRawUnsafe("VACUUM;");
-        console.log("✅ Database VACUUM completed");
-      } catch (vacuumError) {
-        console.log("⚠️ VACUUM operation failed:", vacuumError);
-        // Try alternative lightweight cleanup
-        try {
-          await prisma.$executeRaw`REINDEX DATABASE;`;
-          console.log("✅ Database REINDEX completed as fallback");
-        } catch (reindexError) {
-          console.log("ℹ️ Fallback REINDEX also failed, skipping optimization");
-        }
-      }
+      // Note: VACUUM requires no active transactions and can cause connection issues
+      // when using a shared Prisma instance. For production, consider running VACUUM
+      // via a separate database connection or scheduled maintenance window.
+      // Skipping VACUUM to prevent "Engine is not yet connected" errors in concurrent requests.
+      console.log("ℹ️ VACUUM skipped to maintain connection stability");
 
       console.log("✅ Database optimization completed");
     } catch (error) {

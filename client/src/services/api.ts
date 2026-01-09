@@ -416,7 +416,7 @@ export const nutritionAPI = {
     imageBase64: string,
     updateText?: string,
     editedIngredients: any[] = [],
-    language: string = "en",
+    language: string = "english",
     mealPeriod?: string
   ): Promise<any> {
     if (!imageBase64?.trim()) {

@@ -18,11 +18,23 @@ export interface Ingredient {
   estimated_portion_g?: number;
 }
 
+export type AnalysisErrorType = "not_food" | "technical_failure" | null;
+
+export interface AnalysisError {
+  type: AnalysisErrorType;
+  message?: string;
+  notFoodReason?: string;
+}
+
 export interface AnalysisData {
   name?: string;
   meal_name?: string;
   description?: string;
   calories: number;
+
+  // Non-food detection
+  isFood?: boolean;
+  notFoodReason?: string;
   protein_g?: number;
   protein?: number;
   carbs_g?: number;

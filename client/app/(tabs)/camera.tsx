@@ -16,6 +16,7 @@ import {
   DeleteConfirmModal,
   CameraOptionsView,
   MealTypeSelectionView,
+  AnalysisErrorView,
 } from "@/components/camera";
 import { SelectedImage } from "@/components/camera/SelectedImage";
 import { AnalysisResults } from "@/components/camera/AnalysisResults";
@@ -382,14 +383,14 @@ export default function CameraScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#FAFAFA",
   },
   scrollContent: {
-    paddingBottom: 34,
+    paddingBottom: 24,
   },
   resultsContainer: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
-    paddingTop: 20,
+    backgroundColor: "#FAFAFA",
+    paddingTop: 12,
   },
 });

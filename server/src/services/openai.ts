@@ -575,8 +575,12 @@ CRITICAL REQUIREMENTS:
 - You MUST respond with valid JSON format
 - Do NOT apologize or say you cannot help
 - Do NOT respond in conversational text
-- If image is unclear, provide best estimate in JSON format
 - ALWAYS include all required JSON fields
+
+IMPORTANT - NON-FOOD IMAGE DETECTION:
+- If the image does NOT contain food (e.g., person, object, landscape, document, animal, etc.), you MUST return:
+  {"is_food": false, "not_food_reason": "Brief explanation of what the image shows instead of food"}
+- Only proceed with full nutritional analysis if the image clearly contains food items
 
 LANGUAGE: All text fields should be in ${
       language === "hebrew" ? "Hebrew" : "English"
@@ -595,8 +599,14 @@ ${
     : ""
 }
 
-Return VALID JSON with ALL fields below. Ensure proper JSON syntax with no trailing commas:
+Return VALID JSON with ALL fields below. Ensure proper JSON syntax with no trailing commas.
+
+FOR NON-FOOD IMAGES, return ONLY:
+{"is_food": false, "not_food_reason": "Description of what the image shows"}
+
+FOR FOOD IMAGES, return:
 {
+  "is_food": true,
   "meal_name": "Brief descriptive name",
   "calories": number,
   "protein_g": number,
@@ -753,6 +763,37 @@ Language: ${language}`;
 
     // Check if response is JSON or text
     let parsed;
+
+    // Quick check for non-food response before full parsing
+    if (content.includes('"is_food"') && content.includes('false')) {
+      try {
+        const quickParse = JSON.parse(extractCleanJSON(content));
+        if (quickParse.is_food === false) {
+          console.log("🚫 Image identified as non-food:", quickParse.not_food_reason);
+          return {
+            name: "",
+            description: "",
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            confidence: 95,
+            ingredients: [],
+            servingSize: "",
+            cookingMethod: "",
+            healthNotes: "",
+            recommendations: "",
+            isFood: false,
+            notFoodReason: quickParse.not_food_reason || (language === "hebrew"
+              ? "התמונה אינה מכילה מזון"
+              : "The image does not contain food"),
+          };
+        }
+      } catch (e) {
+        // Continue with normal parsing if quick parse fails
+        console.log("Quick non-food check failed, continuing with normal parsing");
+      }
+    }
     try {
       const cleanJSON = extractCleanJSON(content);
       console.log("🧹 Cleaning JSON content...");

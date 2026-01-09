@@ -41,6 +41,8 @@ import {
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/src/services/api";
+import { DietaryIcons } from "@/components/menu/DietaryIcons";
+import { NutritionHabits } from "@/components/menu/NutritionHabits";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -68,6 +70,7 @@ interface Meal {
   instructions?: string;
   ingredients: Ingredient[];
   image_url?: string;
+  dietary_tags?: string[];
 }
 
 interface MenuDetails {
@@ -214,9 +217,9 @@ export default function MenuDetailsScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.emerald500} />
-        <Text style={[styles.loadingText, { color: colors.text }]}>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#10B981" />
+        <Text style={styles.loadingText}>
           {language === "he" ? "טוען תפריט..." : "Loading menu..."}
         </Text>
       </View>
@@ -225,13 +228,13 @@ export default function MenuDetailsScreen() {
 
   if (!menu) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: colors.text }]}>
+          <Text style={styles.errorText}>
             {language === "he" ? "תפריט לא נמצא" : "Menu not found"}
           </Text>
           <TouchableOpacity onPress={() => router.back()}>
-            <Text style={[styles.errorButton, { color: colors.emerald500 }]}>
+            <Text style={styles.errorButton}>
               {language === "he" ? "חזור" : "Go Back"}
             </Text>
           </TouchableOpacity>
@@ -244,56 +247,39 @@ export default function MenuDetailsScreen() {
   const uniqueDays = [...new Set(menu.meals.map((m) => m.day_number))].sort((a, b) => a - b);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Premium Header */}
-      <LinearGradient
-        colors={[colors.emerald500, colors.emerald600]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-            <ArrowLeft size={24} color="#ffffff" />
-          </TouchableOpacity>
+    <SafeAreaView style={styles.container}>
+      {/* Clean Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+          <ArrowLeft size={24} color="#111827" />
+        </TouchableOpacity>
 
-          <View style={styles.headerActions}>
-            <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
-              <Share2 size={22} color="#ffffff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setIsFavorite(!isFavorite)}
-              style={styles.headerButton}
-            >
-              <Heart size={22} color="#ffffff" fill={isFavorite ? "#ffffff" : "transparent"} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.headerContent}>
-          <View style={styles.menuTitleSection}>
-            <Text style={styles.menuTitle}>{menu.title}</Text>
-            {menu.description && (
-              <Text style={styles.menuDescription}>{menu.description}</Text>
-            )}
-          </View>
-
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>{menu.title}</Text>
           <View style={styles.headerBadges}>
             <View style={styles.headerBadge}>
-              <Calendar size={14} color="#ffffff" />
+              <Calendar size={12} color="#6B7280" />
               <Text style={styles.headerBadgeText}>{menu.days_count} Days</Text>
             </View>
             <View style={styles.headerBadge}>
-              <Utensils size={14} color="#ffffff" />
+              <Utensils size={12} color="#6B7280" />
               <Text style={styles.headerBadgeText}>{menu.meals.length} Meals</Text>
-            </View>
-            <View style={[styles.headerBadge, { backgroundColor: getDifficultyColor() + "30" }]}>
-              <Award size={14} color="#ffffff" />
-              <Text style={styles.headerBadgeText}>{getDifficultyLabel()}</Text>
             </View>
           </View>
         </View>
-      </LinearGradient>
+
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={handleShare} style={styles.headerIconButton}>
+            <Share2 size={20} color="#6B7280" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setIsFavorite(!isFavorite)}
+            style={styles.headerIconButton}
+          >
+            <Heart size={20} color={isFavorite ? "#EF4444" : "#6B7280"} fill={isFavorite ? "#EF4444" : "transparent"} />
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* Stats Cards */}
       <ScrollView
@@ -425,17 +411,16 @@ export default function MenuDetailsScreen() {
                 style={styles.mealHeader}
                 activeOpacity={0.7}
               >
-                {/* Meal Image or Placeholder */}
-                {meal.image_url ? (
-                  <Image source={{ uri: meal.image_url }} style={styles.mealImage} />
-                ) : (
-                  <LinearGradient
-                    colors={[mealTypeColor + "30", mealTypeColor + "10"]}
-                    style={styles.mealImagePlaceholder}
-                  >
-                    <Text style={styles.mealImageEmoji}>{mealTypeEmoji}</Text>
-                  </LinearGradient>
-                )}
+                {/* Circular Meal Image */}
+                <View style={styles.mealImageContainer}>
+                  {meal.image_url ? (
+                    <Image source={{ uri: meal.image_url }} style={styles.mealImage} />
+                  ) : (
+                    <View style={[styles.mealImagePlaceholder, { backgroundColor: mealTypeColor + "20" }]}>
+                      <Text style={styles.mealImageEmoji}>{mealTypeEmoji}</Text>
+                    </View>
+                  )}
+                </View>
 
                 {/* Meal Info */}
                 <View style={styles.mealInfo}>
@@ -468,6 +453,9 @@ export default function MenuDetailsScreen() {
                         {Math.round(meal.protein)}g protein
                       </Text>
                     </View>
+                    {meal.dietary_tags && meal.dietary_tags.length > 0 && (
+                      <DietaryIcons tags={meal.dietary_tags} size={14} />
+                    )}
                   </View>
                 </View>
 
@@ -607,6 +595,11 @@ export default function MenuDetailsScreen() {
           );
         })}
 
+        {/* Nutrition Habits Section */}
+        <View style={styles.habitsSection}>
+          <NutritionHabits />
+        </View>
+
         {/* Bottom Spacing */}
         <View style={{ height: 100 }} />
       </Animated.ScrollView>
@@ -718,16 +711,19 @@ export default function MenuDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#FAFAFA",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#FAFAFA",
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
     fontWeight: "500",
+    color: "#6B7280",
   },
   errorContainer: {
     flex: 1,
@@ -739,68 +735,66 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     marginBottom: 16,
+    color: "#111827",
   },
   errorButton: {
     fontSize: 16,
     fontWeight: "600",
+    color: "#10B981",
   },
   header: {
-    paddingTop: 8,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-  },
-  headerTop: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
   },
   headerButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
-  headerActions: {
-    flexDirection: "row",
-    gap: 12,
+  headerCenter: {
+    flex: 1,
+    alignItems: "center",
+    gap: 4,
   },
-  headerContent: {
-    gap: 16,
-  },
-  menuTitleSection: {
-    gap: 8,
-  },
-  menuTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#ffffff",
-    letterSpacing: 0.5,
-  },
-  menuDescription: {
-    fontSize: 15,
-    color: "rgba(255, 255, 255, 0.9)",
-    lineHeight: 22,
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
   },
   headerBadges: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
   },
   headerBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: "#F9FAFB",
   },
   headerBadgeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#6B7280",
+  },
+  headerActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  headerIconButton: {
+    width: 36,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
   },
   statsScroll: {
     maxHeight: 140,
@@ -887,23 +881,24 @@ const styles = StyleSheet.create({
   },
   mealHeader: {
     flexDirection: "row",
-    padding: 16,
-    gap: 16,
+    padding: 12,
+    gap: 12,
   },
+  mealImageContainer: {},
   mealImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 16,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
   },
   mealImagePlaceholder: {
-    width: 90,
-    height: 90,
-    borderRadius: 16,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     justifyContent: "center",
     alignItems: "center",
   },
   mealImageEmoji: {
-    fontSize: 40,
+    fontSize: 32,
   },
   mealInfo: {
     flex: 1,
@@ -1126,5 +1121,9 @@ const styles = StyleSheet.create({
   modalButtonText: {
     fontSize: 16,
     fontWeight: "700",
+  },
+  habitsSection: {
+    paddingHorizontal: 20,
+    marginTop: 16,
   },
 });

@@ -34,6 +34,10 @@ export interface MealAnalysisResult {
   name: string;
   description?: string;
 
+  // Image validation - for detecting non-food images
+  isFood?: boolean;
+  notFoodReason?: string;
+
   // Core macronutrients
   calories: number;
   protein: number;

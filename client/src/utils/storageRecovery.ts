@@ -10,35 +10,76 @@ export class StorageRecoveryService {
     let removed = 0;
 
     try {
-      console.log("🔧 Starting storage recovery...");
+      console.log("🔧 Starting aggressive storage recovery for CursorWindow errors...");
 
       let keys: readonly string[] = [];
 
       try {
         keys = await AsyncStorage.getAllKeys();
         console.log(`📋 Found ${keys.length} storage keys`);
-      } catch (getAllKeysError) {
+      } catch (getAllKeysError: any) {
         console.error("❌ Failed to get all keys:", getAllKeysError);
-        errors.push("Failed to enumerate storage keys");
 
-        try {
-          console.log("🚨 Attempting nuclear cleanup...");
-          await AsyncStorage.clear();
-          console.log("✅ Storage cleared successfully");
-          return { success: true, removed: -1, errors };
-        } catch (clearError) {
-          errors.push("Failed to clear storage");
-          return { success: false, removed: 0, errors };
+        // If we can't even get keys, the database is severely corrupted
+        if (getAllKeysError?.message?.includes("CursorWindow") ||
+            getAllKeysError?.message?.includes("row too big") ||
+            getAllKeysError?.message?.includes("database or disk is full")) {
+          console.log("🚨 CursorWindow error detected - performing nuclear cleanup...");
+
+          try {
+            await AsyncStorage.clear();
+            console.log("✅ Storage cleared successfully");
+            return { success: true, removed: -1, errors: ["Nuclear cleanup performed"] };
+          } catch (clearError) {
+            errors.push("Failed to clear storage");
+            return { success: false, removed: 0, errors };
+          }
+        }
+
+        errors.push("Failed to enumerate storage keys");
+        return { success: false, removed: 0, errors };
+      }
+
+      // Target known problematic keys first (base64 image data)
+      const KNOWN_PROBLEMATIC_KEYS = [
+        "pendingMeal",
+        "persist:meal",
+        "meal_data",
+        "largeImageData",
+        "image_cache",
+        "meal_cache",
+      ];
+
+      console.log("🎯 Removing known problematic keys first...");
+      for (const key of KNOWN_PROBLEMATIC_KEYS) {
+        const matchingKeys = keys.filter(k => k.includes(key));
+        for (const matchingKey of matchingKeys) {
+          try {
+            await AsyncStorage.removeItem(matchingKey);
+            console.log(`🗑️  Removed problematic key: ${matchingKey}`);
+            removed++;
+          } catch (removeError) {
+            console.warn(`Failed to remove ${matchingKey}:`, removeError);
+          }
         }
       }
 
-      const MAX_SAFE_SIZE = 100 * 1024;
-      const CHUNK_SIZE = 10;
+      // Small delay to let database recover
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
+      const MAX_SAFE_SIZE = 100 * 1024; // 100KB
+      const CHUNK_SIZE = 5; // Smaller chunks for safety
+
+      console.log("🔍 Scanning remaining keys...");
       for (let i = 0; i < keys.length; i += CHUNK_SIZE) {
         const keyChunk = keys.slice(i, i + CHUNK_SIZE);
 
         for (const key of keyChunk) {
+          // Skip already removed keys
+          if (KNOWN_PROBLEMATIC_KEYS.some(pk => key.includes(pk))) {
+            continue;
+          }
+
           try {
             const value = await AsyncStorage.getItem(key);
 
@@ -47,20 +88,25 @@ export class StorageRecoveryService {
 
               if (size > MAX_SAFE_SIZE) {
                 console.log(
-                  `🗑️  Removing oversized entry: ${key} (${(
-                    size / 1024
-                  ).toFixed(1)}KB)`
+                  `🗑️  Removing oversized entry: ${key} (${(size / 1024).toFixed(1)}KB)`
                 );
                 await AsyncStorage.removeItem(key);
                 removed++;
               }
             }
           } catch (itemError: any) {
-            console.log(`⚠️  Key "${key}" is unreadable, removing it...`);
+            // CursorWindow errors mean the item is too big to even read
+            if (itemError?.message?.includes("CursorWindow") ||
+                itemError?.message?.includes("row too big")) {
+              console.log(`🚨 CursorWindow error on "${key}" - removing immediately`);
+            } else {
+              console.log(`⚠️  Key "${key}" is unreadable, removing it...`);
+            }
 
             try {
               await AsyncStorage.removeItem(key);
               removed++;
+              console.log(`✅ Removed problematic key: ${key}`);
             } catch (removeError: any) {
               console.error(`❌ Failed to remove "${key}":`, removeError);
               errors.push(`Failed to remove key: ${key}`);
@@ -68,7 +114,8 @@ export class StorageRecoveryService {
           }
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        // Small delay between chunks
+        await new Promise((resolve) => setTimeout(resolve, 20));
       }
 
       console.log(`✅ Storage recovery complete. Removed ${removed} items.`);

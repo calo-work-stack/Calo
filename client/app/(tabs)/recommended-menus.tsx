@@ -47,6 +47,7 @@ import { EnhancedMenuCreator } from "@/components/menu";
 import { RecommendedMenu } from "@/src/types/recommended-menus";
 import { FILTER_OPTIONS } from "@/src/Features/Features/recommended-features";
 import { LinearGradient } from "expo-linear-gradient";
+import { NutritionHabits } from "@/components/menu/NutritionHabits";
 
 // ==================== OPTIMIZED COMPONENTS ====================
 
@@ -921,6 +922,13 @@ export default function RecommendedMenusScreen() {
               )}
             </View>
           )}
+
+          {/* Nutrition Habits Section */}
+          {filteredMenus.length > 0 && (
+            <View style={styles.habitsSection}>
+              <NutritionHabits />
+            </View>
+          )}
         </View>
       </Animated.ScrollView>
 
@@ -1484,5 +1492,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: "600",
+  },
+
+  habitsSection: {
+    paddingHorizontal: 20,
+    marginTop: 24,
+    marginBottom: 20,
   },
 });

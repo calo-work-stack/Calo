@@ -1293,6 +1293,7 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
       "prep_time_minutes": <realistic time>,
       "cooking_method": "Specific method (e.g., 'Pan-searing and roasting', 'Slow cooker', 'Stir-frying')",
       "instructions": "Detailed step-by-step: 1. Prep ingredients... 2. Heat pan... 3. Cook... 4. Season... 5. Plate and serve. Include temperatures, cooking times, and pro tips.",
+      "dietary_tags": ["vegan", "vegetarian", "gluten-free", "dairy-free", "nut-free", "meat", "fish", "egg"] (include all that apply),
       "ingredients": [
         {
           "name": "Precise ingredient name",
@@ -1471,7 +1472,7 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
               style: "natural",
             });
 
-            imageUrl = imageResponse.data[0]?.url || null;
+            imageUrl = imageResponse.data?.[0]?.url || null;
             console.log(`✅ Image generated for ${meal.name}`);
           }
         } catch (imageError) {
@@ -1494,6 +1495,7 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
             instructions: meal.instructions || "",
             image_url: imageUrl,
             language: menuLanguage,
+            dietary_tags: meal.dietary_tags || [],
           },
         });
 
@@ -1563,7 +1565,7 @@ router.get(
   authenticateToken,
   async (req: AuthRequest, res: Response) => {
     try {
-      const userId = req.user!.userId;
+      const userId = req.user!.user_id;
       const { planId } = req.params;
 
       // Get the menu with all meals and ingredients
@@ -1635,6 +1637,7 @@ router.get(
           })),
           instructions: meal.instructions || "",
           image_url: meal.image_url,
+          dietary_tags: meal.dietary_tags || [],
         });
       });
 
@@ -1669,7 +1672,7 @@ router.post(
   authenticateToken,
   async (req: AuthRequest, res: Response) => {
     try {
-      const userId = req.user!.userId;
+      const userId = req.user!.user_id;
       const { planId, ingredientId } = req.params;
       const { meal_id, checked } = req.body;
 
@@ -1722,7 +1725,7 @@ router.post(
   authenticateToken,
   async (req: AuthRequest, res: Response) => {
     try {
-      const userId = req.user!.userId;
+      const userId = req.user!.user_id;
       const { planId } = req.params;
       const { type, rating, feedback, reason } = req.body;
 

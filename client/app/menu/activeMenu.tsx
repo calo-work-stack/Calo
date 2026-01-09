@@ -10,22 +10,23 @@ import {
   TextInput,
   Alert,
   Image,
-  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
-import { useTheme } from "@/src/context/ThemeContext";
 import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
   Star,
-  X,
+  Flame,
+  CheckCircle2,
+  Circle,
+  ChefHat,
 } from "lucide-react-native";
 import { api } from "@/src/services/api";
+import { DietaryIcons } from "@/components/menu/DietaryIcons";
+import { NutritionHabits } from "@/components/menu/NutritionHabits";
 
 interface Ingredient {
   ingredient_id: string;
@@ -46,6 +47,7 @@ interface Meal {
   ingredients: Ingredient[];
   instructions: string;
   image_url?: string;
+  dietary_tags?: string[];
 }
 
 interface DayMeals {
@@ -65,9 +67,7 @@ interface MealPlan {
 }
 
 export default function ActiveMenu() {
-  const { t } = useTranslation();
-  const { isRTL, language } = useLanguage();
-  const { colors, isDark } = useTheme();
+  const { language } = useLanguage();
   const router = useRouter();
   const { planId } = useLocalSearchParams();
 
@@ -84,8 +84,13 @@ export default function ActiveMenu() {
 
   useEffect(() => {
     loadMealPlan();
-    checkMenuCompletion();
   }, [planId]);
+
+  useEffect(() => {
+    if (mealPlan) {
+      checkMenuCompletion();
+    }
+  }, [mealPlan]);
 
   const loadMealPlan = async () => {
     try {
@@ -94,10 +99,9 @@ export default function ActiveMenu() {
       const plan = response.data.data;
       setMealPlan(plan);
 
-      // Load checked ingredients from database
       if (plan.ingredient_checks) {
-        const checked = new Set(
-          plan.ingredient_checks.filter((c: any) => c.checked).map((c: any) => c.ingredient_id)
+        const checked = new Set<string>(
+          plan.ingredient_checks.filter((c: any) => c.checked).map((c: any) => c.ingredient_id as string)
         );
         setCheckedIngredients(checked);
       }
@@ -118,7 +122,6 @@ export default function ActiveMenu() {
     endDate.setHours(0, 0, 0, 0);
 
     if (today > endDate && mealPlan.status === "active") {
-      // Menu period has ended - show review modal
       const allMealsCompleted = checkIfAllMealsCompleted();
       setReviewType(allMealsCompleted ? "completed" : "failed");
       setShowReviewModal(true);
@@ -142,7 +145,7 @@ export default function ActiveMenu() {
       });
     });
 
-    return checkedCount / totalIngredients >= 0.8; // 80% completion threshold
+    return checkedCount / totalIngredients >= 0.8;
   };
 
   const toggleMealExpanded = (mealId: string) => {
@@ -166,7 +169,6 @@ export default function ActiveMenu() {
     }
     setCheckedIngredients(newChecked);
 
-    // Persist to database
     try {
       await api.post(`/recommended-menus/${planId}/ingredients/${ingredientId}/check`, {
         meal_id: mealId,
@@ -174,7 +176,6 @@ export default function ActiveMenu() {
       });
     } catch (error) {
       console.error("Error updating ingredient check:", error);
-      // Revert on error
       if (isChecked) {
         newChecked.delete(ingredientId);
       } else {
@@ -230,30 +231,30 @@ export default function ActiveMenu() {
 
   const getMealTypeColor = (type: string) => {
     const colorMap: Record<string, string> = {
-      breakfast: colors.amber500,
-      lunch: colors.emerald500,
-      dinner: colors.indigo500,
-      snack: colors.pink500,
+      breakfast: "#F59E0B",
+      lunch: "#10B981",
+      dinner: "#6366F1",
+      snack: "#EC4899",
     };
-    return colorMap[type.toLowerCase()] || colors.gray500;
+    return colorMap[type.toLowerCase()] || "#6B7280";
   };
 
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.emerald500} />
-        <Text style={[styles.loadingText, { color: colors.text }]}>Loading your menu...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: "#FAFAFA" }]}>
+        <ActivityIndicator size="large" color="#10B981" />
+        <Text style={styles.loadingText}>Loading your menu...</Text>
       </View>
     );
   }
 
   if (!mealPlan) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: colors.text }]}>Menu not found</Text>
+          <Text style={styles.errorText}>Menu not found</Text>
           <TouchableOpacity onPress={() => router.back()}>
-            <Text style={[styles.errorButton, { color: colors.emerald500 }]}>Go Back</Text>
+            <Text style={styles.errorButton}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -263,21 +264,26 @@ export default function ActiveMenu() {
   const currentDay = mealPlan.days[selectedDay];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+    <SafeAreaView style={styles.container}>
+      {/* Clean Header */}
+      <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.text} />
+          <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>{mealPlan.name}</Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>{mealPlan.name}</Text>
+          <Text style={styles.headerSubtitle}>
+            Day {selectedDay + 1} of {mealPlan.days.length}
+          </Text>
+        </View>
         <View style={styles.backButton} />
       </View>
 
-      {/* Day Tabs */}
+      {/* Horizontal Day Tabs */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={[styles.dayTabsContainer, { backgroundColor: colors.card }]}
+        style={styles.dayTabsContainer}
         contentContainerStyle={styles.dayTabsContent}
       >
         {mealPlan.days.map((day, index) => {
@@ -286,6 +292,9 @@ export default function ActiveMenu() {
             weekday: "short",
           });
           const dateNumber = dayDate.getDate();
+          const monthName = dayDate.toLocaleDateString(language === "he" ? "he-IL" : "en-US", {
+            month: "short",
+          });
           const isSelected = selectedDay === index;
 
           return (
@@ -294,26 +303,17 @@ export default function ActiveMenu() {
               onPress={() => setSelectedDay(index)}
               style={[
                 styles.dayTab,
-                isSelected && {
-                  backgroundColor: colors.emerald500,
-                },
+                isSelected && styles.dayTabSelected,
               ]}
             >
-              <Text
-                style={[
-                  styles.dayTabName,
-                  { color: isSelected ? "#ffffff" : colors.text },
-                ]}
-              >
+              <Text style={[styles.dayTabName, isSelected && styles.dayTabNameSelected]}>
                 {dayName}
               </Text>
-              <Text
-                style={[
-                  styles.dayTabDate,
-                  { color: isSelected ? "#ffffff" : colors.textSecondary },
-                ]}
-              >
+              <Text style={[styles.dayTabDate, isSelected && styles.dayTabDateSelected]}>
                 {dateNumber}
+              </Text>
+              <Text style={[styles.dayTabMonth, isSelected && styles.dayTabMonthSelected]}>
+                {monthName}
               </Text>
             </TouchableOpacity>
           );
@@ -328,135 +328,129 @@ export default function ActiveMenu() {
           const mealTypeEmoji = getMealTypeEmoji(meal.meal_type);
 
           return (
-            <View
-              key={meal.meal_id}
-              style={[styles.mealCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
+            <View key={meal.meal_id} style={styles.mealCard}>
               {/* Meal Header */}
               <TouchableOpacity
                 onPress={() => toggleMealExpanded(meal.meal_id)}
                 style={styles.mealHeader}
+                activeOpacity={0.7}
               >
-                {/* Meal Image */}
-                {meal.image_url ? (
-                  <Image source={{ uri: meal.image_url }} style={styles.mealImage} />
-                ) : (
-                  <View style={[styles.mealImagePlaceholder, { backgroundColor: colors.cardHover }]}>
-                    <Text style={styles.mealImageEmoji}>{mealTypeEmoji}</Text>
-                  </View>
-                )}
+                {/* Circular Meal Image */}
+                <View style={styles.mealImageContainer}>
+                  {meal.image_url ? (
+                    <Image source={{ uri: meal.image_url }} style={styles.mealImage} />
+                  ) : (
+                    <View style={[styles.mealImagePlaceholder, { backgroundColor: mealTypeColor + "20" }]}>
+                      <Text style={styles.mealImageEmoji}>{mealTypeEmoji}</Text>
+                    </View>
+                  )}
+                </View>
 
                 {/* Meal Info */}
                 <View style={styles.mealInfo}>
-                  <View style={styles.mealTypeContainer}>
-                    <View style={[styles.mealTypeBadge, { backgroundColor: mealTypeColor + "20" }]}>
-                      <Text style={[styles.mealTypeText, { color: mealTypeColor }]}>
-                        {meal.meal_type}
-                      </Text>
-                    </View>
+                  <View style={[styles.mealTypeBadge, { backgroundColor: mealTypeColor }]}>
+                    <Text style={styles.mealTypeText}>{meal.meal_type}</Text>
                   </View>
-                  <Text style={[styles.mealName, { color: colors.text }]} numberOfLines={1}>
+                  <Text style={styles.mealName} numberOfLines={1}>
                     {meal.name}
                   </Text>
-                  <Text style={[styles.mealCalories, { color: colors.textSecondary }]}>
-                    {meal.calories} kcal
-                  </Text>
+                  <View style={styles.mealMeta}>
+                    <Flame size={14} color="#F59E0B" />
+                    <Text style={styles.mealMetaText}>{meal.calories} cal</Text>
+                    {meal.dietary_tags && meal.dietary_tags.length > 0 && (
+                      <DietaryIcons tags={meal.dietary_tags} size={14} style={{ marginLeft: 6 }} />
+                    )}
+                  </View>
                 </View>
 
                 {/* Expand Icon */}
-                <View style={styles.expandIcon}>
-                  {isExpanded ? (
-                    <ChevronUp size={24} color={colors.textSecondary} />
-                  ) : (
-                    <ChevronDown size={24} color={colors.textSecondary} />
-                  )}
-                </View>
+                {isExpanded ? (
+                  <ChevronUp size={22} color="#6B7280" />
+                ) : (
+                  <ChevronDown size={22} color="#6B7280" />
+                )}
               </TouchableOpacity>
 
               {/* Expanded Content */}
               {isExpanded && (
                 <View style={styles.expandedContent}>
                   {/* Nutrition Grid */}
-                  <View style={[styles.nutritionGrid, { borderTopColor: colors.border }]}>
+                  <View style={styles.nutritionGrid}>
                     <View style={styles.nutritionItem}>
-                      <Text style={[styles.nutritionValue, { color: colors.text }]}>
-                        {meal.protein}g
-                      </Text>
-                      <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>
-                        Protein
-                      </Text>
+                      <Text style={styles.nutritionValue}>{meal.protein}g</Text>
+                      <Text style={styles.nutritionLabel}>Protein</Text>
                     </View>
+                    <View style={styles.nutritionDivider} />
                     <View style={styles.nutritionItem}>
-                      <Text style={[styles.nutritionValue, { color: colors.text }]}>
-                        {meal.carbs}g
-                      </Text>
-                      <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>
-                        Carbs
-                      </Text>
+                      <Text style={styles.nutritionValue}>{meal.carbs}g</Text>
+                      <Text style={styles.nutritionLabel}>Carbs</Text>
                     </View>
+                    <View style={styles.nutritionDivider} />
                     <View style={styles.nutritionItem}>
-                      <Text style={[styles.nutritionValue, { color: colors.text }]}>
-                        {meal.fat}g
-                      </Text>
-                      <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>
-                        Fat
-                      </Text>
+                      <Text style={styles.nutritionValue}>{meal.fat}g</Text>
+                      <Text style={styles.nutritionLabel}>Fat</Text>
                     </View>
                   </View>
 
                   {/* Ingredients with Checkmarks */}
                   <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Ingredients</Text>
-                    {meal.ingredients.map((ingredient) => {
-                      const isChecked = checkedIngredients.has(ingredient.ingredient_id);
+                    <View style={styles.sectionHeader}>
+                      <ChefHat size={18} color="#10B981" />
+                      <Text style={styles.sectionTitle}>Ingredients</Text>
+                    </View>
+                    <View style={styles.ingredientsList}>
+                      {meal.ingredients.map((ingredient) => {
+                        const isChecked = checkedIngredients.has(ingredient.ingredient_id);
 
-                      return (
-                        <TouchableOpacity
-                          key={ingredient.ingredient_id}
-                          onPress={() =>
-                            toggleIngredientCheck(ingredient.ingredient_id, meal.meal_id)
-                          }
-                          style={styles.ingredientItem}
-                        >
-                          <View
-                            style={[
-                              styles.checkbox,
-                              {
-                                backgroundColor: isChecked
-                                  ? colors.emerald500
-                                  : colors.background,
-                                borderColor: isChecked ? colors.emerald500 : colors.border,
-                              },
-                            ]}
+                        return (
+                          <TouchableOpacity
+                            key={ingredient.ingredient_id}
+                            onPress={() =>
+                              toggleIngredientCheck(ingredient.ingredient_id, meal.meal_id)
+                            }
+                            style={styles.ingredientItem}
+                            activeOpacity={0.7}
                           >
-                            {isChecked && <Text style={styles.checkmark}>✓</Text>}
-                          </View>
-                          <Text
-                            style={[
-                              styles.ingredientText,
-                              { color: isChecked ? colors.textSecondary : colors.text },
-                              isChecked && styles.ingredientTextChecked,
-                            ]}
-                          >
-                            {ingredient.name} - {ingredient.quantity}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                            {isChecked ? (
+                              <CheckCircle2 size={20} color="#10B981" fill="#10B981" />
+                            ) : (
+                              <Circle size={20} color="#D1D5DB" />
+                            )}
+                            <Text
+                              style={[
+                                styles.ingredientText,
+                                isChecked && styles.ingredientTextChecked,
+                              ]}
+                            >
+                              {ingredient.name} - {ingredient.quantity}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
                   </View>
 
                   {/* Instructions */}
-                  <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Instructions</Text>
-                    <Text style={[styles.instructionsText, { color: colors.textSecondary }]}>
-                      {meal.instructions}
-                    </Text>
-                  </View>
+                  {meal.instructions && (
+                    <View style={styles.section}>
+                      <Text style={styles.sectionTitle}>Instructions</Text>
+                      <View style={styles.instructionsContainer}>
+                        <Text style={styles.instructionsText}>{meal.instructions}</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
               )}
             </View>
           );
         })}
+
+        {/* Nutrition Habits Section */}
+        <View style={styles.habitsSection}>
+          <NutritionHabits />
+        </View>
+
+        <View style={{ height: 20 }} />
       </ScrollView>
 
       {/* Review Modal */}
@@ -467,13 +461,13 @@ export default function ActiveMenu() {
         onRequestClose={() => {}}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.reviewModal, { backgroundColor: colors.card }]}>
-            <Text style={[styles.reviewTitle, { color: colors.text }]}>
+          <View style={styles.reviewModal}>
+            <Text style={styles.reviewTitle}>
               {reviewType === "completed"
                 ? "Congratulations! 🎉"
                 : "Menu Period Ended"}
             </Text>
-            <Text style={[styles.reviewSubtitle, { color: colors.textSecondary }]}>
+            <Text style={styles.reviewSubtitle}>
               {reviewType === "completed"
                 ? "You've completed your meal plan!"
                 : "How did your meal plan go?"}
@@ -488,9 +482,9 @@ export default function ActiveMenu() {
                   style={styles.starButton}
                 >
                   <Star
-                    size={40}
-                    color={star <= rating ? colors.amber500 : colors.border}
-                    fill={star <= rating ? colors.amber500 : "transparent"}
+                    size={36}
+                    color={star <= rating ? "#F59E0B" : "#D1D5DB"}
+                    fill={star <= rating ? "#F59E0B" : "transparent"}
                   />
                 </TouchableOpacity>
               ))}
@@ -498,20 +492,13 @@ export default function ActiveMenu() {
 
             {/* Feedback Input */}
             <TextInput
-              style={[
-                styles.feedbackInput,
-                {
-                  backgroundColor: colors.background,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
+              style={styles.feedbackInput}
               placeholder={
                 reviewType === "completed"
                   ? "Share your experience (optional)"
                   : "What prevented you from completing?"
               }
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor="#9CA3AF"
               multiline
               numberOfLines={4}
               value={feedback}
@@ -520,19 +507,17 @@ export default function ActiveMenu() {
             />
 
             {/* Action Buttons */}
-            <View style={styles.reviewActions}>
-              <TouchableOpacity
-                onPress={submitReview}
-                disabled={isSubmittingReview}
-                style={[styles.submitButton, { backgroundColor: colors.emerald500 }]}
-              >
-                {isSubmittingReview ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
-                ) : (
-                  <Text style={styles.submitButtonText}>Submit Review</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              onPress={submitReview}
+              disabled={isSubmittingReview}
+              style={styles.submitButton}
+            >
+              {isSubmittingReview ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.submitButtonText}>Submit Review</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -543,6 +528,7 @@ export default function ActiveMenu() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#FAFAFA",
   },
   loadingContainer: {
     flex: 1,
@@ -552,6 +538,8 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
+    color: "#6B7280",
+    fontWeight: "500",
   },
   errorContainer: {
     flex: 1,
@@ -561,19 +549,24 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
+    color: "#111827",
+    fontWeight: "600",
     marginBottom: 16,
   },
   errorButton: {
     fontSize: 16,
     fontWeight: "600",
+    color: "#10B981",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
   },
   backButton: {
     width: 40,
@@ -581,62 +574,102 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  headerCenter: {
+    flex: 1,
+    alignItems: "center",
+  },
   headerTitle: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "700",
+    color: "#111827",
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: "#6B7280",
+    marginTop: 2,
   },
   dayTabsContainer: {
-    maxHeight: 80,
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
   },
   dayTabsContent: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    gap: 12,
+    gap: 10,
   },
   dayTab: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 12,
     alignItems: "center",
-    justifyContent: "center",
     minWidth: 70,
+    backgroundColor: "#F9FAFB",
+  },
+  dayTabSelected: {
+    backgroundColor: "#10B981",
   },
   dayTabName: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: "600",
-    marginBottom: 4,
+    color: "#6B7280",
+    textTransform: "uppercase",
+  },
+  dayTabNameSelected: {
+    color: "#FFFFFF",
   },
   dayTabDate: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
+    color: "#111827",
+    marginTop: 2,
+  },
+  dayTabDateSelected: {
+    color: "#FFFFFF",
+  },
+  dayTabMonth: {
+    fontSize: 10,
+    fontWeight: "500",
+    color: "#9CA3AF",
+    marginTop: 2,
+  },
+  dayTabMonthSelected: {
+    color: "rgba(255, 255, 255, 0.8)",
   },
   mealsScrollView: {
     flex: 1,
   },
   mealsContainer: {
     padding: 16,
-    gap: 16,
+    gap: 12,
   },
   mealCard: {
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
     overflow: "hidden",
   },
   mealHeader: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    padding: 14,
+  },
+  mealImageContainer: {
+    marginRight: 12,
   },
   mealImage: {
     width: 70,
     height: 70,
-    borderRadius: 12,
+    borderRadius: 35,
   },
   mealImagePlaceholder: {
     width: 70,
     height: 70,
-    borderRadius: 12,
+    borderRadius: 35,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -645,96 +678,114 @@ const styles = StyleSheet.create({
   },
   mealInfo: {
     flex: 1,
-    marginLeft: 16,
-  },
-  mealTypeContainer: {
-    marginBottom: 6,
+    gap: 5,
   },
   mealTypeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     alignSelf: "flex-start",
   },
   mealTypeText: {
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#FFFFFF",
     textTransform: "uppercase",
   },
   mealName: {
     fontSize: 16,
     fontWeight: "600",
-    marginBottom: 4,
+    color: "#111827",
   },
-  mealCalories: {
-    fontSize: 14,
+  mealMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
-  expandIcon: {
-    marginLeft: 8,
+  mealMetaText: {
+    fontSize: 13,
+    color: "#6B7280",
+    fontWeight: "500",
   },
   expandedContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    gap: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
   },
   nutritionGrid: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-around",
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    marginBottom: 16,
+    paddingVertical: 14,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    marginTop: 14,
   },
   nutritionItem: {
     alignItems: "center",
+    flex: 1,
+  },
+  nutritionDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: "#E5E7EB",
   },
   nutritionValue: {
     fontSize: 18,
     fontWeight: "700",
-    marginBottom: 4,
+    color: "#111827",
   },
   nutritionLabel: {
-    fontSize: 12,
+    fontSize: 11,
+    color: "#6B7280",
+    marginTop: 2,
+    fontWeight: "500",
   },
   section: {
-    marginBottom: 16,
+    gap: 10,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
-    marginBottom: 12,
+    color: "#111827",
+  },
+  ingredientsList: {
+    gap: 10,
   },
   ingredientItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  checkmark: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "700",
+    gap: 10,
   },
   ingredientText: {
     fontSize: 14,
+    color: "#374151",
     flex: 1,
   },
   ingredientTextChecked: {
+    color: "#9CA3AF",
     textDecorationLine: "line-through",
   },
+  instructionsContainer: {
+    backgroundColor: "#F9FAFB",
+    padding: 14,
+    borderRadius: 10,
+  },
   instructionsText: {
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 13,
+    color: "#6B7280",
+    lineHeight: 20,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
@@ -742,24 +793,27 @@ const styles = StyleSheet.create({
   reviewModal: {
     width: "100%",
     maxWidth: 400,
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 24,
   },
   reviewTitle: {
     fontSize: 24,
     fontWeight: "700",
+    color: "#111827",
     textAlign: "center",
     marginBottom: 8,
   },
   reviewSubtitle: {
-    fontSize: 16,
+    fontSize: 15,
+    color: "#6B7280",
     textAlign: "center",
     marginBottom: 24,
   },
   starsContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: 24,
+    marginBottom: 20,
     gap: 8,
   },
   starButton: {
@@ -767,23 +821,28 @@ const styles = StyleSheet.create({
   },
   feedbackInput: {
     borderWidth: 1,
+    borderColor: "#E5E7EB",
     borderRadius: 12,
-    padding: 16,
+    padding: 14,
     fontSize: 14,
+    color: "#111827",
+    backgroundColor: "#F9FAFB",
     minHeight: 100,
     marginBottom: 20,
   },
-  reviewActions: {
-    gap: 12,
-  },
   submitButton: {
-    paddingVertical: 16,
+    backgroundColor: "#10B981",
+    paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
   },
   submitButtonText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  habitsSection: {
+    paddingHorizontal: 20,
+    marginTop: 16,
   },
 });

@@ -509,6 +509,7 @@ model RecommendedMeal {
   instructions      String?
   image_url         String?
   language          String?    @default("en")
+  dietary_tags      String[]   @default([]) // vegan, vegetarian, gluten-free, dairy-free, nut-free, meat, fish, etc.
 
   // Relations
   menu        RecommendedMenu         @relation(fields: [menu_id], references: [menu_id], onDelete: Cascade)
