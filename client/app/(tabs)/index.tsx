@@ -851,7 +851,7 @@ const HomeScreen = React.memo(() => {
               </Text>
               <TouchableOpacity
                 style={styles.viewAllButton}
-                onPress={() => console.log("View all meals")}
+                onPress={() => router.push("/(tabs)/history")}
               >
                 <Text style={[styles.viewAllText, { color: colors.primary }]}>
                   View All
@@ -887,6 +887,16 @@ const HomeScreen = React.memo(() => {
                       index === processedMealsData.recentMeals.length - 1 &&
                         styles.lastActivityItem,
                     ]}
+                    onPress={() => {
+                      const mealId = meal.meal_id || meal.id;
+                      if (mealId) {
+                        router.push({
+                          pathname: "/(tabs)/history",
+                          params: { selectedMealId: mealId.toString() },
+                        });
+                      }
+                    }}
+                    activeOpacity={0.7}
                   >
                     {meal.image_url ? (
                       <Image

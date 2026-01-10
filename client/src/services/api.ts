@@ -434,7 +434,9 @@ export const nutritionAPI = {
         mealPeriod,
       },
       {
-        timeout: 30000, // 30s timeout
+        timeout: 120000, // 120s timeout - AI analysis can take time
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
       }
     );
 
@@ -877,7 +879,7 @@ export const calendarAPI = {
     return throttleRequest(async () => {
       return deduplicateRequest(cacheKey, async () => {
         const response = await api.get(`/calendar/data/${year}/${month}`, {
-          timeout: 10000,
+          timeout: 30000, // 30s timeout for calendar data
         });
 
         if (!response.data.success) {
@@ -903,7 +905,7 @@ export const calendarAPI = {
 
     return deduplicateRequest(cacheKey, async () => {
       const response = await api.get(`/calendar/statistics/${year}/${month}`, {
-        timeout: 10000,
+        timeout: 30000, // 30s timeout for statistics
       });
 
       if (!response.data.success) {
@@ -964,7 +966,7 @@ export const calendarAPI = {
     const response = await api.get(
       `/calendar/statistics/enhanced/${year}/${month}`,
       {
-        timeout: 15000,
+        timeout: 30000, // 30s timeout for enhanced statistics
       }
     );
 

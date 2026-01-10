@@ -37,7 +37,7 @@ class OptimizedImageProcessor {
     const format = options.format || "jpeg";
 
     try {
-      console.log("🖼️  Starting image optimization...");
+      console.log("🖼️ Starting image optimization...");
       const startTime = Date.now();
 
       // Resize and compress image
@@ -53,14 +53,17 @@ class OptimizedImageProcessor {
         ],
         {
           compress: quality,
-          format: format === "jpeg" ? ImageManipulator.SaveFormat.JPEG : ImageManipulator.SaveFormat.PNG,
+          format:
+            format === "jpeg"
+              ? ImageManipulator.SaveFormat.JPEG
+              : ImageManipulator.SaveFormat.PNG,
           base64: false, // Don't get base64 yet to save memory
         }
       );
 
-      // Read as base64
+      // Read as base64 - Fix: Use correct encoding constant
       const base64 = await FileSystem.readAsStringAsync(manipResult.uri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: "base64", // Use string literal instead of EncodingType
       });
 
       // Clean up temp file
@@ -102,10 +105,12 @@ class OptimizedImageProcessor {
   private addToCache(key: string, value: string): void {
     // Remove oldest entry if cache is full
     if (this.cache.size >= this.CACHE_MAX_SIZE) {
+      // Fix: Handle undefined case
       const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey);
+      }
     }
-
     this.cache.set(key, value);
   }
 
@@ -134,7 +139,6 @@ class OptimizedImageProcessor {
    */
   async processForAnalysis(imageUri: string): Promise<string> {
     console.log("⚡ Ultra-fast processing for analysis...");
-
     try {
       // Use aggressive compression
       const result = await this.processImage(imageUri, {
@@ -147,7 +151,9 @@ class OptimizedImageProcessor {
       // Validate size isn't too large
       const sizeKB = result.length / 1024;
       if (sizeKB > 500) {
-        console.warn(`⚠️  Image still large (${sizeKB.toFixed(2)} KB), re-compressing...`);
+        console.warn(
+          `⚠️ Image still large (${sizeKB.toFixed(2)} KB), re-compressing...`
+        );
         // Recompress with even lower quality
         return this.processImage(imageUri, {
           maxWidth: 600,

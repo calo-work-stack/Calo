@@ -23,8 +23,10 @@ export class StorageRecoveryService {
         // If we can't even get keys, the database is severely corrupted
         if (getAllKeysError?.message?.includes("CursorWindow") ||
             getAllKeysError?.message?.includes("row too big") ||
-            getAllKeysError?.message?.includes("database or disk is full")) {
-          console.log("🚨 CursorWindow error detected - performing nuclear cleanup...");
+            getAllKeysError?.message?.includes("database or disk is full") ||
+            getAllKeysError?.message?.includes("empty for row") ||
+            getAllKeysError?.message?.includes("Couldn't read row")) {
+          console.log("🚨 Database corruption detected - performing nuclear cleanup...");
 
           try {
             await AsyncStorage.clear();
@@ -95,10 +97,12 @@ export class StorageRecoveryService {
               }
             }
           } catch (itemError: any) {
-            // CursorWindow errors mean the item is too big to even read
+            // CursorWindow/empty row errors mean the item is corrupted
             if (itemError?.message?.includes("CursorWindow") ||
-                itemError?.message?.includes("row too big")) {
-              console.log(`🚨 CursorWindow error on "${key}" - removing immediately`);
+                itemError?.message?.includes("row too big") ||
+                itemError?.message?.includes("empty for row") ||
+                itemError?.message?.includes("Couldn't read row")) {
+              console.log(`🚨 Database error on "${key}" - removing immediately`);
             } else {
               console.log(`⚠️  Key "${key}" is unreadable, removing it...`);
             }

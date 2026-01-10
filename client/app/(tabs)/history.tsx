@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { useDispatch, useSelector } from "react-redux";
+import { useLocalSearchParams } from "expo-router";
 import { RootState, AppDispatch } from "@/src/store";
 import {
   fetchMeals,
@@ -179,6 +180,7 @@ const SwipeableMealCard = ({
   onDelete,
   onDuplicate,
   onToggleFavorite,
+  isHighlighted,
 }: any) => {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
@@ -199,6 +201,40 @@ const SwipeableMealCard = ({
 
   const animatedHeight = useState(new Animated.Value(0))[0];
   const scaleAnim = useState(new Animated.Value(1))[0];
+  const highlightAnim = useState(new Animated.Value(0))[0];
+
+  // Animate highlight when meal is selected
+  useEffect(() => {
+    if (isHighlighted) {
+      // Expand the card automatically when highlighted
+      setIsExpanded(true);
+
+      // Pulse animation for highlight
+      Animated.sequence([
+        Animated.timing(highlightAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+        Animated.timing(highlightAnim, {
+          toValue: 0.3,
+          duration: 500,
+          useNativeDriver: false,
+        }),
+        Animated.timing(highlightAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+        Animated.timing(highlightAnim, {
+          toValue: 0,
+          duration: 1500,
+          useNativeDriver: false,
+        }),
+      ]).start();
+    }
+  }, [isHighlighted]);
+
   const mealPeriodStyle = getMealPeriodStyle(
     meal.meal_period || meal.mealPeriod || "other",
     { ...colors, isDark }
@@ -404,10 +440,33 @@ const SwipeableMealCard = ({
         overshootRight={false}
         friction={2}
       >
-        <View
+        <Animated.View
           style={[
             styles.mealCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderColor: highlightAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [colors.border, colors.primary],
+              }),
+              borderWidth: highlightAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 3],
+              }),
+              shadowColor: colors.primary,
+              shadowOpacity: highlightAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 0.3],
+              }),
+              shadowRadius: highlightAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 10],
+              }),
+              elevation: highlightAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 5],
+              }),
+            },
           ]}
         >
           <TouchableOpacity
@@ -897,7 +956,7 @@ const SwipeableMealCard = ({
               </View>
             )}
           </Animated.View>
-        </View>
+        </Animated.View>
       </Swipeable>
 
       <Modal
@@ -1059,6 +1118,10 @@ export default function HistoryScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { meals, isLoading } = useSelector((state: RootState) => state.meal);
   const { refreshAllMealData, refreshMealData } = useMealDataRefresh();
+  const { selectedMealId } = useLocalSearchParams<{ selectedMealId?: string }>();
+
+  const flatListRef = useRef<FlatList>(null);
+  const [highlightedMealId, setHighlightedMealId] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -1075,6 +1138,47 @@ export default function HistoryScreen() {
   useEffect(() => {
     dispatch(fetchMeals());
   }, [dispatch]);
+
+  // Handle scrolling to selected meal when navigating from home screen
+  useEffect(() => {
+    if (selectedMealId && meals.length > 0 && !isLoading) {
+      // Reset filters to show all meals so we can find the selected one
+      setFilters({
+        category: "all",
+        dateRange: "all",
+        minCalories: 0,
+        maxCalories: 2000,
+        showFavoritesOnly: false,
+      });
+      setSearchQuery("");
+
+      // Find the index of the selected meal
+      const mealIndex = meals.findIndex(
+        (meal: any) =>
+          (meal.meal_id?.toString() || meal.id?.toString()) === selectedMealId
+      );
+
+      if (mealIndex !== -1) {
+        // Account for insights card at index 0
+        const listIndex = mealIndex + 1;
+
+        // Delay to ensure the list is rendered
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({
+            index: listIndex,
+            animated: true,
+            viewPosition: 0.3,
+          });
+
+          // Highlight the meal temporarily
+          setHighlightedMealId(selectedMealId);
+          setTimeout(() => {
+            setHighlightedMealId(null);
+          }, 3000);
+        }, 500);
+      }
+    }
+  }, [selectedMealId, meals, isLoading]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -1340,6 +1444,7 @@ export default function HistoryScreen() {
         </View>
       );
     }
+    const mealId = item.data.meal_id?.toString() || item.data.id?.toString();
     return (
       <SwipeableMealCard
         key={item.data.meal_id}
@@ -1347,6 +1452,7 @@ export default function HistoryScreen() {
         onDelete={handleRemoveMeal}
         onDuplicate={handleDuplicateMeal}
         onToggleFavorite={handleToggleFavorite}
+        isHighlighted={mealId === highlightedMealId}
       />
     );
   };
@@ -1483,6 +1589,7 @@ export default function HistoryScreen() {
 
         {listData.length > 0 ? (
           <FlatList
+            ref={flatListRef}
             data={listData}
             keyExtractor={(item, index) =>
               item.type === "insights" ? "insights" : index.toString()
@@ -1499,6 +1606,16 @@ export default function HistoryScreen() {
                 progressBackgroundColor={colors.card}
               />
             }
+            onScrollToIndexFailed={(info) => {
+              // Fallback: scroll to approximate position
+              const wait = new Promise((resolve) => setTimeout(resolve, 500));
+              wait.then(() => {
+                flatListRef.current?.scrollToOffset({
+                  offset: info.averageItemLength * info.index,
+                  animated: true,
+                });
+              });
+            }}
           />
         ) : (
           <View style={styles.emptyState}>

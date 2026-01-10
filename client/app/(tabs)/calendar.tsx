@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  Animated,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -36,14 +38,132 @@ import {
   TrendingDown,
   CircleCheck as CheckCircle,
   Circle as XCircle,
-  Award,
   Flame,
   CreditCard as Edit,
   Eye,
+  Star,
 } from "lucide-react-native";
 import LoadingScreen from "@/components/LoadingScreen";
-import i18n from "@/src/i18n";
 import { DayData, MonthStats } from "@/src/types/calendar";
+
+// Sleek Day Cell Component - Minimal & Modern
+const AnimatedDayCell = React.memo(({
+  dayData,
+  isToday,
+  isSelected,
+  onPress,
+  onLongPress,
+  colors,
+  isDark,
+}: {
+  dayData: DayData;
+  isToday: boolean;
+  isSelected: boolean;
+  onPress: () => void;
+  onLongPress: () => void;
+  colors: any;
+  isDark: boolean;
+}) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const dayNumber = new Date(dayData.date).getDate();
+
+  const getProgressPercentage = (actual: number, goal: number) => {
+    if (goal === 0) return 0;
+    return Math.min((actual / goal) * 100, 150);
+  };
+
+  const progress = getProgressPercentage(dayData.calories_actual, dayData.calories_goal);
+  const hasEvents = dayData.events.length > 0;
+  const hasData = progress > 0;
+
+  // Sleek color palette
+  const getStatusColor = () => {
+    if (progress >= 110) return { bg: '#FEE2E2', fill: '#EF4444', text: '#DC2626' };
+    if (progress >= 100) return { bg: '#D1FAE5', fill: '#10B981', text: '#059669' };
+    if (progress >= 70) return { bg: '#FEF3C7', fill: '#F59E0B', text: '#D97706' };
+    if (progress > 0) return { bg: '#FFEDD5', fill: '#F97316', text: '#EA580C' };
+    return { bg: isDark ? '#374151' : '#F3F4F6', fill: isDark ? '#6B7280' : '#D1D5DB', text: isDark ? '#9CA3AF' : '#9CA3AF' };
+  };
+
+  const statusColors = getStatusColor();
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+      friction: 10,
+      tension: 100,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 6,
+      tension: 80,
+    }).start();
+  };
+
+  return (
+    <Animated.View style={[styles.dayCellWrapper, { transform: [{ scale: scaleAnim }] }]}>
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[
+          styles.sleekDayCell,
+          {
+            backgroundColor: isSelected
+              ? (isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)')
+              : (isDark ? 'transparent' : 'transparent'),
+          },
+          isToday && styles.todayCell,
+          isSelected && { borderColor: colors.primary, borderWidth: 1.5 },
+        ]}
+      >
+        {/* Day Number */}
+        <Text style={[
+          styles.sleekDayNumber,
+          {
+            color: isToday
+              ? colors.primary
+              : hasData
+                ? (isDark ? '#F9FAFB' : '#1F2937')
+                : (isDark ? '#6B7280' : '#9CA3AF'),
+            fontWeight: isToday ? '700' : '600',
+          }
+        ]}>
+          {dayNumber}
+        </Text>
+
+        {/* Progress Bar - Sleek horizontal style */}
+        <View style={styles.sleekProgressContainer}>
+          <View style={[
+            styles.sleekProgressBg,
+            { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }
+          ]}>
+            <View
+              style={[
+                styles.sleekProgressFill,
+                {
+                  width: `${Math.min(progress, 100)}%`,
+                  backgroundColor: statusColors.fill,
+                }
+              ]}
+            />
+          </View>
+        </View>
+
+        {/* Event indicator - subtle dot */}
+        {hasEvents && (
+          <View style={[styles.sleekEventDot, { backgroundColor: '#F59E0B' }]} />
+        )}
+      </Pressable>
+    </Animated.View>
+  );
+});
 
 const { width } = Dimensions.get("window");
 
@@ -573,60 +693,41 @@ export default function CalendarScreen() {
 
   const renderDay = (dayData: DayData | null, index: number) => {
     if (!dayData) {
-      return <View key={index} style={[styles.dayCell, styles.emptyDay]} />;
+      return <View key={index} style={styles.emptyDayCell} />;
     }
 
-    const dayNumber = new Date(dayData.date).getDate();
-    const progress = getProgressPercentage(
-      dayData.calories_actual,
-      dayData.calories_goal
-    );
-    const dayColor = getDayColor(dayData);
-    const hasEvents = dayData.events.length > 0;
     const isToday =
       new Date().toDateString() === new Date(dayData.date).toDateString();
     const isSelected = selectedDay?.date === dayData.date;
 
     return (
-      <TouchableOpacity
+      <AnimatedDayCell
         key={dayData.date}
-        style={[
-          styles.dayCell,
-          styles.dayButton,
-          isToday && styles.todayCell,
-          isSelected && styles.selectedCell,
-        ]}
+        dayData={dayData}
+        isToday={isToday}
+        isSelected={isSelected}
         onPress={() => handleDayPress(dayData)}
         onLongPress={() => handleAddEvent(dayData.date)}
-      >
-        <View style={[styles.dayIndicator, { backgroundColor: dayColor }]}>
-          <Text style={styles.dayNumber}>{dayNumber}</Text>
-        </View>
-        <View style={styles.progressContainer}>
-          <View
-            style={[
-              styles.progressBar,
-              { width: `${Math.min(progress, 100)}%` },
-            ]}
-          />
-        </View>
-        <Text style={styles.progressText}>{Math.round(progress)}%</Text>
-        {hasEvents && (
-          <View style={styles.eventIndicator}>
-            <Ionicons name="star" size={8} color="#FFD700" />
-            <Text style={styles.eventCount}>{dayData.events.length}</Text>
-          </View>
-        )}
-      </TouchableOpacity>
+        colors={colors}
+        isDark={isDark}
+      />
     );
   };
 
   const renderWeekDays = () => {
     return (
-      <View style={styles.weekDaysContainer}>
+      <View style={[
+        styles.sleekWeekDaysContainer,
+        { borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB' }
+      ]}>
         {t.dayNames.map((day, index) => (
-          <View key={index} style={styles.dayHeader}>
-            <Text style={styles.dayHeaderText}>{day}</Text>
+          <View key={index} style={styles.sleekDayHeader}>
+            <Text style={[
+              styles.sleekDayHeaderText,
+              { color: isDark ? 'rgba(255,255,255,0.5)' : '#9CA3AF' }
+            ]}>
+              {day}
+            </Text>
           </View>
         ))}
       </View>
@@ -735,37 +836,53 @@ export default function CalendarScreen() {
         {/* Gamification Section */}
         {renderGamificationSection()}
 
-        {/* Calendar Navigation */}
-        <View style={styles.calendarHeader}>
+        {/* Enhanced Calendar Navigation */}
+        <View style={[
+          styles.enhancedCalendarHeader,
+          { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF' }
+        ]}>
           <TouchableOpacity
-            style={styles.navButton}
+            style={[
+              styles.enhancedNavButton,
+              { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(16, 185, 129, 0.1)' }
+            ]}
             onPress={() => navigateMonth(-1)}
+            activeOpacity={0.7}
           >
-            <ChevronLeft size={24} color="#7F8C8D" />
+            <ChevronLeft size={22} color={colors.primary} />
           </TouchableOpacity>
 
-          <View style={styles.monthContainer}>
-            <CalendarIcon size={20} color="#16A085" />
-            <Text style={styles.monthText}>
-              {t.monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+          <View style={styles.sleekMonthContainer}>
+            <Text style={[styles.sleekMonthText, { color: colors.text }]}>
+              {t.monthNames[currentDate.getMonth()]}
+            </Text>
+            <Text style={[styles.sleekYearText, { color: isDark ? 'rgba(255,255,255,0.4)' : '#9CA3AF' }]}>
+              {currentDate.getFullYear()}
             </Text>
           </View>
 
           <TouchableOpacity
-            style={styles.navButton}
+            style={styles.sleekNavButton}
             onPress={() => navigateMonth(1)}
+            activeOpacity={0.7}
           >
-            <ChevronRight size={24} color="#7F8C8D" />
+            <ChevronRight size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
           </TouchableOpacity>
         </View>
 
-        {/* Calendar */}
-        <View style={styles.section}>
+        {/* Sleek Calendar Grid */}
+        <View style={styles.sleekCalendarSection}>
           <View
-            style={[styles.calendarContainer, { backgroundColor: colors.card }]}
+            style={[
+              styles.sleekCalendarContainer,
+              {
+                backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#FFFFFF',
+                borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6',
+              }
+            ]}
           >
             {renderWeekDays()}
-            <View style={styles.daysGrid}>
+            <View style={styles.sleekDaysGrid}>
               {daysInMonth.map((dayData, index) => renderDay(dayData, index))}
             </View>
           </View>
@@ -773,39 +890,45 @@ export default function CalendarScreen() {
           {/* Empty State for No Data */}
           {hasNoData && (
             <View style={styles.emptyStateContainer}>
-              <CalendarIcon size={64} color="#CBD5E0" />
-              <Text style={styles.emptyStateTitle}>
+              <CalendarIcon size={48} color={isDark ? '#4B5563' : '#D1D5DB'} />
+              <Text style={[styles.emptyStateTitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
                 {language === "he" ? "אין נתונים עדיין" : "No Data Yet"}
               </Text>
-              <Text style={styles.emptyStateText}>
+              <Text style={[styles.emptyStateText, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>
                 {language === "he"
-                  ? "התחל לעקוב אחר הארוחות שלך כדי לראות את ההתקדמות שלך כאן"
-                  : "Start tracking your meals to see your progress here"}
+                  ? "התחל לעקוב אחר הארוחות שלך"
+                  : "Start tracking your meals"}
               </Text>
             </View>
           )}
         </View>
 
-        {/* Legend */}
-        <View style={styles.section}>
-          <View style={styles.legendContainer}>
-            <View style={styles.legendItem}>
-              <View
-                style={[styles.legendColor, { backgroundColor: "#2ECC71" }]}
-              />
-              <Text style={styles.legendText}>{t.goalMet}</Text>
+        {/* Sleek Legend */}
+        <View style={styles.sleekLegendSection}>
+          <View style={styles.sleekLegendContainer}>
+            <View style={styles.sleekLegendItem}>
+              <View style={[styles.sleekLegendDot, { backgroundColor: '#10B981' }]} />
+              <Text style={[styles.sleekLegendText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                {t.goalMet}
+              </Text>
             </View>
-            <View style={styles.legendItem}>
-              <View
-                style={[styles.legendColor, { backgroundColor: "#F39C12" }]}
-              />
-              <Text style={styles.legendText}>80-99%</Text>
+            <View style={styles.sleekLegendItem}>
+              <View style={[styles.sleekLegendDot, { backgroundColor: '#F59E0B' }]} />
+              <Text style={[styles.sleekLegendText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                70-99%
+              </Text>
             </View>
-            <View style={styles.legendItem}>
-              <View
-                style={[styles.legendColor, { backgroundColor: "#E74C3C" }]}
-              />
-              <Text style={styles.legendText}>{"<80%"}</Text>
+            <View style={styles.sleekLegendItem}>
+              <View style={[styles.sleekLegendDot, { backgroundColor: '#EF4444' }]} />
+              <Text style={[styles.sleekLegendText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                {"<70%"}
+              </Text>
+            </View>
+            <View style={styles.sleekLegendItem}>
+              <View style={[styles.sleekLegendDot, { backgroundColor: isDark ? '#4B5563' : '#D1D5DB' }]} />
+              <Text style={[styles.sleekLegendText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                {language === 'he' ? 'אין נתונים' : 'No Data'}
+              </Text>
             </View>
           </View>
         </View>
@@ -2432,5 +2555,336 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 40,
     lineHeight: 20,
+  },
+
+  // Enhanced Day Cell Styles
+  enhancedDayCell: {
+    width: (width - 72) / 7,
+    height: 72,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 6,
+    borderRadius: 12,
+    position: "relative",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  enhancedDayIndicator: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  enhancedDayNumber: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  progressRingContainer: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 16,
+    height: 16,
+  },
+  progressRingBackground: {
+    position: "absolute",
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+  },
+  progressRingFill: {
+    position: "absolute",
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderRightColor: "transparent",
+    borderBottomColor: "transparent",
+  },
+  enhancedProgressText: {
+    fontSize: 9,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  enhancedEventBadge: {
+    position: "absolute",
+    top: 3,
+    left: 3,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 215, 0, 0.2)",
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 2,
+  },
+  enhancedEventCount: {
+    fontSize: 8,
+    fontWeight: "700",
+    color: "#B8860B",
+  },
+  todayDot: {
+    position: "absolute",
+    bottom: 4,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+
+  // Enhanced Week Days Header
+  enhancedWeekDaysContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginHorizontal: 4,
+  },
+  enhancedDayHeader: {
+    width: (width - 72) / 7,
+    height: 32,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  enhancedDayHeaderText: {
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+
+  // Enhanced Calendar Header Styles
+  enhancedCalendarHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  enhancedNavButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  enhancedMonthContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  monthIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  monthTextContainer: {
+    alignItems: "flex-start",
+  },
+  enhancedMonthText: {
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  enhancedYearText: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 1,
+  },
+
+  // Enhanced Calendar Container
+  enhancedCalendarContainer: {
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  enhancedDaysGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
+  },
+
+  // Enhanced Legend Styles
+  enhancedLegendContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  enhancedLegendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  enhancedLegendColor: {
+    width: 14,
+    height: 14,
+    borderRadius: 4,
+  },
+  enhancedLegendText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+
+  // Sleek Calendar Styles
+  emptyDayCell: {
+    width: (width - 72) / 7,
+    height: 52,
+    marginBottom: 4,
+  },
+  sleekWeekDaysContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+  },
+  sleekDayHeader: {
+    width: (width - 72) / 7,
+    height: 28,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sleekDayHeaderText: {
+    fontSize: 11,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  sleekMonthContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sleekMonthText: {
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+  },
+  sleekYearText: {
+    fontSize: 14,
+    fontWeight: "500",
+    opacity: 0.6,
+  },
+  sleekNavButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sleekCalendarSection: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  sleekCalendarContainer: {
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+  },
+  sleekDaysGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
+  },
+  sleekLegendSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  sleekLegendContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  sleekLegendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  sleekLegendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  sleekLegendText: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  dayCellWrapper: {
+    width: (width - 72) / 7,
+    height: 52,
+    marginBottom: 4,
+  },
+  sleekDayCell: {
+    flex: 1,
+    margin: 2,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  sleekDayNumber: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  sleekProgressContainer: {
+    width: "70%",
+    height: 3,
+    borderRadius: 1.5,
+    overflow: "hidden",
+  },
+  sleekProgressBg: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    borderRadius: 1.5,
+  },
+  sleekProgressFill: {
+    height: "100%",
+    borderRadius: 1.5,
+  },
+  sleekEventDot: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
 });

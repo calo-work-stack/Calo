@@ -18,4 +18,3 @@ export * from './DeleteConfirmModal';
 export * from './CameraOptionsView';
 export * from './MealTypeSelectionView';
 export * from './CameraErrorBoundary';
-export * from './AnalysisErrorView';

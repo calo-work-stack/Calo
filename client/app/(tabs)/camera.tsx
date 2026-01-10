@@ -16,7 +16,6 @@ import {
   DeleteConfirmModal,
   CameraOptionsView,
   MealTypeSelectionView,
-  AnalysisErrorView,
 } from "@/components/camera";
 import { SelectedImage } from "@/components/camera/SelectedImage";
 import { AnalysisResults } from "@/components/camera/AnalysisResults";
