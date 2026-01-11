@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
-  Animated,
   Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -67,57 +66,45 @@ const AnimatedDayCell = React.memo(
     primaryColor,
     isDark,
   }: AnimatedDayCellProps) => {
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const dayNumber = new Date(dayData.date).getDate();
+    // Extract day number from date string directly to avoid Date parsing issues
+    const dayNumber = useMemo(() => {
+      const parts = dayData.date.split('-');
+      return parseInt(parts[2], 10);
+    }, [dayData.date]);
 
-    const getProgressPercentage = (actual: number, goal: number) => {
-      if (goal === 0) return 0;
-      return Math.min((actual / goal) * 100, 150);
-    };
-
-    const progress = getProgressPercentage(
-      dayData.calories_actual,
-      dayData.calories_goal
-    );
-    const hasEvents = dayData.events.length > 0;
-    const hasData = progress > 0;
-
-    // Sleek color palette
-    const getStatusColor = () => {
-      if (progress >= 110)
-        return { bg: "#FEE2E2", fill: "#EF4444", text: "#DC2626" };
-      if (progress >= 100)
-        return { bg: "#D1FAE5", fill: "#10B981", text: "#059669" };
-      if (progress >= 70)
-        return { bg: "#FEF3C7", fill: "#F59E0B", text: "#D97706" };
-      if (progress > 0)
-        return { bg: "#FFEDD5", fill: "#F97316", text: "#EA580C" };
-      return {
-        bg: isDark ? "#374151" : "#F3F4F6",
-        fill: isDark ? "#6B7280" : "#D1D5DB",
-        text: isDark ? "#9CA3AF" : "#9CA3AF",
+    const { progress, hasEvents, hasData, statusColors } = useMemo(() => {
+      const getProgressPercentage = (actual: number, goal: number) => {
+        if (goal === 0) return 0;
+        return Math.min((actual / goal) * 100, 150);
       };
-    };
 
-    const statusColors = getStatusColor();
+      const prog = getProgressPercentage(
+        dayData.calories_actual,
+        dayData.calories_goal
+      );
+      const events = dayData.events.length > 0;
+      const data = prog > 0;
 
-    const handlePressIn = useCallback(() => {
-      Animated.spring(scaleAnim, {
-        toValue: 0.95,
-        useNativeDriver: true,
-        friction: 10,
-        tension: 100,
-      }).start();
-    }, [scaleAnim]);
+      // Sleek color palette
+      let colors;
+      if (prog >= 110) {
+        colors = { bg: "#FEE2E2", fill: "#EF4444", text: "#DC2626" };
+      } else if (prog >= 100) {
+        colors = { bg: "#D1FAE5", fill: "#10B981", text: "#059669" };
+      } else if (prog >= 70) {
+        colors = { bg: "#FEF3C7", fill: "#F59E0B", text: "#D97706" };
+      } else if (prog > 0) {
+        colors = { bg: "#FFEDD5", fill: "#F97316", text: "#EA580C" };
+      } else {
+        colors = {
+          bg: isDark ? "#374151" : "#F3F4F6",
+          fill: isDark ? "#6B7280" : "#D1D5DB",
+          text: isDark ? "#9CA3AF" : "#9CA3AF",
+        };
+      }
 
-    const handlePressOut = useCallback(() => {
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        friction: 6,
-        tension: 80,
-      }).start();
-    }, [scaleAnim]);
+      return { progress: prog, hasEvents: events, hasData: data, statusColors: colors };
+    }, [dayData.calories_actual, dayData.calories_goal, dayData.events.length, isDark]);
 
     const handlePress = useCallback(() => {
       onPress(dayData);
@@ -128,15 +115,11 @@ const AnimatedDayCell = React.memo(
     }, [onLongPress, dayData.date]);
 
     return (
-      <Animated.View
-        style={[styles.dayCellWrapper, { transform: [{ scale: scaleAnim }] }]}
-      >
+      <View style={styles.dayCellWrapper}>
         <Pressable
           onPress={handlePress}
           onLongPress={handleLongPress}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          style={[
+          style={({ pressed }) => [
             styles.sleekDayCell,
             {
               backgroundColor: isSelected
@@ -144,6 +127,7 @@ const AnimatedDayCell = React.memo(
                   ? "rgba(16, 185, 129, 0.15)"
                   : "rgba(16, 185, 129, 0.08)"
                 : "transparent",
+              transform: [{ scale: pressed ? 0.95 : 1 }],
             },
             isToday && styles.todayCell,
             isSelected && { borderColor: primaryColor, borderWidth: 1.5 },
@@ -199,7 +183,7 @@ const AnimatedDayCell = React.memo(
             />
           )}
         </Pressable>
-      </Animated.View>
+      </View>
     );
   },
   (prevProps, nextProps) => {
@@ -797,14 +781,19 @@ export default function CalendarScreen() {
     handleAddEvent(date);
   }, [handleAddEvent]);
 
-  const renderDay = (dayData: DayData | null, index: number) => {
+  // Memoize the selected day date string to avoid reference changes
+  const selectedDayDate = useMemo(() => selectedDay?.date || null, [selectedDay?.date]);
+
+  // Today's date string - computed once per render
+  const todayString = useMemo(() => new Date().toDateString(), []);
+
+  const renderDay = useCallback((dayData: DayData | null, index: number) => {
     if (!dayData) {
-      return <View key={index} style={styles.emptyDayCell} />;
+      return <View key={`empty-${index}`} style={styles.emptyDayCell} />;
     }
 
-    const isToday =
-      new Date().toDateString() === new Date(dayData.date).toDateString();
-    const isSelected = selectedDay?.date === dayData.date;
+    const isToday = todayString === new Date(dayData.date).toDateString();
+    const isSelected = selectedDayDate === dayData.date;
 
     return (
       <AnimatedDayCell
@@ -818,7 +807,7 @@ export default function CalendarScreen() {
         isDark={isDark}
       />
     );
-  };
+  }, [selectedDayDate, todayString, handleDayCellPress, handleDayCellLongPress, colors.primary, isDark]);
 
   const renderWeekDays = () => {
     return (
