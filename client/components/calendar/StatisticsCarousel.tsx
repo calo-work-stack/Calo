@@ -32,8 +32,8 @@ import {
 } from "@/src/types/calendar";
 
 const { width } = Dimensions.get("window");
-const CARD_WIDTH = width * 0.78;
-const CARD_SPACING = 14;
+const CARD_WIDTH = width * 0.7;
+const CARD_SPACING = 10;
 
 // Animated Card wrapper for press effects
 const AnimatedCard = ({ children, style, gradientColors, onPress }: any) => {
@@ -191,7 +191,7 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
           <View style={styles.cardGlow} />
           <View style={styles.cardHeader}>
             <View style={styles.iconCircle}>
-              <Trophy size={18} color="#FFF" />
+              <Trophy size={14} color="#FFF" />
             </View>
             <Text style={styles.cardTitle}>{t.monthlyProgress}</Text>
           </View>
@@ -202,7 +202,7 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <View style={styles.statIconBg}>
-                <Target size={14} color="#10B981" />
+                <Target size={12} color="#10B981" />
               </View>
               <Text style={styles.statLabel}>{t.goalsMet}</Text>
               <Text style={styles.statValue}>
@@ -212,7 +212,7 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <View style={styles.statIconBg}>
-                <Star size={14} color="#10B981" fill="#10B981" />
+                <Star size={12} color="#10B981" fill="#10B981" />
               </View>
               <Text style={styles.statLabel}>{t.perfectDays}</Text>
               <Text style={styles.statValue}>{statistics.perfectDays}</Text>
@@ -239,13 +239,13 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
           <View style={styles.cardGlow} />
           <View style={styles.cardHeader}>
             <View style={styles.iconCircle}>
-              <Flame size={18} color="#FFF" />
+              <Flame size={14} color="#FFF" />
             </View>
             <Text style={styles.cardTitle}>{t.currentStreak}</Text>
           </View>
           <View style={styles.mainValueContainer}>
             <Text style={styles.mainValue}>{statistics.streakDays}</Text>
-            <Zap size={28} color="#FEE2E2" style={{ marginLeft: 8 }} />
+            <Zap size={20} color="#FEE2E2" style={{ marginLeft: 6 }} />
           </View>
           <Text style={styles.streakLabel}>{t.daysInRow}</Text>
           {statistics.comparison.streakDiff !== 0 && (
@@ -275,7 +275,7 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
         <AnimatedCard style={[styles.lightCard, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
           <View style={styles.cardHeader}>
             <View style={[styles.iconBadge, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : "#FEF3C7" }]}>
-              <Activity size={20} color="#F59E0B" />
+              <Activity size={16} color="#F59E0B" />
             </View>
             <Text style={[styles.cardTitle, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>{t.calories}</Text>
           </View>
@@ -327,7 +327,7 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
         <AnimatedCard style={[styles.lightCard, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
           <View style={styles.cardHeader}>
             <View style={[styles.iconBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : "#DBEAFE" }]}>
-              <BarChart3 size={20} color="#3B82F6" />
+              <BarChart3 size={16} color="#3B82F6" />
             </View>
             <Text style={[styles.cardTitle, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>{t.protein}</Text>
           </View>
@@ -381,7 +381,7 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
           <View style={styles.cardGlow} />
           <View style={styles.cardHeader}>
             <View style={styles.iconCircle}>
-              <Droplet size={18} color="#FFF" />
+              <Droplet size={14} color="#FFF" />
             </View>
             <Text style={styles.cardTitle}>{t.hydration}</Text>
           </View>
@@ -433,7 +433,7 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
         <AnimatedCard style={[styles.lightCard, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
           <View style={styles.cardHeader}>
             <View style={[styles.iconBadge, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.2)' : "#F3E8FF" }]}>
-              <Sparkles size={20} color="#8B5CF6" />
+              <Sparkles size={16} color="#8B5CF6" />
             </View>
             <Text style={[styles.cardTitle, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>
               {t.nutritionSummary}
@@ -468,7 +468,7 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
           </View>
 
           <View style={[styles.mealCountSection, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}>
-            <Calendar size={16} color={isDark ? '#9CA3AF' : "#6B7280"} />
+            <Calendar size={12} color={isDark ? '#9CA3AF' : "#6B7280"} />
             <Text style={[styles.mealCountText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
               {statistics.averageMealCount.toFixed(1)} {t.mealsPerDay}
             </Text>
@@ -481,22 +481,26 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 16,
+    marginVertical: 8,
+    alignItems: "center",
+    maxHeight: 220,
   },
   scrollContent: {
     paddingHorizontal: (width - CARD_WIDTH) / 2,
     gap: CARD_SPACING,
+    alignItems: "center",
   },
   card: {
     width: CARD_WIDTH,
-    borderRadius: 20,
-    padding: 18,
+    borderRadius: 18,
+    padding: 14,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowRadius: 10,
     elevation: 6,
     overflow: "hidden",
+    maxHeight: 200,
   },
   cardGlow: {
     position: "absolute",
@@ -513,26 +517,26 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
-    gap: 10,
+    marginBottom: 8,
+    gap: 8,
   },
   iconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 30,
+    height: 30,
+    borderRadius: 10,
     backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
   iconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "600",
     color: "#FFF",
     letterSpacing: 0.2,
@@ -542,176 +546,176 @@ const styles = StyleSheet.create({
     alignItems: "baseline",
   },
   mainValue: {
-    fontSize: 38,
+    fontSize: 28,
     fontWeight: "800",
     color: "#FFF",
     letterSpacing: -1,
   },
   mainValueUnit: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: "700",
     color: "rgba(255,255,255,0.8)",
     marginLeft: 4,
   },
   mainValueUnitWhite: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "600",
     color: "rgba(255,255,255,0.8)",
     marginLeft: 4,
   },
   streakLabel: {
-    fontSize: 15,
+    fontSize: 12,
     color: "#FEE2E2",
-    marginTop: 4,
-    marginBottom: 12,
+    marginTop: 2,
+    marginBottom: 6,
   },
   subLabel: {
-    fontSize: 13,
+    fontSize: 11,
     color: "#9CA3AF",
-    marginBottom: 16,
-    marginTop: -4,
+    marginBottom: 10,
+    marginTop: -2,
   },
   statsRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 16,
-    gap: 20,
+    marginTop: 10,
+    gap: 16,
   },
   statItem: {
     alignItems: "center",
-    gap: 6,
+    gap: 4,
   },
   statIconBg: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 6,
     backgroundColor: "rgba(255,255,255,0.9)",
     alignItems: "center",
     justifyContent: "center",
   },
   statDivider: {
     width: 1,
-    height: 40,
+    height: 30,
     backgroundColor: "rgba(255,255,255,0.3)",
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: "rgba(255,255,255,0.8)",
     fontWeight: "500",
   },
   statValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "800",
     color: "#FFF",
   },
   comparisonBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginTop: 14,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    gap: 4,
+    marginTop: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
-    borderRadius: 20,
+    borderRadius: 12,
     alignSelf: "flex-start",
   },
   comparisonText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "600",
     color: "#FFF",
   },
   motivationContainer: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.2)",
   },
   motivationText: {
-    fontSize: 13,
+    fontSize: 11,
     color: "#FEE2E2",
     fontStyle: "italic",
-    lineHeight: 18,
+    lineHeight: 15,
   },
   breakdown: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 8,
+    gap: 6,
   },
   breakdownCard: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    borderRadius: 10,
   },
   breakdownLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: "#9CA3AF",
-    marginBottom: 4,
+    marginBottom: 2,
     fontWeight: "500",
   },
   breakdownValue: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: "700",
     color: "#1F2937",
   },
   progressBarContainer: {
-    marginTop: 8,
+    marginTop: 6,
   },
   progressBar: {
-    height: 10,
+    height: 8,
     backgroundColor: "rgba(255, 255, 255, 0.25)",
-    borderRadius: 5,
+    borderRadius: 4,
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    borderRadius: 5,
+    borderRadius: 4,
   },
   progressLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: "rgba(255,255,255,0.85)",
-    marginTop: 8,
+    marginTop: 6,
     textAlign: "center",
     fontWeight: "500",
   },
   macroGrid: {
     flexDirection: "row",
-    gap: 12,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 10,
   },
   macroItem: {
     flex: 1,
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: 10,
+    padding: 10,
     alignItems: "center",
   },
   macroLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#6B7280",
-    marginBottom: 4,
+    marginBottom: 2,
     fontWeight: "500",
   },
   macroValue: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "700",
     color: "#1F2937",
   },
   macroBadge: {
-    marginTop: 6,
+    marginTop: 4,
   },
   qualitySection: {
     alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    marginBottom: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 8,
   },
   qualityLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#7C3AED",
-    marginBottom: 6,
+    marginBottom: 4,
     fontWeight: "600",
   },
   qualityScore: {
@@ -719,12 +723,12 @@ const styles = StyleSheet.create({
     alignItems: "baseline",
   },
   qualityValue: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "800",
     color: "#8B5CF6",
   },
   qualityMax: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: "600",
     color: "#9CA3AF",
     marginLeft: 2,
@@ -733,52 +737,59 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingTop: 12,
+    gap: 6,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
   },
   mealCountText: {
-    fontSize: 13,
+    fontSize: 11,
     color: "#6B7280",
     fontWeight: "500",
   },
   loadingCard: {
     marginHorizontal: 20,
-    padding: 40,
-    borderRadius: 20,
+    padding: 30,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+    alignSelf: "center",
+    width: CARD_WIDTH,
+    maxHeight: 180,
   },
   loadingPulse: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "rgba(16, 185, 129, 0.2)",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   loadingText: {
     textAlign: "center",
-    fontSize: 15,
-    fontWeight: "500",
+    fontSize: 13,
+    fontWeight: "600",
   },
   emptyCard: {
     marginHorizontal: 20,
-    padding: 40,
-    borderRadius: 20,
+    padding: 30,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+    alignSelf: "center",
+    width: CARD_WIDTH,
+    maxHeight: 180,
   },
   emptyText: {
     textAlign: "center",
-    fontSize: 16,
-    fontWeight: "600",
-    marginTop: 16,
+    fontSize: 15,
+    fontWeight: "700",
+    marginTop: 12,
   },
   emptySubtext: {
     textAlign: "center",
-    fontSize: 13,
+    fontSize: 12,
     marginTop: 8,
+    lineHeight: 18,
   },
 });
 

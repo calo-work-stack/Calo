@@ -20,38 +20,74 @@ export class DatabaseCleanupService {
   ];
 
   /**
-   * Get storage information
+   * Get storage information - safe version that handles CursorWindow errors
    */
   static async getStorageInfo(): Promise<StorageInfo> {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const items = await AsyncStorage.multiGet(keys);
 
       let totalSize = 0;
       let itemCount = 0;
       const largeItems: Array<{ key: string; size: number }> = [];
+      const problematicKeys: string[] = [];
 
-      for (const [key, value] of items) {
-        if (value) {
-          const size = new Blob([value]).size;
-          totalSize += size;
-          itemCount++;
+      // Get items one by one to avoid CursorWindow errors
+      for (const key of keys) {
+        try {
+          const value = await AsyncStorage.getItem(key);
+          if (value) {
+            const size = new Blob([value]).size;
+            totalSize += size;
+            itemCount++;
 
-          if (size > this.MAX_ITEM_SIZE) {
-            largeItems.push({ key, size });
+            if (size > this.MAX_ITEM_SIZE) {
+              largeItems.push({ key, size });
+            }
+          }
+        } catch (itemError: any) {
+          // If we can't read this item, it's likely causing CursorWindow errors
+          if (itemError?.message?.includes("CursorWindow") ||
+              itemError?.message?.includes("row too big")) {
+            console.warn(`🚨 CursorWindow error for key: ${key}, marking for removal`);
+            problematicKeys.push(key);
+            // Estimate large size since we can't read it
+            largeItems.push({ key, size: this.MAX_ITEM_SIZE * 2 });
+          } else {
+            console.warn(`Failed to read ${key}:`, itemError);
+          }
+        }
+      }
+
+      // Immediately try to remove problematic keys that cause CursorWindow errors
+      if (problematicKeys.length > 0) {
+        console.log(`🗑️ Removing ${problematicKeys.length} problematic keys...`);
+        for (const key of problematicKeys) {
+          try {
+            await AsyncStorage.removeItem(key);
+            console.log(`✅ Removed problematic key: ${key}`);
+          } catch (removeError) {
+            console.error(`Failed to remove ${key}:`, removeError);
           }
         }
       }
 
       return { totalSize, itemCount, largeItems };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error getting storage info:", error);
+
+      // If even getting keys fails, try emergency cleanup
+      if (error?.message?.includes("CursorWindow") ||
+          error?.message?.includes("row too big")) {
+        console.log("🚨 CursorWindow error detected, running emergency cleanup");
+        await this.emergencyCleanup();
+      }
+
       return { totalSize: 0, itemCount: 0, largeItems: [] };
     }
   }
 
   /**
-   * Clean up old and large cache items
+   * Clean up old and large cache items - safe version
    */
   static async performCleanup(): Promise<{
     cleaned: number;
@@ -61,55 +97,67 @@ export class DatabaseCleanupService {
       console.log("🧹 Starting database cleanup...");
 
       const keys = await AsyncStorage.getAllKeys();
-      const items = await AsyncStorage.multiGet(keys);
-
       let cleanedItems = 0;
       let freedSpace = 0;
       const keysToRemove: string[] = [];
 
-      for (const [key, value] of items) {
-        if (!value) continue;
+      // Process items one by one to avoid CursorWindow errors
+      for (const key of keys) {
+        try {
+          const value = await AsyncStorage.getItem(key);
+          if (!value) continue;
 
-        const size = new Blob([value]).size;
-        let shouldRemove = false;
+          const size = new Blob([value]).size;
+          let shouldRemove = false;
 
-        // Check if it's a cleanup target
-        for (const cleanupKey of this.CLEANUP_KEYS) {
-          if (key.startsWith(cleanupKey)) {
+          // Check if it's a cleanup target
+          for (const cleanupKey of this.CLEANUP_KEYS) {
+            if (key.startsWith(cleanupKey)) {
+              shouldRemove = true;
+              break;
+            }
+          }
+
+          // Check if item is too large
+          if (size > this.MAX_ITEM_SIZE) {
             shouldRemove = true;
-            break;
+            console.log(
+              `🗑️ Removing large item: ${key} (${(size / 1024).toFixed(1)}KB)`
+            );
+          }
+
+          // Check if item is expired cache
+          if (key.includes("cache_") && this.isCacheExpired(key, value)) {
+            shouldRemove = true;
+          }
+
+          if (shouldRemove) {
+            keysToRemove.push(key);
+            freedSpace += size;
+          }
+        } catch (itemError: any) {
+          // If we can't read an item, it may be corrupted or too large - remove it
+          if (itemError?.message?.includes("CursorWindow") ||
+              itemError?.message?.includes("row too big")) {
+            console.warn(`🚨 CursorWindow error for ${key}, removing...`);
+            keysToRemove.push(key);
           }
         }
+      }
 
-        // Check if item is too large
-        if (size > this.MAX_ITEM_SIZE) {
-          shouldRemove = true;
-          console.log(
-            `🗑️ Removing large item: ${key} (${(size / 1024).toFixed(1)}KB)`
-          );
-        }
-
-        // Check if item is expired cache
-        if (key.includes("cache_") && this.isCacheExpired(key, value)) {
-          shouldRemove = true;
-        }
-
-        if (shouldRemove) {
-          keysToRemove.push(key);
+      // Remove identified items one by one to be safe
+      for (const key of keysToRemove) {
+        try {
+          await AsyncStorage.removeItem(key);
           cleanedItems++;
-          freedSpace += size;
+        } catch (removeError) {
+          console.error(`Failed to remove ${key}:`, removeError);
         }
       }
 
-      // Remove identified items
-      if (keysToRemove.length > 0) {
-        await AsyncStorage.multiRemove(keysToRemove);
-        console.log(
-          `✅ Cleaned ${cleanedItems} items, freed ${(
-            freedSpace / 1024
-          ).toFixed(1)}KB`
-        );
-      }
+      console.log(
+        `✅ Cleaned ${cleanedItems} items, freed ${(freedSpace / 1024).toFixed(1)}KB`
+      );
 
       return { cleaned: cleanedItems, freedSpace };
     } catch (error) {
@@ -296,18 +344,35 @@ export const initializeStorageCleanup = async (): Promise<void> => {
   try {
     // Immediately remove any oversized entries that could cause CursorWindow errors
     console.log("🧹 Running startup cleanup...");
+
+    // Run emergency cleanup first to clear any CursorWindow-causing entries
+    await DatabaseCleanupService.emergencyCleanup();
+
+    // Then remove oversized entries more aggressively
     await DatabaseCleanupService.removeOversizedEntries();
     await DatabaseCleanupService.removeStoredImages();
 
     await DatabaseCleanupService.monitorStorage();
     await DatabaseCleanupService.clearExpiredSessions();
 
-    // Schedule periodic cleanup
+    // Schedule periodic cleanup - run more frequently
     setInterval(async () => {
-      await DatabaseCleanupService.monitorStorage();
-    }, 5 * 60 * 1000); // Every 5 minutes
-  } catch (error) {
+      try {
+        await DatabaseCleanupService.monitorStorage();
+      } catch (e) {
+        console.warn("Periodic cleanup failed, running emergency:", e);
+        await DatabaseCleanupService.emergencyCleanup();
+      }
+    }, 3 * 60 * 1000); // Every 3 minutes
+  } catch (error: any) {
     console.error("Error initializing storage cleanup:", error);
+
+    // If we hit CursorWindow error, try more aggressive cleanup
+    if (error?.message?.includes("CursorWindow") ||
+        error?.message?.includes("row too big")) {
+      console.log("🚨 CursorWindow error at startup, running aggressive cleanup");
+    }
+
     // If cleanup fails, try emergency cleanup
     try {
       await DatabaseCleanupService.emergencyCleanup();

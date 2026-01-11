@@ -47,123 +47,175 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { DayData, MonthStats } from "@/src/types/calendar";
 
 // Sleek Day Cell Component - Minimal & Modern
-const AnimatedDayCell = React.memo(({
-  dayData,
-  isToday,
-  isSelected,
-  onPress,
-  onLongPress,
-  colors,
-  isDark,
-}: {
+interface AnimatedDayCellProps {
   dayData: DayData;
   isToday: boolean;
   isSelected: boolean;
-  onPress: () => void;
-  onLongPress: () => void;
-  colors: any;
+  onPress: (dayData: DayData) => void;
+  onLongPress: (date: string) => void;
+  primaryColor: string;
   isDark: boolean;
-}) => {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const dayNumber = new Date(dayData.date).getDate();
+}
 
-  const getProgressPercentage = (actual: number, goal: number) => {
-    if (goal === 0) return 0;
-    return Math.min((actual / goal) * 100, 150);
-  };
+const AnimatedDayCell = React.memo(
+  ({
+    dayData,
+    isToday,
+    isSelected,
+    onPress,
+    onLongPress,
+    primaryColor,
+    isDark,
+  }: AnimatedDayCellProps) => {
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+    const dayNumber = new Date(dayData.date).getDate();
 
-  const progress = getProgressPercentage(dayData.calories_actual, dayData.calories_goal);
-  const hasEvents = dayData.events.length > 0;
-  const hasData = progress > 0;
+    const getProgressPercentage = (actual: number, goal: number) => {
+      if (goal === 0) return 0;
+      return Math.min((actual / goal) * 100, 150);
+    };
 
-  // Sleek color palette
-  const getStatusColor = () => {
-    if (progress >= 110) return { bg: '#FEE2E2', fill: '#EF4444', text: '#DC2626' };
-    if (progress >= 100) return { bg: '#D1FAE5', fill: '#10B981', text: '#059669' };
-    if (progress >= 70) return { bg: '#FEF3C7', fill: '#F59E0B', text: '#D97706' };
-    if (progress > 0) return { bg: '#FFEDD5', fill: '#F97316', text: '#EA580C' };
-    return { bg: isDark ? '#374151' : '#F3F4F6', fill: isDark ? '#6B7280' : '#D1D5DB', text: isDark ? '#9CA3AF' : '#9CA3AF' };
-  };
+    const progress = getProgressPercentage(
+      dayData.calories_actual,
+      dayData.calories_goal
+    );
+    const hasEvents = dayData.events.length > 0;
+    const hasData = progress > 0;
 
-  const statusColors = getStatusColor();
+    // Sleek color palette
+    const getStatusColor = () => {
+      if (progress >= 110)
+        return { bg: "#FEE2E2", fill: "#EF4444", text: "#DC2626" };
+      if (progress >= 100)
+        return { bg: "#D1FAE5", fill: "#10B981", text: "#059669" };
+      if (progress >= 70)
+        return { bg: "#FEF3C7", fill: "#F59E0B", text: "#D97706" };
+      if (progress > 0)
+        return { bg: "#FFEDD5", fill: "#F97316", text: "#EA580C" };
+      return {
+        bg: isDark ? "#374151" : "#F3F4F6",
+        fill: isDark ? "#6B7280" : "#D1D5DB",
+        text: isDark ? "#9CA3AF" : "#9CA3AF",
+      };
+    };
 
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.95,
-      useNativeDriver: true,
-      friction: 10,
-      tension: 100,
-    }).start();
-  };
+    const statusColors = getStatusColor();
 
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-      friction: 6,
-      tension: 80,
-    }).start();
-  };
+    const handlePressIn = useCallback(() => {
+      Animated.spring(scaleAnim, {
+        toValue: 0.95,
+        useNativeDriver: true,
+        friction: 10,
+        tension: 100,
+      }).start();
+    }, [scaleAnim]);
 
-  return (
-    <Animated.View style={[styles.dayCellWrapper, { transform: [{ scale: scaleAnim }] }]}>
-      <Pressable
-        onPress={onPress}
-        onLongPress={onLongPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={[
-          styles.sleekDayCell,
-          {
-            backgroundColor: isSelected
-              ? (isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)')
-              : (isDark ? 'transparent' : 'transparent'),
-          },
-          isToday && styles.todayCell,
-          isSelected && { borderColor: colors.primary, borderWidth: 1.5 },
-        ]}
+    const handlePressOut = useCallback(() => {
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 6,
+        tension: 80,
+      }).start();
+    }, [scaleAnim]);
+
+    const handlePress = useCallback(() => {
+      onPress(dayData);
+    }, [onPress, dayData]);
+
+    const handleLongPress = useCallback(() => {
+      onLongPress(dayData.date);
+    }, [onLongPress, dayData.date]);
+
+    return (
+      <Animated.View
+        style={[styles.dayCellWrapper, { transform: [{ scale: scaleAnim }] }]}
       >
-        {/* Day Number */}
-        <Text style={[
-          styles.sleekDayNumber,
-          {
-            color: isToday
-              ? colors.primary
-              : hasData
-                ? (isDark ? '#F9FAFB' : '#1F2937')
-                : (isDark ? '#6B7280' : '#9CA3AF'),
-            fontWeight: isToday ? '700' : '600',
-          }
-        ]}>
-          {dayNumber}
-        </Text>
+        <Pressable
+          onPress={handlePress}
+          onLongPress={handleLongPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          style={[
+            styles.sleekDayCell,
+            {
+              backgroundColor: isSelected
+                ? isDark
+                  ? "rgba(16, 185, 129, 0.15)"
+                  : "rgba(16, 185, 129, 0.08)"
+                : "transparent",
+            },
+            isToday && styles.todayCell,
+            isSelected && { borderColor: primaryColor, borderWidth: 1.5 },
+          ]}
+        >
+          {/* Day Number */}
+          <Text
+            style={[
+              styles.sleekDayNumber,
+              {
+                color: isToday
+                  ? primaryColor
+                  : hasData
+                  ? isDark
+                    ? "#F9FAFB"
+                    : "#1F2937"
+                  : isDark
+                  ? "#6B7280"
+                  : "#9CA3AF",
+                fontWeight: isToday ? "700" : "600",
+              },
+            ]}
+          >
+            {dayNumber}
+          </Text>
 
-        {/* Progress Bar - Sleek horizontal style */}
-        <View style={styles.sleekProgressContainer}>
-          <View style={[
-            styles.sleekProgressBg,
-            { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }
-          ]}>
+          {/* Progress Bar - Sleek horizontal style */}
+          <View style={styles.sleekProgressContainer}>
             <View
               style={[
-                styles.sleekProgressFill,
+                styles.sleekProgressBg,
                 {
-                  width: `${Math.min(progress, 100)}%`,
-                  backgroundColor: statusColors.fill,
-                }
+                  backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "#E5E7EB",
+                },
               ]}
-            />
+            >
+              <View
+                style={[
+                  styles.sleekProgressFill,
+                  {
+                    width: `${Math.min(progress, 100)}%`,
+                    backgroundColor: statusColors.fill,
+                  },
+                ]}
+              />
+            </View>
           </View>
-        </View>
 
-        {/* Event indicator - subtle dot */}
-        {hasEvents && (
-          <View style={[styles.sleekEventDot, { backgroundColor: '#F59E0B' }]} />
-        )}
-      </Pressable>
-    </Animated.View>
-  );
-});
+          {/* Event indicator - subtle dot */}
+          {hasEvents && (
+            <View
+              style={[styles.sleekEventDot, { backgroundColor: "#F59E0B" }]}
+            />
+          )}
+        </Pressable>
+      </Animated.View>
+    );
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison - only re-render if these specific props change
+    return (
+      prevProps.dayData.date === nextProps.dayData.date &&
+      prevProps.dayData.calories_actual === nextProps.dayData.calories_actual &&
+      prevProps.dayData.calories_goal === nextProps.dayData.calories_goal &&
+      prevProps.dayData.events.length === nextProps.dayData.events.length &&
+      prevProps.isToday === nextProps.isToday &&
+      prevProps.isSelected === nextProps.isSelected &&
+      prevProps.isDark === nextProps.isDark &&
+      prevProps.primaryColor === nextProps.primaryColor
+    );
+  }
+);
 
 const { width } = Dimensions.get("window");
 
@@ -284,6 +336,51 @@ export default function CalendarScreen() {
     save: language === "he" ? "שמור" : "Save",
     edit: language === "he" ? "ערוך" : "Edit",
     delete: language === "he" ? "מחק" : "Delete",
+    recentAchievements: language === "he" ? "הישגים אחרונים" : "Recent Achievements",
+    seeAll: language === "he" ? "צפה בהכל" : "See All",
+    yourAchievements: language === "he" ? "ההישגים שלך" : "Your Achievements",
+    weeklyInsights: language === "he" ? "תובנות שבועיות" : "Weekly Insights",
+    noDataYet: language === "he" ? "אין נתונים עדיין" : "No Data Yet",
+    startTracking: language === "he" ? "התחל לעקוב אחר הארוחות שלך" : "Start tracking your meals",
+    noData: language === "he" ? "אין נתונים" : "No Data",
+    events: language === "he" ? "אירועים" : "Events",
+    meals: language === "he" ? "ארוחות" : "Meals",
+    dailyGoal: language === "he" ? "יעד יומי" : "Daily Goal",
+    eventTitle: language === "he" ? "כותרת האירוע (למשל: חתונה, אימון כבד, יום צום)" : "Event title (e.g., Wedding, Heavy workout, Fasting day)",
+    eventDescription: language === "he" ? "תיאור (אופציונלי)" : "Description (optional)",
+    eventType: language === "he" ? "סוג האירוע:" : "Event Type:",
+    eventTypes: {
+      general: language === "he" ? "כללי" : "General",
+      workout: language === "he" ? "אימון" : "Workout",
+      social: language === "he" ? "חברתי" : "Social",
+      health: language === "he" ? "בריאות" : "Health",
+      travel: language === "he" ? "נסיעות" : "Travel",
+      work: language === "he" ? "עבודה" : "Work",
+    },
+    success: language === "he" ? "הצלחה" : "Success",
+    error: language === "he" ? "שגיאה" : "Error",
+    eventAddedSuccess: language === "he" ? "האירוע נוסף בהצלחה!" : "Event added successfully!",
+    eventUpdatedSuccess: language === "he" ? "האירוע עודכן בהצלחה!" : "Event updated successfully!",
+    eventDeletedSuccess: language === "he" ? "האירוע נמחק בהצלחה!" : "Event deleted successfully!",
+    failedToAddEvent: language === "he" ? "נכשל בהוספת האירוע" : "Failed to add event",
+    failedToUpdateEvent: language === "he" ? "נכשל בעדכון האירוע" : "Failed to update event",
+    failedToDeleteEvent: language === "he" ? "נכשל במחיקת האירוע" : "Failed to delete event",
+    deleteEventConfirm: language === "he" ? "האם אתה בטוח שברצונך למחוק את האירוע הזה?" : "Are you sure you want to delete this event?",
+    enterEventTitle: language === "he" ? "אנא הכנס כותרת לאירוע" : "Please enter an event title",
+    type: language === "he" ? "סוג" : "Type",
+    date: language === "he" ? "תאריך" : "Date",
+    created: language === "he" ? "נוצר" : "Created",
+    noBadgesYet: language === "he" ? "עדיין אין הישגים" : "No badges earned yet",
+    keepWorking: language === "he" ? "המשך לעבוד לקראת המטרות שלך כדי לזכות בהישגים!" : "Keep working towards your goals to earn achievements!",
+    achieved: language === "he" ? "הושג" : "Achieved",
+    mostChallengingWeek: language === "he" ? "השבוע המאתגר ביותר" : "Most Challenging Week",
+    averageProgress: language === "he" ? "התקדמות ממוצעת" : "average progress",
+    loadingCalendar: language === "he" ? "טוען לוח שנה..." : "Loading Calendar...",
+    retry: language === "he" ? "נסה שוב" : "Retry",
+    dismiss: language === "he" ? "סגור" : "Dismiss",
+    calendarError: language === "he" ? "שגיאה בלוח השנה" : "Calendar Error",
+    menuCompleted: language === "he" ? "התפריט הושלם" : "Menu Completed",
+    generatingSummary: language === "he" ? "מייצר דוח סיכום..." : "Generating summary report...",
   };
   console.log(user);
 
@@ -691,6 +788,15 @@ export default function CalendarScreen() {
     }
   }, [menuStartDate, menuDuration]); // Only recalculate when menu details change
 
+  // Stable callbacks for day cell
+  const handleDayCellPress = useCallback((dayData: DayData) => {
+    handleDayPress(dayData);
+  }, [handleDayPress]);
+
+  const handleDayCellLongPress = useCallback((date: string) => {
+    handleAddEvent(date);
+  }, [handleAddEvent]);
+
   const renderDay = (dayData: DayData | null, index: number) => {
     if (!dayData) {
       return <View key={index} style={styles.emptyDayCell} />;
@@ -706,9 +812,9 @@ export default function CalendarScreen() {
         dayData={dayData}
         isToday={isToday}
         isSelected={isSelected}
-        onPress={() => handleDayPress(dayData)}
-        onLongPress={() => handleAddEvent(dayData.date)}
-        colors={colors}
+        onPress={handleDayCellPress}
+        onLongPress={handleDayCellLongPress}
+        primaryColor={colors.primary}
         isDark={isDark}
       />
     );
@@ -768,14 +874,14 @@ export default function CalendarScreen() {
 
   const renderEnhancedStatistics = () => {
     return (
-      <View style={styles.section}>
+      <View style={styles.statisticsSection}>
         <Text
           style={[
-            styles.sectionTitle,
-            { color: colors.text, marginBottom: 8, paddingHorizontal: 20 },
+            styles.statisticsSectionTitle,
+            { color: colors.text },
           ]}
         >
-          {language === "he" ? "סטטיסטיקות חודשיות" : "Monthly Statistics"}
+          {t.monthlyStats}
         </Text>
         <StatisticsCarousel
           statistics={enhancedStatistics}
@@ -892,12 +998,10 @@ export default function CalendarScreen() {
             <View style={styles.emptyStateContainer}>
               <CalendarIcon size={48} color={isDark ? '#4B5563' : '#D1D5DB'} />
               <Text style={[styles.emptyStateTitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                {language === "he" ? "אין נתונים עדיין" : "No Data Yet"}
+                {t.noDataYet}
               </Text>
               <Text style={[styles.emptyStateText, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>
-                {language === "he"
-                  ? "התחל לעקוב אחר הארוחות שלך"
-                  : "Start tracking your meals"}
+                {t.startTracking}
               </Text>
             </View>
           )}
@@ -1005,7 +1109,7 @@ export default function CalendarScreen() {
                         <Target size={24} color="#FFFFFF" />
                       </View>
                       <Text style={styles.metricTitleWhite}>
-                        {language === "he" ? "יעד יומי" : "Daily Goal"}
+                        {t.dailyGoal}
                       </Text>
                       <Text style={styles.metricValueWhite}>
                         {selectedDay.calories_goal}{" "}
@@ -1039,7 +1143,7 @@ export default function CalendarScreen() {
                         <Flame size={24} color="#FFFFFF" />
                       </View>
                       <Text style={styles.metricTitleWhite}>
-                        {language === "he" ? "ארוחות" : "Meals"}
+                        {t.meals}
                       </Text>
                       <Text style={styles.metricValueWhite}>
                         {selectedDay.meal_count}/{user?.meals_per_day || 4}
@@ -1719,6 +1823,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#2C3E50",
     marginBottom: 16,
+  },
+  statisticsSection: {
+    marginBottom: 24,
+    alignItems: "center",
+  },
+  statisticsSectionTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 12,
+    paddingHorizontal: 20,
+    letterSpacing: 0.3,
   },
   statsContainer: {
     backgroundColor: "#FFFFFF",

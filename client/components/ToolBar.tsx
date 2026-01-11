@@ -27,7 +27,7 @@ import {
   Moon,
   CircleHelp as HelpCircle,
   X,
-  Star,
+  Sparkles,
 } from "lucide-react-native";
 import { useTheme } from "../src/context/ThemeContext";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
@@ -72,6 +72,24 @@ const ToolBar: React.FC<ToolBarProps> = ({
     useState(false);
   const insets = useSafeAreaInsets();
   const { user } = useSelector((state: RootState) => state.auth);
+
+  // Translations
+  const t = {
+    languageChanged: language === "he" ? "השפה שונתה" : "Language Changed",
+    switchedTo: language === "he" ? "הוחלף ל" : "Switched to",
+    hebrew: language === "he" ? "עברית" : "Hebrew",
+    english: language === "he" ? "אנגלית" : "English",
+    error: language === "he" ? "שגיאה" : "Error",
+    failedToChangeLanguage: language === "he" ? "שינוי השפה נכשל" : "Failed to change language",
+    themeChanged: language === "he" ? "ערכת הנושא שונתה" : "Theme Changed",
+    switchedToDark: language === "he" ? "הוחלף לערכת נושא כהה" : "Switched to dark theme",
+    switchedToLight: language === "he" ? "הוחלף לערכת נושא בהירה" : "Switched to light theme",
+    failedToChangeTheme: language === "he" ? "שינוי ערכת הנושא נכשל" : "Failed to change theme",
+    help: language === "he" ? "עזרה" : "Help",
+    quickTips: language === "he" ? "טיפים מהירים:" : "Quick Tips:",
+    additionalSupport: language === "he" ? "תמיכה נוספת:" : "Additional Support:",
+    howCanWeHelp: language === "he" ? "איך אפשר לעזור לך?" : "How can we help you?",
+  };
 
   // Animation values
   const fabScale = useSharedValue(1);
@@ -210,14 +228,14 @@ const ToolBar: React.FC<ToolBarProps> = ({
       onLanguageChange?.(newLanguage);
       handleToggleMenu();
       ToastService.success(
-        "Language Changed",
-        `Switched to ${newLanguage === "he" ? "Hebrew" : "English"}`
+        t.languageChanged,
+        `${t.switchedTo} ${newLanguage === "he" ? t.hebrew : t.english}`
       );
     } catch (error) {
       console.error("Error changing language:", error);
-      ToastService.error("Error", "Failed to change language");
+      ToastService.error(t.error, t.failedToChangeLanguage);
     }
-  }, [language, changeLanguage, handleToggleMenu, onLanguageChange]);
+  }, [language, changeLanguage, handleToggleMenu, onLanguageChange, t]);
 
   const handleThemeToggle = useCallback(() => {
     try {
@@ -231,14 +249,14 @@ const ToolBar: React.FC<ToolBarProps> = ({
       );
 
       ToastService.success(
-        "Theme Changed",
-        `Switched to ${!isDark ? "dark" : "light"} theme`
+        t.themeChanged,
+        !isDark ? t.switchedToDark : t.switchedToLight
       );
     } catch (error) {
       console.error("Error toggling theme:", error);
-      ToastService.error("Error", "Failed to change theme");
+      ToastService.error(t.error, t.failedToChangeTheme);
     }
-  }, [toggleTheme, handleToggleMenu, onThemeChange, isDark, pulseScale]);
+  }, [toggleTheme, handleToggleMenu, onThemeChange, isDark, pulseScale, t]);
 
   const handleHelpPress = useCallback(() => {
     setShowHelp(true);
@@ -257,7 +275,7 @@ const ToolBar: React.FC<ToolBarProps> = ({
   // Animated styles
   const fabStyle = useAnimatedStyle(() => ({
     transform: [
-      { scale: fabScale.value -0.25 * pulseScale.value },
+      { scale: fabScale.value * pulseScale.value },
       { rotate: `${fabRotation.value}deg` },
     ],
   }));
@@ -332,76 +350,80 @@ const ToolBar: React.FC<ToolBarProps> = ({
           {/* Language Button */}
           <Animated.View style={[styles.menuButton, button1Style]}>
             <TouchableOpacity
-              style={[
-                styles.buttonTouchable,
-                { backgroundColor: colors.primary },
-              ]}
+              style={styles.buttonTouchable}
               onPress={handleLanguageToggle}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
-              <View style={styles.buttonContent}>
-                <Globe size={20} color={colors.onPrimary} strokeWidth={2.5} />
-                <Text style={[styles.buttonLabel, { color: colors.onPrimary }]}>
+              <LinearGradient
+                colors={isDark ? ["#6366F1", "#4F46E5"] : ["#818CF8", "#6366F1"]}
+                style={styles.buttonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Globe size={18} color="#FFFFFF" strokeWidth={2} />
+                <Text style={styles.buttonLabel}>
                   {language === "he" ? "EN" : "עב"}
                 </Text>
-              </View>
+              </LinearGradient>
             </TouchableOpacity>
           </Animated.View>
 
           {/* Theme Button */}
           <Animated.View style={[styles.menuButton, button2Style]}>
             <TouchableOpacity
-              style={[
-                styles.buttonTouchable,
-                { backgroundColor: colors.primary },
-              ]}
+              style={styles.buttonTouchable}
               onPress={handleThemeToggle}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
-              <View style={styles.buttonContent}>
+              <LinearGradient
+                colors={isDark ? ["#F59E0B", "#D97706"] : ["#1E293B", "#0F172A"]}
+                style={styles.buttonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
                 {isDark ? (
-                  <Sun size={20} color={colors.onPrimary} strokeWidth={2.5} />
+                  <Sun size={18} color="#FFFFFF" strokeWidth={2} />
                 ) : (
-                  <Moon size={20} color={colors.onPrimary} strokeWidth={2.5} />
+                  <Moon size={18} color="#FFFFFF" strokeWidth={2} />
                 )}
-              </View>
+              </LinearGradient>
             </TouchableOpacity>
           </Animated.View>
 
-          {/* Help Button - ALWAYS VISIBLE with ? icon */}
+          {/* Help Button */}
           <Animated.View style={[styles.menuButton, button3Style]}>
             <TouchableOpacity
-              style={[
-                styles.buttonTouchable,
-                { backgroundColor: colors.primary },
-              ]}
+              style={styles.buttonTouchable}
               onPress={handleHelpPress}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
-              <View style={styles.buttonContent}>
-                <HelpCircle
-                  size={20}
-                  color={colors.onPrimary}
-                  strokeWidth={2.5}
-                />
-              </View>
+              <LinearGradient
+                colors={isDark ? ["#14B8A6", "#0D9488"] : ["#2DD4BF", "#14B8A6"]}
+                style={styles.buttonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <HelpCircle size={18} color="#FFFFFF" strokeWidth={2} />
+              </LinearGradient>
             </TouchableOpacity>
           </Animated.View>
 
-          {/* Sparkles/Subscription Button - ONLY for FREE users */}
+          {/* Premium/Subscription Button - ONLY for FREE users */}
           {isFreeUser && (
             <Animated.View style={[styles.menuButton, button4Style]}>
               <TouchableOpacity
-                style={[
-                  styles.buttonTouchable,
-                  { backgroundColor: colors.primary },
-                ]}
+                style={styles.buttonTouchable}
                 onPress={handleSubscriptionComparisonPress}
-                activeOpacity={0.8}
+                activeOpacity={0.85}
               >
-                <View style={styles.buttonContent}>
-                  <Star size={25} color="#FFFFFF" strokeWidth={2.5} />
-                </View>
+                <LinearGradient
+                  colors={["#F472B6", "#EC4899", "#DB2777"]}
+                  style={styles.buttonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Sparkles size={18} color="#FFFFFF" strokeWidth={2} />
+                </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
           )}
@@ -415,15 +437,21 @@ const ToolBar: React.FC<ToolBarProps> = ({
             activeOpacity={0.9}
           >
             <LinearGradient
-              colors={[colors.primary, colors.primary]}
+              colors={
+                isExpanded
+                  ? ["#EF4444", "#DC2626"]
+                  : isDark
+                  ? ["#10B981", "#059669"]
+                  : ["#10B981", "#047857"]
+              }
               style={styles.fabGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
               {isExpanded ? (
-                <X size={24} color={colors.onPrimary} strokeWidth={3} />
+                <X size={22} color="#FFFFFF" strokeWidth={2} />
               ) : (
-                <Settings size={24} color={colors.onPrimary} strokeWidth={3} />
+                <Settings size={22} color="#FFFFFF" strokeWidth={2} />
               )}
             </LinearGradient>
           </TouchableOpacity>
@@ -485,8 +513,7 @@ const ToolBar: React.FC<ToolBarProps> = ({
                   <Text
                     style={[styles.modalTitle, { color: colors.onSurface }]}
                   >
-                    {helpContent?.title ||
-                      (language === "he" ? "עזרה" : "Help")}
+                    {helpContent?.title || t.help}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -529,9 +556,7 @@ const ToolBar: React.FC<ToolBarProps> = ({
                               { color: colors.onSurface },
                             ]}
                           >
-                            {language === "he"
-                              ? "טיפים מהירים:"
-                              : "Quick Tips:"}
+                            {t.quickTips}
                           </Text>
                           <View style={styles.tipsContainer}>
                             {helpContent.quickTips.map((tip, index) => (
@@ -569,9 +594,7 @@ const ToolBar: React.FC<ToolBarProps> = ({
                               { color: colors.onSurface },
                             ]}
                           >
-                            {language === "he"
-                              ? "תמיכה נוספת:"
-                              : "Additional Support:"}
+                            {t.additionalSupport}
                           </Text>
                           <Text
                             style={[
@@ -593,9 +616,7 @@ const ToolBar: React.FC<ToolBarProps> = ({
                           { color: colors.onSurface, textAlign: "center" },
                         ]}
                       >
-                        {language === "he"
-                          ? "איך אפשר לעזור לך?"
-                          : "How can we help you?"}
+                        {t.howCanWeHelp}
                       </Text>
                     </View>
                   )}
@@ -622,7 +643,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
     zIndex: 998,
   },
   container: {
@@ -638,73 +659,86 @@ const styles = StyleSheet.create({
   },
   menuButton: {
     position: "absolute",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 10,
   },
   buttonTouchable: {
-    width: 48,
-    height: 48,
-    borderRadius: 28,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 6,
+    overflow: "hidden",
+  },
+  buttonGradient: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 23,
   },
   buttonContent: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   buttonLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 0.2,
     textAlign: "center",
-    marginTop: 2,
+    marginTop: 1,
+    color: "#FFFFFF",
   },
   fab: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    shadowOffset: { width: 0, height: 8 },
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowRadius: 10,
+    elevation: 10,
+    overflow: "hidden",
   },
   fabGradient: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 32,
+    borderRadius: 26,
   },
   modalOverlay: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 24,
   },
   modalContainer: {
     width: "100%",
-    maxWidth: 420,
-    maxHeight: "90%",
+    maxWidth: 400,
+    maxHeight: "85%",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10000,
   },
   modalContent: {
     width: "100%",
-    borderRadius: 24,
+    borderRadius: 28,
     overflow: "hidden",
     maxHeight: "100%",
-    minHeight: 300,
+    minHeight: 280,
     borderWidth: 1,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 24,
   },
   modalHeader: {
     flexDirection: "row",
@@ -713,37 +747,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 20,
     borderBottomWidth: 1,
-    minHeight: 64,
+    minHeight: 72,
   },
   modalTitleContainer: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    marginRight: 12,
+    marginRight: 16,
   },
   iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    flex: 1,
-  },
-  closeButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    flex: 1,
+    letterSpacing: 0.3,
+  },
+  closeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
   },
   modalBody: {
-    maxHeight: 450,
-    minHeight: 200,
+    maxHeight: 420,
+    minHeight: 180,
   },
   scrollContent: {
     flexGrow: 1,
@@ -753,48 +788,49 @@ const styles = StyleSheet.create({
   },
   modalText: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 26,
     marginBottom: 20,
   },
   helpSection: {
-    marginTop: 24,
-    paddingTop: 24,
+    marginTop: 20,
+    paddingTop: 20,
     borderTopWidth: 1,
   },
   helpSectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
-    marginBottom: 16,
+    marginBottom: 14,
+    letterSpacing: 0.2,
   },
   helpSectionText: {
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 24,
   },
   tipsContainer: {
-    gap: 12,
+    gap: 14,
   },
   tipItem: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 12,
+    gap: 14,
   },
   tipBullet: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     marginTop: 8,
     flexShrink: 0,
   },
   tipText: {
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 24,
     flex: 1,
   },
   noHelpContent: {
-    padding: 40,
+    padding: 48,
     alignItems: "center",
     justifyContent: "center",
-    gap: 16,
+    gap: 20,
   },
 });
 
