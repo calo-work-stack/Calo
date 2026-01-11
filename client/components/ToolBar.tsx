@@ -8,16 +8,17 @@ import {
   ScrollView,
   Platform,
   Pressable,
+  Dimensions,
 } from "react-native";
 import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
+import Svg, { Path, Circle as SvgCircle } from "react-native-svg";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
-  withSequence,
-  withDelay,
+  interpolate,
+  Extrapolation,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -36,6 +37,8 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/src/store";
 import SubscriptionComparison from "./SubscriptionComparison";
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
 interface HelpContent {
   title: string;
   description: string;
@@ -49,14 +52,25 @@ interface ToolBarProps {
   onThemeChange?: (isDark: boolean) => void;
 }
 
-const SPRING_CONFIG = {
-  damping: 15,
-  stiffness: 200,
-  mass: 0.8,
-};
+// Wheel menu configuration
+const WHEEL_SIZE = 220;
+const CENTER_BUTTON_SIZE = 56;
+const ICON_RADIUS = 78;
+const INNER_RADIUS = 38;
+const OUTER_RADIUS = 100;
 
-const TIMING_CONFIG = {
-  duration: 300,
+interface WheelMenuItem {
+  id: string;
+  icon: React.ReactNode;
+  label: string;
+  color: string;
+  onPress: () => void;
+}
+
+const SPRING_CONFIG = {
+  damping: 18,
+  stiffness: 180,
+  mass: 0.8,
 };
 
 const ToolBar: React.FC<ToolBarProps> = ({
@@ -68,6 +82,7 @@ const ToolBar: React.FC<ToolBarProps> = ({
   const { isDark, toggleTheme, colors } = useTheme();
   const [showHelp, setShowHelp] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [showSubscriptionComparison, setShowSubscriptionComparison] =
     useState(false);
   const insets = useSafeAreaInsets();
@@ -89,137 +104,28 @@ const ToolBar: React.FC<ToolBarProps> = ({
     quickTips: language === "he" ? "טיפים מהירים:" : "Quick Tips:",
     additionalSupport: language === "he" ? "תמיכה נוספת:" : "Additional Support:",
     howCanWeHelp: language === "he" ? "איך אפשר לעזור לך?" : "How can we help you?",
+    language: language === "he" ? "שפה" : "Language",
+    theme: language === "he" ? "ערכת נושא" : "Theme",
+    premium: language === "he" ? "פרימיום" : "Premium",
   };
 
   // Animation values
-  const fabScale = useSharedValue(1);
-  const fabRotation = useSharedValue(0);
-  const menuOpacity = useSharedValue(0);
-  const backdropOpacity = useSharedValue(0);
-  const pulseScale = useSharedValue(1);
-
-  // Button positions for radial menu (4 buttons)
-  const button1Position = useSharedValue({ x: 0, y: 0 });
-  const button2Position = useSharedValue({ x: 0, y: 0 });
-  const button3Position = useSharedValue({ x: 0, y: 0 });
-  const button4Position = useSharedValue({ x: 0, y: 0 });
-
-  // Button scales for staggered animation
-  const button1Scale = useSharedValue(0);
-  const button2Scale = useSharedValue(0);
-  const button3Scale = useSharedValue(0);
-  const button4Scale = useSharedValue(0);
+  const expandProgress = useSharedValue(0);
+  const centerScale = useSharedValue(1);
 
   const isFreeUser = user?.subscription_type === "FREE";
 
   const handleToggleMenu = useCallback(() => {
     const newExpanded = !isExpanded;
     setIsExpanded(newExpanded);
+    setSelectedIndex(null);
 
-    const expandDirection = isRTL ? 1 : -1;
-
-    fabScale.value = withSequence(
-      withTiming(0.95, { duration: 100 }),
-      withSpring(1, SPRING_CONFIG)
-    );
-
-    if (newExpanded) {
-      fabRotation.value = withSpring(45, SPRING_CONFIG);
-      menuOpacity.value = withTiming(1, TIMING_CONFIG);
-      backdropOpacity.value = withTiming(0.4, TIMING_CONFIG);
-
-      const radius = 80;
-
-      const angle1 = (0 * Math.PI) / 180; // 0 degrees (right-top)
-      const angle2 = (30 * Math.PI) / 180; // 30 degrees (right)
-      const angle3 = (60 * Math.PI) / 180; // 60 degrees (right-bottom)
-      const angle4 = (90 * Math.PI) / 180; // -90 degrees (right-bottom)
-
-      // Language button
-      button1Position.value = withSpring(
-        {
-          x: expandDirection * radius * Math.cos(angle1),
-          y: -radius * Math.sin(angle1),
-        },
-        SPRING_CONFIG
-      );
-      button1Scale.value = withDelay(50, withSpring(1, SPRING_CONFIG));
-
-      // Theme button
-      button2Position.value = withSpring(
-        {
-          x: expandDirection * radius * Math.cos(angle2),
-          y: -radius * Math.sin(angle2),
-        },
-        SPRING_CONFIG
-      );
-      button2Scale.value = withDelay(100, withSpring(1, SPRING_CONFIG));
-
-      // Help button - ALWAYS visible
-      button3Position.value = withSpring(
-        {
-          x: expandDirection * radius * Math.cos(angle3),
-          y: -radius * Math.sin(angle3),
-        },
-        SPRING_CONFIG
-      );
-      button3Scale.value = withDelay(150, withSpring(1, SPRING_CONFIG));
-
-      // Sparkles/Subscription button (only for FREE users)
-      if (isFreeUser) {
-        button4Position.value = withSpring(
-          {
-            x: expandDirection * radius * Math.cos(angle4),
-            y: -radius * Math.sin(angle4),
-          },
-          SPRING_CONFIG
-        );
-        button4Scale.value = withDelay(200, withSpring(1, SPRING_CONFIG));
-      }
-    } else {
-      fabRotation.value = withSpring(0, SPRING_CONFIG);
-      menuOpacity.value = withTiming(0, { duration: 200 });
-      backdropOpacity.value = withTiming(0, { duration: 200 });
-
-      button1Scale.value = withTiming(0, { duration: 150 });
-      button2Scale.value = withTiming(0, { duration: 150 });
-      button3Scale.value = withTiming(0, { duration: 150 });
-      button4Scale.value = withTiming(0, { duration: 150 });
-
-      button1Position.value = withDelay(
-        100,
-        withSpring({ x: 0, y: 0 }, SPRING_CONFIG)
-      );
-      button2Position.value = withDelay(
-        100,
-        withSpring({ x: 0, y: 0 }, SPRING_CONFIG)
-      );
-      button3Position.value = withDelay(
-        100,
-        withSpring({ x: 0, y: 0 }, SPRING_CONFIG)
-      );
-      button4Position.value = withDelay(
-        100,
-        withSpring({ x: 0, y: 0 }, SPRING_CONFIG)
-      );
-    }
-  }, [
-    isExpanded,
-    isRTL,
-    isFreeUser,
-    fabRotation,
-    fabScale,
-    menuOpacity,
-    backdropOpacity,
-    button1Position,
-    button2Position,
-    button3Position,
-    button4Position,
-    button1Scale,
-    button2Scale,
-    button3Scale,
-    button4Scale,
-  ]);
+    centerScale.value = withSpring(newExpanded ? 0.9 : 1, SPRING_CONFIG);
+    expandProgress.value = withSpring(newExpanded ? 1 : 0, {
+      ...SPRING_CONFIG,
+      damping: 20,
+    });
+  }, [isExpanded, expandProgress, centerScale]);
 
   const handleLanguageToggle = useCallback(async () => {
     const newLanguage = language === "he" ? "en" : "he";
@@ -242,12 +148,6 @@ const ToolBar: React.FC<ToolBarProps> = ({
       toggleTheme();
       onThemeChange?.(!isDark);
       handleToggleMenu();
-
-      pulseScale.value = withSequence(
-        withTiming(1.1, { duration: 150 }),
-        withTiming(1, { duration: 150 })
-      );
-
       ToastService.success(
         t.themeChanged,
         !isDark ? t.switchedToDark : t.switchedToLight
@@ -256,7 +156,7 @@ const ToolBar: React.FC<ToolBarProps> = ({
       console.error("Error toggling theme:", error);
       ToastService.error(t.error, t.failedToChangeTheme);
     }
-  }, [toggleTheme, handleToggleMenu, onThemeChange, isDark, pulseScale, t]);
+  }, [toggleTheme, handleToggleMenu, onThemeChange, isDark, t]);
 
   const handleHelpPress = useCallback(() => {
     setShowHelp(true);
@@ -268,62 +168,153 @@ const ToolBar: React.FC<ToolBarProps> = ({
     handleToggleMenu();
   }, [handleToggleMenu]);
 
-  const handleCloseHelp = useCallback(() => {
-    setShowHelp(false);
-  }, []);
+  // Menu items configuration
+  const menuItems: WheelMenuItem[] = useMemo(() => {
+    const items: WheelMenuItem[] = [
+      {
+        id: "language",
+        icon: <Globe size={22} color="#FFFFFF" strokeWidth={2} />,
+        label: t.language,
+        color: "#6366F1",
+        onPress: handleLanguageToggle,
+      },
+      {
+        id: "theme",
+        icon: isDark ? (
+          <Sun size={22} color="#FFFFFF" strokeWidth={2} />
+        ) : (
+          <Moon size={22} color="#FFFFFF" strokeWidth={2} />
+        ),
+        label: t.theme,
+        color: isDark ? "#F59E0B" : "#1E293B",
+        onPress: handleThemeToggle,
+      },
+      {
+        id: "help",
+        icon: <HelpCircle size={22} color="#FFFFFF" strokeWidth={2} />,
+        label: t.help,
+        color: "#14B8A6",
+        onPress: handleHelpPress,
+      },
+    ];
+
+    if (isFreeUser) {
+      items.push({
+        id: "premium",
+        icon: <Sparkles size={22} color="#FFFFFF" strokeWidth={2} />,
+        label: t.premium,
+        color: "#EC4899",
+        onPress: handleSubscriptionComparisonPress,
+      });
+    }
+
+    return items;
+  }, [
+    t,
+    isDark,
+    isFreeUser,
+    handleLanguageToggle,
+    handleThemeToggle,
+    handleHelpPress,
+    handleSubscriptionComparisonPress,
+  ]);
+
+  const handleItemPress = useCallback((index: number) => {
+    setSelectedIndex(index);
+    // Small delay before executing action for visual feedback
+    setTimeout(() => {
+      menuItems[index]?.onPress();
+    }, 150);
+  }, [menuItems]);
+
+  // Create pie segment path with rounded edges
+  const createPieSegment = (
+    index: number,
+    total: number,
+    innerRadius: number,
+    outerRadius: number
+  ) => {
+    const center = WHEEL_SIZE / 2;
+    const anglePerSegment = (2 * Math.PI) / total;
+    const startAngle = index * anglePerSegment - Math.PI / 2;
+    const endAngle = startAngle + anglePerSegment;
+    const gap = 0.04; // Gap between segments for visual separation
+
+    const x1 = Math.cos(startAngle + gap) * outerRadius + center;
+    const y1 = Math.sin(startAngle + gap) * outerRadius + center;
+    const x2 = Math.cos(endAngle - gap) * outerRadius + center;
+    const y2 = Math.sin(endAngle - gap) * outerRadius + center;
+    const x3 = Math.cos(endAngle - gap) * innerRadius + center;
+    const y3 = Math.sin(endAngle - gap) * innerRadius + center;
+    const x4 = Math.cos(startAngle + gap) * innerRadius + center;
+    const y4 = Math.sin(startAngle + gap) * innerRadius + center;
+
+    const largeArc = anglePerSegment > Math.PI ? 1 : 0;
+
+    return `
+      M ${x1} ${y1}
+      A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x2} ${y2}
+      L ${x3} ${y3}
+      A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4}
+      Z
+    `;
+  };
+
+  // Get icon position for each segment
+  const getIconPosition = (index: number, total: number) => {
+    const anglePerSegment = (2 * Math.PI) / total;
+    const midAngle = index * anglePerSegment + anglePerSegment / 2 - Math.PI / 2;
+    const x = Math.cos(midAngle) * ICON_RADIUS + WHEEL_SIZE / 2;
+    const y = Math.sin(midAngle) * ICON_RADIUS + WHEEL_SIZE / 2;
+    return { x, y };
+  };
 
   // Animated styles
-  const fabStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: fabScale.value * pulseScale.value },
-      { rotate: `${fabRotation.value}deg` },
-    ],
+  const wheelContainerStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      expandProgress.value,
+      [0, 1],
+      [0.3, 1],
+      Extrapolation.CLAMP
+    );
+    const opacity = interpolate(
+      expandProgress.value,
+      [0, 0.5, 1],
+      [0, 0.5, 1],
+      Extrapolation.CLAMP
+    );
+
+    return {
+      transform: [{ scale }],
+      opacity,
+    };
+  });
+
+  const centerButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: centerScale.value }],
   }));
 
   const backdropStyle = useAnimatedStyle(() => ({
-    opacity: backdropOpacity.value,
-  }));
-
-  const menuContainerStyle = useAnimatedStyle(() => ({
-    opacity: menuOpacity.value,
-  }));
-
-  const button1Style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: button1Position.value.x },
-      { translateY: button1Position.value.y },
-      { scale: button1Scale.value },
-    ],
-  }));
-
-  const button2Style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: button2Position.value.x },
-      { translateY: button2Position.value.y },
-      { scale: button2Scale.value },
-    ],
-  }));
-
-  const button3Style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: button3Position.value.x },
-      { translateY: button3Position.value.y },
-      { scale: button3Scale.value },
-    ],
-  }));
-
-  const button4Style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: button4Position.value.x },
-      { translateY: button4Position.value.y },
-      { scale: button4Scale.value },
-    ],
+    opacity: interpolate(
+      expandProgress.value,
+      [0, 1],
+      [0, 0.5],
+      Extrapolation.CLAMP
+    ),
   }));
 
   const toolbarPosition = useMemo(
     () => ({
-      bottom: insets.bottom + 100,
-      [isRTL ? "left" : "right"]: 24,
+      bottom: insets.bottom + 90,
+      [isRTL ? "left" : "right"]: 20,
+    }),
+    [insets.bottom, isRTL]
+  );
+
+  const wheelPosition = useMemo(
+    () => ({
+      bottom: insets.bottom + 90 - WHEEL_SIZE / 2 + CENTER_BUTTON_SIZE / 2,
+      [isRTL ? "left" : "right"]: 20 - WHEEL_SIZE / 2 + CENTER_BUTTON_SIZE / 2,
     }),
     [insets.bottom, isRTL]
   );
@@ -343,117 +334,98 @@ const ToolBar: React.FC<ToolBarProps> = ({
         </Animated.View>
       )}
 
-      {/* Main Container */}
-      <View style={[styles.container, toolbarPosition]}>
-        {/* Menu Items */}
-        <Animated.View style={[styles.menuContainer, menuContainerStyle]}>
-          {/* Language Button */}
-          <Animated.View style={[styles.menuButton, button1Style]}>
-            <TouchableOpacity
-              style={styles.buttonTouchable}
-              onPress={handleLanguageToggle}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={isDark ? ["#6366F1", "#4F46E5"] : ["#818CF8", "#6366F1"]}
-                style={styles.buttonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Globe size={18} color="#FFFFFF" strokeWidth={2} />
-                <Text style={styles.buttonLabel}>
-                  {language === "he" ? "EN" : "עב"}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
+      {/* Wheel Menu */}
+      {isExpanded && (
+        <Animated.View
+          style={[
+            styles.wheelContainer,
+            wheelPosition,
+            wheelContainerStyle,
+          ]}
+        >
+          <View style={styles.wheelWrapper}>
+            {/* Outer ring decoration */}
+            <View style={[
+              styles.outerRing,
+              { borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
+            ]} />
 
-          {/* Theme Button */}
-          <Animated.View style={[styles.menuButton, button2Style]}>
-            <TouchableOpacity
-              style={styles.buttonTouchable}
-              onPress={handleThemeToggle}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={isDark ? ["#F59E0B", "#D97706"] : ["#1E293B", "#0F172A"]}
-                style={styles.buttonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                {isDark ? (
-                  <Sun size={18} color="#FFFFFF" strokeWidth={2} />
-                ) : (
-                  <Moon size={18} color="#FFFFFF" strokeWidth={2} />
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
+            {/* SVG Pie Segments */}
+            <Svg width={WHEEL_SIZE} height={WHEEL_SIZE} style={styles.svgContainer}>
+              {menuItems.map((item, index) => {
+                const isSelected = selectedIndex === index;
+                return (
+                  <Path
+                    key={item.id}
+                    d={createPieSegment(index, menuItems.length, 35, 95)}
+                    fill={isSelected ? item.color : (isDark ? '#374151' : '#E5E7EB')}
+                    opacity={isSelected ? 1 : 0.9}
+                  />
+                );
+              })}
+              {/* Center circle background */}
+              <SvgCircle
+                cx={WHEEL_SIZE / 2}
+                cy={WHEEL_SIZE / 2}
+                r={32}
+                fill={isDark ? '#1F2937' : '#FFFFFF'}
+              />
+            </Svg>
 
-          {/* Help Button */}
-          <Animated.View style={[styles.menuButton, button3Style]}>
-            <TouchableOpacity
-              style={styles.buttonTouchable}
-              onPress={handleHelpPress}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={isDark ? ["#14B8A6", "#0D9488"] : ["#2DD4BF", "#14B8A6"]}
-                style={styles.buttonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <HelpCircle size={18} color="#FFFFFF" strokeWidth={2} />
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* Premium/Subscription Button - ONLY for FREE users */}
-          {isFreeUser && (
-            <Animated.View style={[styles.menuButton, button4Style]}>
-              <TouchableOpacity
-                style={styles.buttonTouchable}
-                onPress={handleSubscriptionComparisonPress}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={["#F472B6", "#EC4899", "#DB2777"]}
-                  style={styles.buttonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+            {/* Icon buttons overlay */}
+            {menuItems.map((item, index) => {
+              const pos = getIconPosition(index, menuItems.length);
+              const isSelected = selectedIndex === index;
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.iconButton,
+                    {
+                      left: pos.x - 22,
+                      top: pos.y - 22,
+                      backgroundColor: isSelected ? item.color : 'transparent',
+                    },
+                  ]}
+                  onPress={() => handleItemPress(index)}
+                  activeOpacity={0.7}
                 >
-                  <Sparkles size={18} color="#FFFFFF" strokeWidth={2} />
-                </LinearGradient>
-              </TouchableOpacity>
-            </Animated.View>
-          )}
+                  <View style={[
+                    styles.iconWrapper,
+                    { backgroundColor: isSelected ? 'transparent' : item.color }
+                  ]}>
+                    {item.icon}
+                  </View>
+                  {isSelected && (
+                    <Text style={styles.selectedLabel}>{item.label}</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </Animated.View>
+      )}
 
-        {/* Main FAB */}
-        <Animated.View style={fabStyle}>
+      {/* Center FAB Button */}
+      <View style={[styles.fabContainer, toolbarPosition]}>
+        <Animated.View style={centerButtonStyle}>
           <TouchableOpacity
-            style={styles.fab}
+            style={[
+              styles.fab,
+              {
+                backgroundColor: isExpanded
+                  ? (isDark ? '#374151' : '#E5E7EB')
+                  : '#10B981',
+              },
+            ]}
             onPress={handleToggleMenu}
             activeOpacity={0.9}
           >
-            <LinearGradient
-              colors={
-                isExpanded
-                  ? ["#EF4444", "#DC2626"]
-                  : isDark
-                  ? ["#10B981", "#059669"]
-                  : ["#10B981", "#047857"]
-              }
-              style={styles.fabGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              {isExpanded ? (
-                <X size={22} color="#FFFFFF" strokeWidth={2} />
-              ) : (
-                <Settings size={22} color="#FFFFFF" strokeWidth={2} />
-              )}
-            </LinearGradient>
+            {isExpanded ? (
+              <X size={24} color={isDark ? '#FFFFFF' : '#374151'} strokeWidth={2.5} />
+            ) : (
+              <Settings size={24} color="#FFFFFF" strokeWidth={2} />
+            )}
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -643,75 +615,76 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     zIndex: 998,
   },
-  container: {
+  fabContainer: {
     position: "absolute",
-    zIndex: 999,
+    zIndex: 1001,
     alignItems: "center",
     justifyContent: "center",
-  },
-  menuContainer: {
-    position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  menuButton: {
-    position: "absolute",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  buttonTouchable: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 6,
-    overflow: "hidden",
-  },
-  buttonGradient: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 23,
-  },
-  buttonContent: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 6,
-  },
-  buttonLabel: {
-    fontSize: 9,
-    fontWeight: "700",
-    letterSpacing: 0.2,
-    textAlign: "center",
-    marginTop: 1,
-    color: "#FFFFFF",
   },
   fab: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: CENTER_BUTTON_SIZE,
+    height: CENTER_BUTTON_SIZE,
+    borderRadius: CENTER_BUTTON_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 10,
-    overflow: "hidden",
+    shadowRadius: 8,
+    elevation: 8,
   },
-  fabGradient: {
-    flex: 1,
+  wheelContainer: {
+    position: "absolute",
+    width: WHEEL_SIZE,
+    height: WHEEL_SIZE,
+    zIndex: 1000,
+  },
+  wheelWrapper: {
+    width: WHEEL_SIZE,
+    height: WHEEL_SIZE,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 26,
+  },
+  outerRing: {
+    position: "absolute",
+    width: WHEEL_SIZE - 4,
+    height: WHEEL_SIZE - 4,
+    borderRadius: WHEEL_SIZE / 2,
+    borderWidth: 2,
+  },
+  svgContainer: {
+    position: "absolute",
+  },
+  iconButton: {
+    position: "absolute",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectedLabel: {
+    position: "absolute",
+    top: -20,
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    textAlign: "center",
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    overflow: "hidden",
   },
   modalOverlay: {
     flex: 1,
