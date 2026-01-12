@@ -47,7 +47,7 @@ import CheckboxGroup from "@/components/questionnaire/CheckBoxGroup";
 import CustomSwitch from "@/components/questionnaire/CustomSwitch";
 import LoadingScreen from "@/components/LoadingScreen";
 
-const { width: screenWidth } = Dimensions.get("window");
+// Screen dimensions - used in styles
 
 interface QuestionnaireData {
   age: string;
@@ -167,12 +167,18 @@ const QuestionnaireScreen: React.FC = () => {
   const [dataLoaded, setDataLoaded] = useState(false);
   const totalSteps = 8;
 
+  // Default slider values for new users
+  const DEFAULT_HEIGHT = "170";
+  const DEFAULT_WEIGHT = "70";
+  const DEFAULT_TARGET_WEIGHT = "70";
+  const DEFAULT_SLEEP_HOURS = "8";
+
   const [formData, setFormData] = useState<QuestionnaireData>({
     age: "",
     gender: "",
-    height_cm: "",
-    weight_kg: "",
-    target_weight_kg: null,
+    height_cm: DEFAULT_HEIGHT,
+    weight_kg: DEFAULT_WEIGHT,
+    target_weight_kg: DEFAULT_TARGET_WEIGHT,
     additional_personal_info: [],
     main_goal: "",
     secondary_goal: null,
@@ -189,7 +195,7 @@ const QuestionnaireScreen: React.FC = () => {
     kosher: false,
     allergies: [],
     dietary_style: "",
-    sleep_hours_per_night: null,
+    sleep_hours_per_night: DEFAULT_SLEEP_HOURS,
     smoking_status: null,
     program_duration: "",
     upload_frequency: "",
@@ -199,7 +205,9 @@ const QuestionnaireScreen: React.FC = () => {
   });
 
   // Validate allergen with detailed feedback
-  const validateAllergen = (allergen: string): { valid: boolean; errorKey?: string } => {
+  const validateAllergen = (
+    allergen: string
+  ): { valid: boolean; errorKey?: string } => {
     const normalized = allergen.toLowerCase().trim();
 
     // Check minimum length
@@ -208,7 +216,8 @@ const QuestionnaireScreen: React.FC = () => {
     }
 
     // Check for invalid characters (random keyboard mashing)
-    const hasInvalidPattern = /^[^aeiouאוי]*$/i.test(normalized) && normalized.length > 4;
+    const hasInvalidPattern =
+      /^[^aeiouאוי]*$/i.test(normalized) && normalized.length > 4;
     if (hasInvalidPattern && !/^[\u0590-\u05FF]+$/.test(normalized)) {
       return { valid: false, errorKey: "allergenInvalidChars" };
     }
@@ -256,7 +265,8 @@ const QuestionnaireScreen: React.FC = () => {
   // Map questionnaire data to form
   useEffect(() => {
     if (questionnaire && dataLoaded) {
-      const safeString = (value: any) => value?.toString() || "";
+      const safeString = (value: any, defaultVal = "") =>
+        value?.toString() || defaultVal;
       const safeArray = (value: any) => (Array.isArray(value) ? value : []);
       const safeBoolean = (value: any) => Boolean(value);
       const mapGenderToKey = (hebrewGender: string) => {
@@ -271,9 +281,12 @@ const QuestionnaireScreen: React.FC = () => {
       setFormData({
         age: safeString(questionnaire.age),
         gender: mapGenderToKey(safeString(questionnaire.gender)),
-        height_cm: safeString(questionnaire.height_cm),
-        weight_kg: safeString(questionnaire.weight_kg),
-        target_weight_kg: safeString(questionnaire.target_weight_kg),
+        height_cm: safeString(questionnaire.height_cm, DEFAULT_HEIGHT),
+        weight_kg: safeString(questionnaire.weight_kg, DEFAULT_WEIGHT),
+        target_weight_kg: safeString(
+          questionnaire.target_weight_kg,
+          DEFAULT_TARGET_WEIGHT
+        ),
         additional_personal_info: safeArray(
           questionnaire.additional_personal_info
         ),
@@ -298,7 +311,10 @@ const QuestionnaireScreen: React.FC = () => {
         kosher: safeBoolean(questionnaire.kosher),
         allergies: safeArray(questionnaire.allergies),
         dietary_style: safeString(questionnaire.dietary_style),
-        sleep_hours_per_night: safeString(questionnaire.sleep_hours_per_night),
+        sleep_hours_per_night: safeString(
+          questionnaire.sleep_hours_per_night,
+          DEFAULT_SLEEP_HOURS
+        ),
         smoking_status: questionnaire.smoking_status as "YES" | "NO" | null,
         program_duration: safeString(questionnaire.program_duration),
         upload_frequency: safeString(questionnaire.upload_frequency),
@@ -330,23 +346,6 @@ const QuestionnaireScreen: React.FC = () => {
     setFormData({ ...formData, [key]: newArray });
   };
 
-  // Handle allergen validation
-  const handleAllergyAdd = (items: string[]) => {
-    const lastItem = items[items.length - 1];
-    if (lastItem) {
-      const validation = validateAllergen(lastItem);
-      if (!validation.valid) {
-        Alert.alert(
-          t("questionnaire.validation.invalidAllergen"),
-          t(`questionnaire.validation.${validation.errorKey || "allergenNotRecognized"}`)
-        );
-        return false;
-      }
-    }
-    setFormData({ ...formData, allergies: items });
-    return true;
-  };
-
   const handleSubmit = async () => {
     try {
       // Validate required fields
@@ -366,14 +365,14 @@ const QuestionnaireScreen: React.FC = () => {
         return;
       }
 
-      // Validate all allergies
+      // Validate allergies
       const invalidAllergies = formData.allergies.filter(
         (allergen) => !validateAllergen(allergen).valid
       );
       if (invalidAllergies.length > 0) {
         Alert.alert(
-          t("questionnaire.validation.invalidAllergen"),
-          t("questionnaire.validation.pleaseRemoveInvalid") +
+          t("validation.invalidAllergen"),
+          t("validation.pleaseRemoveInvalid") +
             ": " +
             invalidAllergies.join(", ")
         );
@@ -382,7 +381,7 @@ const QuestionnaireScreen: React.FC = () => {
 
       const cleanFormData = { ...formData };
 
-      // Convert empty strings to null for optional fields
+      // Convert empty strings to null
       if (cleanFormData.target_weight_kg === "")
         cleanFormData.target_weight_kg = null;
       if (cleanFormData.secondary_goal === "")
@@ -399,9 +398,13 @@ const QuestionnaireScreen: React.FC = () => {
         isEditMode: isEditMode || user?.is_questionnaire_completed,
       };
 
-      const result = await dispatch(saveQuestionnaire(dataToSubmit));
+      console.log("📝 Submitting questionnaire data:", dataToSubmit);
+
+      const result = await dispatch(saveQuestionnaire(dataToSubmit as any));
 
       if (saveQuestionnaire.fulfilled.match(result)) {
+        console.log("✅ Questionnaire saved successfully");
+
         if (isEditMode || user?.is_questionnaire_completed) {
           Alert.alert(
             t("questionnaire.success"),
@@ -414,23 +417,34 @@ const QuestionnaireScreen: React.FC = () => {
             ]
           );
         } else {
+          // For new users, navigate to payment plan
           Alert.alert(
             t("questionnaire.success"),
             t("questionnaire.savedSuccessfully"),
             [
               {
                 text: t("common.ok"),
-                onPress: () => router.replace("/payment-plan"),
+                onPress: () => {
+                  console.log("🚀 Navigating to payment plan");
+                  router.replace("/payment-plan");
+                },
               },
             ]
           );
         }
+      } else {
+        console.error("❌ Questionnaire save failed:", result);
+        Alert.alert(
+          t("questionnaire.error"),
+          result.error?.message || t("questionnaire.saveError")
+        );
       }
     } catch (error) {
+      console.error("💥 Submit error:", error);
       Alert.alert(t("questionnaire.error"), t("questionnaire.saveError"));
     }
   };
-
+  
   useEffect(() => {
     if (error) {
       Alert.alert(t("questionnaire.error"), error);
@@ -747,7 +761,7 @@ const QuestionnaireScreen: React.FC = () => {
 
             <WeightScale
               label={t("questionnaire.height")}
-              value={parseInt(formData.height_cm) || 170}
+              value={parseInt(formData.height_cm) || parseInt(DEFAULT_HEIGHT)}
               onValueChange={(value: number) =>
                 setFormData({ ...formData, height_cm: value.toString() })
               }
@@ -758,7 +772,7 @@ const QuestionnaireScreen: React.FC = () => {
 
             <WeightScale
               label={t("questionnaire.weight")}
-              value={parseInt(formData.weight_kg) || 70}
+              value={parseInt(formData.weight_kg) || parseInt(DEFAULT_WEIGHT)}
               onValueChange={(value: number) =>
                 setFormData({ ...formData, weight_kg: value.toString() })
               }
@@ -769,7 +783,10 @@ const QuestionnaireScreen: React.FC = () => {
 
             <WeightScale
               label={t("questionnaire.targetWeight")}
-              value={parseInt(formData.target_weight_kg || "70") || 70}
+              value={
+                parseInt(formData.target_weight_kg || DEFAULT_TARGET_WEIGHT) ||
+                parseInt(DEFAULT_TARGET_WEIGHT)
+              }
               onValueChange={(value: number) =>
                 setFormData({ ...formData, target_weight_kg: value.toString() })
               }
@@ -968,8 +985,12 @@ const QuestionnaireScreen: React.FC = () => {
                   const validation = validateAllergen(lastItem);
                   if (!validation.valid) {
                     Alert.alert(
-                      t("questionnaire.validation.invalidAllergen"),
-                      t(`questionnaire.validation.${validation.errorKey || "allergenNotRecognized"}`)
+                      t("validation.invalidAllergen"),
+                      t(
+                        `validation.${
+                          validation.errorKey || "allergenNotRecognized"
+                        }`
+                      )
                     );
                     return;
                   }
@@ -1000,7 +1021,11 @@ const QuestionnaireScreen: React.FC = () => {
           >
             <WeightScale
               label={t("questionnaire.sleepHours")}
-              value={parseInt(formData.sleep_hours_per_night || "8") || 8}
+              value={
+                parseInt(
+                  formData.sleep_hours_per_night || DEFAULT_SLEEP_HOURS
+                ) || parseInt(DEFAULT_SLEEP_HOURS)
+              }
               onValueChange={(value: number) =>
                 setFormData({
                   ...formData,
@@ -1123,7 +1148,15 @@ const QuestionnaireScreen: React.FC = () => {
       />
 
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.background, paddingTop: Math.max(insets.top, 16) }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.background,
+            paddingTop: Math.max(insets.top, 16),
+          },
+        ]}
+      >
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
@@ -1151,68 +1184,80 @@ const QuestionnaireScreen: React.FC = () => {
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(insets.bottom, 20) + 100 },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled
       >
         {renderStep()}
-        {/* Navigation */}
-        <View style={[styles.navigation, { backgroundColor: "transparent", paddingBottom: Math.max(insets.bottom, 20) }]}>
-          {currentStep < totalSteps ? (
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                {
-                  backgroundColor: canProceed()
-                    ? colors.primary
-                    : colors.border,
-                },
-              ]}
-              onPress={() => setCurrentStep(currentStep + 1)}
-              disabled={!canProceed()}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={
-                  canProceed()
-                    ? [colors.primary, colors.primary + "CC"]
-                    : [colors.border, colors.border]
-                }
-                style={styles.buttonGradient}
-              >
-                <Text style={styles.buttonText}>{t("common.next")}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                {
-                  backgroundColor: isSaving ? colors.border : colors.success,
-                },
-              ]}
-              onPress={handleSubmit}
-              disabled={isSaving}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={
-                  isSaving
-                    ? [colors.border, colors.border]
-                    : [colors.success, colors.success + "CC"]
-                }
-                style={styles.buttonGradient}
-              >
-                {isSaving ? (
-                  <ActivityIndicator color="white" size="small" />
-                ) : (
-                  <Text style={styles.buttonText}>
-                    {isEditMode ? t("common.save") : t("questionnaire.finish")}
-                  </Text>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-        </View>
       </ScrollView>
+
+      {/* Navigation - Fixed at bottom */}
+      <View
+        style={[
+          styles.navigation,
+          {
+            backgroundColor: colors.background,
+            paddingBottom: Math.max(insets.bottom, 20),
+          },
+        ]}
+      >
+        {currentStep < totalSteps ? (
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              {
+                backgroundColor: canProceed() ? colors.primary : colors.border,
+              },
+            ]}
+            onPress={() => setCurrentStep(currentStep + 1)}
+            disabled={!canProceed()}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={
+                canProceed()
+                  ? [colors.primary, colors.primary + "CC"]
+                  : [colors.border, colors.border]
+              }
+              style={styles.buttonGradient}
+            >
+              <Text style={styles.buttonText}>{t("common.next")}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              {
+                backgroundColor: isSaving ? colors.border : colors.success,
+              },
+            ]}
+            onPress={handleSubmit}
+            disabled={isSaving}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={
+                isSaving
+                  ? [colors.border, colors.border]
+                  : [colors.success, colors.success + "CC"]
+              }
+              style={styles.buttonGradient}
+            >
+              {isSaving ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text style={styles.buttonText}>
+                  {isEditMode ? t("common.save") : t("questionnaire.finish")}
+                </Text>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Tip Modal */}
       <Modal
@@ -1299,16 +1344,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: Platform.select({ ios: 140, android: 120 }),
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   navigation: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
     paddingHorizontal: isSmallDevice ? 16 : 24,
-    paddingVertical: Platform.select({ ios: 16, android: 20 }),
-    paddingBottom: Platform.select({ ios: 24, android: 40 }),
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.05)",
   },
   actionButton: {
     borderRadius: isSmallDevice ? 12 : 16,

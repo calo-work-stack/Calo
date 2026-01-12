@@ -1,3 +1,8 @@
 {
-    "prisma.pinToPrisma6": true
+    "prisma.pinToPrisma6": true,
+    "workbench.editor.autoLockGroups": {
+        "terminalEditor": false,
+        "workbench.input.interactive": true,
+        "default": true
+    }
 }

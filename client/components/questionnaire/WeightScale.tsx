@@ -5,8 +5,6 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   runOnJS,
-  interpolate,
-  Extrapolation,
 } from "react-native-reanimated";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
@@ -36,10 +34,14 @@ const WeightScale: React.FC<WeightScaleProps> = ({
   const translateX = useSharedValue(0);
   const dragStartPosition = useRef(0);
   const indicatorPulse = useSharedValue(1);
+  const isUserDragging = useRef(false);
+  const lastExternalValue = useRef(value);
+  const hasInitialized = useRef(false);
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const screenWidth = Dimensions.get("window").width;
   const SCALE_WIDTH = screenWidth - 48;
-  const MARK_SPACING = 10; // Increased spacing for better visibility
+  const MARK_SPACING = 10;
   const CENTER_X = SCALE_WIDTH / 2;
 
   const totalRange = max - min;
@@ -58,31 +60,62 @@ const WeightScale: React.FC<WeightScaleProps> = ({
     return Math.max(min, Math.min(max, min + valueIndex));
   };
 
-  // Initialize the scale position when component mounts or value changes externally
+  // Initialize the scale position only when value prop changes from parent
   useEffect(() => {
-    const initialPosition = valueToPosition(value);
-    translateX.value = withSpring(initialPosition, {
-      damping: 20,
-      stiffness: 300,
-    });
-    setCurrentValue(value);
-  }, [value, min, max]);
+    // Skip if user is currently dragging
+    if (isUserDragging.current) return;
+
+    // Only update if value actually changed from external source
+    const valueChanged = value !== lastExternalValue.current;
+    const needsInitialization = !hasInitialized.current;
+
+    if (needsInitialization || valueChanged) {
+      const initialPosition = valueToPosition(value);
+      translateX.value = withSpring(initialPosition, {
+        damping: 20,
+        stiffness: 300,
+      });
+      setCurrentValue(value);
+      lastExternalValue.current = value;
+      hasInitialized.current = true;
+    }
+  }, [value]);
 
   const updateCurrentValue = (val: number) => {
     setCurrentValue(val);
   };
 
   const finalizeValueChange = (val: number) => {
-    onValueChange(val);
+    // Debounce the callback to prevent excessive parent updates
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    debounceTimeout.current = setTimeout(() => {
+      // Only call parent if value actually changed
+      if (val !== lastExternalValue.current) {
+        onValueChange(val);
+        lastExternalValue.current = val;
+      }
+    }, 100);
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, []);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
+        isUserDragging.current = true;
         dragStartPosition.current = translateX.value;
-        // Pulse animation on touch
         indicatorPulse.value = withSpring(1.15, { damping: 10 });
       },
       onPanResponderMove: (evt, gestureState) => {
@@ -99,7 +132,6 @@ const WeightScale: React.FC<WeightScaleProps> = ({
         runOnJS(updateCurrentValue)(newValue);
       },
       onPanResponderRelease: () => {
-        // Reset pulse
         indicatorPulse.value = withSpring(1, { damping: 15 });
 
         const currentPosition = translateX.value;
@@ -113,6 +145,11 @@ const WeightScale: React.FC<WeightScaleProps> = ({
 
         runOnJS(updateCurrentValue)(snapValue);
         runOnJS(finalizeValueChange)(snapValue);
+
+        // Mark dragging as complete after a short delay
+        setTimeout(() => {
+          isUserDragging.current = false;
+        }, 150);
       },
     })
   ).current;
@@ -133,7 +170,6 @@ const WeightScale: React.FC<WeightScaleProps> = ({
       const isMainMark = markValue % 10 === 0;
       const isMiddleMark = markValue % 5 === 0 && !isMainMark;
 
-      // Enhanced mark styling
       const markHeight = isMainMark ? 40 : isMiddleMark ? 28 : 16;
       const markWidth = isMainMark ? 3 : isMiddleMark ? 2 : 1.5;
 
@@ -157,7 +193,6 @@ const WeightScale: React.FC<WeightScaleProps> = ({
         />
       );
 
-      // Add text label for main marks (every 10 units)
       if (isMainMark) {
         marks.push(
           <Text
@@ -187,49 +222,43 @@ const WeightScale: React.FC<WeightScaleProps> = ({
         {label}
       </Text>
 
-      {/* Enhanced Value Display */}
       <View
         style={[
           styles.valueDisplay,
           {
-            backgroundColor: isDark ? colors.primary + "20" : colors.primary + "10",
+            backgroundColor: isDark
+              ? colors.primary + "20"
+              : colors.primary + "10",
             borderColor: colors.primary + "40",
           },
         ]}
       >
         <View style={styles.valueInner}>
-          <Text
-            style={[styles.valueText, { color: colors.primary }]}
-          >
+          <Text style={[styles.valueText, { color: colors.primary }]}>
             {currentValue}
           </Text>
-          <Text
-            style={[styles.unitText, { color: colors.primary + "CC" }]}
-          >
+          <Text style={[styles.unitText, { color: colors.primary + "CC" }]}>
             {unit}
           </Text>
         </View>
       </View>
 
-      {/* Scale Container with improved visuals */}
       <View style={[styles.scaleContainer, { backgroundColor: colors.card }]}>
-        {/* Gradient fade on edges */}
         <View
           style={[
             styles.edgeFade,
             styles.edgeFadeLeft,
-            { backgroundColor: colors.card }
+            { backgroundColor: colors.card },
           ]}
         />
         <View
           style={[
             styles.edgeFade,
             styles.edgeFadeRight,
-            { backgroundColor: colors.card }
+            { backgroundColor: colors.card },
           ]}
         />
 
-        {/* Center Indicator with glow effect */}
         <View style={styles.centerIndicatorWrapper}>
           <View
             style={[
@@ -252,7 +281,6 @@ const WeightScale: React.FC<WeightScaleProps> = ({
           />
         </View>
 
-        {/* Scale Wrapper with Pan Responder */}
         <View style={[styles.scaleWrapper, { width: SCALE_WIDTH }]}>
           <View {...panResponder.panHandlers} style={styles.panArea}>
             <Animated.View style={[styles.scaleTrack, animatedStyle]}>
@@ -261,20 +289,22 @@ const WeightScale: React.FC<WeightScaleProps> = ({
           </View>
         </View>
 
-        {/* Instruction text */}
         <Text style={[styles.instructionText, { color: colors.textSecondary }]}>
           ← {isRTL ? "גרור לבחירת ערך" : "Drag to select"} →
         </Text>
       </View>
 
-      {/* Range Labels */}
       <View style={[styles.rangeLabels, isRTL && styles.rangeLabelsRTL]}>
-        <View style={[styles.rangeBadge, { backgroundColor: colors.border + "40" }]}>
+        <View
+          style={[styles.rangeBadge, { backgroundColor: colors.border + "40" }]}
+        >
           <Text style={[styles.rangeLabel, { color: colors.textSecondary }]}>
             {min} {unit}
           </Text>
         </View>
-        <View style={[styles.rangeBadge, { backgroundColor: colors.border + "40" }]}>
+        <View
+          style={[styles.rangeBadge, { backgroundColor: colors.border + "40" }]}
+        >
           <Text style={[styles.rangeLabel, { color: colors.textSecondary }]}>
             {max} {unit}
           </Text>

@@ -224,6 +224,7 @@ export interface QuestionnaireData {
   // Goals
   main_goal: string;
   main_goal_text?: string;
+  secondary_goal?: string | null;
   specific_goal?: string;
   goal_timeframe_days?: string | null;
   commitment_level?: string;
@@ -242,8 +243,8 @@ export interface QuestionnaireData {
 
   // Health
   medical_conditions?: string[];
-  medical_conditions_text?: string;
-  medications?: string;
+  medical_conditions_text?: string[] | string;
+  medications?: string[] | string;
   health_goals?: string;
   functional_issues?: string;
   food_related_medical_issues?: string;

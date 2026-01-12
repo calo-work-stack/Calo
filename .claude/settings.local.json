@@ -12,7 +12,8 @@
       "Bash(npx rg \"from \"\"@react-native-async-storage/async-storage\"\"\" --type ts --type tsx -l)",
       "Bash(npx tsc:*)",
       "Bash(tail:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }

@@ -11,6 +11,7 @@ export interface QuestionnaireData {
   // Goals
   main_goal: string;
   main_goal_text: string[];
+  secondary_goal?: string | null;
   specific_goal: string[];
   goal_timeframe_days: string | null;
   commitment_level: string;
@@ -72,7 +73,7 @@ export interface QuestionnaireData {
   health_metrics_integration?: boolean;
   family_medical_history?: string[];
   smoking_status?: 'YES' | 'NO' | null;
-  sleep_hours_per_night?: number | null;
+  sleep_hours_per_night?: string | null;
 }
 
 export interface StepProps {

@@ -175,36 +175,64 @@ export class AuthService {
         );
       }
 
+      // Remove any whitespace from password (just in case)
+      const cleanPassword = process.env.EMAIL_PASSWORD.replace(/\s+/g, "");
+
+      console.log("🔍 Email config check:", {
+        user: process.env.EMAIL_USER,
+        hasPassword: !!process.env.EMAIL_PASSWORD,
+        passwordLength: cleanPassword.length,
+        expectedLength: 16, // Gmail App Passwords are 16 characters
+      });
+
       const nodemailer = require("nodemailer");
 
       const transporter = nodemailer.createTransport({
         service: "gmail",
         host: "smtp.gmail.com",
         port: 587,
-        secure: false,
+        secure: false, // Use STARTTLS
         auth: {
           user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASSWORD,
+          pass: cleanPassword, // Use cleaned password
         },
         tls: {
           rejectUnauthorized: false,
         },
-        debug: process.env.NODE_ENV !== "production",
-        logger: process.env.NODE_ENV !== "production",
+        // Add timeout settings
+        connectionTimeout: 60000, // 60 seconds
+        greetingTimeout: 30000, // 30 seconds
+        socketTimeout: 60000, // 60 seconds
+        debug: true, // Always enable debug for troubleshooting
+        logger: true, // Always enable logger
       });
 
-      // Improve email configuration debugging
+      // Test the connection with better error handling
       console.log("🔍 Testing email connection...");
-      console.log("📧 Email config:", {
-        user: process.env.EMAIL_USER,
-        hasPassword: !!process.env.EMAIL_PASSWORD,
-        passwordLength: process.env.EMAIL_PASSWORD?.length || 0,
-      });
-      await transporter.verify();
-      console.log("✅ Email connection successful");
+      try {
+        await transporter.verify();
+        console.log("✅ Email connection successful");
+      } catch (verifyError: any) {
+        console.error("❌ Email verification failed:", verifyError);
+        console.error("Error code:", verifyError.code);
+        console.error("Error message:", verifyError.message);
+
+        // Provide specific guidance based on error
+        if (verifyError.code === "EAUTH") {
+          throw new Error(
+            "Gmail authentication failed. Please check:\n" +
+              "1. You're using an App Password (not your regular Gmail password)\n" +
+              "2. The App Password has no spaces\n" +
+              "3. Two-factor authentication is enabled on your Gmail account"
+          );
+        }
+        throw verifyError;
+      }
 
       const mailOptions = {
-        from: `"Calo Fitness & Diet" <${process.env.EMAIL_USER}>`,
+        from: `"${process.env.EMAIL_FROM_NAME || "Calo Fitness & Diet"}" <${
+          process.env.EMAIL_USER
+        }>`,
         to: email,
         subject: "Verify Your Email Address - Calo",
         html: `
@@ -214,56 +242,38 @@ export class AuthService {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Email Verification - Calo</title>
-      <!--[if mso]>
-      <noscript>
-        <xml>
-          <o:OfficeDocumentSettings>
-            <o:PixelsPerInch>96</o:PixelsPerInch>
-          </o:OfficeDocumentSettings>
-        </xml>
-      </noscript>
-      <![endif]-->
     </head>
     <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;">
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f8f9fa;">
         <tr>
           <td align="center" style="padding: 40px 20px;">
-
-            <!-- Main Container -->
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); overflow: hidden;">
-
-              <!-- Header Section -->
+              
+              <!-- Header -->
               <tr>
                 <td style="background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%); padding: 40px 32px; text-align: center;">
-                  <div style="background-color: rgba(255, 255, 255, 0.1); width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; border: 3px solid rgba(255, 255, 255, 0.2);">
-                    <div style="width: 40px; height: 40px; background-color: white; border-radius: 50%; position: relative;">
-                      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%); border-radius: 50%;"></div>
-                    </div>
-                  </div>
-                  <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0; letter-spacing: -0.5px;">Calo</h1>
-                  <p style="color: rgba(255, 255, 255, 0.9); font-size: 16px; margin: 8px 0 0 0; font-weight: 400;">Fitness & Diet</p>
+                  <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0;">Calo</h1>
+                  <p style="color: rgba(255, 255, 255, 0.9); font-size: 16px; margin: 8px 0 0 0;">Fitness & Diet</p>
                 </td>
               </tr>
 
-              <!-- Content Section -->
+              <!-- Content -->
               <tr>
                 <td style="padding: 48px 32px 32px;">
-
-                  <!-- Greeting -->
-                  <h2 style="color: #1a1a1a; font-size: 24px; font-weight: 600; margin: 0 0 24px 0; line-height: 1.3;">
+                  <h2 style="color: #1a1a1a; font-size: 24px; font-weight: 600; margin: 0 0 24px 0;">
                     Welcome, ${name}! 👋
                   </h2>
 
                   <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0;">
-                    Thank you for joining Calo! We're excited to help you on your fitness and nutrition journey. Please verify your email address using the code below.
+                    Thank you for joining Calo! Please verify your email address using the code below.
                   </p>
 
-                  <!-- Verification Code Container -->
+                  <!-- Verification Code -->
                   <div style="background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%); border: 2px dashed #cbd5e0; border-radius: 12px; padding: 32px; text-align: center; margin: 32px 0;">
-                    <p style="color: #4a5568; font-size: 14px; margin: 0 0 16px 0; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">
-                      Verification Code
+                    <p style="color: #4a5568; font-size: 14px; margin: 0 0 16px 0; font-weight: 500;">
+                      VERIFICATION CODE
                     </p>
-                    <div style="font-family: 'Courier New', monospace; font-size: 36px; font-weight: 700; color: #2d3748; letter-spacing: 8px; margin: 16px 0; text-align: center;">
+                    <div style="font-family: 'Courier New', monospace; font-size: 36px; font-weight: 700; color: #2d3748; letter-spacing: 8px; margin: 16px 0;">
                       ${code}
                     </div>
                     <p style="color: #718096; font-size: 13px; margin: 16px 0 0 0;">
@@ -271,81 +281,37 @@ export class AuthService {
                     </p>
                   </div>
 
-                  <!-- Instructions -->
-                  <div style="background-color: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 32px 0; border-radius: 0 8px 8px 0;">
-                    <h3 style="color: #1e40af; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">
-                      📱 What's next?
-                    </h3>
-                    <p style="color: #1e40af; font-size: 14px; line-height: 1.5; margin: 0;">
-                      Enter this code in the Calo app to verify your email and unlock all features including personalized meal plans, workout tracking, and progress analytics.
-                    </p>
-                  </div>
-
-                  <!-- Security Notice -->
-                  <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin: 32px 0; border-radius: 0 8px 8px 0;">
-                    <h3 style="color: #dc2626; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">
-                      🔒 Security Notice
-                    </h3>
-                    <p style="color: #dc2626; font-size: 14px; line-height: 1.5; margin: 0;">
-                      If you didn't create an account with Calo, please ignore this email. Never share your verification code with anyone.
-                    </p>
-                  </div>
-
+                  <p style="color: #718096; font-size: 14px; margin: 32px 0 0 0; text-align: center;">
+                    If you didn't create an account, please ignore this email.
+                  </p>
                 </td>
               </tr>
 
-              <!-- Footer Section -->
+              <!-- Footer -->
               <tr>
-                <td style="background-color: #f8f9fa; padding: 32px; text-align: center; border-top: 1px solid #e2e8f0;">
-
-                  <!-- Social Links -->
-                  <div style="margin-bottom: 24px;">
-                    <a href="#" style="display: inline-block; margin: 0 8px; width: 40px; height: 40px; background-color: #4ECDC4; border-radius: 50%; text-decoration: none; line-height: 40px; color: white; font-size: 16px;">📧</a>
-                    <a href="#" style="display: inline-block; margin: 0 8px; width: 40px; height: 40px; background-color: #4ECDC4; border-radius: 50%; text-decoration: none; line-height: 40px; color: white; font-size: 16px;">💬</a>
-                    <a href="#" style="display: inline-block; margin: 0 8px; width: 40px; height: 40px; background-color: #4ECDC4; border-radius: 50%; text-decoration: none; line-height: 40px; color: white; font-size: 16px;">🌐</a>
-                  </div>
-
-                  <!-- Company Info -->
-                  <p style="color: #1a1a1a; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">
-                    Calo - Fitness & Diet
+                <td style="background-color: #f8f9fa; padding: 32px; text-align: center;">
+                  <p style="color: #a0aec0; font-size: 12px; margin: 0;">
+                    © 2025 Calo. All rights reserved.
                   </p>
-                  <p style="color: #718096; font-size: 14px; margin: 0 0 16px 0; line-height: 1.5;">
-                    Your Personal Nutrition & Fitness Assistant<br>
-                    Transform your health, one meal at a time.
-                  </p>
-
-                  <!-- Links -->
-                  <div style="margin: 24px 0;">
-                    <a href="#" style="color: #4ECDC4; text-decoration: none; font-size: 14px; margin: 0 16px; font-weight: 500;">Privacy Policy</a>
-                    <a href="#" style="color: #4ECDC4; text-decoration: none; font-size: 14px; margin: 0 16px; font-weight: 500;">Terms of Service</a>
-                    <a href="#" style="color: #4ECDC4; text-decoration: none; font-size: 14px; margin: 0 16px; font-weight: 500;">Support</a>
-                  </div>
-
-                  <!-- Copyright -->
-                  <p style="color: #a0aec0; font-size: 12px; margin: 20px 0 0 0;">
-                    © 2025 Calo. All rights reserved.<br>
-                    <a href="#" style="color: #a0aec0; text-decoration: none;">Unsubscribe</a> | 
-                    <a href="#" style="color: #a0aec0; text-decoration: none;">Update Preferences</a>
-                  </p>
-
                 </td>
               </tr>
 
             </table>
-
           </td>
         </tr>
       </table>
     </body>
     </html>
-  `,
+      `,
       };
 
+      console.log("📤 Sending email...");
       const result = await transporter.sendMail(mailOptions);
-      console.log(`✅ Verification email sent to ${email}`);
+      console.log(`✅ Verification email sent successfully`);
       console.log("📧 Message ID:", result.messageId);
+      console.log("📧 Response:", result.response);
 
-      // Still log to console for development
+      // Log to console for development
       if (process.env.NODE_ENV !== "production") {
         console.log(`📧 Verification email for ${email}`);
         console.log(`👤 Name: ${name}`);
@@ -357,37 +323,40 @@ export class AuthService {
     } catch (error: any) {
       console.error("❌ Failed to send verification email:", error);
 
-      // More detailed error logging
+      // Detailed error logging
       if (error.code === "EAUTH") {
+        console.error("🔐 Gmail Authentication Failed!");
+        console.error("Solutions:");
+        console.error("1. Enable 2-Factor Authentication on Gmail");
         console.error(
-          "🔐 Authentication failed - check your email credentials"
+          "2. Generate an App Password at: https://myaccount.google.com/apppasswords"
         );
         console.error(
-          "💡 Make sure you're using an App Password for Gmail, not your regular password"
+          "3. Use the 16-character App Password (remove all spaces)"
         );
-      } else if (error.code === "ECONNECTION") {
-        console.error("🌐 Connection failed - check your internet connection");
+        console.error("4. Update EMAIL_PASSWORD in .env");
+      } else if (error.code === "ECONNECTION" || error.code === "ETIMEDOUT") {
+        console.error("🌐 Connection issue - check internet/firewall");
       } else if (error.code === "ESOCKET") {
-        console.error("🔌 Socket error - check network connectivity");
+        console.error("🔌 Socket error - network issue");
       } else {
-        console.error("🚨 Unknown email error:", error.message);
+        console.error("🚨 Error details:", {
+          code: error.code,
+          message: error.message,
+          command: error.command,
+        });
       }
 
-      // Fallback to console logging for development
-      console.log(`📧 FALLBACK - Verification email for ${email}`);
-      console.log(`👤 Name: ${name}`);
-      console.log(`🔑 Verification Code: ${code}`);
-      console.log(`⏰ Code expires in 15 minutes`);
-      console.log(`⚠️ Please check server console for verification code`);
+      // Fallback to console logging
+      console.log(`📧 FALLBACK - Verification code: ${code}`);
 
-      // For production, we should throw the error so signup knows email failed
+      // In production, throw error so signup knows email failed
       if (process.env.NODE_ENV === "production") {
         throw new Error(
           "Failed to send verification email. Please try again or contact support."
         );
       }
 
-      // In development, continue without throwing error
       return true;
     }
   }

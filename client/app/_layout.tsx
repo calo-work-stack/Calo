@@ -258,7 +258,7 @@ const AppContent = React.memo(() => {
           : null,
       });
 
-      // 🔧 FIX: Allow access to privacy policy and other public routes without authentication
+      // PUBLIC ROUTES - Allow access without authentication
       const publicRoutes = [
         "privacy-policy",
         "terms-of-service",
@@ -270,13 +270,12 @@ const AppContent = React.memo(() => {
         currentPath.includes(route)
       );
 
-      // Skip routing logic for public routes
       if (isPublicRoute) {
         console.log("🚦 Accessing public route - no authentication required");
         return;
       }
 
-      // If not authenticated, redirect to welcome page first (except if already in auth routes)
+      // NOT AUTHENTICATED - Redirect to welcome/auth
       if (!isAuthenticated) {
         const authRoutes = [
           "welcome",
@@ -288,7 +287,6 @@ const AppContent = React.memo(() => {
           "reset-password-verify",
         ];
 
-        // If not in any auth route, redirect to welcome
         if (!authRoutes.some((route) => currentPath.includes(route))) {
           console.log("🚦 Not authenticated - redirecting to welcome page");
           router.replace("/(auth)/welcome");
@@ -296,15 +294,13 @@ const AppContent = React.memo(() => {
         return;
       }
 
-      // If authenticated but no user data, wait for it
+      // AUTHENTICATED - Wait for user data
       if (!user) {
         console.log("🚦 Waiting for user data...");
         return;
       }
 
-      // Step-by-Step Progress Check (only for authenticated users)
-
-      // Step 1: Check Email Verification
+      // STEP 1: Email Verification Check
       if (!user.email_verified) {
         if (!currentPath.includes("email-verification")) {
           console.log("🚦 Step 1 Failed: Email not verified - redirecting");
@@ -313,34 +309,40 @@ const AppContent = React.memo(() => {
         return;
       }
 
-      // Step 2: Check Questionnaire Completion
-      // Users MUST complete questionnaire before accessing the app
+      // STEP 2: Questionnaire Completion Check
+      // CRITICAL: Only redirect if NOT in questionnaire AND not completed
       if (!user.is_questionnaire_completed) {
         const isInQuestionnaire = currentPath.includes("questionnaire");
 
-        // Always redirect to questionnaire if not completed (except if already there)
         if (!isInQuestionnaire) {
           console.log(
             "🚦 Step 2: Questionnaire not completed - redirecting to questionnaire"
           );
           router.replace("/questionnaire");
+        } else {
+          console.log("🚦 Step 2: User is in questionnaire - allowing access");
         }
-        return;
+        return; // CRITICAL: Stop here - don't check subscription yet
       }
 
-      // Step 3: Check Plan Selection
+      // STEP 3: Plan Selection Check
+      // Only check subscription AFTER questionnaire is completed
       if (!user.subscription_type || user.subscription_type === null) {
-        if (!currentPath.includes("payment-plan")) {
+        if (
+          !currentPath.includes("payment-plan") &&
+          !currentPath.includes("payment")
+        ) {
           console.log("🚦 Step 3 Failed: No plan selected - redirecting");
           router.replace("/payment-plan");
         }
         return;
       }
 
-      // Step 4: All checks passed - determine where user should be
-      // Define routes that are allowed outside of tabs
+      // STEP 4: All checks passed - User is fully set up
+      // Allow access to all routes
       const allowedRoutes = [
         "payment",
+        "payment-plan",
         "privacy-policy",
         "menu/",
         "activeMenu",
@@ -358,13 +360,13 @@ const AppContent = React.memo(() => {
         isInMenu: currentPath.includes("menu/"),
       });
 
-      // If user is in an allowed route, let them stay
+      // If in an allowed route, stay there
       if (isAllowedRoute) {
         console.log("✅ User is in allowed route - staying");
         return;
       }
 
-      // If user is in an auth route but fully authenticated, redirect to main app
+      // If in auth route but fully authenticated, redirect to main app
       const authRoutes = [
         "welcome",
         "signin",
@@ -374,6 +376,7 @@ const AppContent = React.memo(() => {
         "resetPassword",
         "reset-password-verify",
       ];
+
       const isInAuthRoute = authRoutes.some((route) =>
         currentPath.includes(route)
       );
@@ -386,7 +389,7 @@ const AppContent = React.memo(() => {
         return;
       }
 
-      // If path is empty or root, redirect to tabs
+      // If at root, redirect to tabs
       if (currentPath === "" || currentPath === "/") {
         console.log("🚦 At root - redirecting to main app");
         router.replace("/(tabs)");
