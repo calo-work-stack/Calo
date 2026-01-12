@@ -263,12 +263,9 @@ export default function PaymentPlan() {
       // Add small delay to prevent re-render conflicts
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      // Navigate based on plan type
-      if (planId === "FREE") {
-        router.replace("/(tabs)");
-      } else {
-        router.replace("/questionnaire");
-      }
+      // Navigate to main app after plan selection
+      // All users (FREE and paid) go to tabs after selecting a plan
+      router.replace("/(tabs)");
     } catch (error: any) {
       console.error("Plan selection error:", error);
       Alert.alert("שגיאה", error.message || "נכשל בעדכון התוכנית");

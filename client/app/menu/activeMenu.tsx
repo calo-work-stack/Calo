@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
+import { useTheme } from "@/src/context/ThemeContext";
 import {
   ArrowLeft,
   ChevronDown,
@@ -70,6 +71,7 @@ export default function ActiveMenu() {
   const { language } = useLanguage();
   const router = useRouter();
   const { planId } = useLocalSearchParams();
+  const { colors } = useTheme();
 
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -241,9 +243,9 @@ export default function ActiveMenu() {
 
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: "#FAFAFA" }]}>
-        <ActivityIndicator size="large" color="#10B981" />
-        <Text style={styles.loadingText}>Loading your menu...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.emerald500} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading your menu...</Text>
       </View>
     );
   }
@@ -264,15 +266,15 @@ export default function ActiveMenu() {
   const currentDay = mealPlan.days[selectedDay];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Clean Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#111827" />
+          <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{mealPlan.name}</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{mealPlan.name}</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
             Day {selectedDay + 1} of {mealPlan.days.length}
           </Text>
         </View>
@@ -283,7 +285,7 @@ export default function ActiveMenu() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.dayTabsContainer}
+        style={[styles.dayTabsContainer, { backgroundColor: colors.card, borderBottomColor: colors.border }]}
         contentContainerStyle={styles.dayTabsContent}
       >
         {mealPlan.days.map((day, index) => {
@@ -303,16 +305,16 @@ export default function ActiveMenu() {
               onPress={() => setSelectedDay(index)}
               style={[
                 styles.dayTab,
-                isSelected && styles.dayTabSelected,
+                { backgroundColor: isSelected ? colors.emerald500 : colors.surface },
               ]}
             >
-              <Text style={[styles.dayTabName, isSelected && styles.dayTabNameSelected]}>
+              <Text style={[styles.dayTabName, { color: isSelected ? "#FFFFFF" : colors.textSecondary }]}>
                 {dayName}
               </Text>
-              <Text style={[styles.dayTabDate, isSelected && styles.dayTabDateSelected]}>
+              <Text style={[styles.dayTabDate, { color: isSelected ? "#FFFFFF" : colors.text }]}>
                 {dateNumber}
               </Text>
-              <Text style={[styles.dayTabMonth, isSelected && styles.dayTabMonthSelected]}>
+              <Text style={[styles.dayTabMonth, { color: isSelected ? "rgba(255,255,255,0.8)" : colors.textTertiary }]}>
                 {monthName}
               </Text>
             </TouchableOpacity>
@@ -328,7 +330,7 @@ export default function ActiveMenu() {
           const mealTypeEmoji = getMealTypeEmoji(meal.meal_type);
 
           return (
-            <View key={meal.meal_id} style={styles.mealCard}>
+            <View key={meal.meal_id} style={[styles.mealCard, { backgroundColor: colors.card }]}>
               {/* Meal Header */}
               <TouchableOpacity
                 onPress={() => toggleMealExpanded(meal.meal_id)}
@@ -351,12 +353,12 @@ export default function ActiveMenu() {
                   <View style={[styles.mealTypeBadge, { backgroundColor: mealTypeColor }]}>
                     <Text style={styles.mealTypeText}>{meal.meal_type}</Text>
                   </View>
-                  <Text style={styles.mealName} numberOfLines={1}>
+                  <Text style={[styles.mealName, { color: colors.text }]} numberOfLines={1}>
                     {meal.name}
                   </Text>
                   <View style={styles.mealMeta}>
-                    <Flame size={14} color="#F59E0B" />
-                    <Text style={styles.mealMetaText}>{meal.calories} cal</Text>
+                    <Flame size={14} color={colors.amber500} />
+                    <Text style={[styles.mealMetaText, { color: colors.textSecondary }]}>{meal.calories} cal</Text>
                     {meal.dietary_tags && meal.dietary_tags.length > 0 && (
                       <DietaryIcons tags={meal.dietary_tags} size={14} style={{ marginLeft: 6 }} />
                     )}
@@ -365,38 +367,38 @@ export default function ActiveMenu() {
 
                 {/* Expand Icon */}
                 {isExpanded ? (
-                  <ChevronUp size={22} color="#6B7280" />
+                  <ChevronUp size={22} color={colors.textSecondary} />
                 ) : (
-                  <ChevronDown size={22} color="#6B7280" />
+                  <ChevronDown size={22} color={colors.textSecondary} />
                 )}
               </TouchableOpacity>
 
               {/* Expanded Content */}
               {isExpanded && (
-                <View style={styles.expandedContent}>
+                <View style={[styles.expandedContent, { borderTopColor: colors.border }]}>
                   {/* Nutrition Grid */}
-                  <View style={styles.nutritionGrid}>
+                  <View style={[styles.nutritionGrid, { backgroundColor: colors.surface }]}>
                     <View style={styles.nutritionItem}>
-                      <Text style={styles.nutritionValue}>{meal.protein}g</Text>
-                      <Text style={styles.nutritionLabel}>Protein</Text>
+                      <Text style={[styles.nutritionValue, { color: colors.indigo500 }]}>{meal.protein}g</Text>
+                      <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>Protein</Text>
                     </View>
-                    <View style={styles.nutritionDivider} />
+                    <View style={[styles.nutritionDivider, { backgroundColor: colors.border }]} />
                     <View style={styles.nutritionItem}>
-                      <Text style={styles.nutritionValue}>{meal.carbs}g</Text>
-                      <Text style={styles.nutritionLabel}>Carbs</Text>
+                      <Text style={[styles.nutritionValue, { color: colors.amber500 }]}>{meal.carbs}g</Text>
+                      <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>Carbs</Text>
                     </View>
-                    <View style={styles.nutritionDivider} />
+                    <View style={[styles.nutritionDivider, { backgroundColor: colors.border }]} />
                     <View style={styles.nutritionItem}>
-                      <Text style={styles.nutritionValue}>{meal.fat}g</Text>
-                      <Text style={styles.nutritionLabel}>Fat</Text>
+                      <Text style={[styles.nutritionValue, { color: colors.pink500 }]}>{meal.fat}g</Text>
+                      <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>Fat</Text>
                     </View>
                   </View>
 
                   {/* Ingredients with Checkmarks */}
                   <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                      <ChefHat size={18} color="#10B981" />
-                      <Text style={styles.sectionTitle}>Ingredients</Text>
+                      <ChefHat size={18} color={colors.emerald500} />
+                      <Text style={[styles.sectionTitle, { color: colors.text }]}>Ingredients</Text>
                     </View>
                     <View style={styles.ingredientsList}>
                       {meal.ingredients.map((ingredient) => {
@@ -412,14 +414,15 @@ export default function ActiveMenu() {
                             activeOpacity={0.7}
                           >
                             {isChecked ? (
-                              <CheckCircle2 size={20} color="#10B981" fill="#10B981" />
+                              <CheckCircle2 size={20} color={colors.emerald500} fill={colors.emerald500} />
                             ) : (
-                              <Circle size={20} color="#D1D5DB" />
+                              <Circle size={20} color={colors.border} />
                             )}
                             <Text
                               style={[
                                 styles.ingredientText,
-                                isChecked && styles.ingredientTextChecked,
+                                { color: colors.text },
+                                isChecked && [styles.ingredientTextChecked, { color: colors.textTertiary }],
                               ]}
                             >
                               {ingredient.name} - {ingredient.quantity}
@@ -433,9 +436,9 @@ export default function ActiveMenu() {
                   {/* Instructions */}
                   {meal.instructions && (
                     <View style={styles.section}>
-                      <Text style={styles.sectionTitle}>Instructions</Text>
-                      <View style={styles.instructionsContainer}>
-                        <Text style={styles.instructionsText}>{meal.instructions}</Text>
+                      <Text style={[styles.sectionTitle, { color: colors.text }]}>Instructions</Text>
+                      <View style={[styles.instructionsContainer, { backgroundColor: colors.surface }]}>
+                        <Text style={[styles.instructionsText, { color: colors.textSecondary }]}>{meal.instructions}</Text>
                       </View>
                     </View>
                   )}
@@ -461,13 +464,13 @@ export default function ActiveMenu() {
         onRequestClose={() => {}}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.reviewModal}>
-            <Text style={styles.reviewTitle}>
+          <View style={[styles.reviewModal, { backgroundColor: colors.card }]}>
+            <Text style={[styles.reviewTitle, { color: colors.text }]}>
               {reviewType === "completed"
                 ? "Congratulations! 🎉"
                 : "Menu Period Ended"}
             </Text>
-            <Text style={styles.reviewSubtitle}>
+            <Text style={[styles.reviewSubtitle, { color: colors.textSecondary }]}>
               {reviewType === "completed"
                 ? "You've completed your meal plan!"
                 : "How did your meal plan go?"}
@@ -483,8 +486,8 @@ export default function ActiveMenu() {
                 >
                   <Star
                     size={36}
-                    color={star <= rating ? "#F59E0B" : "#D1D5DB"}
-                    fill={star <= rating ? "#F59E0B" : "transparent"}
+                    color={star <= rating ? colors.amber500 : colors.border}
+                    fill={star <= rating ? colors.amber500 : "transparent"}
                   />
                 </TouchableOpacity>
               ))}
@@ -492,13 +495,13 @@ export default function ActiveMenu() {
 
             {/* Feedback Input */}
             <TextInput
-              style={styles.feedbackInput}
+              style={[styles.feedbackInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder={
                 reviewType === "completed"
                   ? "Share your experience (optional)"
                   : "What prevented you from completing?"
               }
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.textTertiary}
               multiline
               numberOfLines={4}
               value={feedback}
@@ -510,7 +513,7 @@ export default function ActiveMenu() {
             <TouchableOpacity
               onPress={submitReview}
               disabled={isSubmittingReview}
-              style={styles.submitButton}
+              style={[styles.submitButton, { backgroundColor: colors.emerald500 }]}
             >
               {isSubmittingReview ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
@@ -528,7 +531,6 @@ export default function ActiveMenu() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFA",
   },
   loadingContainer: {
     flex: 1,
@@ -562,11 +564,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
   },
   backButton: {
     width: 40,
@@ -589,9 +589,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   dayTabsContainer: {
-    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
   },
   dayTabsContent: {
     paddingHorizontal: 16,
@@ -599,42 +597,26 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   dayTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 12,
     alignItems: "center",
-    minWidth: 70,
-    backgroundColor: "#F9FAFB",
-  },
-  dayTabSelected: {
-    backgroundColor: "#10B981",
+    minWidth: 65,
   },
   dayTabName: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "600",
-    color: "#6B7280",
     textTransform: "uppercase",
   },
-  dayTabNameSelected: {
-    color: "#FFFFFF",
-  },
   dayTabDate: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
-    color: "#111827",
     marginTop: 2,
-  },
-  dayTabDateSelected: {
-    color: "#FFFFFF",
   },
   dayTabMonth: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "500",
-    color: "#9CA3AF",
-    marginTop: 2,
-  },
-  dayTabMonthSelected: {
-    color: "rgba(255, 255, 255, 0.8)",
+    marginTop: 1,
   },
   mealsScrollView: {
     flex: 1,
@@ -644,12 +626,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   mealCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: 14,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
     elevation: 2,
     overflow: "hidden",
   },
@@ -662,19 +643,19 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   mealImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   mealImagePlaceholder: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
   },
   mealImageEmoji: {
-    fontSize: 32,
+    fontSize: 28,
   },
   mealInfo: {
     flex: 1,

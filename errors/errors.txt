@@ -114,3 +114,5 @@ Unknown argument `updated_at`. Did you mean `created_at`? Available options are 
  ERROR  💥 Reset code verification error: [APIError: Request failed with status code 400]
  also there is an error that it wont go from one index to the next when i enter the code fix that 
  Styling need to figure out a sign stlye for the entire app 
+
+ media querry for ios, and why starts from questionnaire and the scales to fix,why is it locked on the queastiiobnnaire lanuguage inter fix and redesign to work for ios and the toolbar as well, alergies choices,network error when trying to finish queastiiobnnaire

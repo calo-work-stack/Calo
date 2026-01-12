@@ -36,7 +36,8 @@ import { prisma, connectDatabase } from "./lib/database";
 
 // Load environment variables first
 dotenv.config();
-
+console.log('🔍 DATABASE_URL loaded:', process.env.DATABASE_URL ? '✅ Yes' : '❌ No');
+console.log('🔍 First 50 chars:', process.env.DATABASE_URL?.substring(0, 50));
 // ⚠️ MOVE server and config declarations BEFORE startServer function
 let server: Server;
 

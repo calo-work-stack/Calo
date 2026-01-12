@@ -836,9 +836,12 @@ export const chatAPI = {
       throw new APIError("Message cannot be empty");
     }
 
+    // Use longer timeout for AI chat - AI responses can take time
     const response = await api.post("/chat/message", {
       message: message.trim(),
       language,
+    }, {
+      timeout: 60000, // 60 second timeout for AI chat
     });
 
     if (!response.data.success) {

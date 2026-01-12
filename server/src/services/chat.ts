@@ -23,8 +23,8 @@ export class ChatService {
       // Get user context for personalized advice
       const userContext = await this.getUserNutritionContext(userId);
 
-      // Get recent chat history for context
-      const recentHistory = await this.getChatHistory(userId, 10);
+      // Get recent chat history for context (limited to 5 for faster responses)
+      const recentHistory = await this.getChatHistory(userId, 5);
 
       // Create system prompt
       const systemPrompt = this.createNutritionSystemPrompt(
@@ -47,15 +47,18 @@ export class ChatService {
         try {
           console.log("🔄 Calling OpenAI API...");
 
-          // Call OpenAI with improved error handling
+          // Call OpenAI with optimized settings for faster responses
           const response = await openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
               { role: "system", content: systemPrompt },
               ...conversationHistory,
             ],
-            max_completion_tokens: 16000,
-            temperature: 0.7,
+            max_completion_tokens: 2048, // Reduced from 16000 - chat responses rarely need more
+            temperature: 0.6, // Slightly lower for faster, more deterministic responses
+            top_p: 0.9, // Nucleus sampling for better quality with speed
+            frequency_penalty: 0.1, // Reduce repetition
+            presence_penalty: 0.1, // Encourage variety
           });
 
           const aiContent = response.choices[0]?.message?.content;
@@ -454,8 +457,11 @@ For cooking questions: give suggestions for nutritional improvement of the recip
             content: healthPrompt,
           },
         ],
-        max_completion_tokens: 16000,
-        temperature: 0.7,
+        max_completion_tokens: 2048, // Reduced for faster responses
+        temperature: 0.6,
+        top_p: 0.9,
+        frequency_penalty: 0.1,
+        presence_penalty: 0.1,
       });
 
       return (

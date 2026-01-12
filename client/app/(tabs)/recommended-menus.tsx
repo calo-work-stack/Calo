@@ -11,6 +11,8 @@ import {
   Modal,
   TextInput,
   FlatList,
+  Platform,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -949,6 +951,9 @@ export default function RecommendedMenusScreen() {
 
 // ==================== STYLES ====================
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const isSmallDevice = SCREEN_WIDTH < 375;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -956,9 +961,9 @@ const styles = StyleSheet.create({
 
   // Fixed Search Header
   searchHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 16,
+    paddingHorizontal: isSmallDevice ? 16 : 20,
+    paddingTop: Platform.select({ ios: 8, android: 10 }),
+    paddingBottom: isSmallDevice ? 12 : 16,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,0,0,0.05)",
   },
@@ -997,15 +1002,15 @@ const styles = StyleSheet.create({
   },
 
   contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 100,
+    paddingHorizontal: isSmallDevice ? 16 : 20,
+    paddingTop: isSmallDevice ? 16 : 20,
+    paddingBottom: Platform.select({ ios: 120, android: 100 }),
   },
 
   pageTitle: {
-    fontSize: 32,
+    fontSize: isSmallDevice ? 26 : 32,
     fontWeight: "900",
-    marginBottom: 20,
+    marginBottom: isSmallDevice ? 16 : 20,
     letterSpacing: -0.8,
   },
 

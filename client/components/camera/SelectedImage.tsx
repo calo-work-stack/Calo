@@ -10,6 +10,8 @@ import {
   Dimensions,
   ActivityIndicator,
   Platform,
+  Keyboard,
+  KeyboardAvoidingView,
 } from "react-native";
 import { X, RotateCcw, Sparkles, Zap } from "lucide-react-native";
 import { BlurView } from "expo-blur";
@@ -46,6 +48,9 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const [showDetailsInput, setShowDetailsInput] = useState(false);
+  const [inputHeight, setInputHeight] = useState(110);
+  const inputHeightAnim = useRef(new Animated.Value(110)).current;
+  const keyboardOffset = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -61,6 +66,34 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
         useNativeDriver: true,
       }),
     ]).start();
+
+    // Keyboard listeners
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      (e) => {
+        Animated.spring(keyboardOffset, {
+          toValue: e.endCoordinates.height,
+          duration: e.duration,
+          useNativeDriver: true,
+        }).start();
+      }
+    );
+
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      (e) => {
+        Animated.spring(keyboardOffset, {
+          toValue: 0,
+          duration: e.duration,
+          useNativeDriver: true,
+        }).start();
+      }
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -128,6 +161,20 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
   const handleStartAnalysis = () => {
     setShowDetailsInput(false);
     onAnalyze();
+  };
+
+  const handleContentSizeChange = (event: any) => {
+    const newHeight = Math.min(
+      Math.max(event.nativeEvent.contentSize.height, 110),
+      220
+    );
+    setInputHeight(newHeight);
+    Animated.spring(inputHeightAnim, {
+      toValue: newHeight,
+      tension: 50,
+      friction: 8,
+      useNativeDriver: false,
+    }).start();
   };
 
   return (
@@ -301,22 +348,48 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
         <Animated.View
           style={[
             styles.bottomSheet,
-            { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
+            {
+              opacity: fadeAnim,
+              transform: [
+                { scale: scaleAnim },
+                { translateY: Animated.multiply(keyboardOffset, -1) },
+              ],
+            },
           ]}
         >
           <BlurView intensity={90} tint="dark" style={styles.inputSheet}>
+            <Text style={styles.inputLabel}>Add meal details (optional)</Text>
+
             <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                value={userComment}
-                onChangeText={onCommentChange}
-                placeholder="Add details about your meal..."
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                multiline
-                maxLength={200}
-                autoFocus
-              />
-              <Text style={styles.charCount}>{userComment.length}/200</Text>
+              <Animated.View
+                style={[styles.inputWrapper, { height: inputHeightAnim }]}
+              >
+                <TextInput
+                  style={styles.input}
+                  value={userComment}
+                  onChangeText={onCommentChange}
+                  onContentSizeChange={handleContentSizeChange}
+                  placeholder="e.g., Grilled chicken breast with roasted vegetables..."
+                  placeholderTextColor="rgba(255,255,255,0.35)"
+                  multiline
+                  maxLength={200}
+                  autoFocus
+                  scrollEnabled={false}
+                />
+              </Animated.View>
+              <View style={styles.inputFooter}>
+                <Text style={styles.inputHint}>
+                  Help us identify your meal more accurately
+                </Text>
+                <Text
+                  style={[
+                    styles.charCount,
+                    userComment.length > 180 && styles.charCountWarning,
+                  ]}
+                >
+                  {userComment.length}/200
+                </Text>
+              </View>
             </View>
 
             <View style={styles.buttonRow}>
@@ -339,7 +412,8 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
                   end={{ x: 1, y: 1 }}
                   style={styles.primaryGradient}
                 >
-                  <Text style={styles.primaryText}>Analyze</Text>
+                  <Sparkles size={18} color="#FFF" strokeWidth={2.5} />
+                  <Text style={styles.primaryText}>Analyze Now</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -505,12 +579,19 @@ const styles = StyleSheet.create({
   inputSheet: {
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    paddingTop: 28,
+    paddingTop: 32,
     paddingBottom: 44,
     paddingHorizontal: 24,
     borderTopWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
     backgroundColor: "rgba(0,0,0,0.15)",
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.9)",
+    marginBottom: 16,
+    letterSpacing: 0.3,
   },
   mainButton: {
     width: "100%",
@@ -542,26 +623,44 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  input: {
+  inputWrapper: {
     backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.12)",
+    overflow: "hidden",
+  },
+  input: {
     padding: 18,
     fontSize: 15,
     color: "#FFF",
-    minHeight: 110,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.12)",
     fontWeight: "400",
     textAlignVertical: "top",
+    height: "100%",
+  },
+  inputFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 10,
+    paddingHorizontal: 4,
+  },
+  inputHint: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.35)",
+    fontWeight: "500",
+    flex: 1,
+    marginRight: 12,
   },
   charCount: {
     fontSize: 11,
-    color: "rgba(255,255,255,0.3)",
-    textAlign: "right",
-    marginTop: 6,
-    fontWeight: "500",
+    color: "rgba(255,255,255,0.4)",
+    fontWeight: "600",
+  },
+  charCountWarning: {
+    color: "#FBBF24",
   },
   buttonRow: {
     flexDirection: "row",
@@ -577,7 +676,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.12)",
   },
   secondaryText: {
-    color: "rgba(255,255,255,0.8)",
+    color: "rgba(255,255,255,0.75)",
     fontWeight: "700",
     fontSize: 15,
   },
@@ -595,6 +694,8 @@ const styles = StyleSheet.create({
     paddingVertical: 17,
     alignItems: "center",
     justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
   },
   primaryText: {
     color: "#FFF",

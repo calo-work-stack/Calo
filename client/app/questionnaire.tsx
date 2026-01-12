@@ -10,7 +10,9 @@ import {
   Modal,
   Dimensions,
   StatusBar,
+  Platform,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { router, useLocalSearchParams } from "expo-router";
 import { RootState, AppDispatch } from "@/src/store";
@@ -55,6 +57,7 @@ interface QuestionnaireData {
   target_weight_kg: string | null;
   additional_personal_info: string[];
   main_goal: string;
+  secondary_goal: string | null;
   goal_timeframe_days: string | null;
   commitment_level: string;
   physical_activity_level: string;
@@ -77,12 +80,81 @@ interface QuestionnaireData {
   notifications_preference: "DAILY" | "WEEKLY" | "NONE" | null;
 }
 
+// Known allergens list for validation
+const KNOWN_ALLERGENS = [
+  "gluten",
+  "dairy",
+  "eggs",
+  "nuts",
+  "peanuts",
+  "fish",
+  "shellfish",
+  "soy",
+  "wheat",
+  "sesame",
+  "milk",
+  "lactose",
+  "tree nuts",
+  "almonds",
+  "cashews",
+  "walnuts",
+  "pistachios",
+  "hazelnuts",
+  "pecans",
+  "macadamia",
+  "brazil nuts",
+  "pine nuts",
+  "shrimp",
+  "crab",
+  "lobster",
+  "oysters",
+  "clams",
+  "mussels",
+  "scallops",
+  "squid",
+  "octopus",
+  "salmon",
+  "tuna",
+  "cod",
+  "halibut",
+  "sardines",
+  "anchovies",
+  "celery",
+  "mustard",
+  "sulfites",
+  "corn",
+  "gelatin",
+  "lupin",
+  "molluscs",
+  "chicken",
+  "beef",
+  "pork",
+  "lamb",
+  "אגוזים",
+  "בוטנים",
+  "חלב",
+  "גלוטן",
+  "ביצים",
+  "דגים",
+  "רכיכות",
+  "סויה",
+  "חיטה",
+  "שומשום",
+  "סלרי",
+  "חרדל",
+  "סולפיטים",
+  "תירס",
+  "ג'לטין",
+  "לופין",
+];
+
 const QuestionnaireScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const { currentLanguage } = useLanguage();
   const isRTL = currentLanguage === "he";
   const dispatch = useDispatch<AppDispatch>();
+  const insets = useSafeAreaInsets();
   const { user } = useSelector((state: RootState) => state.auth);
   const { questionnaire, isSaving, isLoading, error } = useSelector(
     (state: RootState) => state.questionnaire
@@ -103,6 +175,7 @@ const QuestionnaireScreen: React.FC = () => {
     target_weight_kg: null,
     additional_personal_info: [],
     main_goal: "",
+    secondary_goal: null,
     goal_timeframe_days: null,
     commitment_level: "",
     physical_activity_level: "",
@@ -124,6 +197,44 @@ const QuestionnaireScreen: React.FC = () => {
     personalized_tips: true,
     notifications_preference: null,
   });
+
+  // Validate allergen with detailed feedback
+  const validateAllergen = (allergen: string): { valid: boolean; errorKey?: string } => {
+    const normalized = allergen.toLowerCase().trim();
+
+    // Check minimum length
+    if (normalized.length < 2) {
+      return { valid: false, errorKey: "allergenTooShort" };
+    }
+
+    // Check for invalid characters (random keyboard mashing)
+    const hasInvalidPattern = /^[^aeiouאוי]*$/i.test(normalized) && normalized.length > 4;
+    if (hasInvalidPattern && !/^[\u0590-\u05FF]+$/.test(normalized)) {
+      return { valid: false, errorKey: "allergenInvalidChars" };
+    }
+
+    // Check if it's a known allergen
+    const isKnown = KNOWN_ALLERGENS.some(
+      (known) => known.toLowerCase() === normalized
+    );
+    if (isKnown) {
+      return { valid: true };
+    }
+
+    // For Hebrew text, check if it has valid Hebrew letters
+    const isHebrew = /^[\u0590-\u05FF\s]+$/.test(normalized);
+    if (isHebrew && normalized.length >= 2) {
+      return { valid: true };
+    }
+
+    // For English text, check if it has vowels (real words have vowels)
+    const hasVowels = /[aeiouáéíóúàèìòùâêîôûäëïöü]/i.test(normalized);
+    if (hasVowels && normalized.length >= 3) {
+      return { valid: true };
+    }
+
+    return { valid: false, errorKey: "allergenNotRecognized" };
+  };
 
   // Load existing questionnaire data
   useEffect(() => {
@@ -167,6 +278,7 @@ const QuestionnaireScreen: React.FC = () => {
           questionnaire.additional_personal_info
         ),
         main_goal: safeString(questionnaire.main_goal),
+        secondary_goal: safeString(questionnaire.secondary_goal) || null,
         goal_timeframe_days: safeString(questionnaire.goal_timeframe_days),
         commitment_level: safeString(questionnaire.commitment_level),
         physical_activity_level: safeString(
@@ -218,6 +330,23 @@ const QuestionnaireScreen: React.FC = () => {
     setFormData({ ...formData, [key]: newArray });
   };
 
+  // Handle allergen validation
+  const handleAllergyAdd = (items: string[]) => {
+    const lastItem = items[items.length - 1];
+    if (lastItem) {
+      const validation = validateAllergen(lastItem);
+      if (!validation.valid) {
+        Alert.alert(
+          t("questionnaire.validation.invalidAllergen"),
+          t(`questionnaire.validation.${validation.errorKey || "allergenNotRecognized"}`)
+        );
+        return false;
+      }
+    }
+    setFormData({ ...formData, allergies: items });
+    return true;
+  };
+
   const handleSubmit = async () => {
     try {
       // Validate required fields
@@ -237,11 +366,27 @@ const QuestionnaireScreen: React.FC = () => {
         return;
       }
 
+      // Validate all allergies
+      const invalidAllergies = formData.allergies.filter(
+        (allergen) => !validateAllergen(allergen).valid
+      );
+      if (invalidAllergies.length > 0) {
+        Alert.alert(
+          t("questionnaire.validation.invalidAllergen"),
+          t("questionnaire.validation.pleaseRemoveInvalid") +
+            ": " +
+            invalidAllergies.join(", ")
+        );
+        return;
+      }
+
       const cleanFormData = { ...formData };
 
       // Convert empty strings to null for optional fields
       if (cleanFormData.target_weight_kg === "")
         cleanFormData.target_weight_kg = null;
+      if (cleanFormData.secondary_goal === "")
+        cleanFormData.secondary_goal = null;
       if (cleanFormData.goal_timeframe_days === "")
         cleanFormData.goal_timeframe_days = null;
       if (cleanFormData.daily_food_budget === "")
@@ -365,31 +510,31 @@ const QuestionnaireScreen: React.FC = () => {
       {
         key: "WEIGHT_LOSS",
         label: t("questionnaire.loseWeight"),
-        description: "Reduce body weight safely",
+        description: t("questionnaire.loseWeightDesc"),
         icon: <Text style={styles.emoji}>🏃‍♀️</Text>,
       },
       {
         key: "WEIGHT_GAIN",
         label: t("questionnaire.gainWeight"),
-        description: "Build healthy mass",
+        description: t("questionnaire.gainWeightDesc"),
         icon: <Text style={styles.emoji}>💪</Text>,
       },
       {
         key: "WEIGHT_MAINTENANCE",
         label: t("questionnaire.maintainWeight"),
-        description: "Keep current weight",
+        description: t("questionnaire.maintainWeightDesc"),
         icon: <Text style={styles.emoji}>⚖️</Text>,
       },
       {
         key: "MEDICAL_CONDITION",
         label: t("questionnaire.improveHealth"),
-        description: "Address health concerns",
+        description: t("questionnaire.improveHealthDesc"),
         icon: <Text style={styles.emoji}>🏥</Text>,
       },
       {
         key: "SPORTS_PERFORMANCE",
         label: t("questionnaire.buildMuscle"),
-        description: "Enhance athletic performance",
+        description: t("questionnaire.buildMuscleDesc"),
         icon: <Text style={styles.emoji}>🏆</Text>,
       },
     ];
@@ -397,26 +542,26 @@ const QuestionnaireScreen: React.FC = () => {
     const activityLevels = [
       {
         key: "NONE",
-        label: t("questionnaire.sedentary"),
-        description: "Desk job, minimal exercise",
+        label: t("questionnaire.notActive"),
+        description: t("questionnaire.notActiveDesc"),
         icon: <Text style={styles.emoji}>🪑</Text>,
       },
       {
         key: "LIGHT",
         label: t("questionnaire.lightlyActive"),
-        description: "Light exercise 1-3 days/week",
+        description: t("questionnaire.lightlyActiveDesc"),
         icon: <Text style={styles.emoji}>🚶‍♀️</Text>,
       },
       {
         key: "MODERATE",
         label: t("questionnaire.moderatelyActive"),
-        description: "Moderate exercise 3-5 days/week",
+        description: t("questionnaire.moderatelyActiveDesc"),
         icon: <Text style={styles.emoji}>🏃‍♀️</Text>,
       },
       {
         key: "HIGH",
         label: t("questionnaire.veryActive"),
-        description: "Heavy exercise 6-7 days/week",
+        description: t("questionnaire.veryActiveDesc"),
         icon: <Text style={styles.emoji}>🏋️‍♀️</Text>,
       },
     ];
@@ -424,7 +569,7 @@ const QuestionnaireScreen: React.FC = () => {
     const sportFrequencies = [
       {
         key: "NONE",
-        label: t("questionnaire.sedentary"),
+        label: t("questionnaire.notActive"),
         icon: <Text style={styles.emoji}>😴</Text>,
       },
       {
@@ -453,25 +598,25 @@ const QuestionnaireScreen: React.FC = () => {
       {
         key: "cooked",
         label: t("questionnaire.cooked"),
-        description: "Fresh home-cooked meals",
+        description: t("questionnaire.cookedDesc"),
         icon: <Text style={styles.emoji}>👨‍🍳</Text>,
       },
       {
         key: "easy_prep",
         label: t("questionnaire.easyPrep"),
-        description: "Quick and simple preparation",
+        description: t("questionnaire.easyPrepDesc"),
         icon: <Text style={styles.emoji}>⚡</Text>,
       },
       {
         key: "ready_made",
         label: t("questionnaire.readyMade"),
-        description: "Pre-prepared healthy options",
+        description: t("questionnaire.readyMadeDesc"),
         icon: <Text style={styles.emoji}>📦</Text>,
       },
       {
         key: "no_cooking",
         label: t("questionnaire.noCooking"),
-        description: "No cooking required",
+        description: t("questionnaire.noCookingDesc"),
         icon: <Text style={styles.emoji}>🥗</Text>,
       },
     ];
@@ -485,7 +630,7 @@ const QuestionnaireScreen: React.FC = () => {
       t("questionnaire.grill"),
     ];
 
-    const allergens = [
+    const commonAllergens = [
       t("questionnaire.gluten"),
       t("questionnaire.dairy"),
       t("questionnaire.eggs"),
@@ -500,37 +645,37 @@ const QuestionnaireScreen: React.FC = () => {
       {
         key: "regular",
         label: t("questionnaire.omnivore"),
-        description: "Balanced diet with all food groups",
+        description: t("questionnaire.omnivoreDesc"),
         icon: <Text style={styles.emoji}>🍽️</Text>,
       },
       {
         key: "low_carb",
         label: t("questionnaire.lowCarb"),
-        description: "Reduced carbohydrate intake",
+        description: t("questionnaire.lowCarbDesc"),
         icon: <Text style={styles.emoji}>🥩</Text>,
       },
       {
         key: "keto",
         label: t("questionnaire.keto"),
-        description: "High fat, very low carb",
+        description: t("questionnaire.ketoDesc"),
         icon: <Text style={styles.emoji}>🥑</Text>,
       },
       {
         key: "vegetarian",
         label: t("questionnaire.vegetarian"),
-        description: "Plant-based with dairy/eggs",
+        description: t("questionnaire.vegetarianDesc"),
         icon: <Text style={styles.emoji}>🌱</Text>,
       },
       {
         key: "vegan",
         label: t("questionnaire.vegan"),
-        description: "Completely plant-based",
+        description: t("questionnaire.veganDesc"),
         icon: <Text style={styles.emoji}>🌿</Text>,
       },
       {
         key: "mediterranean",
         label: t("questionnaire.mediterranean"),
-        description: "Mediterranean-style eating",
+        description: t("questionnaire.mediterraneanDesc"),
         icon: <Text style={styles.emoji}>🫒</Text>,
       },
     ];
@@ -539,19 +684,19 @@ const QuestionnaireScreen: React.FC = () => {
       {
         key: "easy",
         label: t("questionnaire.easy"),
-        description: "Flexible approach",
+        description: t("questionnaire.easyDesc"),
         icon: <Text style={styles.emoji}>😌</Text>,
       },
       {
         key: "moderate",
         label: t("questionnaire.moderate"),
-        description: "Balanced commitment",
+        description: t("questionnaire.moderateDesc"),
         icon: <Text style={styles.emoji}>💪</Text>,
       },
       {
         key: "strict",
         label: t("questionnaire.strict"),
-        description: "Dedicated approach",
+        description: t("questionnaire.strictDesc"),
         icon: <Text style={styles.emoji}>🎯</Text>,
       },
     ];
@@ -603,7 +748,7 @@ const QuestionnaireScreen: React.FC = () => {
             <WeightScale
               label={t("questionnaire.height")}
               value={parseInt(formData.height_cm) || 170}
-              onValueChange={(value: { toString: () => any }) =>
+              onValueChange={(value: number) =>
                 setFormData({ ...formData, height_cm: value.toString() })
               }
               min={120}
@@ -614,7 +759,7 @@ const QuestionnaireScreen: React.FC = () => {
             <WeightScale
               label={t("questionnaire.weight")}
               value={parseInt(formData.weight_kg) || 70}
-              onValueChange={(value: { toString: () => any }) =>
+              onValueChange={(value: number) =>
                 setFormData({ ...formData, weight_kg: value.toString() })
               }
               min={30}
@@ -625,7 +770,7 @@ const QuestionnaireScreen: React.FC = () => {
             <WeightScale
               label={t("questionnaire.targetWeight")}
               value={parseInt(formData.target_weight_kg || "70") || 70}
-              onValueChange={(value: { toString: () => any }) =>
+              onValueChange={(value: number) =>
                 setFormData({ ...formData, target_weight_kg: value.toString() })
               }
               min={30}
@@ -649,6 +794,16 @@ const QuestionnaireScreen: React.FC = () => {
                 setFormData({ ...formData, main_goal: value })
               }
               required
+            />
+
+            <CustomTextInput
+              label={t("questionnaire.secondaryGoal")}
+              value={formData.secondary_goal || ""}
+              onChangeText={(text: any) =>
+                setFormData({ ...formData, secondary_goal: text || null })
+              }
+              placeholder={t("questionnaire.secondaryGoalPlaceholder")}
+              multiline
             />
 
             <CustomTextInput
@@ -766,6 +921,7 @@ const QuestionnaireScreen: React.FC = () => {
               }
               placeholder={t("questionnaire.example50Budget")}
               keyboardType="numeric"
+              prefix="₪"
             />
           </StepContainer>
         );
@@ -778,7 +934,7 @@ const QuestionnaireScreen: React.FC = () => {
           >
             <CustomSwitch
               label={t("questionnaire.kosher")}
-              description="Follow kosher dietary laws"
+              description={t("questionnaire.kosherDesc")}
               value={formData.kosher}
               onValueChange={(value: any) =>
                 setFormData({ ...formData, kosher: value })
@@ -786,12 +942,42 @@ const QuestionnaireScreen: React.FC = () => {
             />
 
             <CheckboxGroup
-              label={t("questionnaire.allergies")}
-              options={allergens}
+              label={t("questionnaire.commonAllergies")}
+              options={commonAllergens}
               selectedValues={formData.allergies}
               onToggle={(value: string) =>
                 handleArrayToggle(formData.allergies, value, "allergies")
               }
+            />
+
+            <DynamicListInput
+              label={t("questionnaire.otherAllergies")}
+              placeholder={t("questionnaire.addAllergyPlaceholder")}
+              items={formData.allergies.filter(
+                (a) => !commonAllergens.includes(a)
+              )}
+              onItemsChange={(items) => {
+                const commonSelected = formData.allergies.filter((a) =>
+                  commonAllergens.includes(a)
+                );
+                const allAllergies = [...commonSelected, ...items];
+
+                // Validate last added item
+                if (items.length > 0) {
+                  const lastItem = items[items.length - 1];
+                  const validation = validateAllergen(lastItem);
+                  if (!validation.valid) {
+                    Alert.alert(
+                      t("questionnaire.validation.invalidAllergen"),
+                      t(`questionnaire.validation.${validation.errorKey || "allergenNotRecognized"}`)
+                    );
+                    return;
+                  }
+                }
+
+                setFormData({ ...formData, allergies: allAllergies });
+              }}
+              maxItems={20}
             />
 
             <OptionGroup
@@ -815,7 +1001,7 @@ const QuestionnaireScreen: React.FC = () => {
             <WeightScale
               label={t("questionnaire.sleepHours")}
               value={parseInt(formData.sleep_hours_per_night || "8") || 8}
-              onValueChange={(value: { toString: () => any }) =>
+              onValueChange={(value: number) =>
                 setFormData({
                   ...formData,
                   sleep_hours_per_night: value.toString(),
@@ -823,7 +1009,7 @@ const QuestionnaireScreen: React.FC = () => {
               }
               min={4}
               max={12}
-              unit="hours"
+              unit={t("questionnaire.hours")}
             />
 
             <OptionGroup
@@ -860,7 +1046,10 @@ const QuestionnaireScreen: React.FC = () => {
             <OptionGroup
               label={t("questionnaire.uploadFrequency")}
               options={[
-                { key: "every_meal", label: t("questionnaire.everyMeal") },
+                {
+                  key: "every_meal",
+                  label: t("questionnaire.everyMeal"),
+                },
                 { key: "daily", label: t("questionnaire.daily") },
                 {
                   key: "several_weekly",
@@ -876,7 +1065,7 @@ const QuestionnaireScreen: React.FC = () => {
 
             <CustomSwitch
               label={t("questionnaire.willingnessToFollow")}
-              description="Commit to following the nutrition plan"
+              description={t("questionnaire.willingnessToFollowDesc")}
               value={formData.willingness_to_follow}
               onValueChange={(value: any) =>
                 setFormData({ ...formData, willingness_to_follow: value })
@@ -885,7 +1074,7 @@ const QuestionnaireScreen: React.FC = () => {
 
             <CustomSwitch
               label={t("questionnaire.personalizedTips")}
-              description="Receive personalized nutrition tips"
+              description={t("questionnaire.personalizedTipsDesc")}
               value={formData.personalized_tips}
               onValueChange={(value: any) =>
                 setFormData({ ...formData, personalized_tips: value })
@@ -923,9 +1112,7 @@ const QuestionnaireScreen: React.FC = () => {
     isLoading &&
     !dataLoaded
   ) {
-    return (
-      <LoadingScreen text={isRTL ? "טוען שאלון" : "Loading Questionnaire"} />
-    );
+    return <LoadingScreen text={t("loading.questionnaire")} />;
   }
 
   return (
@@ -936,7 +1123,7 @@ const QuestionnaireScreen: React.FC = () => {
       />
 
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.background, paddingTop: Math.max(insets.top, 16) }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
@@ -954,7 +1141,7 @@ const QuestionnaireScreen: React.FC = () => {
 
         <TouchableOpacity style={styles.skipButton}>
           <Text style={[styles.skipText, { color: colors.textSecondary }]}>
-            Skip
+            {t("common.skip")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -968,7 +1155,7 @@ const QuestionnaireScreen: React.FC = () => {
       >
         {renderStep()}
         {/* Navigation */}
-        <View style={[styles.navigation, { backgroundColor: "transperent" }]}>
+        <View style={[styles.navigation, { backgroundColor: "transparent", paddingBottom: Math.max(insets.bottom, 20) }]}>
           {currentStep < totalSteps ? (
             <TouchableOpacity
               style={[
@@ -1058,6 +1245,9 @@ const QuestionnaireScreen: React.FC = () => {
   );
 };
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const isSmallDevice = SCREEN_WIDTH < 375;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1068,20 +1258,20 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    fontSize: 16,
+    fontSize: isSmallDevice ? 14 : 16,
     fontWeight: "500",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingHorizontal: isSmallDevice ? 16 : 24,
+    paddingTop: Platform.select({ ios: 8, android: 16 }),
     paddingBottom: 8,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: isSmallDevice ? 36 : 40,
+    height: isSmallDevice ? 36 : 40,
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
@@ -1091,47 +1281,47 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   stepIcon: {
-    width: 48,
-    height: 48,
+    width: isSmallDevice ? 42 : 48,
+    height: isSmallDevice ? 42 : 48,
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
   },
   skipButton: {
-    paddingHorizontal: 16,
+    paddingHorizontal: isSmallDevice ? 12 : 16,
     paddingVertical: 8,
   },
   skipText: {
-    fontSize: 16,
+    fontSize: isSmallDevice ? 14 : 16,
     fontWeight: "500",
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: Platform.select({ ios: 140, android: 120 }),
   },
   navigation: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    paddingBottom: 40,
+    paddingHorizontal: isSmallDevice ? 16 : 24,
+    paddingVertical: Platform.select({ ios: 16, android: 20 }),
+    paddingBottom: Platform.select({ ios: 24, android: 40 }),
   },
   actionButton: {
-    borderRadius: 16,
+    borderRadius: isSmallDevice ? 12 : 16,
     overflow: "hidden",
   },
   buttonGradient: {
-    paddingVertical: 18,
+    paddingVertical: isSmallDevice ? 14 : 18,
     alignItems: "center",
     justifyContent: "center",
   },
   buttonText: {
     color: "white",
-    fontSize: 18,
+    fontSize: isSmallDevice ? 16 : 18,
     fontWeight: "700",
   },
   modalOverlay: {

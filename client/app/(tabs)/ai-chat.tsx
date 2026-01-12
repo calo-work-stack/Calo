@@ -217,32 +217,114 @@ export default function AIChatScreen({
 
   const sendMessage = async () => {
     if (!inputText.trim()) return;
+
     const userMsg: Message = {
       id: `user-${Date.now()}`,
       type: "user",
       content: inputText.trim(),
       timestamp: new Date(),
     };
+
     setMessages((p) => [...p, userMsg]);
     const msg = inputText.trim();
     setInputText("");
     setIsTyping(true);
+
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     try {
       const res = await chatAPI.sendMessage(
         msg,
         language === "he" ? "hebrew" : "english"
       );
+
+      // Clear timeout immediately after successful response
+      clearTimeout(timeoutId);
+
+      console.log("AI Chat full response:", JSON.stringify(res, null, 2));
+
+      // Extract AI content with clearer logic
       let aiContent = "";
-      if (res.success && res.response)
-        aiContent = res.response.response || res.response;
-      else if (res.response?.response) aiContent = res.response.response;
-      else if (typeof res.response === "string") aiContent = res.response;
-      else if (typeof res === "string") aiContent = res;
-      else throw new Error("Invalid response");
 
-      if (!aiContent.trim()) throw new Error("Empty response");
+      // Handle the expected server format first: { success: true, response: { response: "...", messageId: "..." } }
+      if (res && res.success && res.response) {
+        if (typeof res.response === "string") {
+          aiContent = res.response;
+        } else if (typeof res.response === "object" && res.response.response) {
+          // This is your expected format
+          aiContent = res.response.response;
+        } else if (typeof res.response === "object") {
+          // Fallback: try other common fields
+          aiContent =
+            res.response.message ||
+            res.response.content ||
+            res.response.text ||
+            "";
+        }
+      }
+      // Fallback: try other response formats
+      else if (res && typeof res === "string") {
+        aiContent = res;
+      } else if (res && res.data) {
+        if (typeof res.data === "string") {
+          aiContent = res.data;
+        } else if (res.data.response) {
+          aiContent =
+            typeof res.data.response === "string"
+              ? res.data.response
+              : res.data.response.response || res.data.response.message || "";
+        }
+      } else if (res && res.message) {
+        aiContent = res.message;
+      }
 
+      console.log("AI Chat extracted content length:", aiContent?.length);
+      console.log(
+        "AI Chat extracted content preview:",
+        aiContent?.substring(0, 150)
+      );
+
+      // Clean up the content
+      if (aiContent && typeof aiContent === "string") {
+        aiContent = aiContent.trim();
+
+        // If it looks like JSON, try to extract the message
+        if (
+          (aiContent.startsWith("{") || aiContent.startsWith("[")) &&
+          aiContent.length > 50
+        ) {
+          try {
+            const parsed = JSON.parse(aiContent);
+            const extracted =
+              parsed.response ||
+              parsed.message ||
+              parsed.content ||
+              parsed.text;
+            if (extracted && typeof extracted === "string") {
+              aiContent = extracted;
+            }
+          } catch (parseError) {
+            // Keep original if JSON parsing fails
+            console.log(
+              "AI Chat: Content looks like JSON but couldn't parse, keeping as-is"
+            );
+          }
+        }
+      }
+
+      // Final validation - ensure we have actual content
+      if (!aiContent || !aiContent.trim() || aiContent.length < 3) {
+        console.error("AI Chat: Empty or invalid response", {
+          hasContent: !!aiContent,
+          length: aiContent?.length,
+          response: res,
+        });
+        throw new Error("Empty response from AI");
+      }
+
+      // Success - add the AI message
       const allergens = checkForAllergens(aiContent);
       const aiMsg: Message = {
         id: `bot-${Date.now()}`,
@@ -254,24 +336,63 @@ export default function AIChatScreen({
         suggestions:
           Math.random() > 0.7 ? getCommonQuestions().slice(0, 3) : undefined,
       };
+
       setMessages((p) => [...p, aiMsg]);
-    } catch (error) {
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      console.error("AI Chat error details:", {
+        name: error?.name,
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+      });
+
+      // Determine error type for better user feedback
+      let errorMessage =
+        t("ai_chat.error.serverError") ||
+        "Sorry, I couldn't process your message. Please try again.";
+
+      if (error?.name === "AbortError" || error?.message?.includes("timeout")) {
+        errorMessage =
+          t("ai_chat.error.timeout") ||
+          "The request took too long. Please try again.";
+      } else if (
+        error?.message?.includes("Network") ||
+        error?.code === "ERR_NETWORK" ||
+        !error?.response
+      ) {
+        errorMessage =
+          t("ai_chat.error.network") ||
+          "Network error. Please check your connection and try again.";
+      } else if (error?.response?.status === 429) {
+        errorMessage =
+          t("ai_chat.error.rateLimit") ||
+          "Too many requests. Please wait a moment and try again.";
+      } else if (error?.response?.status >= 500) {
+        errorMessage =
+          t("ai_chat.error.serverError") ||
+          "Server error. Please try again later.";
+      } else if (error?.message?.includes("Empty response")) {
+        errorMessage =
+          t("ai_chat.error.emptyResponse") ||
+          "Received an empty response. Please try again.";
+      }
+
       setMessages((p) => [
         ...p,
         {
           id: `error-${Date.now()}`,
           type: "bot",
-          content: t("ai_chat.error.serverError"),
+          content: errorMessage,
           timestamp: new Date(),
-          hasWarning: true,
+          hasWarning: false,
+          isError: true,
         },
       ]);
-      Alert.alert(t("ai_chat.error.title"), t("ai_chat.error.networkError"));
     } finally {
       setIsTyping(false);
     }
   };
-
   const clearChat = () => {
     Alert.alert(t("ai_chat.clearChat.title"), t("ai_chat.clearChat.message"), [
       { text: t("ai_chat.clearChat.cancel"), style: "cancel" },
@@ -323,19 +444,25 @@ export default function AIChatScreen({
               style={[
                 s.bubble,
                 { backgroundColor: isUser ? colors.card : colors.surface },
-                msg.hasWarning && s.warnBubble,
+                msg.hasWarning &&
+                  msg.allergenWarning &&
+                  msg.allergenWarning.length > 0 &&
+                  s.warnBubble,
               ]}
             >
-              {msg.hasWarning && (
-                <View
-                  style={[s.warnBanner, { borderBottomColor: colors.error }]}
-                >
-                  <AlertTriangle size={12} color={colors.error} />
-                  <Text style={[s.warnText, { color: colors.error }]}>
-                    {t("ai_chat.allergen_warning")}
-                  </Text>
-                </View>
-              )}
+              {msg.hasWarning &&
+                msg.allergenWarning &&
+                msg.allergenWarning.length > 0 && (
+                  <View
+                    style={[s.warnBanner, { borderBottomColor: colors.error }]}
+                  >
+                    <AlertTriangle size={12} color={colors.error} />
+                    <Text style={[s.warnText, { color: colors.error }]}>
+                      {t("ai_chat.allergen_warning")}:{" "}
+                      {msg.allergenWarning.join(", ")}
+                    </Text>
+                  </View>
+                )}
               <Text
                 style={[
                   s.msgText,
@@ -419,7 +546,7 @@ export default function AIChatScreen({
     );
   };
 
-  if (isLoading) return <LoadingScreen text={t("ai_chat.loading")} />;
+  if (isLoading) return <LoadingScreen text={t("loading.loading","loading.ai_chat")} />;
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>

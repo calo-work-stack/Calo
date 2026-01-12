@@ -314,19 +314,17 @@ const AppContent = React.memo(() => {
       }
 
       // Step 2: Check Questionnaire Completion
-      // Allow navigation to tabs but show questionnaire modal/overlay
+      // Users MUST complete questionnaire before accessing the app
       if (!user.is_questionnaire_completed) {
-        // Only redirect to questionnaire if not already there or in tabs
-        const isInTabs = currentPath.includes("(tabs)");
         const isInQuestionnaire = currentPath.includes("questionnaire");
 
-        if (!isInQuestionnaire && !isInTabs) {
+        // Always redirect to questionnaire if not completed (except if already there)
+        if (!isInQuestionnaire) {
           console.log(
             "🚦 Step 2: Questionnaire not completed - redirecting to questionnaire"
           );
           router.replace("/questionnaire");
         }
-        // If in tabs, the questionnaire protection will handle showing reminder
         return;
       }
 
@@ -339,44 +337,58 @@ const AppContent = React.memo(() => {
         return;
       }
 
-      // Step 4: Payment Check (for paid plans)
-      const hasPaidPlan =
-        user.subscription_type === "PREMIUM" ||
-        user.subscription_type === "GOLD";
-
-      // Step 5: All checks passed - ensure user is in main app
-      const exemptRoutes = [
+      // Step 4: All checks passed - determine where user should be
+      // Define routes that are allowed outside of tabs
+      const allowedRoutes = [
         "payment",
         "privacy-policy",
-        "menu/activeMenu",
+        "menu/",
         "activeMenu",
+        "(tabs)",
       ];
-      const isExemptRoute = exemptRoutes.some((route) =>
+
+      const isAllowedRoute = allowedRoutes.some((route) =>
         currentPath.includes(route)
       );
-      const shouldBeInMainApp = !isExemptRoute;
 
       console.log("🚦 Route analysis:", {
         currentPath,
-        isExemptRoute,
-        shouldBeInMainApp,
+        isAllowedRoute,
         isInTabs: currentPath.includes("(tabs)"),
         isInMenu: currentPath.includes("menu/"),
       });
 
-      // Allow user to stay in menu routes and main app - completely skip redirect for menu routes
-      if (currentPath.includes("menu/")) {
-        console.log("🚦 User is in menu route - allowing to stay");
+      // If user is in an allowed route, let them stay
+      if (isAllowedRoute) {
+        console.log("✅ User is in allowed route - staying");
         return;
       }
 
-      // Allow user to stay in main app
-      if (
-        shouldBeInMainApp &&
-        !currentPath.includes("(tabs)") &&
-        currentPath !== ""
-      ) {
-        console.log("🚦 All checks passed - redirecting to main app");
+      // If user is in an auth route but fully authenticated, redirect to main app
+      const authRoutes = [
+        "welcome",
+        "signin",
+        "signup",
+        "email-verification",
+        "forgotPassword",
+        "resetPassword",
+        "reset-password-verify",
+      ];
+      const isInAuthRoute = authRoutes.some((route) =>
+        currentPath.includes(route)
+      );
+
+      if (isInAuthRoute) {
+        console.log(
+          "🚦 Fully authenticated user in auth route - redirecting to main app"
+        );
+        router.replace("/(tabs)");
+        return;
+      }
+
+      // If path is empty or root, redirect to tabs
+      if (currentPath === "" || currentPath === "/") {
+        console.log("🚦 At root - redirecting to main app");
         router.replace("/(tabs)");
         return;
       }

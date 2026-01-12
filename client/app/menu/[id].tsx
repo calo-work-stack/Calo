@@ -247,36 +247,36 @@ export default function MenuDetailsScreen() {
   const uniqueDays = [...new Set(menu.meals.map((m) => m.day_number))].sort((a, b) => a - b);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Clean Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-          <ArrowLeft size={24} color="#111827" />
+          <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{menu.title}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{menu.title}</Text>
           <View style={styles.headerBadges}>
-            <View style={styles.headerBadge}>
-              <Calendar size={12} color="#6B7280" />
-              <Text style={styles.headerBadgeText}>{menu.days_count} Days</Text>
+            <View style={[styles.headerBadge, { backgroundColor: colors.surface }]}>
+              <Calendar size={12} color={colors.textSecondary} />
+              <Text style={[styles.headerBadgeText, { color: colors.textSecondary }]}>{menu.days_count} Days</Text>
             </View>
-            <View style={styles.headerBadge}>
-              <Utensils size={12} color="#6B7280" />
-              <Text style={styles.headerBadgeText}>{menu.meals.length} Meals</Text>
+            <View style={[styles.headerBadge, { backgroundColor: colors.surface }]}>
+              <Utensils size={12} color={colors.textSecondary} />
+              <Text style={[styles.headerBadgeText, { color: colors.textSecondary }]}>{menu.meals.length} Meals</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={handleShare} style={styles.headerIconButton}>
-            <Share2 size={20} color="#6B7280" />
+            <Share2 size={20} color={colors.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setIsFavorite(!isFavorite)}
             style={styles.headerIconButton}
           >
-            <Heart size={20} color={isFavorite ? "#EF4444" : "#6B7280"} fill={isFavorite ? "#EF4444" : "transparent"} />
+            <Heart size={20} color={isFavorite ? "#EF4444" : colors.textSecondary} fill={isFavorite ? "#EF4444" : "transparent"} />
           </TouchableOpacity>
         </View>
       </View>
@@ -711,7 +711,6 @@ export default function MenuDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFA",
   },
   loadingContainer: {
     flex: 1,
@@ -746,11 +745,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
   },
   headerButton: {
     width: 40,
@@ -797,8 +794,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   statsScroll: {
-    maxHeight: 140,
-    marginTop: -20,
+    maxHeight: 130,
+    marginTop: 12,
   },
   statsContainer: {
     paddingHorizontal: 20,

@@ -1,19 +1,22 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Modal,
 } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withTiming,
+  withSequence,
 } from "react-native-reanimated";
-import Svg, { Path, Defs, LinearGradient, Stop } from "react-native-svg";
+import Svg, { Path, Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { useTheme } from "@/src/context/ThemeContext";
+import { useTranslation } from "react-i18next";
 
 const { width } = Dimensions.get("window");
 const isSmallScreen = width < 400;
@@ -23,8 +26,21 @@ interface WaterIntakeCardProps {
   maxCups?: number;
   onIncrement: () => void;
   onDecrement: () => void;
+  onAddVolume?: (mlAmount: number) => void;
   disabled?: boolean;
 }
+
+// Bottle size options in ml
+const BOTTLE_OPTIONS = [
+  { ml: 250, label: "250ml", icon: "cup", emoji: "🥤" },
+  { ml: 500, label: "500ml", icon: "small_bottle", emoji: "🧃" },
+  { ml: 750, label: "750ml", icon: "medium_bottle", emoji: "🍶" },
+  { ml: 1000, label: "1L", icon: "large_bottle", emoji: "🫗" },
+  { ml: 1500, label: "1.5L", icon: "xl_bottle", emoji: "🍾" },
+  { ml: 2000, label: "2L", icon: "xxl_bottle", emoji: "🏺" },
+];
+
+const ML_PER_CUP = 250;
 
 const WaterCupIcon: React.FC<{
   size: number;
@@ -63,22 +79,80 @@ const WaterCupIcon: React.FC<{
   );
 };
 
+// Bottle icon component
+const BottleIcon: React.FC<{
+  size: number;
+  fillLevel: number;
+  colors: any;
+  bottleSize: "small" | "medium" | "large" | "xl";
+}> = ({ size, fillLevel, colors, bottleSize }) => {
+  // Different bottle shapes based on size
+  const getBottlePath = () => {
+    switch (bottleSize) {
+      case "small":
+        return "M8 2h8v3l2 2v15a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7l2-2V2z";
+      case "medium":
+        return "M9 1h6v2l3 3v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6l3-3V1z";
+      case "large":
+        return "M9 0h6v3l3 2v17a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5l3-2V0z";
+      case "xl":
+        return "M10 0h4v2l4 3v17a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5l4-3V0z";
+      default:
+        return "M8 2h8v3l2 2v15a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7l2-2V2z";
+    }
+  };
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Defs>
+        <LinearGradient id="bottleWaterGradient" x1="0%" y1="100%" x2="0%" y2="0%">
+          <Stop offset="0%" stopColor={colors.primary} stopOpacity="1" />
+          <Stop offset="100%" stopColor={colors.primaryContainer} stopOpacity="0.8" />
+        </LinearGradient>
+      </Defs>
+      <Path
+        d={getBottlePath()}
+        stroke={colors.primary}
+        strokeWidth="1.5"
+        fill="none"
+      />
+      {fillLevel > 0 && (
+        <Rect
+          x="7"
+          y={22 - (fillLevel / 100) * 15}
+          width="10"
+          height={(fillLevel / 100) * 15}
+          rx="1"
+          fill="url(#bottleWaterGradient)"
+          opacity="0.85"
+        />
+      )}
+    </Svg>
+  );
+};
+
 const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
   currentCups,
   maxCups = 10,
   onIncrement,
   onDecrement,
+  onAddVolume,
   disabled = false,
 }) => {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
+  const [showBottleModal, setShowBottleModal] = useState(false);
+  const [selectedBottle, setSelectedBottle] = useState<number | null>(null);
+
   const progress = Math.min((currentCups / maxCups) * 100, 100);
-  const currentMl = currentCups * 250;
-  const targetMl = maxCups * 250;
+  const currentMl = currentCups * ML_PER_CUP;
+  const targetMl = maxCups * ML_PER_CUP;
   const isComplete = currentCups >= maxCups;
 
   const progressWidth = useSharedValue(0);
   const badgeOpacity = useSharedValue(0);
   const cupScales = Array.from({ length: maxCups }, () => useSharedValue(0));
+  const addButtonScale = useSharedValue(1);
 
   useEffect(() => {
     progressWidth.value = withSpring(progress, {
@@ -119,6 +193,10 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     opacity: badgeOpacity.value,
   }));
 
+  const animatedAddButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: addButtonScale.value }],
+  }));
+
   const handleCupPress = (index: number) => {
     if (disabled) return;
 
@@ -127,6 +205,40 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     } else if (currentCups < maxCups) {
       onIncrement();
     }
+  };
+
+  const handleBottleSelect = (mlAmount: number) => {
+    setSelectedBottle(mlAmount);
+    // Animate button press
+    addButtonScale.value = withSequence(
+      withTiming(0.9, { duration: 100 }),
+      withSpring(1, { damping: 15 })
+    );
+
+    // Calculate how many cups this equals
+    const cupsToAdd = Math.ceil(mlAmount / ML_PER_CUP);
+
+    if (onAddVolume) {
+      onAddVolume(mlAmount);
+    } else {
+      // Fallback: add cups equivalent
+      for (let i = 0; i < cupsToAdd && currentCups + i < maxCups; i++) {
+        setTimeout(() => onIncrement(), i * 100);
+      }
+    }
+
+    // Close modal after short delay
+    setTimeout(() => {
+      setShowBottleModal(false);
+      setSelectedBottle(null);
+    }, 300);
+  };
+
+  const getBottleSizeType = (ml: number): "small" | "medium" | "large" | "xl" => {
+    if (ml <= 500) return "small";
+    if (ml <= 750) return "medium";
+    if (ml <= 1500) return "large";
+    return "xl";
   };
 
   const styles = StyleSheet.create({
@@ -195,7 +307,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
       letterSpacing: 0.2,
     },
     progressSection: {
-      marginBottom: isSmallScreen ? 28 : 36,
+      marginBottom: isSmallScreen ? 20 : 28,
     },
     progressHeader: {
       flexDirection: "row",
@@ -264,51 +376,158 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
       flexDirection: "row",
       justifyContent: "center",
       gap: isSmallScreen ? 8 : 12,
-      marginBottom: isSmallScreen ? 28 : 36,
+      marginBottom: isSmallScreen ? 20 : 28,
       flexWrap: "wrap",
     },
     cupContainer: {
       alignItems: "center",
     },
-    controls: {
+    // Quick add section
+    quickAddSection: {
+      marginBottom: isSmallScreen ? 20 : 28,
+    },
+    quickAddLabel: {
+      fontSize: isSmallScreen ? 14 : 15,
+      fontWeight: "700",
+      color: colors.text,
+      marginBottom: 12,
+      letterSpacing: 0.2,
+    },
+    quickAddButtons: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 8,
+    },
+    quickAddButton: {
+      flex: 1,
+      backgroundColor: isDark ? colors.primaryContainer : colors.emerald50,
+      borderRadius: 16,
+      paddingVertical: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    quickAddButtonActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    quickAddEmoji: {
+      fontSize: 20,
+      marginBottom: 4,
+    },
+    quickAddText: {
+      fontSize: isSmallScreen ? 11 : 12,
+      fontWeight: "700",
+      color: colors.text,
+    },
+    quickAddTextActive: {
+      color: "#ffffff",
+    },
+    // Add bottle button
+    addBottleButton: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: isSmallScreen ? 20 : 28,
+      backgroundColor: colors.primary,
+      borderRadius: 16,
+      paddingVertical: 14,
+      paddingHorizontal: 20,
+      marginBottom: isSmallScreen ? 20 : 28,
+      gap: 10,
     },
-    button: {
-      width: isSmallScreen ? 64 : 72,
-      height: isSmallScreen ? 64 : 72,
-      borderRadius: isSmallScreen ? 20 : 24,
-      alignItems: "center",
-      justifyContent: "center",
+    addBottleButtonText: {
+      fontSize: isSmallScreen ? 15 : 16,
+      fontWeight: "700",
+      color: "#ffffff",
     },
-    buttonActive: {
-      backgroundColor: isDark ? colors.primaryContainer : colors.emerald50,
+    addBottleEmoji: {
+      fontSize: 20,
     },
-    buttonDisabled: {
-      backgroundColor: colors.card,
+    // Modal styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      justifyContent: "flex-end",
     },
-    controlsCenter: {
-      minWidth: isSmallScreen ? 120 : 140,
-      alignItems: "center",
+    modalContent: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      padding: 24,
+      paddingBottom: 40,
     },
-    controlsCups: {
-      fontSize: isSmallScreen ? 28 : 32,
+    modalHandle: {
+      width: 40,
+      height: 4,
+      backgroundColor: colors.border,
+      borderRadius: 2,
+      alignSelf: "center",
+      marginBottom: 20,
+    },
+    modalTitle: {
+      fontSize: 22,
       fontWeight: "800",
       color: colors.text,
-      letterSpacing: -1,
+      textAlign: "center",
+      marginBottom: 8,
     },
-    controlsMl: {
-      fontSize: isSmallScreen ? 13 : 14,
+    modalSubtitle: {
+      fontSize: 14,
       color: colors.textSecondary,
-      fontWeight: "600",
-      marginTop: 4,
-      letterSpacing: 0.1,
+      textAlign: "center",
+      marginBottom: 24,
     },
+    bottleGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      gap: 12,
+    },
+    bottleOption: {
+      width: "31%",
+      backgroundColor: isDark ? colors.card : colors.emerald50,
+      borderRadius: 20,
+      padding: 16,
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: "transparent",
+    },
+    bottleOptionSelected: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primary + "15",
+    },
+    bottleOptionEmoji: {
+      fontSize: 32,
+      marginBottom: 8,
+    },
+    bottleOptionLabel: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.text,
+      marginBottom: 4,
+    },
+    bottleOptionCups: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      fontWeight: "500",
+    },
+    modalCloseButton: {
+      marginTop: 20,
+      paddingVertical: 14,
+      alignItems: "center",
+      backgroundColor: colors.border,
+      borderRadius: 14,
+    },
+    modalCloseText: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: colors.text,
+    },
+    // Tips section
     tipsSection: {
-      marginTop: isSmallScreen ? 24 : 28,
-      paddingTop: isSmallScreen ? 24 : 28,
+      marginTop: isSmallScreen ? 16 : 20,
+      paddingTop: isSmallScreen ? 16 : 20,
       borderTopWidth: 1,
       borderTopColor: colors.border,
     },
@@ -364,14 +583,14 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
               />
             </View>
             <View style={styles.titleContainer}>
-              <Text style={styles.title}>Water Intake</Text>
-              <Text style={styles.subtitle}>Stay hydrated today</Text>
+              <Text style={styles.title}>{t("water.title")}</Text>
+              <Text style={styles.subtitle}>{t("water.subtitle")}</Text>
             </View>
           </View>
 
           {isComplete && (
             <Animated.View style={[styles.badge, animatedBadgeStyle]}>
-              <Text style={styles.badgeText}>Goal Reached!</Text>
+              <Text style={styles.badgeText}>{t("water.goalReached")}</Text>
             </Animated.View>
           )}
         </View>
@@ -382,7 +601,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
               <View style={styles.cupsRow}>
                 <Text style={styles.currentCups}>{currentCups}</Text>
                 <Text style={styles.maxCups}> / {maxCups}</Text>
-                <Text style={styles.cupsLabel}>cups</Text>
+                <Text style={styles.cupsLabel}>{t("water.cups")}</Text>
               </View>
               <Text style={styles.mlText}>
                 {currentMl.toLocaleString()} ml / {targetMl.toLocaleString()} ml
@@ -390,7 +609,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
             </View>
             <View style={styles.percentageContainer}>
               <Text style={styles.percentage}>{Math.round(progress)}%</Text>
-              <Text style={styles.completeText}>complete</Text>
+              <Text style={styles.completeText}>{t("water.complete")}</Text>
             </View>
           </View>
 
@@ -401,6 +620,54 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
           </View>
         </View>
 
+        {/* Quick Add Buttons */}
+        <View style={styles.quickAddSection}>
+          <Text style={styles.quickAddLabel}>{t("water.quickAdd")}</Text>
+          <View style={styles.quickAddButtons}>
+            <TouchableOpacity
+              style={styles.quickAddButton}
+              onPress={onIncrement}
+              disabled={disabled || currentCups >= maxCups}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.quickAddEmoji}>🥤</Text>
+              <Text style={styles.quickAddText}>1 {t("water.cup")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickAddButton}
+              onPress={() => handleBottleSelect(500)}
+              disabled={disabled || currentCups >= maxCups}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.quickAddEmoji}>🧃</Text>
+              <Text style={styles.quickAddText}>500ml</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickAddButton}
+              onPress={() => handleBottleSelect(750)}
+              disabled={disabled || currentCups >= maxCups}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.quickAddEmoji}>🍶</Text>
+              <Text style={styles.quickAddText}>750ml</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Add Custom Bottle Button */}
+        <Animated.View style={animatedAddButtonStyle}>
+          <TouchableOpacity
+            style={styles.addBottleButton}
+            onPress={() => setShowBottleModal(true)}
+            disabled={disabled || currentCups >= maxCups}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.addBottleEmoji}>🫗</Text>
+            <Text style={styles.addBottleButtonText}>{t("water.addBottle")}</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Cups Visual */}
         <View style={styles.cupsVisual}>
           {Array.from({ length: maxCups }).map((_, index) => {
             const animatedCupStyle = useAnimatedStyle(() => ({
@@ -416,7 +683,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
               >
                 <Animated.View style={[styles.cupContainer, animatedCupStyle]}>
                   <WaterCupIcon
-                    size={isSmallScreen ? 36 : 44}
+                    size={isSmallScreen ? 32 : 38}
                     filled={index < currentCups}
                     waterLevel={index < currentCups ? 100 : 0}
                     colors={colors}
@@ -426,7 +693,70 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
             );
           })}
         </View>
+
+        {/* Tips Section */}
+        <View style={styles.tipsSection}>
+          <View style={styles.tipsContainer}>
+            <View style={styles.tipIcon}>
+              <Text style={styles.tipEmoji}>💡</Text>
+            </View>
+            <View style={styles.tipTextContainer}>
+              <Text style={styles.tipText}>
+                {t("water.tip")}
+              </Text>
+            </View>
+          </View>
+        </View>
       </View>
+
+      {/* Bottle Selection Modal */}
+      <Modal
+        visible={showBottleModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowBottleModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowBottleModal(false)}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHandle} />
+              <Text style={styles.modalTitle}>{t("water.selectBottle")}</Text>
+              <Text style={styles.modalSubtitle}>{t("water.selectBottleDesc")}</Text>
+
+              <View style={styles.bottleGrid}>
+                {BOTTLE_OPTIONS.map((bottle) => (
+                  <TouchableOpacity
+                    key={bottle.ml}
+                    style={[
+                      styles.bottleOption,
+                      selectedBottle === bottle.ml && styles.bottleOptionSelected,
+                    ]}
+                    onPress={() => handleBottleSelect(bottle.ml)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.bottleOptionEmoji}>{bottle.emoji}</Text>
+                    <Text style={styles.bottleOptionLabel}>{bottle.label}</Text>
+                    <Text style={styles.bottleOptionCups}>
+                      = {Math.ceil(bottle.ml / ML_PER_CUP)} {t("water.cups")}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowBottleModal(false)}
+              >
+                <Text style={styles.modalCloseText}>{t("common.cancel")}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };

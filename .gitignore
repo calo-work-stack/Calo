@@ -2,3 +2,9 @@ scripts
 node_modules/
 .env
 errors
+./FIX_WINDOWS.bat
+./README.md 
+./START_SERVER.bat
+./.claude
+./scripts
+./errors

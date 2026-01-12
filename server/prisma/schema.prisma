@@ -4,86 +4,67 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  // directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  user_id                    String                @id @default(cuid())
-  email                      String                @unique
+  user_id                    String                 @id @default(cuid())
+  email                      String                 @unique
   password_hash              String
   name                       String?
   avatar_url                 String?
-  signup_date                DateTime              @default(now())
+  signup_date                DateTime               @default(now())
   subscription_type          SubscriptionType
   subscription_start         DateTime?
   subscription_end           DateTime?
   birth_date                 DateTime?
-  ai_requests_count          Int                   @default(0)
-  ai_requests_reset_at       DateTime              @default(now())
-  ai_chat_tokens_used        Int                   @default(0)
-  ai_chat_tokens_reset_at    DateTime              @default(now())
-  meal_scans_count           Int                   @default(0)
-  meal_scans_reset_at        DateTime              @default(now())
-  is_questionnaire_completed Boolean               @default(false)
-  questionnaires             UserQuestionnaire[]
-  meals                      Meal[]
-  nutritionPlans             NutritionPlan[]
-  payments                   SubscriptionPayment[]
-  email_verified             Boolean               @default(false)
+  ai_requests_count          Int                    @default(0)
+  ai_requests_reset_at       DateTime               @default(now())
+  ai_chat_tokens_used        Int                    @default(0)
+  ai_chat_tokens_reset_at    DateTime               @default(now())
+  meal_scans_count           Int                    @default(0)
+  meal_scans_reset_at        DateTime               @default(now())
+  is_questionnaire_completed Boolean                @default(false)
+  email_verified             Boolean                @default(false)
   email_verification_code    String?
   email_verification_expires DateTime?
   password_reset_code        String?
   password_reset_expires     DateTime?
-
-  connectedDevices  ConnectedDevice[]
-  activitySummaries DailyActivitySummary[]
-
-  // New meal plan relationships
-  mealPlans        UserMealPlan[]
-  mealPreferences  UserMealPreference[]
-  shoppingLists    ShoppingList[]
-  recommendedMenus RecommendedMenu[]
-
-  // Calendar relationships
-  calendarEvents     CalendarEvent[]
-  gamificationBadges GamificationBadge[]
-
-  // Food scanner relationship
-  foodProducts FoodProduct[]
-
-  level               Int?      @default(1)
-  total_points        Int?      @default(0)
-  current_xp          Int?      @default(0)
-  current_streak      Int?      @default(0)
-  best_streak         Int?      @default(0)
-  total_complete_days Int?      @default(0)
-  last_complete_date  DateTime?
-
-  created_at DateTime @default(now())
-
-  Session Session[]
-
-  badges            UserBadge[]
-  achievements      UserAchievement[]
-  dailyGoals        DailyGoal[]
-  WaterIntake       WaterIntake[]
-  mealCompletions   MealCompletion[]
-  aiRecommendations AiRecommendation[]
-
-  // MenuReview relation
-  menuReviews MenuReview[]
-
-  // IngredientCheck relation
-  ingredientChecks IngredientCheck[]
-
-  active_meal_plan_id String?
-  active_menu_id      String?
-
-  // Admin fields
-  is_admin      Boolean @default(false)
-  is_super_admin Boolean @default(false)
+  level                      Int?                   @default(1)
+  total_points               Int?                   @default(0)
+  current_xp                 Int?                   @default(0)
+  current_streak             Int?                   @default(0)
+  best_streak                Int?                   @default(0)
+  total_complete_days        Int?                   @default(0)
+  last_complete_date         DateTime?
+  created_at                 DateTime               @default(now())
+  active_meal_plan_id        String?
+  active_menu_id             String?
+  is_admin                   Boolean                @default(false)
+  is_super_admin             Boolean                @default(false)
+  dailyGoals                 DailyGoal[]
+  foodProducts               FoodProduct[]
+  meals                      Meal[]
+  menuReviews                MenuReview[]
+  nutritionPlans             NutritionPlan[]
+  payments                   SubscriptionPayment[]
+  achievements               UserAchievement[]
+  badges                     UserBadge[]
+  mealPreferences            UserMealPreference[]
+  questionnaires             UserQuestionnaire[]
+  WaterIntake                WaterIntake[]
+  aiRecommendations          AiRecommendation[]
+  calendarEvents             CalendarEvent[]
+  connectedDevices           ConnectedDevice[]
+  activitySummaries          DailyActivitySummary[]
+  gamificationBadges         GamificationBadge[]
+  ingredientChecks           IngredientCheck[]
+  mealCompletions            MealCompletion[]
+  recommendedMenus           RecommendedMenu[]
+  Session                    Session[]
+  shoppingLists              ShoppingList[]
+  mealPlans                  UserMealPlan[]
 }
 
 model Session {
@@ -91,12 +72,9 @@ model Session {
   user_id    String
   token      String   @unique
   expiresAt  DateTime
-
-  // Relationships
-  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+  user       User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([expiresAt])
@@ -104,39 +82,37 @@ model Session {
 }
 
 model ConnectedDevice {
-  connected_device_id     String           @id @default(cuid())
+  connected_device_id     String                 @id @default(cuid())
   user_id                 String
   device_name             String
   device_type             DeviceType
-  connection_status       ConnectionStatus @default(DISCONNECTED)
+  connection_status       ConnectionStatus       @default(DISCONNECTED)
   last_sync_time          DateTime?
-  sync_frequency_hours    Int?             @default(24)
-  is_primary_device       Boolean          @default(false)
+  sync_frequency_hours    Int?                   @default(24)
+  is_primary_device       Boolean                @default(false)
   device_settings         Json?
   access_token_encrypted  String?
   refresh_token_encrypted String?
   token_expires_at        DateTime?
-  created_at              DateTime         @default(now())
-  updated_at              DateTime         @updatedAt
-
-  // Relationships
-  user              User                   @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  activitySummaries DailyActivitySummary[]
+  created_at              DateTime               @default(now())
+  updated_at              DateTime               @updatedAt
+  user                    User                   @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  activitySummaries       DailyActivitySummary[]
 
   @@unique([user_id, device_type])
   @@map("connected_devices")
 }
 
 model DailyActivitySummary {
-  daily_activity_id   String   @id @default(cuid())
+  daily_activity_id   String          @id @default(cuid())
   user_id             String
   device_id           String
-  date                DateTime @db.Date
-  steps               Int?     @default(0)
-  calories_burned     Float?   @default(0)
-  active_minutes      Int?     @default(0)
-  bmr_estimate        Float?   @default(0)
-  distance_km         Float?   @default(0)
+  date                DateTime        @db.Date
+  steps               Int?            @default(0)
+  calories_burned     Float?          @default(0)
+  active_minutes      Int?            @default(0)
+  bmr_estimate        Float?          @default(0)
+  distance_km         Float?          @default(0)
   heart_rate_avg      Int?
   heart_rate_max      Int?
   sleep_hours         Float?
@@ -144,114 +120,92 @@ model DailyActivitySummary {
   weight_kg           Float?
   body_fat_percentage Float?
   source_device       String
-  sync_timestamp      DateTime @default(now())
+  sync_timestamp      DateTime        @default(now())
   raw_data            Json?
-  created_at          DateTime @default(now())
-  updated_at          DateTime @updatedAt
-
-  // Relationships
-  user   User            @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  device ConnectedDevice @relation(fields: [device_id], references: [connected_device_id], onDelete: Cascade)
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+  device              ConnectedDevice @relation(fields: [device_id], references: [connected_device_id], onDelete: Cascade)
+  user                User            @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@unique([user_id, device_id, date])
   @@map("daily_activity_summary")
 }
 
 model UserQuestionnaire {
-  questionnaire_id Int      @id @default(autoincrement())
-  user_id          String
-  date_completed   DateTime @default(now())
-
-  // Relations
-  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-
-  // Personal data
-  age                      Int
-  gender                   String
-  height_cm                Float
-  weight_kg                Float
-  target_weight_kg         Float?
-  body_fat_percentage      Float?
-  additional_personal_info String[]
-
-  // Goals
-  main_goal              MainGoal
-  main_goal_text         String[]
-  specific_goal          String[]
-  goal_timeframe_days    Int?
-  commitment_level       String
-  most_important_outcome String[]
-  special_personal_goal  String[]
-
-  // Physical activity
-  physical_activity_level  PhysicalActivityLevel
-  sport_frequency          SportFrequency
-  sport_types              String[]
-  sport_duration_min       Int?
-  workout_times            String[]
-  uses_fitness_devices     Boolean               @default(false)
-  fitness_device_type      String[]
-  additional_activity_info String[]
-
-  // Health
+  questionnaire_id            Int                      @id @default(autoincrement())
+  user_id                     String
+  date_completed              DateTime                 @default(now())
+  age                         Int
+  gender                      String
+  height_cm                   Float
+  weight_kg                   Float
+  target_weight_kg            Float?
+  body_fat_percentage         Float?
+  additional_personal_info    String[]
+  main_goal                   MainGoal
+  main_goal_text              String[]
+  specific_goal               String[]
+  goal_timeframe_days         Int?
+  commitment_level            String
+  most_important_outcome      String[]
+  special_personal_goal       String[]
+  physical_activity_level     PhysicalActivityLevel
+  sport_frequency             SportFrequency
+  sport_types                 String[]
+  sport_duration_min          Int?
+  workout_times               String[]
+  uses_fitness_devices        Boolean                  @default(false)
+  fitness_device_type         String[]
+  additional_activity_info    String[]
   medical_conditions          String[]
   medical_conditions_text     String[]
   medications                 String[]
   health_goals                String[]
   functional_issues           String[]
   food_related_medical_issues String[]
-
-  // Means and conditions
-  meals_per_day             Int      @default(3)
-  snacks_between_meals      Boolean  @default(false)
-  meal_times                String?
-  cooking_preference        String
-  available_cooking_methods String[]
-  daily_food_budget         Float?
-  shopping_method           String[]
-  daily_cooking_time        String?
-
-  // Dietary preferences and restrictions
-  kosher                  Boolean  @default(false)
-  allergies               String[]
-  allergies_text          String[]
-  dietary_style           String
-  meal_texture_preference String[]
-  disliked_foods          String[]
-  liked_foods             String[]
-  regular_drinks          String[]
-  intermittent_fasting    Boolean?
-  fasting_hours           String?
-
-  // Additional fields
-  past_diet_difficulties String[]
-
-  // Legacy fields (keeping for compatibility)
-  program_duration           String?
-  meal_timing_restrictions   String?
-  dietary_restrictions       String[]
-  willingness_to_follow      Boolean?
-  upcoming_events            String[]
-  upload_frequency           String?
-  notifications_preference   NotificationsPreference?
-  personalized_tips          Boolean?
-  health_metrics_integration Boolean?
-  family_medical_history     String[]
-  smoking_status             SmokingStatus?
-  sleep_hours_per_night      Float?
-
-  created_at DateTime @default(now())
+  meals_per_day               Int                      @default(3)
+  snacks_between_meals        Boolean                  @default(false)
+  meal_times                  String?
+  cooking_preference          String
+  available_cooking_methods   String[]
+  daily_food_budget           Float?
+  shopping_method             String[]
+  daily_cooking_time          String?
+  kosher                      Boolean                  @default(false)
+  allergies                   String[]
+  allergies_text              String[]
+  dietary_style               String
+  meal_texture_preference     String[]
+  disliked_foods              String[]
+  liked_foods                 String[]
+  regular_drinks              String[]
+  intermittent_fasting        Boolean?
+  fasting_hours               String?
+  past_diet_difficulties      String[]
+  program_duration            String?
+  meal_timing_restrictions    String?
+  dietary_restrictions        String[]
+  willingness_to_follow       Boolean?
+  upcoming_events             String[]
+  upload_frequency            String?
+  notifications_preference    NotificationsPreference?
+  personalized_tips           Boolean?
+  health_metrics_integration  Boolean?
+  family_medical_history      String[]
+  smoking_status              SmokingStatus?
+  sleep_hours_per_night       Float?
+  created_at                  DateTime                 @default(now())
+  user                        User                     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
 
 model Meal {
   meal_id                Int            @id @default(autoincrement())
-  user                   User           @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
   user_id                String
   image_url              String
   upload_time            DateTime       @default(now())
   analysis_status        AnalysisStatus
   meal_name              String?
-  meal_period            String? // "breakfast", "lunch", "dinner", "snack", "late_night", "other"
+  meal_period            String?
   calories               Float?
   protein_g              Float?
   carbs_g                Float?
@@ -285,6 +239,7 @@ model Meal {
   ingredients            Json?
   created_at             DateTime       @default(now())
   updated_at             DateTime?      @updatedAt
+  user                   User           @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@index([user_id, created_at])
   @@index([user_id, upload_time])
@@ -295,7 +250,6 @@ model Meal {
 
 model NutritionPlan {
   plan_id          Int      @id @default(autoincrement())
-  user             User     @relation(fields: [user_id], references: [user_id])
   user_id          String
   goal_calories    Float?
   goal_protein_g   Float?
@@ -305,31 +259,28 @@ model NutritionPlan {
   duration_days    Int?
   notes            String?
   created_at       DateTime @default(now())
+  user             User     @relation(fields: [user_id], references: [user_id])
 }
 
 model SubscriptionPayment {
   payment_id     Int              @id @default(autoincrement())
-  user           User             @relation(fields: [user_id], references: [user_id])
   user_id        String
   plan_type      SubscriptionType
   amount         Float
   payment_date   DateTime         @default(now())
   payment_method String?
   created_at     DateTime         @default(now())
+  user           User             @relation(fields: [user_id], references: [user_id])
 }
 
-// Removed AdminDashboard - unused model
-
-// NEW MEAL PLAN MODELS
-
 model MealTemplate {
-  template_id       String          @id @default(cuid())
+  template_id       String               @id @default(cuid())
   name              String
   description       String?
   meal_timing       MealTiming
   dietary_category  DietaryCategory
   prep_time_minutes Int?
-  difficulty_level  Int?            @default(1)
+  difficulty_level  Int?                 @default(1)
   calories          Float?
   protein_g         Float?
   carbs_g           Float?
@@ -341,13 +292,11 @@ model MealTemplate {
   instructions_json Json?
   allergens_json    Json?
   image_url         String?
-  is_active         Boolean         @default(true)
-  created_at        DateTime        @default(now())
-  updated_at        DateTime        @updatedAt
-
-  // Relationships
-  schedules   MealPlanSchedule[]
-  preferences UserMealPreference[]
+  is_active         Boolean              @default(true)
+  created_at        DateTime             @default(now())
+  updated_at        DateTime             @updatedAt
+  preferences       UserMealPreference[]
+  schedules         MealPlanSchedule[]
 
   @@index([dietary_category])
   @@index([meal_timing])
@@ -355,15 +304,15 @@ model MealTemplate {
 }
 
 model UserMealPlan {
-  plan_id                 String    @id @default(cuid())
+  plan_id                 String             @id @default(cuid())
   user_id                 String
   name                    String
   plan_type               String
   meals_per_day           Int
-  snacks_per_day          Int       @default(0)
-  rotation_frequency_days Int       @default(7)
-  include_leftovers       Boolean   @default(false)
-  fixed_meal_times        Boolean   @default(true)
+  snacks_per_day          Int                @default(0)
+  rotation_frequency_days Int                @default(7)
+  include_leftovers       Boolean            @default(false)
+  fixed_meal_times        Boolean            @default(true)
   target_calories_daily   Int?
   target_protein_daily    Float?
   target_carbs_daily      Float?
@@ -372,42 +321,38 @@ model UserMealPlan {
   excluded_ingredients    String?
   start_date              DateTime?
   end_date                DateTime?
-  is_active               Boolean   @default(false)
-  status                  String    @default("not_started") // not_started, active, completed, paused
-  progress_percentage     Float     @default(0)
-  meals_completed         Int       @default(0)
-  total_meals             Int       @default(0)
+  is_active               Boolean            @default(false)
+  status                  String             @default("not_started")
+  progress_percentage     Float              @default(0)
+  meals_completed         Int                @default(0)
+  total_meals             Int                @default(0)
   completed_at            DateTime?
   rating                  Int?
   feedback_liked          String?
   feedback_disliked       String?
   feedback_suggestions    String?
-  created_at              DateTime  @default(now())
-  updated_at              DateTime  @updatedAt
-
-  // Relationships
-  user          User               @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  schedules     MealPlanSchedule[]
-  shoppingLists ShoppingList[]
+  created_at              DateTime           @default(now())
+  updated_at              DateTime           @updatedAt
+  schedules               MealPlanSchedule[]
+  shoppingLists           ShoppingList[]
+  user                    User               @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@index([user_id])
   @@map("user_meal_plans")
 }
 
 model MealPlanSchedule {
-  schedule_id        String     @id @default(cuid())
+  schedule_id        String       @id @default(cuid())
   plan_id            String
   template_id        String
-  day_of_week        Int // 0 = Sunday, 1 = Monday, etc.
+  day_of_week        Int
   meal_timing        MealTiming
-  meal_order         Int        @default(1)
-  portion_multiplier Float      @default(1.0)
-  is_optional        Boolean    @default(false)
-  created_at         DateTime   @default(now())
-
-  // Relationships
-  plan     UserMealPlan @relation(fields: [plan_id], references: [plan_id], onDelete: Cascade)
-  template MealTemplate @relation(fields: [template_id], references: [template_id], onDelete: Cascade)
+  meal_order         Int          @default(1)
+  portion_multiplier Float        @default(1.0)
+  is_optional        Boolean      @default(false)
+  created_at         DateTime     @default(now())
+  plan               UserMealPlan @relation(fields: [plan_id], references: [plan_id], onDelete: Cascade)
+  template           MealTemplate @relation(fields: [template_id], references: [template_id], onDelete: Cascade)
 
   @@unique([plan_id, day_of_week, meal_timing, meal_order])
   @@index([plan_id])
@@ -416,18 +361,17 @@ model MealPlanSchedule {
 }
 
 model UserMealPreference {
-  id              String   @id @default(cuid())
-  user_id         String
-  template_id     String
-  preference_type String // 'favorite', 'dislike', 'allergy'
-  rating          Int?
-  notes           String?
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-
-  user                    User          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  MealTemplate            MealTemplate? @relation(fields: [mealTemplateTemplate_id], references: [template_id])
+  id                      String        @id @default(cuid())
+  user_id                 String
+  template_id             String
+  preference_type         String
+  rating                  Int?
+  notes                   String?
+  created_at              DateTime      @default(now())
+  updated_at              DateTime      @updatedAt
   mealTemplateTemplate_id String?
+  MealTemplate            MealTemplate? @relation(fields: [mealTemplateTemplate_id], references: [template_id])
+  user                    User          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@unique([user_id, template_id, preference_type])
   @@index([user_id])
@@ -435,23 +379,21 @@ model UserMealPreference {
 }
 
 model ShoppingList {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   user_id        String
   plan_id        String?
   name           String
-  quantity       Float    @default(1)
-  unit           String   @default("pieces")
-  category       String?  @default("Other")
-  is_purchased   Boolean  @default(false)
-  added_from     String?  @default("manual") // 'menu', 'scanner', 'manual'
-  estimated_cost Float?   @default(0)
-  metadata       Json? // For storing additional data like barcode, etc.
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  // Relationships
-  user User          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  plan UserMealPlan? @relation(fields: [plan_id], references: [plan_id], onDelete: SetNull)
+  quantity       Float         @default(1)
+  unit           String        @default("pieces")
+  category       String?       @default("Other")
+  is_purchased   Boolean       @default(false)
+  added_from     String?       @default("manual")
+  estimated_cost Float?        @default(0)
+  metadata       Json?
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+  plan           UserMealPlan? @relation(fields: [plan_id], references: [plan_id])
+  user           User          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@index([user_id])
   @@map("shopping_list")
@@ -460,15 +402,15 @@ model ShoppingList {
 model ChatMessage {
   message_id   Int      @id @default(autoincrement())
   user_id      String
-  user_message String   @db.Text
-  ai_response  String   @db.Text
+  user_message String
+  ai_response  String
   created_at   DateTime @default(now())
 
   @@index([user_id, created_at])
 }
 
 model RecommendedMenu {
-  menu_id           String    @id @default(cuid())
+  menu_id           String            @id @default(cuid())
   user_id           String
   title             String
   description       String?
@@ -478,27 +420,26 @@ model RecommendedMenu {
   total_fat         Int?
   total_fiber       Int?
   days_count        Int
-  dietary_category  String?   @default("balanced")
+  dietary_category  String?           @default("balanced")
   estimated_cost    Float?
   prep_time_minutes Int?
   difficulty_level  Int?
-  is_active         Boolean   @default(false)
+  is_active         Boolean           @default(false)
   start_date        DateTime?
   end_date          DateTime?
-  created_at        DateTime  @default(now())
-
-  user  User              @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  meals RecommendedMeal[]
+  created_at        DateTime          @default(now())
+  meals             RecommendedMeal[]
+  user              User              @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@map("recommended_menus")
 }
 
 model RecommendedMeal {
-  meal_id           String     @id @default(cuid())
+  meal_id           String                  @id @default(cuid())
   menu_id           String
   name              String
   meal_type         MealTiming
-  day_number        Int        @default(1)
+  day_number        Int                     @default(1)
   calories          Float
   protein           Float
   carbs             Float
@@ -508,13 +449,11 @@ model RecommendedMeal {
   cooking_method    String?
   instructions      String?
   image_url         String?
-  language          String?    @default("en")
-  dietary_tags      String[]   @default([]) // vegan, vegetarian, gluten-free, dairy-free, nut-free, meat, fish, etc.
-
-  // Relations
-  menu        RecommendedMenu         @relation(fields: [menu_id], references: [menu_id], onDelete: Cascade)
-  ingredients RecommendedIngredient[]
-  ingredientChecks IngredientCheck[]
+  language          String?                 @default("en")
+  dietary_tags      String[]                @default([])
+  ingredientChecks  IngredientCheck[]
+  ingredients       RecommendedIngredient[]
+  menu              RecommendedMenu         @relation(fields: [menu_id], references: [menu_id], onDelete: Cascade)
 
   @@index([menu_id])
   @@index([day_number, meal_type])
@@ -522,34 +461,30 @@ model RecommendedMeal {
 }
 
 model RecommendedIngredient {
-  ingredient_id  String  @id @default(cuid())
-  meal_id        String
-  name           String
-  quantity       Float
-  unit           String
-  category       String?
-  estimated_cost Float?
-
-  // Relations
-  meal RecommendedMeal @relation(fields: [meal_id], references: [meal_id], onDelete: Cascade)
+  ingredient_id    String            @id @default(cuid())
+  meal_id          String
+  name             String
+  quantity         Float
+  unit             String
+  category         String?
+  estimated_cost   Float?
   ingredientChecks IngredientCheck[]
+  meal             RecommendedMeal   @relation(fields: [meal_id], references: [meal_id], onDelete: Cascade)
 
   @@index([meal_id])
   @@map("recommended_ingredients")
 }
 
 model IngredientCheck {
-  check_id      String    @id @default(cuid())
+  check_id      String                @id @default(cuid())
   user_id       String
   ingredient_id String
   meal_id       String
-  checked       Boolean   @default(false)
+  checked       Boolean               @default(false)
   checked_at    DateTime?
-
-  // Relations
-  user       User                  @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  ingredient RecommendedIngredient @relation(fields: [ingredient_id], references: [ingredient_id], onDelete: Cascade)
-  meal       RecommendedMeal       @relation(fields: [meal_id], references: [meal_id], onDelete: Cascade)
+  ingredient    RecommendedIngredient @relation(fields: [ingredient_id], references: [ingredient_id], onDelete: Cascade)
+  meal          RecommendedMeal       @relation(fields: [meal_id], references: [meal_id], onDelete: Cascade)
+  user          User                  @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@unique([user_id, ingredient_id, meal_id])
   @@index([user_id])
@@ -566,9 +501,7 @@ model CalendarEvent {
   description String?
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
-
-  // Relationships
-  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user        User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@index([user_id, date])
   @@map("calendar_events")
@@ -583,9 +516,7 @@ model GamificationBadge {
   condition   String
   points      Int      @default(0)
   achieved_at DateTime @default(now())
-
-  // Relationships
-  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user        User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@index([user_id])
   @@map("gamification_badges")
@@ -606,9 +537,7 @@ model FoodProduct {
   image_url          String?
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
-
-  // Relations
-  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user               User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@index([category])
   @@index([barcode])
@@ -625,9 +554,7 @@ model Badge {
   category       String
   requirements   Json?
   created_at     DateTime    @default(now())
-
-  // Relations
-  userBadges UserBadge[]
+  userBadges     UserBadge[]
 }
 
 model UserBadge {
@@ -635,43 +562,39 @@ model UserBadge {
   user_id     String
   badge_id    String
   earned_date DateTime @default(now())
-
-  // Relations
-  user  User  @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  badge Badge @relation(fields: [badge_id], references: [id], onDelete: Cascade)
+  badge       Badge    @relation(fields: [badge_id], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@unique([user_id, badge_id])
 }
 
 model Achievement {
-  id             String    @id @default(cuid())
-  key            String    @unique
-  title          String
-  description    String
-  icon           String
-  rarity         String    @default("COMMON")
-  category       String    @default("MILESTONE")
-  points_awarded Int       @default(100)
-  progress       Int       @default(0)
-  max_progress   Int       @default(1)
-  unlocked       Boolean   @default(false)
-  unlocked_date  DateTime?
-  created_at     DateTime  @default(now())
-  updated_at     DateTime  @updatedAt
-
+  id               String            @id @default(cuid())
+  key              String            @unique
+  title            String
+  description      String
+  icon             String
+  rarity           String            @default("COMMON")
+  category         String            @default("MILESTONE")
+  points_awarded   Int               @default(100)
+  progress         Int               @default(0)
+  max_progress     Int               @default(1)
+  unlocked         Boolean           @default(false)
+  unlocked_date    DateTime?
+  created_at       DateTime          @default(now())
+  updated_at       DateTime          @updatedAt
   UserAchievements UserAchievement[]
 }
 
 model UserAchievement {
-  id             String    @id @default(cuid())
+  id             String      @id @default(cuid())
   user_id        String
   achievement_id String
-  progress       Int       @default(0)
-  unlocked       Boolean   @default(false)
+  progress       Int         @default(0)
+  unlocked       Boolean     @default(false)
   unlocked_date  DateTime?
-
-  user        User        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  achievement Achievement @relation(fields: [achievement_id], references: [id], onDelete: Cascade)
+  achievement    Achievement @relation(fields: [achievement_id], references: [id], onDelete: Cascade)
+  user           User        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@unique([user_id, achievement_id])
 }
@@ -684,8 +607,7 @@ model WaterIntake {
   milliliters_consumed Int      @default(0)
   created_at           DateTime @default(now())
   updated_at           DateTime @updatedAt
-
-  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user                 User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@unique([user_id, date])
   @@index([user_id, date])
@@ -705,8 +627,7 @@ model DailyGoal {
   water_ml   Float    @default(2500)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
-
-  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@unique([user_id, date])
   @@index([user_id, date])
@@ -731,8 +652,7 @@ model MealCompletion {
   notes            String?
   prep_time_actual Int?
   created_at       DateTime @default(now())
-
-  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user             User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@index([user_id, completed_date])
   @@index([plan_id])
@@ -743,16 +663,15 @@ model MealCompletion {
 model AiRecommendation {
   id               String   @id @default(cuid())
   user_id          String
-  date             String // YYYY-MM-DD format
+  date             String
   recommendations  Json
-  priority_level   String   @default("medium") // "low", "medium", "high"
+  priority_level   String   @default("medium")
   confidence_score Float    @default(0.75)
   based_on         Json?
   is_read          Boolean  @default(false)
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
-
-  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user             User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@unique([user_id, date])
   @@index([user_id, date])
@@ -760,9 +679,24 @@ model AiRecommendation {
   @@map("ai_recommendations")
 }
 
-// Add the missing relation in User model
+model MenuReview {
+  id              String   @id @default(cuid())
+  menu_id         String
+  user_id         String
+  rating          Int
+  liked           String?
+  disliked        String?
+  suggestions     String?
+  would_recommend Boolean  @default(false)
+  created_at      DateTime @default(now())
+  feedback        String?
+  reason          String?
+  type            String?  @default("completed")
+  user            User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
-// ENUMS
+  @@index([menu_id])
+  @@index([user_id])
+}
 
 enum SubscriptionType {
   FREE
@@ -837,8 +771,6 @@ enum DeviceType {
   HUAWEI_HEALTH
 }
 
-// NEW ENUMS FOR MEAL PLANS
-
 enum MealPlanType {
   DAILY
   WEEKLY
@@ -893,26 +825,4 @@ enum AchievementCategory {
   GOAL
   IMPROVEMENT
   CONSISTENCY
-}
-
-// NEW MODEL FOR MENU REVIEWS
-
-model MenuReview {
-  id              String   @id @default(cuid())
-  menu_id         String
-  user_id         String
-  type            String?  @default("completed") // "completed" or "failed"
-  rating          Int
-  feedback        String?
-  reason          String?  // Why user couldn't complete (for failed reviews)
-  liked           String?
-  disliked        String?
-  suggestions     String?
-  would_recommend Boolean  @default(false)
-  created_at      DateTime @default(now())
-
-  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-
-  @@index([menu_id])
-  @@index([user_id])
 }

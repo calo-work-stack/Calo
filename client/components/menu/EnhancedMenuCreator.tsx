@@ -33,6 +33,8 @@ import {
   Edit3,
   Save,
   DollarSign,
+  AlertCircle,
+  Info,
 } from "lucide-react-native";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useTranslation } from "react-i18next";
@@ -40,6 +42,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useShoppingList } from "@/hooks/useShoppingList";
 import { api } from "@/src/services/api";
 import { EnhancedErrorDisplay } from "../EnhancedErrorDisplay";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/src/store";
 
 const { width } = Dimensions.get("window");
 
@@ -62,7 +66,7 @@ interface MenuPreferences {
   dietary_restrictions: string[];
   meal_count: number;
   duration_days: number;
-  budget_range: string;
+  budget_amount: string;
   cooking_difficulty: string;
 }
 
@@ -73,6 +77,13 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const { shoppingList } = useShoppingList();
+
+  // Get questionnaire data from Redux store
+  const questionnaire = useSelector((state: RootState) => state.questionnaire.questionnaire);
+  const userBudget = questionnaire?.daily_food_budget;
+  const cookingPreference = questionnaire?.cooking_preference;
+  const availableCookingMethods = questionnaire?.available_cooking_methods || [];
+  const dailyCookingTime = questionnaire?.daily_cooking_time;
 
   // States
   const [currentStep, setCurrentStep] = useState(0);
@@ -87,7 +98,7 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
     dietary_restrictions: [],
     meal_count: 3,
     duration_days: 7,
-    budget_range: "moderate",
+    budget_amount: userBudget || "",
     cooking_difficulty: "easy",
   });
 
@@ -99,6 +110,8 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
     visible: boolean;
     error: any;
   }>({ visible: false, error: null });
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [tempBudget, setTempBudget] = useState(userBudget || "");
 
   // Animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -276,14 +289,6 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
   const isGeneratingRef = useRef(false);
 
   const generateMenu = async () => {
-    if (selectedIngredients.length === 0) {
-      Alert.alert(
-        "No Ingredients",
-        "Please select at least one ingredient to generate a menu."
-      );
-      return;
-    }
-
     // Prevent duplicate requests using both state and ref
     if (isGenerating || isGeneratingRef.current) {
       console.log(
@@ -396,14 +401,62 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
     </View>
   );
 
+  // Helper function to get cooking preference label
+  const getCookingPreferenceLabel = (pref: string | undefined) => {
+    switch (pref) {
+      case "cooked": return t("menuCreator.cookingLevels.cooked");
+      case "easy_prep": return t("menuCreator.cookingLevels.easyPrep");
+      case "ready_made": return t("menuCreator.cookingLevels.readyMade");
+      case "no_cooking": return t("menuCreator.cookingLevels.noCooking");
+      default: return t("menuCreator.cookingLevels.notSet");
+    }
+  };
+
+  // Helper function to get cooking preference icon
+  const getCookingPreferenceIcon = (pref: string | undefined) => {
+    switch (pref) {
+      case "cooked": return "👨‍🍳";
+      case "easy_prep": return "⚡";
+      case "ready_made": return "📦";
+      case "no_cooking": return "🥗";
+      default: return "❓";
+    }
+  };
+
   const renderIngredientSelection = () => (
     <View style={styles.stepContent}>
       <Text style={[styles.stepTitle, { color: colors.text }]}>
-        Select Ingredients
+        {t("menuCreator.selectIngredients")}
       </Text>
       <Text style={[styles.stepDescription, { color: colors.icon }]}>
-        Choose ingredients from your shopping list or add custom ones
+        {t("menuCreator.selectIngredientsDesc")}
       </Text>
+
+      {/* Budget Reminder */}
+      {userBudget && (
+        <TouchableOpacity
+          style={[
+            styles.budgetReminder,
+            { backgroundColor: "#f59e0b15", borderColor: "#f59e0b40" },
+          ]}
+          onPress={() => setShowBudgetModal(true)}
+        >
+          <View style={styles.budgetReminderContent}>
+            <AlertCircle size={20} color="#d97706" />
+            <View style={styles.budgetReminderText}>
+              <Text style={[styles.budgetReminderTitle, { color: "#b45309" }]}>
+                {t("menuCreator.budgetReminder")}
+              </Text>
+              <Text style={[styles.budgetReminderValue, { color: colors.text }]}>
+                {t("menuCreator.dailyBudgetIs", { budget: userBudget })}
+              </Text>
+            </View>
+          </View>
+          <Text style={[styles.budgetChangeLink, { color: "#d97706" }]}>
+            {t("menuCreator.changeBudget")}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Cost Display */}
       <View
@@ -414,7 +467,7 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
       >
         <DollarSign size={20} color={colors.emerald500} />
         <Text style={[styles.costText, { color: colors.emerald500 }]}>
-          Estimated Cost: ${totalEstimatedCost.toFixed(2)}
+          {t("menuCreator.estimatedCost")}: ₪{totalEstimatedCost.toFixed(2)}
         </Text>
       </View>
 
@@ -766,54 +819,38 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
         ))}
       </View>
 
-      {/* Budget Range */}
+      {/* Budget Amount */}
       <Text style={[styles.sectionLabel, { color: colors.text }]}>
-        Budget Range
+        {t("menuCreator.dailyBudget")}
       </Text>
-      <View style={styles.budgetContainer}>
-        {["budget", "moderate", "premium"].map((budget) => (
-          <TouchableOpacity
-            key={budget}
-            style={[
-              styles.budgetOption,
-              {
-                backgroundColor:
-                  menuPreferences.budget_range === budget
-                    ? colors.emerald500 + "20"
-                    : colors.surface,
-                borderColor:
-                  menuPreferences.budget_range === budget
-                    ? colors.emerald500
-                    : colors.border,
-              },
-            ]}
-            onPress={() =>
-              setMenuPreferences((prev) => ({ ...prev, budget_range: budget }))
+      <View style={styles.budgetInputContainer}>
+        <View style={[styles.budgetInputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.budgetCurrency, { color: colors.emerald500 }]}>₪</Text>
+          <TextInput
+            style={[styles.budgetInput, { color: colors.text }]}
+            value={menuPreferences.budget_amount}
+            onChangeText={(text) =>
+              setMenuPreferences((prev) => ({ ...prev, budget_amount: text.replace(/[^0-9]/g, "") }))
             }
+            placeholder={t("menuCreator.enterBudgetAmount") || "Enter amount"}
+            placeholderTextColor={colors.icon}
+            keyboardType="numeric"
+            maxLength={5}
+          />
+          <Text style={[styles.budgetPerDay, { color: colors.icon }]}>
+            {t("menuCreator.perDay")}
+          </Text>
+        </View>
+        {userBudget && menuPreferences.budget_amount !== userBudget && (
+          <TouchableOpacity
+            style={[styles.useQuestionnaireBtn, { backgroundColor: colors.emerald500 + "15" }]}
+            onPress={() => setMenuPreferences((prev) => ({ ...prev, budget_amount: userBudget }))}
           >
-            <DollarSign
-              size={16}
-              color={
-                menuPreferences.budget_range === budget
-                  ? colors.emerald500
-                  : colors.icon
-              }
-            />
-            <Text
-              style={[
-                styles.budgetText,
-                {
-                  color:
-                    menuPreferences.budget_range === budget
-                      ? colors.emerald500
-                      : colors.text,
-                },
-              ]}
-            >
-              {budget.charAt(0).toUpperCase() + budget.slice(1)}
+            <Text style={[styles.useQuestionnaireBtnText, { color: colors.emerald500 }]}>
+              {t("menuCreator.useQuestionnaireBudget", { budget: userBudget })}
             </Text>
           </TouchableOpacity>
-        ))}
+        )}
       </View>
     </View>
   );
@@ -821,34 +858,33 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
   const renderSummary = () => (
     <View style={styles.stepContent}>
       <Text style={[styles.stepTitle, { color: colors.text }]}>
-        Review & Generate
+        {t("menuCreator.reviewAndGenerate")}
       </Text>
       <Text style={[styles.stepDescription, { color: colors.icon }]}>
-        Review your selections and generate your personalized menu
+        {t("menuCreator.reviewDescription")}
       </Text>
 
       {/* Summary Cards */}
       <View style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
         <Text style={[styles.summaryTitle, { color: colors.text }]}>
-          Ingredients
+          {t("menuCreator.ingredients")}
         </Text>
         <Text style={[styles.summaryValue, { color: colors.icon }]}>
-          {selectedIngredients.length} selected (Est. $
+          {selectedIngredients.length} {t("menuCreator.selected")} ({t("menuCreator.est")}. ₪
           {totalEstimatedCost.toFixed(2)})
         </Text>
         <Text style={[styles.summaryDetail, { color: colors.icon }]}>
-          {selectedIngredients.filter((i) => i.from_shopping_list).length} from
-          shopping list
+          {selectedIngredients.filter((i) => i.from_shopping_list).length} {t("menuCreator.fromShoppingList")}
         </Text>
       </View>
 
       <View style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
         <Text style={[styles.summaryTitle, { color: colors.text }]}>
-          Menu Style
+          {t("menuCreator.menuStyle")}
         </Text>
         <Text style={[styles.summaryValue, { color: colors.icon }]}>
           {cuisineOptions.find((c) => c.id === menuPreferences.cuisine)?.name}{" "}
-          Cuisine
+          {t("menuCreator.cuisine")}
         </Text>
         {menuPreferences.dietary_restrictions.length > 0 && (
           <Text style={[styles.summaryDetail, { color: colors.icon }]}>
@@ -859,14 +895,14 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
 
       <View style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
         <Text style={[styles.summaryTitle, { color: colors.text }]}>
-          Duration & Budget
+          {t("menuCreator.durationAndBudget")}
         </Text>
         <Text style={[styles.summaryValue, { color: colors.icon }]}>
-          {menuPreferences.duration_days} days • {menuPreferences.budget_range}{" "}
-          budget
+          {menuPreferences.duration_days} {t("menuCreator.days")} • ₪{menuPreferences.budget_amount || "0"}{" "}
+          {t("menuCreator.perDay")}
         </Text>
         <Text style={[styles.summaryDetail, { color: colors.icon }]}>
-          {menuPreferences.meal_count} meals per day
+          {menuPreferences.meal_count} {t("menuCreator.mealsPerDay")}
         </Text>
       </View>
 
@@ -878,13 +914,76 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
           ]}
         >
           <Text style={[styles.summaryTitle, { color: colors.emerald500 }]}>
-            Custom Name
+            {t("menuCreator.customName")}
           </Text>
           <Text style={[styles.summaryValue, { color: colors.emerald500 }]}>
             "{customMenuName}"
           </Text>
         </View>
       )}
+
+      {/* Questionnaire Preferences Confirmation */}
+      <View
+        style={[
+          styles.preferencesConfirmCard,
+          { backgroundColor: colors.emerald500 + "10" },
+        ]}
+      >
+        <Text style={[styles.preferencesConfirmTitle, { color: colors.text }]}>
+          {t("menuCreator.preferencesApplied")}
+        </Text>
+
+        {/* Cooking Level */}
+        <View style={styles.preferencesConfirmItem}>
+          <Text style={styles.summaryIndicatorIcon}>
+            {getCookingPreferenceIcon(cookingPreference)}
+          </Text>
+          <Text style={[styles.preferencesConfirmText, { color: colors.text }]}>
+            {t("menuCreator.cookingLevel")}: {getCookingPreferenceLabel(cookingPreference)}
+          </Text>
+          <Check size={16} color={colors.emerald500} />
+        </View>
+
+        {/* Available Cooking Methods */}
+        {availableCookingMethods.length > 0 && (
+          <View style={styles.preferencesConfirmItem}>
+            <Text style={styles.summaryIndicatorIcon}>🍳</Text>
+            <Text style={[styles.preferencesConfirmText, { color: colors.text }]}>
+              {t("menuCreator.cookingMethods")}: {availableCookingMethods.length} {t("menuCreator.available")}
+            </Text>
+            <Check size={16} color={colors.emerald500} />
+          </View>
+        )}
+
+        {/* Daily Cooking Time */}
+        {dailyCookingTime && (
+          <View style={styles.preferencesConfirmItem}>
+            <Text style={styles.summaryIndicatorIcon}>⏱️</Text>
+            <Text style={[styles.preferencesConfirmText, { color: colors.text }]}>
+              {t("menuCreator.cookingTime")}: {dailyCookingTime} {t("menuCreator.minutes")}
+            </Text>
+            <Check size={16} color={colors.emerald500} />
+          </View>
+        )}
+
+        {/* Budget */}
+        {userBudget && (
+          <View style={styles.preferencesConfirmItem}>
+            <Text style={styles.summaryIndicatorIcon}>💰</Text>
+            <Text style={[styles.preferencesConfirmText, { color: colors.text }]}>
+              {t("menuCreator.dailyBudget")}: ₪{userBudget}
+            </Text>
+            <Check size={16} color={colors.emerald500} />
+          </View>
+        )}
+
+        <View style={[styles.summaryIndicator, { backgroundColor: colors.emerald500 + "15", marginTop: 8 }]}>
+          <Info size={16} color={colors.emerald500} />
+          <Text style={[styles.summaryIndicatorLabel, { color: colors.emerald600, flex: 1 }]}>
+            {t("menuCreator.preferencesNote")}
+          </Text>
+        </View>
+      </View>
 
       {/* Generate Button with Progress */}
       <TouchableOpacity
@@ -998,7 +1097,6 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
                 { backgroundColor: colors.emerald500, marginLeft: "auto" },
               ]}
               onPress={() => setCurrentStep((prev) => prev + 1)}
-              disabled={currentStep === 0 && selectedIngredients.length === 0}
             >
               <Text style={styles.navButtonText}>Next</Text>
             </TouchableOpacity>
@@ -1013,6 +1111,76 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
           onRetry={generateMenu}
           context={t("menu.generation") || "Menu Generation"}
         />
+
+        {/* Budget Change Modal */}
+        <Modal
+          visible={showBudgetModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowBudgetModal(false)}
+        >
+          <View style={styles.budgetModalOverlay}>
+            <View style={[styles.budgetModalContent, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.budgetModalTitle, { color: colors.text }]}>
+                {t("menuCreator.changeDailyBudget")}
+              </Text>
+              <Text style={[styles.budgetModalSubtitle, { color: colors.icon }]}>
+                {t("menuCreator.budgetModalDescription")}
+              </Text>
+              <TextInput
+                style={[
+                  styles.budgetModalInput,
+                  {
+                    backgroundColor: colors.background,
+                    color: colors.text,
+                    borderColor: colors.border
+                  }
+                ]}
+                value={tempBudget}
+                onChangeText={setTempBudget}
+                keyboardType="numeric"
+                placeholder={t("menuCreator.enterBudget")}
+                placeholderTextColor={colors.icon}
+              />
+              <View style={styles.budgetModalButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.budgetModalButton,
+                    { backgroundColor: colors.border }
+                  ]}
+                  onPress={() => {
+                    setTempBudget(userBudget || "");
+                    setShowBudgetModal(false);
+                  }}
+                >
+                  <Text style={[styles.budgetModalButtonText, { color: colors.text }]}>
+                    {t("common.cancel")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.budgetModalButton,
+                    { backgroundColor: colors.emerald500 }
+                  ]}
+                  onPress={() => {
+                    // Note: This only updates the local display.
+                    // To persist, you'd need to update the questionnaire
+                    Alert.alert(
+                      t("menuCreator.budgetUpdated"),
+                      t("menuCreator.budgetUpdatedMessage", { budget: tempBudget }),
+                      [{ text: t("common.ok") }]
+                    );
+                    setShowBudgetModal(false);
+                  }}
+                >
+                  <Text style={[styles.budgetModalButtonText, { color: "#ffffff" }]}>
+                    {t("common.save")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </Animated.View>
     </Modal>
   );
@@ -1263,22 +1431,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  budgetContainer: {
-    flexDirection: "row",
-    gap: 12,
+  budgetInputContainer: {
     marginBottom: 24,
+    gap: 12,
   },
-  budgetOption: {
-    flex: 1,
+  budgetInputWrapper: {
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 12,
     borderWidth: 1,
-    gap: 6,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 8,
   },
-  budgetText: {
+  budgetCurrency: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  budgetInput: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  budgetPerDay: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  useQuestionnaireBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  useQuestionnaireBtnText: {
     fontSize: 14,
     fontWeight: "600",
   },
@@ -1346,5 +1531,137 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#ffffff",
+  },
+  // Budget reminder styles
+  budgetReminder: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  budgetReminderContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 12,
+  },
+  budgetReminderText: {
+    flex: 1,
+  },
+  budgetReminderTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  budgetReminderValue: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  budgetChangeLink: {
+    fontSize: 13,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  },
+  // Budget modal styles
+  budgetModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  budgetModalContent: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: 16,
+    padding: 24,
+  },
+  budgetModalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  budgetModalSubtitle: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  budgetModalInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 18,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  budgetModalButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  budgetModalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  budgetModalButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  // Summary indicator styles
+  summaryIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    gap: 10,
+  },
+  summaryIndicatorIcon: {
+    fontSize: 20,
+  },
+  summaryIndicatorContent: {
+    flex: 1,
+  },
+  summaryIndicatorLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  summaryIndicatorValue: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  summaryIndicatorCheck: {
+    marginLeft: "auto",
+  },
+  // Preferences confirmation card
+  preferencesConfirmCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  preferencesConfirmTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+  preferencesConfirmItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+    gap: 10,
+  },
+  preferencesConfirmText: {
+    fontSize: 14,
+    flex: 1,
   },
 });

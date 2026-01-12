@@ -35,6 +35,7 @@ import {
 import { api, APIError } from "@/src/services/api";
 import { fetchMeals } from "@/src/store/mealSlice";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
+import { useTranslation } from "react-i18next";
 import LoadingScreen from "@/components/LoadingScreen";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import XPNotification from "@/components/XPNotification";
@@ -70,6 +71,7 @@ const HomeScreen = React.memo(() => {
   const { meals, isLoading } = useOptimizedSelector(selectMealState);
   const { user } = useOptimizedSelector(selectAuthState);
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
 
   const [dailyGoals, setDailyGoals] = useState<DailyGoals>({
     calories: 0,
@@ -82,11 +84,10 @@ const HomeScreen = React.memo(() => {
     targetFat: 60,
   });
   const [refreshing, setRefreshing] = useState(false);
-  const [isDataLoading, setIsDataLoading] = useState(false);
+  const [, setIsDataLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
   const [waterCups, setWaterCups] = useState(0);
-  const [language, setLanguage] = useState<"he" | "en">("he");
   const [dataError, setDataError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -109,8 +110,7 @@ const HomeScreen = React.memo(() => {
     setShowShoppingList(false);
   }, []);
 
-  const { t = (key: string) => key } = {};
-  const { isRTL } = useLanguage();
+  const { isRTL, language: currentLanguage } = useLanguage();
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -214,7 +214,7 @@ const HomeScreen = React.memo(() => {
         }
       }
     } catch (error) {
-      console.error("Error loading daily goals:", error);
+      console.error(t("common.error_loading_daily_goals"), error);
       setDailyGoals((prev) => ({
         ...prev,
         targetCalories: 2205,
@@ -223,7 +223,7 @@ const HomeScreen = React.memo(() => {
         targetFat: 60,
       }));
     }
-  }, [user?.user_id, user?.subscription_type]);
+  }, [user?.user_id, user?.subscription_type, t]);
 
   const loadWaterIntake = useCallback(async () => {
     if (!user?.user_id) return;
@@ -247,11 +247,11 @@ const HomeScreen = React.memo(() => {
         error.__CANCEL__;
 
       if (!isCancelError) {
-        console.warn("Water intake load failed, using default:", error.message);
+        console.warn(t("common.water_load_failed"), error.message);
       }
       setWaterCups(0);
     }
-  }, [user?.user_id]);
+  }, [user?.user_id, t]);
 
   const syncWaterWithServer = useCallback(
     async (totalCups: number) => {
@@ -292,11 +292,11 @@ const HomeScreen = React.memo(() => {
           error.__CANCEL__;
 
         if (!isCancelError) {
-          console.warn("Water sync failed, will retry:", error.message);
+          console.warn(t("common.water_sync_failed"), error.message);
         }
       }
     },
-    [user?.user_id]
+    [user?.user_id, t]
   );
 
   const incrementWater = useCallback(() => {
@@ -330,6 +330,28 @@ const HomeScreen = React.memo(() => {
     }, 1000);
   }, [waterCups, syncWaterWithServer]);
 
+  const addWaterVolume = useCallback(
+    (mlAmount: number) => {
+      const goalMaxCups = 10;
+      const ML_PER_CUP = 250;
+      const cupsToAdd = Math.ceil(mlAmount / ML_PER_CUP);
+      const newTotal = Math.min(waterCups + cupsToAdd, goalMaxCups);
+
+      if (newTotal === waterCups) return;
+
+      setWaterCups(newTotal);
+
+      if (waterSyncTimeoutRef.current) {
+        clearTimeout(waterSyncTimeoutRef.current);
+      }
+
+      waterSyncTimeoutRef.current = setTimeout(() => {
+        syncWaterWithServer(newTotal);
+      }, 1000);
+    },
+    [waterCups, syncWaterWithServer]
+  );
+
   const loadAllData = useCallback(
     async (force = false) => {
       if (!user?.user_id || isLoadingRef.current) return;
@@ -352,19 +374,21 @@ const HomeScreen = React.memo(() => {
         ]);
 
         if (mealsResult.status === "rejected") {
-          console.error("Meals loading failed:", mealsResult.reason);
-          setDataError("Failed to load meals data");
+          console.error(t("common.meals_loading_failed"), mealsResult.reason);
+          setDataError(t("common.failed_to_load_meals"));
         }
 
         if (goalsResult.status === "rejected") {
-          console.error("Goals loading failed:", goalsResult.reason);
+          console.error(t("common.goals_loading_failed"), goalsResult.reason);
         }
 
         setRetryCount(0);
       } catch (error) {
-        console.error("Error loading data:", error);
+        console.error(t("common.error_loading_data"), error);
         setDataError(
-          error instanceof APIError ? error.message : "Failed to load data"
+          error instanceof APIError
+            ? error.message
+            : t("common.failed_to_load_data")
         );
         setRetryCount((prev) => prev + 1);
       } finally {
@@ -374,7 +398,7 @@ const HomeScreen = React.memo(() => {
         lastDataLoadRef.current = now;
       }
     },
-    [user?.user_id, dispatch, retryCount, loadDailyGoals]
+    [user?.user_id, dispatch, retryCount, loadDailyGoals, t]
   );
 
   const onRefresh = useCallback(async () => {
@@ -394,28 +418,28 @@ const HomeScreen = React.memo(() => {
 
     if (currentHour >= 5 && currentHour < 12) {
       return {
-        text: "Good Morning",
+        text: t("greetings.morning"),
         icon: currentHour <= 7 ? Coffee : Sun,
         color: colors.warning,
         bgColor: isDark ? colors.primaryContainer : "#FEF3C7",
       };
     } else if (currentHour >= 12 && currentHour < 17) {
       return {
-        text: "Good Afternoon",
+        text: t("greetings.afternoon"),
         icon: Sun,
         color: colors.warning,
         bgColor: isDark ? colors.primaryContainer : "#FEF9C3",
       };
     } else if (currentHour >= 17 && currentHour < 22) {
       return {
-        text: "Good Evening",
+        text: t("greetings.evening"),
         icon: Sun,
         color: colors.warning,
         bgColor: isDark ? colors.primaryContainer : "#FED7AA",
       };
     } else {
       return {
-        text: "Good Night",
+        text: t("greetings.night"),
         icon: Sun,
         color: colors.primary,
         bgColor: isDark ? colors.primaryContainer : "#E0E7FF",
@@ -433,7 +457,10 @@ const HomeScreen = React.memo(() => {
       day: "numeric",
       year: "numeric",
     };
-    return now.toLocaleDateString("en-US", options);
+    return now.toLocaleDateString(
+      currentLanguage === "he" ? "he-IL" : "en-US",
+      options
+    );
   };
 
   useEffect(() => {
@@ -442,9 +469,9 @@ const HomeScreen = React.memo(() => {
 
   useEffect(() => {
     initializeStorageCleanup().catch((error) => {
-      console.error("Failed to initialize storage cleanup:", error);
+      console.error(t("common.failed_storage_cleanup"), error);
     });
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let isMounted = true;
@@ -475,9 +502,7 @@ const HomeScreen = React.memo(() => {
   }, [user?.user_id, loadDailyGoals]);
 
   if (initialLoading) {
-    return (
-      <LoadingScreen text={isRTL ? "טוען מידע..." : "Loading your data..."} />
-    );
+    return <LoadingScreen text={t("home.loadingData")} />;
   }
 
   if (dataError && retryCount > 0) {
@@ -493,7 +518,7 @@ const HomeScreen = React.memo(() => {
           onPress={() => loadAllData(true)}
         >
           <Text style={[styles.retryButtonText, { color: colors.onPrimary }]}>
-            Retry
+            {t("home.retry")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -517,7 +542,7 @@ const HomeScreen = React.memo(() => {
           newLevel={xpNotificationData.newLevel}
           newAchievements={xpNotificationData.newAchievements}
           onHide={() => setShowXPNotification(false)}
-          language={language}
+          language={currentLanguage as "he" | "en"}
         />
 
         <ScrollView
@@ -610,7 +635,7 @@ const HomeScreen = React.memo(() => {
                         { color: colors.onPrimary },
                       ]}
                     >
-                      Level {user?.level || 1}
+                      {t("home.level")} {user?.level || 1}
                     </Text>
                   </View>
                 </View>
@@ -631,12 +656,13 @@ const HomeScreen = React.memo(() => {
             maxCups={10}
             onIncrement={incrementWater}
             onDecrement={decrementWater}
+            onAddVolume={addWaterVolume}
             disabled={isUpdating}
           />
 
           <View style={styles.statsSection}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Your Progress
+              {t("home.yourProgress")}
             </Text>
             <View style={styles.statsGrid}>
               <View
@@ -667,7 +693,7 @@ const HomeScreen = React.memo(() => {
                       { color: colors.textSecondary },
                     ]}
                   >
-                    Total XP
+                    {t("home.totalXP")}
                   </Text>
                 </View>
                 <Text style={[styles.statCardValue, { color: colors.text }]}>
@@ -679,7 +705,7 @@ const HomeScreen = React.memo(() => {
                     { color: colors.textTertiary },
                   ]}
                 >
-                  Keep it up!
+                  {t("home.keepItUp")}
                 </Text>
               </View>
 
@@ -711,7 +737,7 @@ const HomeScreen = React.memo(() => {
                       { color: colors.textSecondary },
                     ]}
                   >
-                    Streak
+                    {t("home.streak")}
                   </Text>
                 </View>
                 <Text style={[styles.statCardValue, { color: colors.text }]}>
@@ -723,7 +749,7 @@ const HomeScreen = React.memo(() => {
                     { color: colors.textTertiary },
                   ]}
                 >
-                  days in a row
+                  {t("home.daysInARow")}
                 </Text>
               </View>
             </View>
@@ -731,7 +757,7 @@ const HomeScreen = React.memo(() => {
 
           <View style={styles.actionsSection}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Quick Actions
+              {t("home.quick_actions")}
             </Text>
             <View style={styles.actionsGrid}>
               <TouchableOpacity
@@ -757,7 +783,7 @@ const HomeScreen = React.memo(() => {
                   <Camera size={24} color={colors.primary} />
                 </View>
                 <Text style={[styles.actionText, { color: colors.text }]}>
-                  Add Meal
+                  {t("home.addMeal")}
                 </Text>
               </TouchableOpacity>
 
@@ -784,7 +810,7 @@ const HomeScreen = React.memo(() => {
                   <Target size={24} color={colors.primary} />
                 </View>
                 <Text style={[styles.actionText, { color: colors.text }]}>
-                  Scan Food
+                  {t("home.scanFood")}
                 </Text>
               </TouchableOpacity>
 
@@ -811,7 +837,7 @@ const HomeScreen = React.memo(() => {
                   <ShoppingCart size={24} color={colors.warning} />
                 </View>
                 <Text style={[styles.actionText, { color: colors.text }]}>
-                  Shopping
+                  {t("home.shopping")}
                 </Text>
               </TouchableOpacity>
 
@@ -838,7 +864,7 @@ const HomeScreen = React.memo(() => {
                   <TrendingUp size={24} color={colors.primary} />
                 </View>
                 <Text style={[styles.actionText, { color: colors.text }]}>
-                  Statistics
+                  {t("home.statistics")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -847,14 +873,14 @@ const HomeScreen = React.memo(() => {
           <View style={styles.activitySection}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Today's Meals
+                {t("home.todaysMeals")}
               </Text>
               <TouchableOpacity
                 style={styles.viewAllButton}
                 onPress={() => router.push("/(tabs)/history")}
               >
                 <Text style={[styles.viewAllText, { color: colors.primary }]}>
-                  View All
+                  {t("home.viewAll")}
                 </Text>
                 <ChevronRight size={16} color={colors.primary} />
               </TouchableOpacity>
@@ -874,7 +900,7 @@ const HomeScreen = React.memo(() => {
                   ]}
                 >
                   <Text style={[styles.activityTitle, { color: colors.text }]}>
-                    Loading meals...
+                    {t("home.loadingMeals")}
                   </Text>
                 </View>
               ) : processedMealsData.recentMeals.length > 0 ? (
@@ -921,7 +947,7 @@ const HomeScreen = React.memo(() => {
                       <Text
                         style={[styles.activityTitle, { color: colors.text }]}
                       >
-                        {meal.name || "Unknown Meal"}
+                        {meal.name || t("common.unknown_meal")}
                       </Text>
                       <Text
                         style={[
@@ -938,7 +964,7 @@ const HomeScreen = React.memo(() => {
                         { color: colors.primary },
                       ]}
                     >
-                      {meal.calories || 0} kcal
+                      {meal.calories || 0} {t("meals.kcal")}
                     </Text>
                   </TouchableOpacity>
                 ))
@@ -961,7 +987,7 @@ const HomeScreen = React.memo(() => {
                     <Text
                       style={[styles.activityTitle, { color: colors.text }]}
                     >
-                      No meals today
+                      {t("home.noMealsToday")}
                     </Text>
                     <Text
                       style={[
@@ -969,7 +995,7 @@ const HomeScreen = React.memo(() => {
                         { color: colors.textSecondary },
                       ]}
                     >
-                      Add your first meal
+                      {t("home.addFirstMeal")}
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -982,7 +1008,7 @@ const HomeScreen = React.memo(() => {
                         borderColor: colors.primary,
                       },
                     ]}
-                    onPress={() => console.log("Add meal")}
+                    onPress={() => router.push("/(tabs)/camera")}
                   >
                     <Text
                       style={[
@@ -990,7 +1016,7 @@ const HomeScreen = React.memo(() => {
                         { color: colors.primary },
                       ]}
                     >
-                      Add Meal
+                      {t("home.addMeal")}
                     </Text>
                   </TouchableOpacity>
                 </View>

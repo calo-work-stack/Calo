@@ -1,129 +1,148 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, StyleSheet } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import React from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TextInputProps,
+} from "react-native";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 
-interface CustomTextInputProps {
+interface CustomTextInputProps extends TextInputProps {
   label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  placeholder?: string;
-  keyboardType?: "default" | "numeric";
   required?: boolean;
-  multiline?: boolean;
+  suffix?: string;
+  prefix?: string;
 }
 
 const CustomTextInput: React.FC<CustomTextInputProps> = ({
   label,
-  value,
-  onChangeText,
-  placeholder,
-  keyboardType = "default",
   required = false,
-  multiline = false,
+  suffix,
+  prefix,
+  style,
+  ...props
 }) => {
   const { colors } = useTheme();
   const { currentLanguage } = useLanguage();
   const isRTL = currentLanguage === "he";
 
-  const [isFocused, setIsFocused] = useState(false);
-  const borderColor = useSharedValue(colors.border);
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      borderColor: borderColor.value,
-      transform: [{ scale: scale.value }],
-    };
-  });
-
-  const handleFocus = () => {
-    setIsFocused(true);
-    borderColor.value = withTiming(colors.primary);
-    scale.value = withTiming(1.02);
-  };
-
-  const handleBlur = () => {
-    setIsFocused(false);
-    borderColor.value = withTiming(colors.border);
-    scale.value = withTiming(1);
-  };
-
   return (
     <View style={styles.container}>
       <Text
-        style={[styles.label, { color: colors.text }, isRTL && styles.textRTL]}
+        style={[
+          styles.label,
+          { color: colors.text },
+          isRTL && styles.labelRTL,
+        ]}
       >
         {label}
-        {required && <Text style={{ color: colors.error }}> *</Text>}
+        {required && <Text style={styles.required}> *</Text>}
       </Text>
 
-      <Animated.View
+      <View
         style={[
           styles.inputWrapper,
           {
             backgroundColor: colors.card,
-            shadowColor: colors.shadow,
+            borderColor: colors.border,
           },
-          animatedStyle,
+          isRTL && styles.inputWrapperRTL,
         ]}
       >
+        {prefix && (
+          <Text
+            style={[
+              styles.prefix,
+              { color: colors.text },
+              isRTL && styles.prefixRTL,
+            ]}
+          >
+            {prefix}
+          </Text>
+        )}
         <TextInput
           style={[
-            styles.textInput,
-            {
-              color: colors.text,
-              textAlign: isRTL ? "right" : "left",
-            },
-            multiline && styles.multilineInput,
+            styles.input,
+            { color: colors.text },
+            isRTL && styles.inputRTL,
+            (suffix || prefix) && styles.inputWithSuffix,
+            style,
           ]}
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={colors.textSecondary}
-          keyboardType={keyboardType}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          multiline={multiline}
-          numberOfLines={multiline ? 4 : 1}
+          placeholderTextColor={colors.textSecondary || colors.border}
+          {...props}
         />
-      </Animated.View>
+        {suffix && (
+          <Text
+            style={[
+              styles.suffix,
+              { color: colors.textSecondary || colors.border },
+              isRTL && styles.suffixRTL,
+            ]}
+          >
+            {suffix}
+          </Text>
+        )}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
     fontWeight: "600",
-    marginBottom: 12,
+    marginBottom: 8,
+  },
+  labelRTL: {
+    textAlign: "right",
+  },
+  required: {
+    color: "#EF4444",
   },
   inputWrapper: {
-    borderWidth: 2,
-    borderRadius: 16,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    minHeight: 52,
   },
-  textInput: {
-    padding: 18,
+  inputWrapperRTL: {
+    flexDirection: "row-reverse",
+  },
+  input: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: "500",
+    paddingVertical: 14,
   },
-  multilineInput: {
-    minHeight: 100,
-    textAlignVertical: "top",
-  },
-  textRTL: {
+  inputRTL: {
     textAlign: "right",
+  },
+  inputWithSuffix: {
+    paddingRight: 8,
+  },
+  suffix: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  suffixRTL: {
+    marginLeft: 0,
+    marginRight: 8,
+  },
+  prefix: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginRight: 8,
+  },
+  prefixRTL: {
+    marginRight: 0,
+    marginLeft: 8,
   },
 });
 

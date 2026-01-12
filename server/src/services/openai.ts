@@ -78,7 +78,7 @@ export class OpenAIService {
 
   static async generateText(
     prompt: string,
-    maxTokens: number = 4000
+    maxTokens: number = 2048
   ): Promise<string> {
     try {
       console.log("🤖 Sending request to OpenAI...");
@@ -90,15 +90,17 @@ export class OpenAIService {
           {
             role: "system",
             content:
-              "You are a professional nutritionist and meal planning expert specializing in Israeli cuisine and ingredients. You create comprehensive, detailed meal plans with exact nutrition data and realistic costs in Israeli Shekels. Always return valid JSON without markdown formatting. Focus on creating complete, practical meal plans that people will actually want to eat.",
+              "You are a nutritionist specializing in Israeli cuisine. Return valid JSON only, no markdown. Create practical meal plans with accurate nutrition and costs in Shekels.",
           },
           {
             role: "user",
             content:
-              prompt.length > 6000 ? prompt.substring(0, 6000) + "..." : prompt,
+              prompt.length > 4000 ? prompt.substring(0, 4000) + "..." : prompt,
           },
         ],
-        max_completion_tokens: Math.min(maxTokens, 16000),
+        max_completion_tokens: Math.min(maxTokens, 4096),
+        temperature: 0.6,
+        top_p: 0.9,
       });
 
       const content = response?.choices[0]?.message?.content || "";
@@ -569,125 +571,19 @@ export class OpenAIService {
         .join("; ")}`;
     }
 
-    const systemPrompt = `You are a professional nutritionist AI. You MUST analyze food images and respond ONLY with valid JSON data.
+    const systemPrompt = `Nutritionist AI. Analyze food images and return ONLY valid JSON.
 
-CRITICAL REQUIREMENTS:
-- You MUST respond with valid JSON format
-- Do NOT apologize or say you cannot help
-- Do NOT respond in conversational text
-- If image is unclear, provide best estimate in JSON format
-- ALWAYS include all required JSON fields
+RULES:
+- Return JSON only, no text/apologies
+- Language: ${language === "hebrew" ? "Hebrew" : "English"}
+- Be conservative with estimates
+- Identify each ingredient separately
+${updateText ? `- Context: "${updateText}"` : ""}
 
-LANGUAGE: All text fields should be in ${
-      language === "hebrew" ? "Hebrew" : "English"
-    }.
+JSON format:
+{"meal_name":"string","calories":num,"protein_g":num,"carbs_g":num,"fats_g":num,"fiber_g":num,"sugar_g":num,"sodium_mg":num,"serving_size_g":num,"confidence":0-1,"food_category":"string","cooking_method":"string","health_risk_notes":"string","allergens_json":{"possible_allergens":[]},"ingredients":[{"name":"specific name","calories":num,"protein_g":num,"carbs_g":num,"fats_g":num,"estimated_portion_g":num}]}`;
 
-ANALYSIS RULES:
-1. Analyze all visible food items and estimate total serving size
-2. Provide accurate nutritional values for the complete visible portion
-3. Be conservative with estimates - prefer underestimating
-4. Consider cooking methods, visible oils, sauces, and seasonings
-5. Identify potential allergens and additives
-
-${
-  updateText
-    ? `CONTEXT: User provided: "${updateText}". Incorporate this into your analysis and update the ingredients list accordingly.`
-    : ""
-}
-
-Return VALID JSON with ALL fields below. Ensure proper JSON syntax with no trailing commas:
-{
-  "meal_name": "Brief descriptive name",
-  "calories": number,
-  "protein_g": number,
-  "carbs_g": number,
-  "fats_g": number,
-  "saturated_fats_g": number,
-  "polyunsaturated_fats_g": number,
-  "monounsaturated_fats_g": number,
-  "omega_3_g": number,
-  "omega_6_g": number,
-  "fiber_g": number,
-  "soluble_fiber_g": number,
-  "insoluble_fiber_g": number,
-  "sugar_g": number,
-  "cholesterol_mg": number,
-  "sodium_mg": number,
-  "alcohol_g": number,
-  "caffeine_mg": number,
-  "liquids_ml": number,
-  "serving_size_g": number,
-  "allergens_json": {"possible_allergens": ["gluten", "dairy", "nuts"]},
-  "vitamins_json": {
-    "vitamin_a_mcg": number,
-    "vitamin_c_mg": number,
-    "vitamin_d_mcg": number,
-    "vitamin_e_mg": number,
-    "vitamin_k_mcg": number,
-    "vitamin_b12_mcg": number,
-    "folate_mcg": number,
-    "niacin_mg": number,
-    "thiamin_mg": number,
-    "riboflavin_mg": number,
-    "pantothenic_acid_mg": number,
-    "vitamin_b6_mg": number
-  },
-  "micronutrients_json": {
-    "iron_mg": number,
-    "magnesium_mg": number,
-    "zinc_mg": number,
-    "calcium_mg": number,
-    "potassium_mg": number,
-    "phosphorus_mg": number,
-    "selenium_mcg": number,
-    "copper_mg": number,
-    "manganese_mg": number
-  },
-  "glycemic_index": number,
-  "insulin_index": number,
-  "food_category": "Fast Food/Homemade/Snack/Beverage/etc",
-  "processing_level": "Unprocessed/Minimally processed/Ultra-processed",
-  "cooking_method": "Grilled/Fried/Boiled/Raw/Baked/etc",
-  "additives_json": {"observed_additives": ["preservatives", "colorings"]},
-  "health_risk_notes": "Brief health assessment",
-  "confidence": number (0-1),
-  "ingredients": [
-    {
-      "name": "SPECIFIC ingredient name (e.g., 'grilled chicken breast', 'steamed white rice')",
-      "calories": number,
-      "protein_g": number,
-      "carbs_g": number,
-      "fats_g": number,
-      "fiber_g": number,
-      "sugar_g": number,
-      "sodium_mg": number,
-      "estimated_portion_g": number
-    }
-  ]
-}
-
-CRITICAL: Identify EVERY visible ingredient separately. Do NOT use generic terms like "mixed ingredients".
-
-Language: ${language}`;
-
-    const prompt = `
-    Please analyze this meal image and provide detailed nutritional information with comprehensive ingredient breakdown.
-    ${updateText ? `Additional context: ${updateText}` : ""}
-
-    CRITICAL REQUIREMENTS FOR INGREDIENT IDENTIFICATION:
-    1. Identify EVERY SINGLE visible ingredient/food component separately with specific names
-    2. Do NOT use generic terms like "mixed ingredients", "various vegetables", "assorted items"
-    3. Be SPECIFIC: Instead of "vegetables", list "broccoli", "carrots", "bell peppers" separately
-    4. Include proteins, grains, vegetables, fruits, dairy, oils, sauces, spices individually
-    5. If you see a salad, list each vegetable type separately
-    6. If you see a sandwich, list bread, meat, cheese, lettuce, tomato, etc. separately
-    7. Estimate realistic portion sizes for each ingredient
-    8. Provide accurate nutritional data for each specific ingredient
-    9. Include cooking oils, seasonings, and condiments that are visible or likely used
-    10. Break down composite foods into their components (e.g., pasta salad = pasta + vegetables + dressing)
-
-    ABSOLUTELY FORBIDDEN: "mixed ingredients", "various components", "assorted vegetables", "mixed salad", "vegetable mix"
-    `;
+    const prompt = `Analyze this food image. List each ingredient separately with specific names (not "mixed" or "various"). Include portion estimates and nutritional data per ingredient.${updateText ? ` Context: ${updateText}` : ""}`;
 
     let userPrompt =
       "Please analyze this food image and provide detailed nutritional information.";
@@ -718,13 +614,15 @@ Language: ${language}`;
               type: "image_url",
               image_url: {
                 url: `data:image/jpeg;base64,${cleanBase64}`,
-                detail: "high",
+                detail: "low", // Use low detail for faster processing - sufficient for food recognition
               },
             },
           ],
         },
       ],
-      max_completion_tokens: 16000,
+      max_completion_tokens: 2048, // Reduced from 16000 - meal analysis rarely needs more
+      temperature: 0.5, // Lower temperature for more consistent, faster responses
+      top_p: 0.9,
     });
 
     const content = response?.choices[0]?.message?.content;
@@ -1632,19 +1530,10 @@ Language: ${language}`;
         return this.getMockUpdate(originalAnalysis, updateText);
       }
 
-      const systemPrompt = `You are a professional nutritionist. The user has provided additional information about their meal. Update the nutritional analysis accordingly.
-
-ORIGINAL ANALYSIS:
-${JSON.stringify(originalAnalysis, null, 2)}
-
-ADDITIONAL INFORMATION FROM USER:
-"${updateText}"
-
-Please provide an updated nutritional analysis that incorporates this new information. Adjust calories, macronutrients, and other values as needed.
-
-Respond with a JSON object in the same format as the original analysis.
-
-Language for response: ${language}`;
+      const systemPrompt = `Nutritionist. Update meal analysis based on user info. Return JSON only.
+Original: calories=${originalAnalysis.calories}, protein=${originalAnalysis.protein}g, carbs=${originalAnalysis.carbs}g, fat=${originalAnalysis.fat}g
+User update: "${updateText}"
+Language: ${language}`;
 
       const response = await this.openai.chat.completions.create({
         model: "gpt-4o-mini",
@@ -1655,10 +1544,12 @@ Language for response: ${language}`;
           },
           {
             role: "user",
-            content: `Please update the nutritional analysis based on this additional information: "${updateText}"`,
+            content: `Update nutritional analysis: "${updateText}". Return JSON with name, calories, protein, carbs, fat, ingredients array.`,
           },
         ],
-        max_completion_tokens: 16000,
+        max_completion_tokens: 1024, // Reduced - updates are smaller
+        temperature: 0.5,
+        top_p: 0.9,
       });
 
       const content = response.choices[0]?.message?.content;
@@ -2275,32 +2166,21 @@ Language for response: ${language}`;
     userPreferences: any,
     previousMeals: any[] = []
   ) {
-    const recentMeals = previousMeals.slice(-7);
+    const recentMeals = previousMeals.slice(-5); // Reduced from 7
     const usedIngredients = recentMeals.flatMap(
       (meal) => meal.ingredients || []
-    );
-    const usedCuisines = recentMeals
-      .map((meal) => meal.cuisine)
-      .filter(Boolean);
+    ).slice(0, 10); // Limit ingredients list
 
-    const prompt = `Generate a diverse daily menu for a user with the following preferences:
-${JSON.stringify(userPreferences)}
-
-IMPORTANT VARIATION REQUIREMENTS:
-- Avoid repeating these recent ingredients: ${usedIngredients.join(", ")}
-- Avoid these recent cuisines: ${usedCuisines.join(", ")}
-- Create meals with at least 80% different ingredients from recent meals
-- Use diverse cooking methods (grilled, baked, steamed, raw, etc.)
-- Include variety in protein sources, vegetables, and grains
-- Consider seasonal ingredients and international cuisines
-
-Please provide breakfast, lunch, and dinner with detailed ingredients and nutritional information.`;
+    const prompt = `Daily menu for: ${JSON.stringify(userPreferences).substring(0, 500)}
+Avoid: ${usedIngredients.slice(0, 5).join(", ")}
+Provide breakfast, lunch, dinner with ingredients and nutrition. Return JSON.`;
 
     const response = await this.openai?.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.9,
-      max_completion_tokens: 16000,
+      temperature: 0.7, // Reduced from 0.9 for faster responses
+      max_completion_tokens: 2048, // Reduced from 16000
+      top_p: 0.9,
     });
 
     if (!response) {
