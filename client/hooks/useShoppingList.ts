@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/src/services/api";
 import { Alert } from "react-native";
+import { useSelector } from "react-redux";
+import { RootState } from "@/src/store";
 
 interface ShoppingListItem {
   is_purchased: any;
@@ -16,8 +18,9 @@ interface ShoppingListItem {
 
 export const useShoppingList = () => {
   const queryClient = useQueryClient();
+  const { isAuthenticated, token } = useSelector((state: RootState) => state.auth);
 
-  // Get shopping list
+  // Get shopping list - only fetch when authenticated
   const {
     data: shoppingList = [],
     isLoading,
@@ -26,6 +29,12 @@ export const useShoppingList = () => {
   } = useQuery({
     queryKey: ["shoppingList"],
     queryFn: async () => {
+      // Don't fetch if not authenticated
+      if (!isAuthenticated || !token) {
+        console.log("📦 [ShoppingList Hook] Skipping fetch - not authenticated");
+        return [];
+      }
+
       try {
         console.log("📦 [ShoppingList Hook] Fetching shopping list...");
         const response = await api.get("/shopping-lists");
@@ -43,6 +52,11 @@ export const useShoppingList = () => {
 
         return response.data.data || [];
       } catch (error: any) {
+        // Silently handle 401 errors (user logged out)
+        if (error.response?.status === 401) {
+          console.log("📦 [ShoppingList Hook] 401 - User not authenticated, returning empty list");
+          return [];
+        }
         console.error(
           "❌ [ShoppingList Hook] Error fetching shopping list:",
           error
@@ -55,6 +69,7 @@ export const useShoppingList = () => {
         throw error;
       }
     },
+    enabled: isAuthenticated && !!token, // Only run query when authenticated
     staleTime: 0, // Always consider data stale for immediate updates
     gcTime: 2 * 60 * 1000, // 2 minutes cache time
   });

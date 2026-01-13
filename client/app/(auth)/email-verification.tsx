@@ -212,10 +212,8 @@ export default function EmailVerificationScreen() {
       inputRefs.current[index + 1]?.focus();
     }
 
-    // Auto-verify when all 6 digits are entered
-    if (text && index === 5 && newCode.every((digit) => digit !== "")) {
-      setTimeout(() => handleVerifyCode(), 300);
-    }
+    // Don't auto-verify - let user click the button to avoid premature errors
+    // User can click "Verify Email" when ready
   };
 
   const handleKeyPress = (e: any, index: number) => {

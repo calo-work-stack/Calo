@@ -272,11 +272,23 @@ export default function PaymentPlan() {
     }
   };
 
+  // Fixed handleGoBack function in payment-plan.tsx
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   const handleGoBack = () => {
     if (mode === "change") {
+      // Changing subscription from profile
+      router.push("/(tabs)/profile");
+    } else if (!user || !isAuthenticated) {
+      // Not authenticated - go to sign in
+      console.log("🔙 Not authenticated - redirecting to sign in");
+      router.replace("/(auth)/signin");
+    } else if (user.is_questionnaire_completed) {
+      // Completed questionnaire - can go back to profile or questionnaire
       router.push("/(tabs)/profile");
     } else {
-      router.push("/signup");
+      // First time - go back to questionnaire
+      console.log("🔙 First time user - going back to questionnaire");
+      router.push("/questionnaire");
     }
   };
 

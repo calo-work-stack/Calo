@@ -1,12 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import type { QuestionnaireData } from "../types";
-import { questionnaireAPI } from "../services/api";
+import { questionnaireAPI, authAPI } from "../services/api";
 
-// Import action dynamically to avoid cycles
-const setQuestionnaireCompletedAction = async (dispatch: any) => {
-  const { setQuestionnaireCompleted } = await import("./authSlice");
-  dispatch(setQuestionnaireCompleted());
-};
 interface QuestionnaireState {
   questionnaire: QuestionnaireData | null;
   isLoading: boolean;
@@ -55,27 +50,71 @@ export const saveQuestionnaire = createAsyncThunk(
       const state = getState() as { questionnaire: QuestionnaireState };
       const existingQuestionnaire = state.questionnaire.questionnaire;
 
+      console.log("📝 [QuestionnaireSlice] Starting save...", {
+        isEditMode: questionnaireData.isEditMode,
+        hasExistingData: !!existingQuestionnaire,
+      });
+
       // If in edit mode and we have existing data, merge the changes
       let dataToSave = questionnaireData;
       if (questionnaireData.isEditMode && existingQuestionnaire) {
-        // Merge existing data with new data, keeping unchanged fields
         dataToSave = {
           ...existingQuestionnaire,
           ...questionnaireData,
-          // Preserve the edit mode flag
           isEditMode: questionnaireData.isEditMode,
         };
       }
 
+      // Save the questionnaire
       const response = await questionnaireAPI.saveQuestionnaire(dataToSave);
+      console.log("✅ [QuestionnaireSlice] Questionnaire saved successfully");
 
-      // Only update questionnaire completion status if not in edit mode
+      // ✅ CRITICAL FIX: Update auth state immediately after save
+      // This ensures the routing logic picks up the change
       if (!questionnaireData.isEditMode) {
-        await setQuestionnaireCompletedAction(dispatch);
+        console.log("🔄 [QuestionnaireSlice] Updating user state...");
+
+        try {
+          // Method 1: Dispatch action to update user state
+          dispatch({
+            type: "auth/updateUserField",
+            payload: {
+              field: "is_questionnaire_completed",
+              value: true,
+            },
+          });
+
+          console.log(
+            "✅ [QuestionnaireSlice] User state updated via dispatch"
+          );
+
+          // Method 2: Fetch fresh user data from server
+          // This ensures we have the latest state
+          const userResponse = await authAPI.getCurrentUser();
+          if (userResponse.success && userResponse.data) {
+            dispatch({
+              type: "auth/setUser",
+              payload: userResponse.data,
+            });
+            console.log("✅ [QuestionnaireSlice] Fresh user data fetched:", {
+              is_questionnaire_completed:
+                userResponse.data.is_questionnaire_completed,
+              subscription_type: userResponse.data.subscription_type,
+            });
+          }
+        } catch (updateError) {
+          console.error(
+            "⚠️ [QuestionnaireSlice] Failed to update user state:",
+            updateError
+          );
+          // Don't throw - questionnaire was saved successfully
+          // The user can still proceed
+        }
       }
 
       return response.data?.questionnaire || response.data;
     } catch (error: any) {
+      console.error("❌ [QuestionnaireSlice] Save error:", error);
       return rejectWithValue(
         error.response?.data?.error ||
           error.message ||
@@ -124,10 +163,12 @@ const questionnaireSlice = createSlice({
       .addCase(saveQuestionnaire.fulfilled, (state, action) => {
         state.isSaving = false;
         state.questionnaire = action.payload;
+        console.log("✅ [QuestionnaireSlice] State updated in Redux");
       })
       .addCase(saveQuestionnaire.rejected, (state, action) => {
         state.isSaving = false;
         state.error = action.payload as string;
+        console.error("❌ [QuestionnaireSlice] Save rejected:", action.payload);
       });
   },
 });

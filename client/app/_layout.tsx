@@ -14,7 +14,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "@/src/context/ThemeContext";
 import { useRouter, useSegments } from "expo-router";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { queryClient } from "@/src/services/queryClient";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "@/src/i18n"; // Initialize i18n
@@ -33,6 +33,7 @@ import { useTranslation } from "react-i18next";
 import Toast from "react-native-toast-message";
 import ToastWrapper from "@/components/ToastWrapper";
 import { StorageCleanupService } from "@/src/utils/storageCleanup";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Initialize storage cleanup on app start
 const initializeStorageCleanup = async () => {
@@ -240,25 +241,46 @@ const AppContent = React.memo(() => {
   const router = useRouter();
 
   const authInitialized = true;
+  
+  // ✅ CRITICAL: Add bypass flag for questionnaire loop
+  const [questionnaireBypass, setQuestionnaireBypass] = useState(false);
+  const bypassCheckRef = useRef(false);
+
+  // Check for bypass flag on mount
+  useEffect(() => {
+    if (!bypassCheckRef.current) {
+      bypassCheckRef.current = true;
+      AsyncStorage.getItem('questionnaire_completed_bypass')
+        .then((value) => {
+          if (value === 'true') {
+            console.log("🔓 [Layout] Bypass flag found - allowing navigation");
+            setQuestionnaireBypass(true);
+          }
+        })
+        .catch(console.error);
+    }
+  }, []);
 
   useEffect(() => {
     const handleRouting = () => {
       if (!authInitialized) return;
 
       const currentPath = segments?.join("/") || "";
-      console.log("🚦 Root Layout - Current Path:", currentPath);
-      console.log("🚦 Root Layout - Auth State:", {
+      
+      console.log("🚦 ==========================================");
+      console.log("🚦 ROUTING CHECK");
+      console.log("🚦 Current Path:", currentPath);
+      console.log("🚦 Bypass Active:", questionnaireBypass);
+      console.log("🚦 Auth State:", {
         isAuthenticated,
-        user: user
-          ? {
-              email_verified: user.email_verified,
-              is_questionnaire_completed: user.is_questionnaire_completed,
-              subscription_type: user.subscription_type,
-            }
-          : null,
+        hasUser: !!user,
+        email_verified: user?.email_verified,
+        is_questionnaire_completed: user?.is_questionnaire_completed,
+        subscription_type: user?.subscription_type,
       });
+      console.log("🚦 ==========================================");
 
-      // PUBLIC ROUTES - Allow access without authentication
+      // PUBLIC ROUTES
       const publicRoutes = [
         "privacy-policy",
         "terms-of-service",
@@ -266,16 +288,11 @@ const AppContent = React.memo(() => {
         "contact",
       ];
 
-      const isPublicRoute = publicRoutes.some((route) =>
-        currentPath.includes(route)
-      );
-
-      if (isPublicRoute) {
-        console.log("🚦 Accessing public route - no authentication required");
+      if (publicRoutes.some((route) => currentPath.includes(route))) {
         return;
       }
 
-      // NOT AUTHENTICATED - Redirect to welcome/auth
+      // NOT AUTHENTICATED
       if (!isAuthenticated) {
         const authRoutes = [
           "welcome",
@@ -288,115 +305,85 @@ const AppContent = React.memo(() => {
         ];
 
         if (!authRoutes.some((route) => currentPath.includes(route))) {
-          console.log("🚦 Not authenticated - redirecting to welcome page");
           router.replace("/(auth)/welcome");
         }
         return;
       }
 
-      // AUTHENTICATED - Wait for user data
+      // WAIT FOR USER DATA
       if (!user) {
-        console.log("🚦 Waiting for user data...");
         return;
       }
 
-      // STEP 1: Email Verification Check
+      // EMAIL VERIFICATION
       if (!user.email_verified) {
         if (!currentPath.includes("email-verification")) {
-          console.log("🚦 Step 1 Failed: Email not verified - redirecting");
           router.replace("/(auth)/email-verification");
         }
         return;
       }
 
-      // STEP 2: Questionnaire Completion Check
-      // CRITICAL: Only redirect if NOT in questionnaire AND not completed
-      if (!user.is_questionnaire_completed) {
-        const isInQuestionnaire = currentPath.includes("questionnaire");
-
-        if (!isInQuestionnaire) {
-          console.log(
-            "🚦 Step 2: Questionnaire not completed - redirecting to questionnaire"
-          );
-          router.replace("/questionnaire");
-        } else {
-          console.log("🚦 Step 2: User is in questionnaire - allowing access");
-        }
-        return; // CRITICAL: Stop here - don't check subscription yet
-      }
-
-      // STEP 3: Plan Selection Check
-      // Only check subscription AFTER questionnaire is completed
-      if (!user.subscription_type || user.subscription_type === null) {
-        if (
-          !currentPath.includes("payment-plan") &&
-          !currentPath.includes("payment")
-        ) {
-          console.log("🚦 Step 3 Failed: No plan selected - redirecting");
-          router.replace("/payment-plan");
-        }
-        return;
-      }
-
-      // STEP 4: All checks passed - User is fully set up
-      // Allow access to all routes
+      // ✅ CRITICAL: Questionnaire check with BYPASS
       const allowedRoutes = [
-        "payment",
+        "questionnaire",
         "payment-plan",
-        "privacy-policy",
-        "menu/",
-        "activeMenu",
+        "payment",
         "(tabs)",
+        "menu/",
+        "privacy-policy",
       ];
 
-      const isAllowedRoute = allowedRoutes.some((route) =>
+      const isInAllowedRoute = allowedRoutes.some((route) =>
         currentPath.includes(route)
       );
 
-      console.log("🚦 Route analysis:", {
-        currentPath,
-        isAllowedRoute,
-        isInTabs: currentPath.includes("(tabs)"),
-        isInMenu: currentPath.includes("menu/"),
-      });
+      // ✅ KEY: If bypass is active OR questionnaire is completed, skip questionnaire check
+      if (questionnaireBypass || user.is_questionnaire_completed) {
+        console.log("🚦 ✅ Questionnaire check BYPASSED or COMPLETED");
 
-      // If in an allowed route, stay there
-      if (isAllowedRoute) {
-        console.log("✅ User is in allowed route - staying");
+        // If somehow in questionnaire, redirect away
+        if (currentPath.includes("questionnaire") && !currentPath.includes("tabs")) {
+          if (user.subscription_type && user.subscription_type !== null) {
+            console.log("🚦 → Redirecting to tabs");
+            router.replace("/(tabs)");
+            return;
+          } else {
+            console.log("🚦 → Redirecting to payment");
+            router.replace("/payment-plan");
+            return;
+          }
+        }
+
+        // Subscription check
+        if (!user.subscription_type || user.subscription_type === null) {
+          if (!currentPath.includes("payment")) {
+            router.replace("/payment-plan");
+          }
+          return;
+        }
+
+        // Fully authenticated - allow navigation
+        const authRoutes = ["welcome", "signin", "signup", "email-verification"];
+        if (authRoutes.some((route) => currentPath.includes(route))) {
+          router.replace("/(tabs)");
+          return;
+        }
+
+        if (currentPath === "" || currentPath === "/") {
+          router.replace("/(tabs)");
+          return;
+        }
+
         return;
       }
 
-      // If in auth route but fully authenticated, redirect to main app
-      const authRoutes = [
-        "welcome",
-        "signin",
-        "signup",
-        "email-verification",
-        "forgotPassword",
-        "resetPassword",
-        "reset-password-verify",
-      ];
-
-      const isInAuthRoute = authRoutes.some((route) =>
-        currentPath.includes(route)
-      );
-
-      if (isInAuthRoute) {
-        console.log(
-          "🚦 Fully authenticated user in auth route - redirecting to main app"
-        );
-        router.replace("/(tabs)");
+      // If questionnaire not complete and no bypass, redirect to questionnaire
+      if (!user.is_questionnaire_completed && !questionnaireBypass) {
+        if (!isInAllowedRoute) {
+          router.replace("/questionnaire");
+        }
         return;
       }
-
-      // If at root, redirect to tabs
-      if (currentPath === "" || currentPath === "/") {
-        console.log("🚦 At root - redirecting to main app");
-        router.replace("/(tabs)");
-        return;
-      }
-
-      console.log("✅ Root Layout - User in correct location");
     };
 
     handleRouting();
@@ -406,6 +393,7 @@ const AppContent = React.memo(() => {
     user?.email_verified,
     user?.is_questionnaire_completed,
     user?.subscription_type,
+    questionnaireBypass,
     segments?.join("/") || "",
     router,
   ]);

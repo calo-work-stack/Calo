@@ -37,7 +37,7 @@ const WeightScale: React.FC<WeightScaleProps> = ({
   const isUserDragging = useRef(false);
   const lastExternalValue = useRef(value);
   const hasInitialized = useRef(false);
-  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const screenWidth = Dimensions.get("window").width;
   const SCALE_WIDTH = screenWidth - 48;

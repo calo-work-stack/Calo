@@ -58,16 +58,23 @@ const QuestionnaireProtection: React.FC<QuestionnaireProtectionProps> = ({
     );
 
     const isQuestionnaireRoute = pathname.includes("/questionnaire");
+    const isPaymentRoute = pathname.includes("/payment");
 
-    // Check if user has a paid plan but hasn't completed questionnaire
-    const hasPaidPlan =
-      user.subscription_type && user.subscription_type !== "FREE";
-    const needsQuestionnaire = !user.is_questionnaire_completed;
+    // Check subscription and questionnaire status
+    const hasSubscription = user.subscription_type && user.subscription_type !== "FREE" && user.subscription_type !== null;
+    const questionnaireCompleted = user.is_questionnaire_completed === true;
 
-    // If user has paid plan but no questionnaire completion
+    console.log("🔒 QuestionnaireProtection check:", {
+      pathname,
+      hasSubscription,
+      questionnaireCompleted,
+      subscription_type: user.subscription_type,
+    });
+
+    // If user has a subscription but hasn't completed questionnaire
     if (
-      hasPaidPlan &&
-      needsQuestionnaire &&
+      hasSubscription &&
+      !questionnaireCompleted &&
       !isQuestionnaireRoute &&
       !isAllowedRoute
     ) {
@@ -79,12 +86,13 @@ const QuestionnaireProtection: React.FC<QuestionnaireProtectionProps> = ({
       return;
     }
 
-    // If user hasn't completed questionnaire and is trying to access protected routes (FREE plan logic)
+    // If user hasn't completed questionnaire and is trying to access protected routes (no subscription)
     if (
-      !hasPaidPlan &&
-      needsQuestionnaire &&
+      !hasSubscription &&
+      !questionnaireCompleted &&
       isProtectedRoute &&
-      !isAllowedRoute
+      !isAllowedRoute &&
+      !isPaymentRoute
     ) {
       ToastService.warning(
         "Complete Questionnaire",
@@ -94,12 +102,13 @@ const QuestionnaireProtection: React.FC<QuestionnaireProtectionProps> = ({
       return;
     }
 
-    // If user completed questionnaire but has no subscription (hasn't selected a plan)
+    // If user completed questionnaire but has no subscription and is not on payment pages
     if (
-      user.is_questionnaire_completed &&
-      (!user.subscription_type || user.subscription_type === null) &&
+      questionnaireCompleted &&
+      !hasSubscription &&
       pathname.startsWith("/(tabs)") &&
-      pathname !== "/(tabs)/questionnaire"
+      pathname !== "/(tabs)/questionnaire" &&
+      !isPaymentRoute
     ) {
       ToastService.info(
         "Choose Your Plan",

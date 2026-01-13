@@ -7,6 +7,7 @@ const clearQueries = async () => {
   const { clearAllQueries } = await import("../services/queryClient");
   clearAllQueries();
 };
+
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -39,7 +40,6 @@ export const signUp = createAsyncThunk(
     } catch (error: any) {
       console.error("💥 Sign up error:", error);
 
-      // Extract meaningful error message
       let errorMessage = "Signup failed";
       if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
@@ -68,7 +68,6 @@ export const signIn = createAsyncThunk(
     } catch (error: any) {
       console.error("💥 Sign in error:", error);
 
-      // Extract meaningful error message
       let errorMessage = "Login failed";
       if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
@@ -97,7 +96,6 @@ export const verifyEmail = createAsyncThunk(
     } catch (error: any) {
       console.error("💥 Email verification error:", error);
 
-      // Extract meaningful error message
       let errorMessage = "Email verification failed";
       if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
@@ -116,17 +114,14 @@ export const signOut = createAsyncThunk(
     try {
       console.log("🔄 Starting comprehensive sign out process...");
 
-      // 1. Clear TanStack Query cache first
       await clearQueries();
       console.log("✅ TanStack Query cache cleared");
 
-      // 2. Clear AsyncStorage completely
       const AsyncStorage =
         require("@react-native-async-storage/async-storage").default;
       await AsyncStorage.clear();
       console.log("✅ AsyncStorage cleared");
 
-      // 3. Clear SecureStore (mobile only)
       const { Platform } = require("react-native");
       if (Platform.OS !== "web") {
         try {
@@ -145,10 +140,6 @@ export const signOut = createAsyncThunk(
         }
       }
 
-      // 4. Reset all Redux slices to initial state
-      // This will be handled by the reducer, but we ensure it happens
-
-      // 5. Clear any web storage (if on web)
       if (Platform.OS === "web") {
         try {
           localStorage.clear();
@@ -159,11 +150,9 @@ export const signOut = createAsyncThunk(
         }
       }
 
-      // 6. Clear API auth and cookies
       await authAPI.signOut();
       console.log("✅ API auth cleared");
 
-      // 7. Force garbage collection of any remaining references
       if (global.gc) {
         global.gc();
       }
@@ -173,7 +162,6 @@ export const signOut = createAsyncThunk(
     } catch (error: any) {
       console.error("💥 SignOut error:", error);
 
-      // Even if there's an error, force clear everything we can
       try {
         const AsyncStorage =
           require("@react-native-async-storage/async-storage").default;
@@ -230,7 +218,6 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    // Add manual signout reducer as fallback
     forceSignOut: (state) => {
       console.log("🔄 Force sign out");
       state.user = null;
@@ -244,11 +231,16 @@ const authSlice = createSlice({
     ) => {
       if (state.user) {
         state.user.subscription_type = action.payload.subscription_type as any;
+        console.log(
+          "✅ [AuthSlice] Subscription updated:",
+          action.payload.subscription_type
+        );
       }
     },
     setQuestionnaireCompleted: (state) => {
       if (state.user) {
         state.user.is_questionnaire_completed = true;
+        console.log("✅ [AuthSlice] Questionnaire marked as completed");
       }
     },
     updateSubscription: (state, action) => {
@@ -257,8 +249,27 @@ const authSlice = createSlice({
         state.user.subscription_type !== action.payload.subscription_type
       ) {
         state.user.subscription_type = action.payload.subscription_type;
+        console.log(
+          "✅ [AuthSlice] Subscription updated:",
+          action.payload.subscription_type
+        );
       }
     },
+
+    // ✅ NEW REDUCER: Update a specific field in user object
+    updateUserField: (
+      state,
+      action: PayloadAction<{ field: string; value: any }>
+    ) => {
+      if (state.user) {
+        (state.user as any)[action.payload.field] = action.payload.value;
+        console.log(
+          `✅ [AuthSlice] Updated ${action.payload.field} to:`,
+          action.payload.value
+        );
+      }
+    },
+
     loginSuccess: (state, action) => {
       state.isAuthenticated = true;
       state.user = action.payload.user;
@@ -266,8 +277,9 @@ const authSlice = createSlice({
       state.isLoading = false;
       state.error = null;
     },
+
+    // ✅ ENHANCED: setUser with better logging
     setUser: (state, action) => {
-      // Only update if user data actually changed
       const newUserData = action.payload;
       const currentUserData = state.user;
 
@@ -297,11 +309,18 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.isLoading = false;
         state.error = null;
+        console.log("✅ [AuthSlice] User object updated:", {
+          email: newUserData?.email,
+          is_questionnaire_completed: newUserData?.is_questionnaire_completed,
+          subscription_type: newUserData?.subscription_type,
+        });
       }
     },
+
     setToken: (state, action) => {
       state.token = action.payload;
     },
+
     signOut: (state) => {
       state.user = null;
       state.token = null;
@@ -309,11 +328,15 @@ const authSlice = createSlice({
       state.isLoading = false;
       state.error = null;
     },
+
+    // ✅ ENHANCED: updateUser with better logging
     updateUser: (state, action: PayloadAction<Partial<User>>) => {
       if (state.user) {
         state.user = { ...state.user, ...action.payload };
+        console.log("✅ [AuthSlice] User partially updated:", action.payload);
       }
     },
+
     setMealsPerDay: (state, action: PayloadAction<number>) => {
       if (state.user) {
         state.user.meals_per_day = action.payload;
@@ -328,7 +351,6 @@ const authSlice = createSlice({
       })
       .addCase(signUp.fulfilled, (state, action) => {
         state.isLoading = false;
-        // Don't set authenticated until email is verified
         if (action.payload.needsEmailVerification) {
           state.user = null;
           state.token = null;
@@ -386,7 +408,6 @@ const authSlice = createSlice({
         console.log("✅ Sign out state updated");
       })
       .addCase(signOut.rejected, (state, action) => {
-        // Even if signout fails, clear the local state
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
@@ -424,7 +445,6 @@ const authSlice = createSlice({
         state.error = null;
         console.log("✅ Email verification state updated");
 
-        // Store token for mobile
         if (action.payload.token) {
           const { Platform } = require("react-native");
           if (Platform.OS !== "web") {
@@ -458,16 +478,19 @@ const authSlice = createSlice({
   },
 });
 
+// ✅ EXPORT ALL ACTIONS INCLUDING NEW ONES
 export const {
   clearError,
   forceSignOut,
   updateUserSubscription,
   setQuestionnaireCompleted,
   updateSubscription,
+  updateUserField, // ✅ NEW - Required by questionnaireSlice
   loginSuccess,
   setUser,
   setToken,
   updateUser,
   setMealsPerDay,
 } = authSlice.actions;
+
 export default authSlice.reducer;

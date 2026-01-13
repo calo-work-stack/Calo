@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { router, useLocalSearchParams } from "expo-router";
-import { RootState, AppDispatch } from "@/src/store";
+import { RootState, AppDispatch, store } from "@/src/store";
 import {
   saveQuestionnaire,
   fetchQuestionnaire,
@@ -165,6 +165,7 @@ const QuestionnaireScreen: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [showTip, setShowTip] = useState("");
   const [dataLoaded, setDataLoaded] = useState(false);
+  const formInitialized = useRef(false);
   const totalSteps = 8;
 
   // Default slider values for new users
@@ -262,9 +263,12 @@ const QuestionnaireScreen: React.FC = () => {
     isLoading,
   ]);
 
-  // Map questionnaire data to form
+  // Map questionnaire data to form - only once when data is first loaded
   useEffect(() => {
-    if (questionnaire && dataLoaded) {
+    // Only initialize form data once when questionnaire is loaded
+    if (questionnaire && dataLoaded && !formInitialized.current) {
+      formInitialized.current = true;
+
       const safeString = (value: any, defaultVal = "") =>
         value?.toString() || defaultVal;
       const safeArray = (value: any) => (Array.isArray(value) ? value : []);
@@ -343,8 +347,13 @@ const QuestionnaireScreen: React.FC = () => {
     const newArray = array.includes(item)
       ? array.filter((i) => i !== item)
       : [...array, item];
-    setFormData({ ...formData, [key]: newArray });
+    setFormData((prev) => ({ ...prev, [key]: newArray }));
   };
+
+  // ==========================================
+  // REPLACE handleSubmit in questionnaire.tsx
+  // This FORCES the state update IMMEDIATELY
+  // ==========================================
 
   const handleSubmit = async () => {
     try {
@@ -395,56 +404,156 @@ const QuestionnaireScreen: React.FC = () => {
 
       const dataToSubmit = {
         ...cleanFormData,
-        isEditMode: isEditMode || user?.is_questionnaire_completed,
+        isEditMode: isEditMode,
       };
 
-      console.log("📝 Submitting questionnaire data:", dataToSubmit);
+      console.log("📝 [Questionnaire] Submitting...");
+      console.log("📝 [Questionnaire] Current user state:", {
+        is_questionnaire_completed: user?.is_questionnaire_completed,
+        subscription_type: user?.subscription_type,
+      });
 
       const result = await dispatch(saveQuestionnaire(dataToSubmit as any));
 
       if (saveQuestionnaire.fulfilled.match(result)) {
-        console.log("✅ Questionnaire saved successfully");
+        console.log("✅ [Questionnaire] API save successful");
 
-        if (isEditMode || user?.is_questionnaire_completed) {
+        // ✅ CRITICAL FIX 1: FORCE update the state IMMEDIATELY
+        // Don't wait for the thunk to do it
+        if (!isEditMode) {
+          console.log("🔄 [Questionnaire] FORCING state update...");
+
+          // Method 1: Direct dispatch
+          store.dispatch({
+            type: "auth/updateUserField",
+            payload: {
+              field: "is_questionnaire_completed",
+              value: true,
+            },
+          });
+
+          // Method 2: Also update full user object
+          store.dispatch({
+            type: "auth/updateUser",
+            payload: {
+              is_questionnaire_completed: true,
+            },
+          });
+
+          console.log("✅ [Questionnaire] State FORCED to true");
+        }
+
+        // ✅ CRITICAL FIX 2: Wait longer for state propagation
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // ✅ CRITICAL FIX 3: Verify state was updated
+        const currentState = store.getState();
+        const updatedUser = currentState?.auth?.user;
+
+        console.log("🔍 [Questionnaire] State verification:", {
+          is_questionnaire_completed: updatedUser?.is_questionnaire_completed,
+          subscription_type: updatedUser?.subscription_type,
+        });
+
+        // ✅ CRITICAL FIX 4: If state didn't update, FORCE it again
+        if (!updatedUser?.is_questionnaire_completed && !isEditMode) {
+          console.log(
+            "⚠️ [Questionnaire] State didn't update! FORCING AGAIN..."
+          );
+
+          store.dispatch({
+            type: "auth/setUser",
+            payload: {
+              ...updatedUser,
+              is_questionnaire_completed: true,
+            },
+          });
+
+          // Wait again
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
+          const recheck = store.getState()?.auth?.user;
+          console.log("🔍 [Questionnaire] Recheck:", {
+            is_questionnaire_completed: recheck?.is_questionnaire_completed,
+          });
+        }
+
+        if (isEditMode) {
+          // Edit mode - go back to profile
           Alert.alert(
             t("questionnaire.success"),
             t("questionnaire.dataUpdated"),
             [
               {
                 text: t("questionnaire.backToProfile"),
-                onPress: () => router.replace("/(tabs)/profile"),
-              },
-            ]
-          );
-        } else {
-          // For new users, navigate to payment plan
-          Alert.alert(
-            t("questionnaire.success"),
-            t("questionnaire.savedSuccessfully"),
-            [
-              {
-                text: t("common.ok"),
                 onPress: () => {
-                  console.log("🚀 Navigating to payment plan");
-                  router.replace("/payment-plan");
+                  console.log(
+                    "🚀 [Questionnaire] Edit mode - going to profile"
+                  );
+                  router.replace("/(tabs)/profile");
                 },
               },
-            ]
+            ],
+            { cancelable: false }
           );
+        } else {
+          // First time completion
+          const finalUser = store.getState()?.auth?.user;
+          const hasSubscription =
+            finalUser?.subscription_type &&
+            finalUser.subscription_type !== null &&
+            finalUser.subscription_type !== "null";
+
+          console.log("🔍 [Questionnaire] Final check:", {
+            hasSubscription,
+            subscription_type: finalUser?.subscription_type,
+            is_questionnaire_completed: finalUser?.is_questionnaire_completed,
+          });
+
+          // ✅ CRITICAL: Navigate WITHOUT alert to prevent delay
+          if (hasSubscription) {
+            console.log(
+              "🚀 [Questionnaire] Has subscription - going to tabs NOW"
+            );
+            router.replace("/(tabs)");
+          } else {
+            console.log(
+              "🚀 [Questionnaire] No subscription - going to payment NOW"
+            );
+            router.replace("/payment-plan");
+          }
         }
       } else {
-        console.error("❌ Questionnaire save failed:", result);
+        // Save failed
+        console.error("❌ [Questionnaire] Save failed:", result);
         Alert.alert(
           t("questionnaire.error"),
-          result.error?.message || t("questionnaire.saveError")
+          (result as any)?.payload || t("questionnaire.saveError")
         );
       }
-    } catch (error) {
-      console.error("💥 Submit error:", error);
+    } catch (error: any) {
+      console.error("💥 [Questionnaire] Submit error:", error);
       Alert.alert(t("questionnaire.error"), t("questionnaire.saveError"));
     }
   };
-  
+
+  // ✅ ALSO ADD THIS: Monitor state changes for debugging
+  useEffect(() => {
+    console.log("🔍 [Questionnaire] State Monitor:", {
+      currentStep,
+      isEditMode,
+      isSaving,
+      user_questionnaire_completed: user?.is_questionnaire_completed,
+      user_subscription: user?.subscription_type,
+    });
+  }, [
+    currentStep,
+    isEditMode,
+    isSaving,
+    user?.is_questionnaire_completed,
+    user?.subscription_type,
+  ]);
+
   useEffect(() => {
     if (error) {
       Alert.alert(t("questionnaire.error"), error);
@@ -483,18 +592,33 @@ const QuestionnaireScreen: React.FC = () => {
     }
   };
 
+  // Fixed handleBack function in QuestionnaireScreen
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   const handleBack = () => {
     if (currentStep > 1) {
+      // If not on first step, go to previous step
       setCurrentStep(currentStep - 1);
     } else {
-      if (isEditMode || user?.is_questionnaire_completed) {
+      // On first step - check authentication and user state
+      if (!isAuthenticated || !user) {
+        // Not authenticated - go to sign in
+        console.log("🔙 Not authenticated - redirecting to sign in");
+        router.replace("/(auth)/signin");
+      } else if (isEditMode) {
+        // Edit mode - go back to profile
+        console.log("🔙 Edit mode - going back to profile");
+        router.back();
+      } else if (user?.is_questionnaire_completed) {
+        // User has completed questionnaire before - go back
+        console.log("🔙 Questionnaire already completed - going back");
         router.back();
       } else {
-        router.replace("/signin");
+        // First time completing questionnaire - go to sign in
+        console.log("🔙 First time questionnaire - redirecting to sign in");
+        router.replace("/(auth)/signin");
       }
     }
   };
-
   const getStepIcon = (step: number) => {
     const iconProps = { size: 24, color: colors.primary };
     switch (step) {
@@ -744,7 +868,7 @@ const QuestionnaireScreen: React.FC = () => {
               label={t("questionnaire.age")}
               value={formData.age}
               onChangeText={(text: any) =>
-                setFormData({ ...formData, age: text })
+                setFormData((prev) => ({ ...prev, age: text }))
               }
               placeholder={t("questionnaire.enterAge")}
               keyboardType="numeric"
@@ -755,7 +879,9 @@ const QuestionnaireScreen: React.FC = () => {
               label={t("questionnaire.gender")}
               options={genderOptions}
               selectedValue={formData.gender}
-              onSelect={(value) => setFormData({ ...formData, gender: value })}
+              onSelect={(value) =>
+                setFormData((prev) => ({ ...prev, gender: value }))
+              }
               required
             />
 
@@ -763,7 +889,10 @@ const QuestionnaireScreen: React.FC = () => {
               label={t("questionnaire.height")}
               value={parseInt(formData.height_cm) || parseInt(DEFAULT_HEIGHT)}
               onValueChange={(value: number) =>
-                setFormData({ ...formData, height_cm: value.toString() })
+                setFormData((prev) => ({
+                  ...prev,
+                  height_cm: value.toString(),
+                }))
               }
               min={120}
               max={220}
@@ -774,7 +903,10 @@ const QuestionnaireScreen: React.FC = () => {
               label={t("questionnaire.weight")}
               value={parseInt(formData.weight_kg) || parseInt(DEFAULT_WEIGHT)}
               onValueChange={(value: number) =>
-                setFormData({ ...formData, weight_kg: value.toString() })
+                setFormData((prev) => ({
+                  ...prev,
+                  weight_kg: value.toString(),
+                }))
               }
               min={30}
               max={200}
@@ -788,7 +920,10 @@ const QuestionnaireScreen: React.FC = () => {
                 parseInt(DEFAULT_TARGET_WEIGHT)
               }
               onValueChange={(value: number) =>
-                setFormData({ ...formData, target_weight_kg: value.toString() })
+                setFormData((prev) => ({
+                  ...prev,
+                  target_weight_kg: value.toString(),
+                }))
               }
               min={30}
               max={200}
@@ -808,7 +943,7 @@ const QuestionnaireScreen: React.FC = () => {
               options={mainGoalOptions}
               selectedValue={formData.main_goal}
               onSelect={(value) =>
-                setFormData({ ...formData, main_goal: value })
+                setFormData((prev) => ({ ...prev, main_goal: value }))
               }
               required
             />
@@ -817,7 +952,10 @@ const QuestionnaireScreen: React.FC = () => {
               label={t("questionnaire.secondaryGoal")}
               value={formData.secondary_goal || ""}
               onChangeText={(text: any) =>
-                setFormData({ ...formData, secondary_goal: text || null })
+                setFormData((prev) => ({
+                  ...prev,
+                  secondary_goal: text || null,
+                }))
               }
               placeholder={t("questionnaire.secondaryGoalPlaceholder")}
               multiline
@@ -827,7 +965,10 @@ const QuestionnaireScreen: React.FC = () => {
               label={t("questionnaire.goalTimeframe")}
               value={formData.goal_timeframe_days || ""}
               onChangeText={(text: any) =>
-                setFormData({ ...formData, goal_timeframe_days: text || null })
+                setFormData((prev) => ({
+                  ...prev,
+                  goal_timeframe_days: text || null,
+                }))
               }
               placeholder={t("questionnaire.example90Days")}
               keyboardType="numeric"
@@ -838,7 +979,7 @@ const QuestionnaireScreen: React.FC = () => {
               options={commitmentLevels}
               selectedValue={formData.commitment_level}
               onSelect={(value) =>
-                setFormData({ ...formData, commitment_level: value })
+                setFormData((prev) => ({ ...prev, commitment_level: value }))
               }
               required
             />
@@ -856,7 +997,10 @@ const QuestionnaireScreen: React.FC = () => {
               options={activityLevels}
               selectedValue={formData.physical_activity_level}
               onSelect={(value) =>
-                setFormData({ ...formData, physical_activity_level: value })
+                setFormData((prev) => ({
+                  ...prev,
+                  physical_activity_level: value,
+                }))
               }
               required
             />
@@ -866,7 +1010,7 @@ const QuestionnaireScreen: React.FC = () => {
               options={sportFrequencies}
               selectedValue={formData.sport_frequency}
               onSelect={(value) =>
-                setFormData({ ...formData, sport_frequency: value })
+                setFormData((prev) => ({ ...prev, sport_frequency: value }))
               }
               required
             />
@@ -884,7 +1028,10 @@ const QuestionnaireScreen: React.FC = () => {
               placeholder={t("questionnaire.addItem")}
               items={formData.medical_conditions_text}
               onItemsChange={(items) =>
-                setFormData({ ...formData, medical_conditions_text: items })
+                setFormData((prev) => ({
+                  ...prev,
+                  medical_conditions_text: items,
+                }))
               }
               maxItems={10}
             />
@@ -894,7 +1041,7 @@ const QuestionnaireScreen: React.FC = () => {
               placeholder={t("questionnaire.addItem")}
               items={formData.medications}
               onItemsChange={(items) =>
-                setFormData({ ...formData, medications: items })
+                setFormData((prev) => ({ ...prev, medications: items }))
               }
               maxItems={10}
             />
@@ -912,7 +1059,7 @@ const QuestionnaireScreen: React.FC = () => {
               options={cookingPrefs}
               selectedValue={formData.cooking_preference}
               onSelect={(value) =>
-                setFormData({ ...formData, cooking_preference: value })
+                setFormData((prev) => ({ ...prev, cooking_preference: value }))
               }
               required
             />
@@ -934,7 +1081,10 @@ const QuestionnaireScreen: React.FC = () => {
               label={t("questionnaire.dailyFoodBudget")}
               value={formData.daily_food_budget || ""}
               onChangeText={(text: any) =>
-                setFormData({ ...formData, daily_food_budget: text || null })
+                setFormData((prev) => ({
+                  ...prev,
+                  daily_food_budget: text || null,
+                }))
               }
               placeholder={t("questionnaire.example50Budget")}
               keyboardType="numeric"
@@ -954,7 +1104,7 @@ const QuestionnaireScreen: React.FC = () => {
               description={t("questionnaire.kosherDesc")}
               value={formData.kosher}
               onValueChange={(value: any) =>
-                setFormData({ ...formData, kosher: value })
+                setFormData((prev) => ({ ...prev, kosher: value }))
               }
             />
 
@@ -996,7 +1146,7 @@ const QuestionnaireScreen: React.FC = () => {
                   }
                 }
 
-                setFormData({ ...formData, allergies: allAllergies });
+                setFormData((prev) => ({ ...prev, allergies: allAllergies }));
               }}
               maxItems={20}
             />
@@ -1006,7 +1156,7 @@ const QuestionnaireScreen: React.FC = () => {
               options={dietaryStyles}
               selectedValue={formData.dietary_style}
               onSelect={(value) =>
-                setFormData({ ...formData, dietary_style: value })
+                setFormData((prev) => ({ ...prev, dietary_style: value }))
               }
               required
             />
@@ -1027,10 +1177,10 @@ const QuestionnaireScreen: React.FC = () => {
                 ) || parseInt(DEFAULT_SLEEP_HOURS)
               }
               onValueChange={(value: number) =>
-                setFormData({
-                  ...formData,
+                setFormData((prev) => ({
+                  ...prev,
                   sleep_hours_per_night: value.toString(),
-                })
+                }))
               }
               min={4}
               max={12}
@@ -1053,10 +1203,10 @@ const QuestionnaireScreen: React.FC = () => {
               ]}
               selectedValue={formData.smoking_status || ""}
               onSelect={(value) =>
-                setFormData({
-                  ...formData,
+                setFormData((prev) => ({
+                  ...prev,
                   smoking_status: value as "YES" | "NO",
-                })
+                }))
               }
             />
           </StepContainer>
@@ -1084,7 +1234,7 @@ const QuestionnaireScreen: React.FC = () => {
               ]}
               selectedValue={formData.upload_frequency}
               onSelect={(value) =>
-                setFormData({ ...formData, upload_frequency: value })
+                setFormData((prev) => ({ ...prev, upload_frequency: value }))
               }
             />
 
@@ -1093,7 +1243,10 @@ const QuestionnaireScreen: React.FC = () => {
               description={t("questionnaire.willingnessToFollowDesc")}
               value={formData.willingness_to_follow}
               onValueChange={(value: any) =>
-                setFormData({ ...formData, willingness_to_follow: value })
+                setFormData((prev) => ({
+                  ...prev,
+                  willingness_to_follow: value,
+                }))
               }
             />
 
@@ -1102,7 +1255,7 @@ const QuestionnaireScreen: React.FC = () => {
               description={t("questionnaire.personalizedTipsDesc")}
               value={formData.personalized_tips}
               onValueChange={(value: any) =>
-                setFormData({ ...formData, personalized_tips: value })
+                setFormData((prev) => ({ ...prev, personalized_tips: value }))
               }
             />
 
@@ -1115,13 +1268,13 @@ const QuestionnaireScreen: React.FC = () => {
               ]}
               selectedValue={formData.notifications_preference || ""}
               onSelect={(value) =>
-                setFormData({
-                  ...formData,
+                setFormData((prev) => ({
+                  ...prev,
                   notifications_preference: value as
                     | "DAILY"
                     | "WEEKLY"
                     | "NONE",
-                })
+                }))
               }
             />
           </StepContainer>
