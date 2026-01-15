@@ -39,7 +39,6 @@ export default function ResetPasswordVerifyScreen() {
   const inputRefs = useRef<TextInput[]>([]);
 
   useEffect(() => {
-    // Start countdown timer
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -61,7 +60,6 @@ export default function ResetPasswordVerifyScreen() {
   };
 
   const handleCodeChange = (text: string, index: number) => {
-    // Only allow digits
     const digit = text.replace(/[^0-9]/g, "");
 
     if (digit.length <= 1) {
@@ -69,14 +67,11 @@ export default function ResetPasswordVerifyScreen() {
       newCode[index] = digit;
       setCode(newCode);
 
-      // Auto-focus next input
       if (digit && index < 5) {
         inputRefs.current[index + 1]?.focus();
       }
 
-      // Check if all fields are filled after this change
       if (newCode.every((c) => c !== "")) {
-        // Small delay to ensure state is updated
         setTimeout(() => {
           handleVerifyCode(newCode.join(""));
         }, 100);
@@ -86,7 +81,6 @@ export default function ResetPasswordVerifyScreen() {
 
   const handleKeyPress = (key: string, index: number) => {
     if (key === "Backspace" && !code[index] && index > 0) {
-      // Clear the previous field and focus it
       const newCode = [...code];
       newCode[index - 1] = "";
       setCode(newCode);
@@ -95,42 +89,33 @@ export default function ResetPasswordVerifyScreen() {
   };
 
   const handleVerifyCode = async (verificationCode?: string) => {
-    // Use the passed code or current state
     const codeToVerify = verificationCode || code.join("");
 
     if (!codeToVerify || codeToVerify.length !== 6) {
-      Alert.alert("Error", "Please enter the complete 6-digit code");
+      Alert.alert(
+        t("common.error"),
+        t("auth.reset_password_verify.invalid_code")
+      );
       return;
     }
 
-    // Additional validation: ensure all characters are digits
     if (!/^\d{6}$/.test(codeToVerify)) {
-      Alert.alert("Error", "Code must contain only digits");
+      Alert.alert(
+        t("common.error"),
+        t("auth.reset_password_verify.invalid_code")
+      );
       return;
     }
 
     try {
       setIsLoading(true);
-      console.log(
-        "🔒 Verifying reset code:",
-        email,
-        "with code:",
-        codeToVerify
-      );
 
       const response = await userAPI.verifyResetCode(
         email as string,
         codeToVerify
       );
 
-      console.log("✅ verifyResetCode response:", response);
-
       if (response.success && response.resetToken) {
-        console.log(
-          "✅ Reset code verified successfully, navigating to reset password"
-        );
-
-        // Navigate to reset password screen
         router.push({
           pathname: "/(auth)/resetPassword",
           params: {
@@ -138,23 +123,14 @@ export default function ResetPasswordVerifyScreen() {
           },
         });
       } else {
-        // If we get here, verification failed
-        throw new Error(response.error || "Verification failed");
+        throw new Error(response.error);
       }
     } catch (error: any) {
-      console.error("💥 Reset code verification error:", error);
+      Alert.alert(
+        t("common.error"),
+        error.message || t("auth.reset_password_verify.invalid_code")
+      );
 
-      // Extract error message from different error formats
-      let errorMessage = "Invalid verification code";
-      if (error.response && error.response.data && error.response.data.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      Alert.alert("Error", errorMessage);
-
-      // Clear the code inputs
       setCode(["", "", "", "", "", ""]);
       setTimeout(() => {
         inputRefs.current[0]?.focus();
@@ -169,22 +145,20 @@ export default function ResetPasswordVerifyScreen() {
 
     try {
       setResendLoading(true);
-      console.log("🔄 Resending reset code...");
 
       const response = await userAPI.forgotPassword(email as string);
 
       if (response.success) {
-        Alert.alert("Success", "A new reset code has been sent to your email");
+        Alert.alert(
+          t("common.success"),
+          t("auth.forgot_password_page.reset_code_sent")
+        );
 
-        // Reset timer
         setTimeLeft(300);
         setCanResend(false);
-
-        // Clear current code
         setCode(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
 
-        // Start new timer
         const timer = setInterval(() => {
           setTimeLeft((prev) => {
             if (prev <= 1) {
@@ -196,11 +170,13 @@ export default function ResetPasswordVerifyScreen() {
           });
         }, 1000);
       } else {
-        throw new Error(response.error || "Failed to resend code");
+        throw new Error(response.error);
       }
     } catch (error: any) {
-      console.error("💥 Resend error:", error);
-      Alert.alert("Error", error.message || "Failed to resend code");
+      Alert.alert(
+        t("common.error"),
+        error.message || t("auth.reset_password.resend_failed")
+      );
     } finally {
       setResendLoading(false);
     }
@@ -251,11 +227,6 @@ export default function ResetPasswordVerifyScreen() {
       alignItems: "center",
       justifyContent: "center",
       marginBottom: 16,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 5,
     },
     title: {
       fontSize: 28,
@@ -280,11 +251,6 @@ export default function ResetPasswordVerifyScreen() {
       borderRadius: 16,
       padding: 24,
       marginTop: 32,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 5,
     },
     codeLabel: {
       fontSize: 17,
@@ -320,11 +286,6 @@ export default function ResetPasswordVerifyScreen() {
       paddingVertical: 16,
       alignItems: "center",
       marginBottom: 24,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 5,
     },
     verifyButtonDisabled: {
       opacity: 0.6,
@@ -333,7 +294,6 @@ export default function ResetPasswordVerifyScreen() {
       fontSize: 17,
       fontWeight: "600",
       color: "white",
-      letterSpacing: 0.5,
     },
     resendContainer: {
       alignItems: "center",
@@ -343,10 +303,6 @@ export default function ResetPasswordVerifyScreen() {
       color: "#8E8E93",
       marginBottom: 12,
       textAlign: "center",
-    },
-    resendButton: {
-      paddingVertical: 8,
-      paddingHorizontal: 16,
     },
     resendButtonText: {
       fontSize: 15,
@@ -361,11 +317,7 @@ export default function ResetPasswordVerifyScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor="transparent"
-        translucent
-      />
+      <StatusBar barStyle="dark-content" translucent />
 
       <View style={styles.header}>
         <TouchableOpacity
@@ -374,7 +326,9 @@ export default function ResetPasswordVerifyScreen() {
         >
           <Ionicons name="chevron-back" size={20} color="#1C1C1E" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Verify Code</Text>
+        <Text style={styles.headerTitle}>
+          {t("auth.reset_password_verify.title")}
+        </Text>
       </View>
 
       <KeyboardAvoidingView
@@ -386,15 +340,21 @@ export default function ResetPasswordVerifyScreen() {
             <View style={styles.logoContainer}>
               <Ionicons name="shield-checkmark" size={40} color="white" />
             </View>
-            <Text style={styles.title}>Verify Reset Code</Text>
+            <Text style={styles.title}>
+              {t("auth.reset_password_verify.title")}
+            </Text>
             <Text style={styles.subtitle}>
-              We've sent a 6-digit code to{"\n"}
+              {t("auth.reset_password_verify.subtitle")}
+              {"\n"}
               <Text style={styles.emailText}>{email}</Text>
             </Text>
           </View>
 
           <View style={styles.formContainer}>
-            <Text style={styles.codeLabel}>Enter reset code</Text>
+            <Text style={styles.codeLabel}>
+              {t("auth.reset_password_verify.enter_code")}
+            </Text>
+
             <View style={styles.codeContainer}>
               {code.map((digit, index) => (
                 <TextInput
@@ -410,7 +370,7 @@ export default function ResetPasswordVerifyScreen() {
                   maxLength={1}
                   textAlign="center"
                   editable={!isLoading}
-                  selectTextOnFocus={true}
+                  selectTextOnFocus
                   autoFocus={index === 0}
                 />
               ))}
@@ -422,34 +382,33 @@ export default function ResetPasswordVerifyScreen() {
                 (!code.every((c) => c !== "") || isLoading) &&
                   styles.verifyButtonDisabled,
               ]}
-              onPress={() => {
-                const fullCode = code.join("");
-                if (fullCode.length === 6) {
-                  handleVerifyCode(fullCode);
-                }
-              }}
+              onPress={() => handleVerifyCode(code.join(""))}
               disabled={!code.every((c) => c !== "") || isLoading}
             >
               <Text style={styles.verifyButtonText}>
-                {isLoading ? "Verifying..." : "Verify Code"}
+                {isLoading
+                  ? t("auth.loading.verifying")
+                  : t("auth.reset_password_verify.verify_and_continue")}
               </Text>
             </TouchableOpacity>
 
             <View style={styles.resendContainer}>
-              <Text style={styles.resendText}>Didn't receive the code?</Text>
+              <Text style={styles.resendText}>
+                {t("auth.reset_password_verify.resend_code")}
+              </Text>
+
               {canResend ? (
-                <TouchableOpacity
-                  style={styles.resendButton}
-                  onPress={handleResendCode}
-                  disabled={resendLoading}
-                >
+                <TouchableOpacity onPress={handleResendCode}>
                   <Text style={styles.resendButtonText}>
-                    {resendLoading ? "Sending..." : "Resend Code"}
+                    {resendLoading
+                      ? t("auth.loading.sending_reset")
+                      : t("auth.reset_password_verify.resend_code")}
                   </Text>
                 </TouchableOpacity>
               ) : (
                 <Text style={styles.resendDisabledText}>
-                  Resend in {formatTime(timeLeft)}
+                  {t("auth.reset_password_verify.code_expires_in")}{" "}
+                  {formatTime(timeLeft)}
                 </Text>
               )}
             </View>

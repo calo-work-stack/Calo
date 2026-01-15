@@ -929,14 +929,12 @@
     "budgetUpdatedMessage": "Your daily budget has been set to {{budget}} NIS"
   },
   "auth": {
-    "sign_in": "Sign In",
-    "sign_up": "Sign Up",
-    "email": "Email Adress",
+    "email": "Email Address",
     "enter_password": "Enter your password",
     "password": "Password",
     "confirm_password": "Confirm Password",
     "create": "Create Account",
-    "enter_password_again": "Renter Your Password",
+    "enter_password_again": "Re-enter your password",
     "forgot_password": "Forgot Password?",
     "no_account": "Don't have an account?",
     "has_account": "Already have an account?",
@@ -944,12 +942,35 @@
     "welcome": "Join us and start your wellness journey",
     "full_name": "Full Name",
     "enter_email": "Enter your email address",
-    "name": "Enter Full Name",
+    "name": "Enter full name",
     "welcome_back": "Welcome Back",
     "privacy_agree": "I have read and agree to the",
-    "email_validation_error": "Please enter a valid email address",
     "birth_date": "Birth Date",
     "language_preference": "Language of choice",
+    "sign_up": {
+      "title": "Sign Up",
+      "create_account": "Create Account",
+      "subtitle": "Start your nutrition journey today",
+      "name_label": "Full Name",
+      "name_placeholder": "Enter your full name",
+      "email_label": "Email Address",
+      "email_placeholder": "Enter your email",
+      "password_label": "Password",
+      "password_placeholder": "Create a password",
+      "confirm_password_label": "Confirm Password",
+      "confirm_password_placeholder": "Re-enter your password",
+      "agree_text": "I agree to the",
+      "terms_of_service": "Terms of Service",
+      "privacy_policy": "Privacy Policy",
+      "creating_account": "Creating account...",
+      "already_have_account": "Already have an account?",
+      "sign_in": "Sign In",
+      "and": "and"
+    },
+    "account_created": "Account Created",
+    "failed_create_account": "Failed to create account",
+    "email_validation_error": "Please enter a valid email address",
+    "privacy_policy_required": "You must accept the privacy policy to continue",
     "email_verification": {
       "title": "Verify Your Email",
       "subtitle": "We've sent a verification code to your email address",
@@ -963,6 +984,25 @@
       "verification_failed": "Email verification failed",
       "resend_successful": "Verification code resent successfully",
       "resend_failed": "Failed to resend verification code"
+    },
+    "sign_in": {
+      "title": "Sign In",
+      "welcome_back": "Welcome back",
+      "subtitle": "Sign in to your Calo account",
+      "email_label": "Email",
+      "email_placeholder": "Enter your email",
+      "password_label": "Password",
+      "password_placeholder": "Enter your password",
+      "forgot_password": "Forgot Password?",
+      "signing_in": "Signing in...",
+      "no_account": "Don't have an account?",
+      "sign_up": "Sign Up",
+      "failed": "Failed to sign in"
+    },
+    "common": {
+      "error": "Error",
+      "success": "Success",
+      "ok": "OK"
     },
     "reset_password": {
       "title": "Reset Password",
@@ -981,6 +1021,7 @@
       "password_requirements": "Password Requirements",
       "password_requirement_length": "At least 6 characters long"
     },
+
     "forgot_password_page": {
       "title": "Forgot Password?",
       "subtitle": "Enter your email address and we'll send you a code to reset your password.",
@@ -990,6 +1031,7 @@
       "email_sent": "Email Sent",
       "reset_code_sent": "A password reset code has been sent to your email address"
     },
+
     "reset_password_verify": {
       "title": "Verify Reset Code",
       "subtitle": "We've sent a 6-digit code to",
@@ -1003,6 +1045,7 @@
       "invalid_code": "Invalid verification code",
       "code_verified": "Code verified successfully"
     },
+
     "errors": {
       "invalid_email": "Please enter a valid email address",
       "invalid_password": "Password must be at least 6 characters",
@@ -1016,6 +1059,7 @@
       "required_field": "This field is required",
       "email_not_verified": "Please verify your email before signing in"
     },
+
     "loading": {
       "signing_in": "Signing in...",
       "signing_up": "Creating account...",
@@ -1023,6 +1067,7 @@
       "sending_reset": "Sending reset link...",
       "resetting_password": "Resetting password..."
     },
+
     "success": {
       "account_created": "Account created successfully",
       "signed_in": "Signed in successfully",
@@ -1171,154 +1216,6 @@
     "full_health_tracking": "Full health tracking",
     "personal_nutrition": "Personal nutrition consulting",
     "priority_support": "Priority support"
-  },
-  "privacy": {
-    "title": "Privacy Policy",
-    "intro": "This Privacy Policy and Data Protection annex is drafted with the assistance of legal counsel and constitutes an integral part of the Terms of Use of the CALO application. This policy establishes the principles of privacy protection, data security, limitations of use, international data transfers, and related legal obligations applicable to the company and its developers in relation to end users.",
-    "lastUpdated": "Last Updated",
-    "updateDate": "August 2025",
-    "sections": {
-      "regulatory_scope": {
-        "title": "Regulatory Scope and Legal Framework",
-        "content": "The App operates under the following regulatory frameworks:",
-        "subsections": [
-          {
-            "title": "International Compliance",
-            "content": "The App operates under the following regulatory frameworks:",
-            "items": [
-              "The European Union General Data Protection Regulation (GDPR)",
-              "The California Consumer Privacy Act (CCPA)",
-              "Israeli Privacy Protection Law",
-              "Any applicable privacy legislation in the user's jurisdiction"
-            ]
-          },
-          {
-            "title": "GDPR Rights Implementation",
-            "content": "In accordance with GDPR, users can exercise the following rights:",
-            "items": [
-              "Right of access to personal data",
-              "Right to rectification and erasure (right to be forgotten)",
-              "Right to data portability",
-              "Right to object and avoid automated decision-making"
-            ]
-          },
-          {
-            "title": "CCPA Compliance",
-            "content": "In compliance with CCPA, users are entitled to:",
-            "items": [
-              "Request full disclosure about the collection and use of their data",
-              "Opt-out of data selling",
-              "Request deletion and object to processing"
-            ]
-          }
-        ]
-      },
-      "sensitive_data": {
-        "title": "Sensitive Information and Health Data",
-        "content": "We handle various types of sensitive information with appropriate care and security measures.",
-        "subsections": [
-          {
-            "title": "Classification of Sensitive Data",
-            "content": "The App may process user-provided information that is considered sensitive under privacy law:",
-            "items": [
-              "Nutritional and dietary preferences",
-              "Health symptoms or conditions",
-              "Lifestyle and biometric indicators",
-              "Personal eating habits and patterns"
-            ]
-          },
-          {
-            "title": "Medical Disclaimer",
-            "content": "Important: The Service does not provide:",
-            "items": [
-              "Professional medical advice or diagnosis",
-              "Emergency or clinical services",
-              "Substitutes for medical consultations by licensed professionals"
-            ]
-          },
-          {
-            "title": "Data Processing Agreement",
-            "content": "We have signed a Data Processing Addendum (DPA) with OpenAI, implementing industry-standard safeguards:",
-            "items": [
-              "SOC 2 Type II compliance",
-              "ISO/IEC 27001 and 27701 standards",
-              "Audit trails and user data access logs"
-            ]
-          }
-        ]
-      },
-      "liability_limitation": {
-        "title": "Limitation of Liability and User Responsibilities",
-        "content": "This section outlines the limitations of our liability and your responsibilities as a user of the CALO application.",
-        "subsections": [
-          {
-            "title": "Service Warranty Disclaimer",
-            "content": "The Service is provided 'as-is' and 'as-available' without any express or implied warranty:",
-            "items": [
-              "Data accuracy or completeness",
-              "System availability or uninterrupted use",
-              "Fitness for a particular purpose"
-            ]
-          },
-          {
-            "title": "Limitation of Damages",
-            "content": "The company shall not be held liable for:",
-            "items": [
-              "Direct, indirect, or consequential damages",
-              "Loss of profits or data",
-              "Errors, delays, or system failures, except as required by applicable law"
-            ]
-          },
-          {
-            "title": "User Indemnification",
-            "content": "Users agree to indemnify and hold harmless the company against:",
-            "items": [
-              "Any claim arising from misuse of the Service",
-              "Violation of these Terms of Use",
-              "Infringement of third-party rights or breach of OpenAI's policies"
-            ]
-          }
-        ]
-      },
-      "cookies_analytics": {
-        "title": "Cookies and Analytics Tools",
-        "content": "We use various tracking technologies to improve your experience and analyze app performance. You have control over these technologies and can manage your preferences."
-      },
-      "data_storage": {
-        "title": "Data Storage, Transfers, and Encryption",
-        "content": "Your personal data may be stored and processed on servers located in Israel, the European Union, and the United States (AWS, Azure). We implement strong encryption both in transit (TLS 1.2+) and at rest (AES-256), along with access control policies, regular backups, and comprehensive security protocols."
-      },
-      "user_rights": {
-        "title": "Your Privacy Rights",
-        "content": "You have comprehensive rights regarding your personal data under applicable privacy laws.",
-        "subsections": [
-          {
-            "title": "Access and Control Rights",
-            "content": "You have the right to:",
-            "items": [
-              "Access your personal data we hold",
-              "Correct inaccurate or incomplete data",
-              "Delete your personal data (right to erasure)",
-              "Export your data in a portable format",
-              "Object to processing of your data"
-            ]
-          },
-          {
-            "title": "How to Exercise Your Rights",
-            "content": "To exercise any of these rights, please contact us using the information provided in the Contact section. We will respond to your request within 30 days."
-          }
-        ]
-      },
-      "contact_info": {
-        "title": "Contact Information",
-        "content": "If you have any questions about this Privacy Policy, your data rights, or our privacy practices, please contact our Data Protection Officer at: privacy@calo-app.com. For general inquiries, you can reach us at: support@calo-app.com."
-      }
-    },
-    "footer": {
-      "title": "External References",
-      "openai_link": "OpenAI Privacy & Security Policy",
-      "google_analytics_link": "Google Analytics Privacy Policy"
-    }
   },
   "common": {
     "all": "All",
@@ -1577,165 +1474,218 @@
   },
   "terms": {
     "title": "Terms of Service",
-    "intro": "Please read these Terms of Service carefully before using Calo Health. By accessing or using our service, you agree to be bound by these terms.",
-    "lastUpdated": "Last updated",
-    "updateDate": "December 15, 2024",
+    "header": "Terms of Service",
+    "intro": "Please read these terms carefully before using Calo. By accessing or using our service, you agree to be bound by these terms.",
+    "lastUpdated": "Last Updated",
+    "updateDate": "January 15, 2026",
     "sections": {
       "acceptance_of_terms": {
-        "title": "1. Acceptance of Terms",
-        "content": "By downloading, installing, accessing, or using the Calo Health mobile application, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our service."
+        "title": "Acceptance of Terms",
+        "content": "By creating an account or using Calo, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our service."
       },
       "description_of_service": {
-        "title": "2. Description of Service",
-        "content": "Calo Health is a nutrition tracking and health monitoring mobile application that provides personalized meal planning, nutritional analysis, AI-powered recommendations, and health insights. Our service includes but is not limited to meal logging, calorie tracking, nutritional information, and health goal monitoring."
+        "title": "Description of Service",
+        "content": "Calo is a personal nutrition tracking application that helps users monitor their dietary intake, set health goals, and track their wellness journey. The service is provided for personal, non-commercial use only."
       },
       "user_accounts": {
-        "title": "3. User Accounts and Registration",
-        "content": "To access certain features of Calo Health, you must create an account. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You agree to provide accurate, current, and complete information during registration and to update such information to keep it accurate, current, and complete."
+        "title": "User Accounts",
+        "content": "You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You must immediately notify us of any unauthorized use of your account."
       },
       "acceptable_use": {
-        "title": "4. Acceptable Use Policy",
-        "content": "You agree to use Calo Health only for lawful purposes and in accordance with these Terms of Service. You are prohibited from:",
+        "title": "Acceptable Use",
+        "content": "You agree to use Calo only for lawful purposes and in accordance with these terms. The following uses are prohibited:",
         "subsections": [
           {
             "title": "Prohibited Activities",
-            "content": "The following activities are strictly prohibited:",
+            "content": "You may not:",
             "items": [
-              "Using the service for any unlawful purpose or to solicit others to perform unlawful acts",
-              "Violating any international, federal, provincial, or local regulations, rules, laws, or ordinances",
-              "Transmitting or uploading any content that infringes upon another's rights",
-              "Transmitting any material that contains viruses, trojan horses, worms, or any other harmful computer code",
-              "Interfering with or circumventing security features of the service",
-              "Engaging in any automated use of the system without express written consent",
-              "Using the service to harass, abuse, insult, harm, defame, slander, disparage, intimidate, or discriminate"
+              "Use the service for any illegal purpose or in violation of any laws",
+              "Attempt to gain unauthorized access to our systems or other users' accounts",
+              "Upload malicious code, viruses, or any harmful software",
+              "Harass, abuse, or harm other users",
+              "Impersonate any person or entity",
+              "Scrape, mine, or collect data from the service without permission"
+            ]
+          },
+          {
+            "title": "Content Standards",
+            "content": "Any content you submit must:",
+            "items": [
+              "Be accurate and truthful to the best of your knowledge",
+              "Not violate any third-party rights",
+              "Not contain offensive, inappropriate, or harmful material",
+              "Comply with all applicable laws and regulations"
             ]
           }
         ]
       },
       "subscription_and_payment": {
-        "title": "5. Subscription and Payment Terms",
-        "content": "Calo Health offers both free and premium subscription services. Premium features require payment of applicable fees.",
+        "title": "Subscription & Payment",
+        "content": "Calo offers both free and premium subscription tiers. Payment terms and subscription details are as follows:",
         "subsections": [
           {
-            "title": "Payment Processing",
-            "content": "All payments are processed securely through third-party payment processors. By providing payment information, you represent and warrant that you are authorized to use the payment method.",
+            "title": "Billing",
+            "content": "Premium subscriptions are billed on a recurring basis:",
             "items": [
-              "Subscription fees are billed in advance on a recurring basis",
-              "You authorize us to charge your payment method for all fees incurred",
-              "All fees are non-refundable unless otherwise stated",
-              "We reserve the right to change subscription fees with 30 days notice"
+              "Monthly subscriptions renew automatically each month",
+              "Annual subscriptions renew automatically each year",
+              "You will be charged at the beginning of each billing cycle",
+              "Prices are subject to change with 30 days notice"
             ]
           },
           {
-            "title": "Cancellation Policy",
-            "content": "You may cancel your subscription at any time through your account settings. Cancellation will be effective at the end of your current billing period.",
+            "title": "Cancellation",
+            "content": "You may cancel your subscription at any time:",
             "items": [
-              "No refunds will be provided for unused portions of subscription periods",
-              "Access to premium features will continue until the end of your current billing cycle",
-              "You may reactivate your subscription at any time"
+              "Cancellations take effect at the end of the current billing period",
+              "No refunds for partial periods",
+              "You retain access to premium features until the end of your paid period",
+              "Free tier services remain available after cancellation"
+            ]
+          },
+          {
+            "title": "Refund Policy",
+            "content": "Refunds are generally not provided except:",
+            "items": [
+              "Technical issues preventing service access for extended periods",
+              "Billing errors or unauthorized charges",
+              "As required by applicable law",
+              "At our sole discretion on a case-by-case basis"
             ]
           }
         ]
       },
       "intellectual_property": {
-        "title": "6. Intellectual Property Rights",
-        "content": "The Calo Health service and its original content, features, and functionality are and will remain the exclusive property of Calo Health and its licensors. The service is protected by copyright, trademark, and other laws. Our trademarks and trade dress may not be used in connection with any product or service without our prior written consent."
+        "title": "Intellectual Property",
+        "content": "All content, features, and functionality of Calo, including but not limited to text, graphics, logos, icons, images, and software, are the property of Calo and are protected by copyright, trademark, and other intellectual property laws."
       },
       "user_content": {
-        "title": "7. User Content and Data",
-        "content": "You retain ownership of any content you submit, post, or display on or through the service. By submitting content, you grant us a worldwide, non-exclusive, royalty-free license to use, reproduce, and distribute your content in connection with the service.",
+        "title": "User Content",
+        "content": "You retain ownership of any content you submit to Calo. However, by submitting content, you grant us certain rights:",
         "subsections": [
           {
-            "title": "Content Responsibility",
-            "content": "You are solely responsible for your content and the consequences of submitting it. You represent and warrant that:",
+            "title": "License Grant",
+            "content": "You grant Calo a worldwide, non-exclusive, royalty-free license to:",
             "items": [
-              "You own or have the necessary rights to use and authorize us to use your content",
-              "Your content does not infringe upon the rights of any third party",
-              "Your content does not violate any applicable laws or regulations",
-              "Your content does not contain any harmful, offensive, or inappropriate material"
+              "Store and process your content to provide our services",
+              "Use anonymized and aggregated data for service improvements",
+              "Display your content within the app as part of the service",
+              "Back up your content for data protection purposes"
+            ]
+          },
+          {
+            "title": "Your Responsibilities",
+            "content": "You are solely responsible for:",
+            "items": [
+              "The accuracy of information you provide",
+              "Ensuring you have rights to any content you upload",
+              "Complying with all applicable laws regarding your content",
+              "Maintaining backups of important information"
             ]
           }
         ]
       },
       "disclaimers": {
-        "title": "8. Disclaimers and Health Information",
-        "content": "Calo Health is not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.",
+        "title": "Disclaimers",
+        "content": "Important limitations and disclaimers about our service:",
         "subsections": [
           {
-            "title": "Medical Disclaimer",
-            "content": "Important health and medical information disclaimers:",
+            "title": "No Medical Advice",
+            "content": "Calo is not a substitute for professional medical advice:",
             "items": [
-              "The information provided is for educational and informational purposes only",
-              "Never disregard professional medical advice because of something you have read in the app",
-              "If you think you may have a medical emergency, call your doctor immediately",
-              "Nutritional information may not be 100% accurate and should be used as estimates only",
-              "Individual results may vary and are not guaranteed"
+              "We do not provide medical, diagnostic, or treatment services",
+              "Information provided is for general wellness purposes only",
+              "Always consult healthcare professionals for medical decisions",
+              "We are not responsible for health outcomes based on app use"
             ]
           },
           {
             "title": "Service Availability",
-            "content": "We make no warranties regarding service availability or performance:",
+            "content": "We provide the service 'as is' and 'as available':",
             "items": [
-              "The service is provided on an 'as is' and 'as available' basis",
-              "We do not warrant that the service will be uninterrupted or error-free",
-              "We reserve the right to modify or discontinue the service at any time",
-              "We are not responsible for any data loss or service interruptions"
+              "We do not guarantee uninterrupted or error-free service",
+              "Features may change, be suspended, or discontinued",
+              "Scheduled maintenance may cause temporary unavailability",
+              "We reserve the right to modify the service at any time"
             ]
           }
         ]
       },
       "limitation_of_liability": {
-        "title": "9. Limitation of Liability",
-        "content": "To the fullest extent permitted by applicable law, Calo Health shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues.",
+        "title": "Limitation of Liability",
+        "content": "To the maximum extent permitted by law, Calo and its affiliates shall not be liable for:",
         "subsections": [
           {
-            "title": "Damage Limitations",
-            "content": "Our liability is limited in the following ways:",
+            "title": "Types of Damages",
+            "content": "We are not liable for:",
             "items": [
-              "We are not liable for any damages resulting from use or inability to use the service",
-              "We are not liable for any damages resulting from unauthorized access to your data",
-              "Our total liability shall not exceed the amount paid by you in the 12 months preceding the claim",
-              "Some jurisdictions do not allow limitation of liability, so these limitations may not apply to you"
+              "Indirect, incidental, or consequential damages",
+              "Loss of profits, data, or business opportunities",
+              "Personal injury or health issues",
+              "Damages resulting from service interruptions or errors",
+              "Any damages exceeding the amount you paid us in the past 12 months"
+            ]
+          },
+          {
+            "title": "Your Acknowledgment",
+            "content": "By using Calo, you acknowledge:",
+            "items": [
+              "Use of the service is at your sole risk",
+              "You are responsible for your health decisions",
+              "We provide information tools, not medical advice",
+              "Results may vary and are not guaranteed"
             ]
           }
         ]
       },
       "indemnification": {
-        "title": "10. Indemnification",
-        "content": "You agree to defend, indemnify, and hold harmless Calo Health, its officers, directors, employees, and agents from and against any and all claims, damages, obligations, losses, liabilities, costs, or debt, and expenses (including but not limited to attorney's fees) arising from your use of the service or violation of these terms."
+        "title": "Indemnification",
+        "content": "You agree to indemnify, defend, and hold harmless Calo, its officers, directors, employees, and agents from any claims, liabilities, damages, losses, and expenses arising from your use of the service or violation of these terms."
       },
       "termination": {
-        "title": "11. Termination",
-        "content": "We may terminate or suspend your account and bar access to the service immediately, without prior notice or liability, under our sole discretion, for any reason whatsoever, including without limitation if you breach the Terms of Service.",
+        "title": "Termination",
+        "content": "We reserve the right to terminate or suspend your account and access to the service:",
         "subsections": [
           {
-            "title": "Termination Effects",
-            "content": "Upon termination, the following will occur:",
+            "title": "Grounds for Termination",
+            "content": "We may terminate your account if:",
             "items": [
-              "Your right to use the service will cease immediately",
-              "We may delete your account and all related data",
-              "You will lose access to any premium features or content",
+              "You violate these Terms of Service",
+              "You engage in fraudulent or illegal activities",
+              "You abuse or misuse the service",
+              "Your account remains inactive for an extended period",
+              "Required by law or regulatory authorities"
+            ]
+          },
+          {
+            "title": "Effect of Termination",
+            "content": "Upon termination:",
+            "items": [
+              "Your access to the service will be immediately revoked",
+              "You may request a copy of your data within 30 days",
+              "We may delete your data after the retention period",
+              "Outstanding payments remain due",
               "Provisions that should survive termination will remain in effect"
             ]
           }
         ]
       },
       "governing_law": {
-        "title": "12. Governing Law and Jurisdiction",
-        "content": "These Terms of Service shall be interpreted and governed by the laws of Israel, without regard to conflict of law provisions. Any legal action or proceeding arising under these terms will be brought exclusively in the competent courts of Tel Aviv, Israel."
+        "title": "Governing Law",
+        "content": "These Terms of Service are governed by and construed in accordance with the laws of the jurisdiction where Calo is registered, without regard to conflict of law principles. Any disputes shall be resolved in the courts of that jurisdiction."
       },
       "changes_to_terms": {
-        "title": "13. Changes to Terms of Service",
-        "content": "We reserve the right to modify or replace these Terms of Service at any time. If a revision is material, we will provide at least 30 days notice prior to any new terms taking effect. What constitutes a material change will be determined at our sole discretion. By continuing to access or use our service after any revisions become effective, you agree to be bound by the revised terms."
+        "title": "Changes to Terms",
+        "content": "We reserve the right to modify these terms at any time. We will notify users of significant changes via email or in-app notification. Continued use of the service after changes constitutes acceptance of the modified terms."
       },
       "contact_information": {
-        "title": "14. Contact Information",
-        "content": "If you have any questions about these Terms of Service, please contact us at support@calohealth.com or through the contact information provided in the app. We will respond to your inquiry within a reasonable timeframe."
+        "title": "Contact Information",
+        "content": "If you have questions or concerns about these Terms of Service, please contact us at support@calohealth.com or through our in-app support channels. We aim to respond to all inquiries within 48 hours."
       }
     },
     "footer": {
       "title": "Related Documents",
-      "subtitle": "Access our other important legal documents and support resources",
+      "subtitle": "View our other legal documents and policies",
       "privacy_policy_link": "Privacy Policy",
       "contact_support": "Contact Support"
     }
@@ -1826,5 +1776,120 @@
     "selectBottle": "Select Bottle Size",
     "selectBottleDesc": "Choose how much water you drank",
     "tip": "Drinking water regularly helps maintain energy levels and supports your metabolism. Aim for at least 8 cups (2L) per day."
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "header": "Privacy & Security",
+    "intro": "Your privacy is important to us. This policy explains how we collect, use, and protect your personal information when you use Calo.",
+    "lastUpdated": "Last Updated",
+    "updateDate": "January 15, 2026",
+    "sections": {
+      "regulatory_scope": {
+        "title": "Regulatory Scope",
+        "content": "Calo is designed as a personal nutrition tracking tool and does not provide medical advice, diagnosis, or treatment. Our service complies with applicable data protection regulations.",
+        "subsections": [
+          {
+            "title": "Not Medical Device",
+            "content": "Calo is not a medical device and is not intended to diagnose, treat, cure, or prevent any disease.",
+            "items": []
+          },
+          {
+            "title": "General Wellness",
+            "content": "Our app provides general wellness information and nutrition tracking features for personal use only.",
+            "items": []
+          },
+          {
+            "title": "Consult Healthcare Providers",
+            "content": "Always consult with qualified healthcare professionals before making any health-related decisions.",
+            "items": []
+          }
+        ]
+      },
+      "sensitive_data": {
+        "title": "Sensitive Data Collection",
+        "content": "We collect and process the following types of data to provide our services:",
+        "subsections": [
+          {
+            "title": "Health Information",
+            "content": "We collect health-related data that you voluntarily provide:",
+            "items": [
+              "Daily food intake and nutritional information",
+              "Weight, height, and body measurements",
+              "Activity levels and exercise data",
+              "Dietary preferences and restrictions",
+              "Health goals and wellness targets"
+            ]
+          },
+          {
+            "title": "Personal Information",
+            "content": "Basic information to create and manage your account:",
+            "items": [
+              "Name and email address",
+              "Age and gender (optional)",
+              "Profile picture (optional)",
+              "Account preferences and settings"
+            ]
+          },
+          {
+            "title": "Usage Data",
+            "content": "Information about how you use our app:",
+            "items": [
+              "App interaction patterns",
+              "Feature usage statistics",
+              "Device information and operating system",
+              "Session duration and frequency"
+            ]
+          }
+        ]
+      },
+      "liability_limitation": {
+        "title": "Liability Limitation",
+        "content": "Calo provides information and tools for personal use. We are not liable for any health outcomes or decisions made based on information from our app. Use of our service is at your own risk."
+      },
+      "cookies_analytics": {
+        "title": "Cookies & Analytics",
+        "content": "We use cookies and analytics to improve our service and understand how users interact with Calo. You can manage cookie preferences in your device settings."
+      },
+      "data_storage": {
+        "title": "Data Storage & Security",
+        "content": "Your data is stored securely using industry-standard encryption. We implement appropriate technical and organizational measures to protect your personal information from unauthorized access, disclosure, or loss."
+      },
+      "user_rights": {
+        "title": "Your Rights",
+        "content": "You have control over your personal data. We respect your privacy rights and provide you with the following options:",
+        "subsections": [
+          {
+            "title": "Access Your Data",
+            "content": "You can view and download all personal data we have about you at any time through your account settings.",
+            "items": []
+          },
+          {
+            "title": "Delete Your Data",
+            "content": "You can request complete deletion of your account and all associated data. This action is permanent and cannot be undone.",
+            "items": []
+          },
+          {
+            "title": "Modify Your Information",
+            "content": "You can update or correct your personal information at any time through your profile settings.",
+            "items": []
+          },
+          {
+            "title": "Data Portability",
+            "content": "You can export your data in a machine-readable format to transfer to another service if desired.",
+            "items": []
+          }
+        ]
+      },
+      "contact_info": {
+        "title": "Contact Information",
+        "content": "If you have questions about this privacy policy or how we handle your data, please contact us at privacy@calohealth.com or through our support channels."
+      }
+    },
+    "footer": {
+      "title": "Third-Party Services",
+      "subtitle": "Learn more about our partners' privacy policies",
+      "openai_link": "OpenAI Privacy Policy",
+      "google_analytics_link": "Google Analytics Privacy Policy"
+    }
   }
 }

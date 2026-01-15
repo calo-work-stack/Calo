@@ -13,7 +13,6 @@ import {
   SafeAreaView,
   StatusBar,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -48,15 +47,12 @@ export default function SignInScreen() {
         router.replace("/(tabs)");
       }
     } catch (error: any) {
-      Alert.alert(t("common.error"), error || t("auth.failed_sign_in"));
+      Alert.alert(t("common.error"), error || t("auth.sign_in.failed"));
     }
   };
 
   const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
       paddingTop: Platform.OS === "ios" ? 50 : 30,
       paddingHorizontal: 24,
@@ -80,15 +76,8 @@ export default function SignInScreen() {
       textAlign: "center",
       marginRight: 36,
     },
-    content: {
-      flex: 1,
-      paddingHorizontal: 24,
-    },
-    logoSection: {
-      alignItems: "center",
-      marginBottom: 48,
-      marginTop: 20,
-    },
+    content: { flex: 1, paddingHorizontal: 24 },
+    logoSection: { alignItems: "center", marginBottom: 48, marginTop: 20 },
     logoContainer: {
       width: 80,
       height: 80,
@@ -110,14 +99,8 @@ export default function SignInScreen() {
       textAlign: "center",
       marginBottom: 8,
     },
-    subtitle: {
-      fontSize: 17,
-      color: "#8E8E93",
-      textAlign: "center",
-    },
-    formContainer: {
-      gap: 16,
-    },
+    subtitle: { fontSize: 17, color: "#8E8E93", textAlign: "center" },
+    formContainer: { gap: 16 },
     inputContainer: {
       backgroundColor: "white",
       borderRadius: 12,
@@ -131,11 +114,6 @@ export default function SignInScreen() {
       shadowRadius: 2,
       elevation: 1,
     },
-    inputContainerFocused: {
-      borderColor: colors.primary,
-      shadowColor: colors.primary,
-      shadowOpacity: 0.1,
-    },
     label: {
       fontSize: 13,
       fontWeight: "600",
@@ -144,28 +122,16 @@ export default function SignInScreen() {
       textTransform: "uppercase",
       letterSpacing: 0.5,
     },
-    input: {
-      fontSize: 17,
-      color: "#1C1C1E",
-      paddingVertical: 0,
-    },
-    passwordContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
+    input: { fontSize: 17, color: "#1C1C1E", paddingVertical: 0 },
+    passwordContainer: { flexDirection: "row", alignItems: "center" },
     passwordInput: {
       flex: 1,
       fontSize: 17,
       color: "#1C1C1E",
       paddingVertical: 0,
     },
-    eyeButton: {
-      padding: 4,
-    },
-    forgotPassword: {
-      alignSelf: "flex-end",
-      marginTop: 12,
-    },
+    eyeButton: { padding: 4 },
+    forgotPassword: { alignSelf: "flex-end", marginTop: 12 },
     forgotPasswordText: {
       fontSize: 15,
       color: colors.primary,
@@ -183,9 +149,7 @@ export default function SignInScreen() {
       shadowRadius: 8,
       elevation: 5,
     },
-    signInButtonDisabled: {
-      opacity: 0.6,
-    },
+    signInButtonDisabled: { opacity: 0.6 },
     signInButtonText: {
       fontSize: 17,
       fontWeight: "600",
@@ -199,10 +163,7 @@ export default function SignInScreen() {
       marginTop: 32,
       paddingBottom: 32,
     },
-    footerText: {
-      fontSize: 15,
-      color: "#8E8E93",
-    },
+    footerText: { fontSize: 15, color: "#8E8E93" },
     linkText: {
       fontSize: 15,
       color: colors.primary,
@@ -215,11 +176,7 @@ export default function SignInScreen() {
       justifyContent: "center",
       gap: 8,
     },
-    loadingText: {
-      color: "white",
-      fontSize: 17,
-      fontWeight: "600",
-    },
+    loadingText: { color: "white", fontSize: 17, fontWeight: "600" },
   });
 
   return (
@@ -237,7 +194,7 @@ export default function SignInScreen() {
         >
           <Ionicons name="chevron-back" size={20} color={colors.emerald500} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sign In</Text>
+        <Text style={styles.headerTitle}>{t("auth.sign_in.title")}</Text>
       </View>
 
       <KeyboardAvoidingView
@@ -249,16 +206,16 @@ export default function SignInScreen() {
             <View style={styles.logoContainer}>
               <Ionicons name="nutrition" size={40} color="white" />
             </View>
-            <Text style={styles.title}>Welcome back</Text>
-            <Text style={styles.subtitle}>Sign in to your Calo account</Text>
+            <Text style={styles.title}>{t("auth.sign_in.welcome_back")}</Text>
+            <Text style={styles.subtitle}>{t("auth.sign_in.subtitle")}</Text>
           </View>
 
           <View style={styles.formContainer}>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>{t("auth.sign_in.email_label")}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your email"
+                placeholder={t("auth.sign_in.email_placeholder")}
                 placeholderTextColor="#C7C7CC"
                 value={email}
                 onChangeText={setEmail}
@@ -270,11 +227,13 @@ export default function SignInScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label}>
+                {t("auth.sign_in.password_label")}
+              </Text>
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
-                  placeholder="Enter your password"
+                  placeholder={t("auth.sign_in.password_placeholder")}
                   placeholderTextColor="#C7C7CC"
                   value={password}
                   onChangeText={setPassword}
@@ -300,7 +259,7 @@ export default function SignInScreen() {
               <Link href="/(auth)/forgotPassword" asChild>
                 <TouchableOpacity>
                   <Text style={styles.forgotPasswordText}>
-                    Forgot Password?
+                    {t("auth.sign_in.forgot_password")}
                   </Text>
                 </TouchableOpacity>
               </Link>
@@ -318,19 +277,25 @@ export default function SignInScreen() {
               {isLoading ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color="white" />
-                  <Text style={styles.loadingText}>Signing in...</Text>
+                  <Text style={styles.loadingText}>
+                    {t("auth.sign_in.signing_in")}
+                  </Text>
                 </View>
               ) : (
-                <Text style={styles.signInButtonText}>Sign In</Text>
+                <Text style={styles.signInButtonText}>
+                  {t("auth.sign_in.title")}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account?</Text>
+            <Text style={styles.footerText}>
+              {t("auth.sign_in.no_account")}
+            </Text>
             <Link href="/(auth)/signup" asChild>
               <TouchableOpacity>
-                <Text style={styles.linkText}>Sign Up</Text>
+                <Text style={styles.linkText}>{t("auth.sign_in.sign_up")}</Text>
               </TouchableOpacity>
             </Link>
           </View>

@@ -43,97 +43,6 @@ const TermsOfServiceScreen = () => {
     }
   };
 
-  const renderSection = (sectionKey: string, hasSubsections = false) => {
-    const isExpanded = expandedSections[sectionKey];
-
-    return (
-      <View key={sectionKey} style={styles.sectionContainer}>
-        <TouchableOpacity
-          style={[styles.sectionHeader, isRTL && styles.sectionHeaderRTL]}
-          onPress={() => toggleSection(sectionKey)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.sectionHeaderContent}>
-            <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>
-              {t(`terms.sections.${sectionKey}.title`)}
-            </Text>
-            <View
-              style={[
-                styles.iconContainer,
-                isExpanded && styles.iconContainerExpanded,
-              ]}
-            >
-              <Ionicons
-                name={isExpanded ? "chevron-up" : "chevron-down"}
-                size={20}
-                color={colors.icon}
-                style={[isRTL && { transform: [{ scaleX: -1 }] }]}
-              />
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        {isExpanded && (
-          <View style={styles.sectionContent}>
-            <View style={styles.contentWrapper}>
-              <Text style={[styles.sectionText, isRTL && styles.textRTL]}>
-                {t(`terms.sections.${sectionKey}.content`)}
-              </Text>
-
-              {hasSubsections && (
-                <View style={styles.subsectionsContainer}>
-                  {(
-                    t(`terms.sections.${sectionKey}.subsections`, {
-                      returnObjects: true,
-                    }) as Subsection[]
-                  ).map((subsection: Subsection, index: number) => (
-                    <View key={index} style={styles.subsection}>
-                      <Text
-                        style={[
-                          styles.subsectionTitle,
-                          isRTL && styles.textRTL,
-                        ]}
-                      >
-                        {subsection.title}
-                      </Text>
-                      <Text
-                        style={[styles.subsectionText, isRTL && styles.textRTL]}
-                      >
-                        {subsection.content}
-                      </Text>
-                      {subsection.items && (
-                        <View style={styles.itemsList}>
-                          {subsection.items.map(
-                            (item: string, itemIndex: number) => (
-                              <View
-                                key={itemIndex}
-                                style={styles.listItemContainer}
-                              >
-                                <View style={styles.bulletPoint} />
-                                <Text
-                                  style={[
-                                    styles.listItem,
-                                    isRTL && styles.textRTL,
-                                  ]}
-                                >
-                                  {item}
-                                </Text>
-                              </View>
-                            )
-                          )}
-                        </View>
-                      )}
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-          </View>
-        )}
-      </View>
-    );
-  };
-
   const sections = [
     "acceptance_of_terms",
     "description_of_service",
@@ -156,9 +65,6 @@ const TermsOfServiceScreen = () => {
       flex: 1,
       backgroundColor: colors.background,
     },
-    containerRTL: {
-      direction: "rtl",
-    },
     header: {
       flexDirection: "row",
       alignItems: "center",
@@ -168,19 +74,6 @@ const TermsOfServiceScreen = () => {
       backgroundColor: colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
-      ...Platform.select({
-        ios: {
-          shadowColor: isDark ? "#000" : "#000",
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: isDark ? 0.3 : 0.05,
-          shadowRadius: 3,
-        },
-        android: {
-        },
-      }),
-    },
-    headerRTL: {
-      flexDirection: "row-reverse",
     },
     backButton: {
       width: 44,
@@ -200,19 +93,6 @@ const TermsOfServiceScreen = () => {
       color: colors.text,
       letterSpacing: -0.5,
     },
-    languageButton: {
-      backgroundColor: colors.primary,
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 20,
-      minWidth: 44,
-      alignItems: "center",
-    },
-    languageButtonText: {
-      color: colors.surface,
-      fontSize: 14,
-      fontWeight: "600",
-    },
     scrollView: {
       flex: 1,
     },
@@ -223,36 +103,29 @@ const TermsOfServiceScreen = () => {
       backgroundColor: colors.surface,
       margin: 16,
       padding: 24,
-      borderRadius: 16,
-      ...Platform.select({
-        ios: {
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: isDark ? 0.3 : 0.08,
-          shadowRadius: 8,
-        },
-        android: {
-        },
-      }),
+      borderRadius: 20,
     },
     introHeader: {
       alignItems: "center",
       marginBottom: 20,
     },
     termsIcon: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      backgroundColor: colors.card,
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: `${colors.primary}15`,
       justifyContent: "center",
       alignItems: "center",
       marginBottom: 16,
+      borderWidth: 2,
+      borderColor: `${colors.primary}30`,
     },
     introTitle: {
-      fontSize: 24,
+      fontSize: 28,
       fontWeight: "700",
       color: colors.text,
       letterSpacing: -0.5,
+      marginBottom: 8,
     },
     introText: {
       fontSize: 16,
@@ -266,63 +139,73 @@ const TermsOfServiceScreen = () => {
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: colors.card,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderRadius: 12,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     lastUpdated: {
       fontSize: 14,
-      color: colors.muted,
-      fontWeight: "500",
-      marginLeft: 6,
+      color: colors.textSecondary,
+      fontWeight: "600",
+      marginLeft: 8,
     },
     sectionsContainer: {
       marginHorizontal: 16,
+      marginTop: 8,
     },
     sectionContainer: {
       backgroundColor: colors.surface,
-      marginBottom: 8,
-      borderRadius: 16,
+      marginBottom: 12,
+      borderRadius: 20,
       overflow: "hidden",
-      ...Platform.select({
-        ios: {
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: isDark ? 0.2 : 0.06,
-          shadowRadius: 4,
-        },
-        android: {
-        },
-      }),
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     sectionHeader: {
       padding: 20,
-    },
-    sectionHeaderRTL: {
-      flexDirection: "row-reverse",
     },
     sectionHeaderContent: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
     },
+    sectionTitleContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      flex: 1,
+      paddingRight: 12,
+    },
+    sectionIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: `${colors.primary}15`,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 12,
+    },
     sectionTitle: {
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: "600",
       color: colors.text,
       flex: 1,
       letterSpacing: -0.3,
     },
     iconContainer: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       backgroundColor: colors.card,
       justifyContent: "center",
       alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     iconContainerExpanded: {
-      backgroundColor: colors.outline,
+      backgroundColor: `${colors.primary}15`,
+      borderColor: colors.primary,
     },
     sectionContent: {
       borderTopWidth: 1,
@@ -333,54 +216,55 @@ const TermsOfServiceScreen = () => {
     },
     sectionText: {
       fontSize: 15,
-      lineHeight: 22,
+      lineHeight: 24,
       color: colors.textSecondary,
       marginBottom: 16,
     },
     subsectionsContainer: {
       marginTop: 12,
+      gap: 16,
     },
     subsection: {
-      marginBottom: 24,
       paddingLeft: 20,
-      borderLeftWidth: 3,
+      paddingRight: 16,
+      borderLeftWidth: 4,
       borderLeftColor: colors.primary,
-      backgroundColor: isDark ? colors.card : colors.emerald50,
+      backgroundColor: isDark ? `${colors.card}80` : `${colors.primary}08`,
       paddingVertical: 16,
-      borderRadius: 8,
+      borderRadius: 12,
     },
     subsectionTitle: {
       fontSize: 16,
       fontWeight: "600",
       color: colors.text,
-      marginBottom: 8,
+      marginBottom: 10,
       letterSpacing: -0.2,
     },
     subsectionText: {
-      fontSize: 14,
-      lineHeight: 20,
+      fontSize: 15,
+      lineHeight: 22,
       color: colors.textSecondary,
       marginBottom: 12,
     },
     itemsList: {
       marginTop: 8,
+      gap: 10,
     },
     listItemContainer: {
       flexDirection: "row",
       alignItems: "flex-start",
-      marginBottom: 8,
     },
     bulletPoint: {
       width: 6,
       height: 6,
       borderRadius: 3,
-      backgroundColor: colors.muted,
-      marginTop: 7,
+      backgroundColor: colors.primary,
+      marginTop: 8,
       marginRight: 12,
     },
     listItem: {
       fontSize: 14,
-      lineHeight: 20,
+      lineHeight: 22,
       color: colors.textSecondary,
       flex: 1,
     },
@@ -388,32 +272,25 @@ const TermsOfServiceScreen = () => {
       backgroundColor: colors.surface,
       margin: 16,
       padding: 24,
-      borderRadius: 16,
-      ...Platform.select({
-        ios: {
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: isDark ? 0.3 : 0.08,
-          shadowRadius: 8,
-        },
-        android: {
-        },
-      }),
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     footerTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: "700",
       color: colors.text,
       marginBottom: 8,
       letterSpacing: -0.3,
     },
     footerSubtitle: {
-      fontSize: 14,
-      color: colors.muted,
+      fontSize: 15,
+      color: colors.textSecondary,
       marginBottom: 20,
+      lineHeight: 22,
     },
     linksContainer: {
-      gap: 4,
+      gap: 12,
     },
     linkButton: {
       flexDirection: "row",
@@ -422,31 +299,120 @@ const TermsOfServiceScreen = () => {
       paddingVertical: 16,
       paddingHorizontal: 16,
       backgroundColor: colors.card,
-      borderRadius: 12,
-      marginBottom: 8,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     linkContent: {
       flexDirection: "row",
       alignItems: "center",
       flex: 1,
     },
+    linkIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: `${colors.primary}15`,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 12,
+    },
     linkText: {
       fontSize: 15,
       color: colors.text,
       fontWeight: "500",
-      marginLeft: 12,
       flex: 1,
-    },
-    textRTL: {
-      textAlign: "right",
-      writingDirection: "rtl",
     },
   });
 
+  const renderSection = (sectionKey: string, hasSubsections = false) => {
+    const isExpanded = expandedSections[sectionKey];
+
+    return (
+      <View key={sectionKey} style={styles.sectionContainer}>
+        <TouchableOpacity
+          style={styles.sectionHeader}
+          onPress={() => toggleSection(sectionKey)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.sectionHeaderContent}>
+            <View style={styles.sectionTitleContainer}>
+              <View style={styles.sectionIcon}>
+                <Ionicons
+                  name="document-text"
+                  size={18}
+                  color={colors.primary}
+                />
+              </View>
+              <Text style={styles.sectionTitle} numberOfLines={2}>
+                {t(`terms.sections.${sectionKey}.title`)}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.iconContainer,
+                isExpanded && styles.iconContainerExpanded,
+              ]}
+            >
+              <Ionicons
+                name={isExpanded ? "chevron-up" : "chevron-down"}
+                size={20}
+                color={isExpanded ? colors.primary : colors.icon}
+              />
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {isExpanded && (
+          <View style={styles.sectionContent}>
+            <View style={styles.contentWrapper}>
+              <Text style={styles.sectionText}>
+                {t(`terms.sections.${sectionKey}.content`)}
+              </Text>
+
+              {hasSubsections && (
+                <View style={styles.subsectionsContainer}>
+                  {(
+                    t(`terms.sections.${sectionKey}.subsections`, {
+                      returnObjects: true,
+                    }) as Subsection[]
+                  ).map((subsection: Subsection, index: number) => (
+                    <View key={index} style={styles.subsection}>
+                      <Text style={styles.subsectionTitle}>
+                        {subsection.title}
+                      </Text>
+                      <Text style={styles.subsectionText}>
+                        {subsection.content}
+                      </Text>
+                      {subsection.items && subsection.items.length > 0 && (
+                        <View style={styles.itemsList}>
+                          {subsection.items.map(
+                            (item: string, itemIndex: number) => (
+                              <View
+                                key={itemIndex}
+                                style={styles.listItemContainer}
+                              >
+                                <View style={styles.bulletPoint} />
+                                <Text style={styles.listItem}>{item}</Text>
+                              </View>
+                            )
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
-    <SafeAreaView style={[styles.container, isRTL && styles.containerRTL]}>
-      {/* Enhanced Header */}
-      <View style={[styles.header, isRTL && styles.headerRTL]}>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
@@ -459,10 +425,9 @@ const TermsOfServiceScreen = () => {
           />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>
-            {t("terms.title")}
-          </Text>
+          <Text style={styles.headerTitle}>{t("terms.title")}</Text>
         </View>
+        <View style={{ width: 44 }} />
       </View>
 
       <ScrollView
@@ -470,32 +435,26 @@ const TermsOfServiceScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Enhanced Intro Section */}
         <View style={styles.introSection}>
           <View style={styles.introHeader}>
             <View style={styles.termsIcon}>
-              <Ionicons
-                name="document-text-outline"
-                size={32}
-                color={colors.text}
-              />
+              <Ionicons name="document-text" size={40} color={colors.primary} />
             </View>
-            <Text style={[styles.introTitle, isRTL && styles.textRTL]}>
-              Terms of Service
-            </Text>
+            <Text style={styles.introTitle}>{t("terms.header")}</Text>
           </View>
-          <Text style={[styles.introText, isRTL && styles.textRTL]}>
-            {t("terms.intro")}
-          </Text>
+          <Text style={styles.introText}>{t("terms.intro")}</Text>
           <View style={styles.lastUpdatedContainer}>
-            <Ionicons name="time-outline" size={16} color={colors.muted} />
-            <Text style={[styles.lastUpdated, isRTL && styles.textRTL]}>
+            <Ionicons
+              name="calendar-outline"
+              size={18}
+              color={colors.primary}
+            />
+            <Text style={styles.lastUpdated}>
               {t("terms.lastUpdated")}: {t("terms.updateDate")}
             </Text>
           </View>
         </View>
 
-        {/* Enhanced Sections */}
         <View style={styles.sectionsContainer}>
           {sections.map((sectionKey) =>
             renderSection(
@@ -512,12 +471,9 @@ const TermsOfServiceScreen = () => {
           )}
         </View>
 
-        {/* Enhanced Footer */}
         <View style={styles.footerSection}>
-          <Text style={[styles.footerTitle, isRTL && styles.textRTL]}>
-            {t("terms.footer.title")}
-          </Text>
-          <Text style={[styles.footerSubtitle, isRTL && styles.textRTL]}>
+          <Text style={styles.footerTitle}>{t("terms.footer.title")}</Text>
+          <Text style={styles.footerSubtitle}>
             {t("terms.footer.subtitle")}
           </Text>
 
@@ -528,12 +484,22 @@ const TermsOfServiceScreen = () => {
               activeOpacity={0.7}
             >
               <View style={styles.linkContent}>
-                <Ionicons name="shield-outline" size={20} color={colors.text} />
-                <Text style={[styles.linkText, isRTL && styles.textRTL]}>
+                <View style={styles.linkIconContainer}>
+                  <Ionicons
+                    name="shield-checkmark-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                </View>
+                <Text style={styles.linkText}>
                   {t("terms.footer.privacy_policy_link")}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={colors.textSecondary}
+              />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -542,12 +508,22 @@ const TermsOfServiceScreen = () => {
               activeOpacity={0.7}
             >
               <View style={styles.linkContent}>
-                <Ionicons name="mail-outline" size={20} color={colors.text} />
-                <Text style={[styles.linkText, isRTL && styles.textRTL]}>
+                <View style={styles.linkIconContainer}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                </View>
+                <Text style={styles.linkText}>
                   {t("terms.footer.contact_support")}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={colors.textSecondary}
+              />
             </TouchableOpacity>
           </View>
         </View>

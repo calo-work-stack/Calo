@@ -407,7 +407,9 @@ export default function EmailVerificationScreen() {
         style={{ transform: [{ translateX: shakeAnimation }] }}
       >
         <TextInput
-          ref={(ref) => (inputRefs.current[index] = ref)}
+          ref={(ref) => {
+            inputRefs.current[index] = ref;
+          }}
           style={[
             styles.codeInput,
             digit && styles.codeInputFilled,
@@ -448,7 +450,9 @@ export default function EmailVerificationScreen() {
             color="#1C1C1E"
           />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Verify Email</Text>
+        <Text style={styles.headerTitle}>
+          {t("auth.email_verification.title")}
+        </Text>
       </View>
 
       <KeyboardAvoidingView
@@ -460,15 +464,20 @@ export default function EmailVerificationScreen() {
             <View style={styles.logoContainer}>
               <Ionicons name="mail" size={isTablet ? 56 : 44} color="white" />
             </View>
-            <Text style={styles.title}>Check your email</Text>
+            <Text style={styles.title}>
+              {t("auth.email_verification.title")}
+            </Text>
             <Text style={styles.subtitle}>
-              We've sent a 6-digit code to{"\n"}
+              {t("auth.email_verification.subtitle")}
+              {"\n"}
               <Text style={styles.emailText}>{email}</Text>
             </Text>
           </View>
 
           <View style={styles.formContainer}>
-            <Text style={styles.codeLabel}>Enter verification code</Text>
+            <Text style={styles.codeLabel}>
+              {t("auth.email_verification.enter_code")}
+            </Text>
 
             <View style={styles.codeContainer}>{renderOTPInputs()}</View>
 
@@ -481,7 +490,9 @@ export default function EmailVerificationScreen() {
               disabled={loading || !isCodeComplete}
             >
               <Text style={styles.verifyButtonText}>
-                {loading ? "Verifying..." : "Verify Email"}
+                {loading
+                  ? t("common.loading")
+                  : t("auth.email_verification.verify")}
               </Text>
             </TouchableOpacity>
 
@@ -494,7 +505,9 @@ export default function EmailVerificationScreen() {
                   disabled={resendLoading}
                 >
                   <Text style={styles.resendButtonText}>
-                    {resendLoading ? "Sending..." : "Resend Code"}
+                    {resendLoading
+                      ? t("common.loading")
+                      : t("auth.email_verification.resend_code")}
                   </Text>
                 </TouchableOpacity>
               ) : (

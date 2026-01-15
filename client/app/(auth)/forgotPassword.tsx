@@ -54,7 +54,7 @@ export default function ForgotPasswordScreen() {
       if (response.success) {
         Alert.alert(
           t("common.success"),
-          t("auth.forgot_password_page.reset_sent"),
+          t("auth.forgot_password_page.reset_code_sent"),
           [
             {
               text: t("common.ok"),
@@ -67,12 +67,12 @@ export default function ForgotPasswordScreen() {
           ]
         );
       } else {
-        throw new Error(response.error || "Failed to send reset email");
+        throw new Error(response.error);
       }
     } catch (error: any) {
       Alert.alert(
         t("common.error"),
-        error.message || t("auth.forgot_password_page.reset_failed")
+        error.message || t("auth.reset_password.reset_failed")
       );
     } finally {
       setIsLoading(false);
@@ -124,11 +124,6 @@ export default function ForgotPasswordScreen() {
       alignItems: "center",
       justifyContent: "center",
       marginBottom: 16,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 5,
     },
     title: {
       fontSize: 28,
@@ -149,11 +144,6 @@ export default function ForgotPasswordScreen() {
       borderRadius: 16,
       padding: 24,
       marginTop: 32,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 5,
     },
     inputContainer: {
       marginBottom: 24,
@@ -180,11 +170,6 @@ export default function ForgotPasswordScreen() {
       borderRadius: 12,
       paddingVertical: 16,
       alignItems: "center",
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 5,
     },
     sendButtonDisabled: {
       opacity: 0.6,
@@ -193,12 +178,10 @@ export default function ForgotPasswordScreen() {
       fontSize: 17,
       fontWeight: "600",
       color: "white",
-      letterSpacing: 0.5,
     },
     loadingContainer: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
       gap: 8,
     },
     loadingText: {
@@ -210,20 +193,13 @@ export default function ForgotPasswordScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor="transparent"
-        translucent
-      />
+      <StatusBar barStyle="dark-content" translucent />
 
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={router.back}>
           <Ionicons name="chevron-back" size={20} color="#1C1C1E" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Reset Password</Text>
+        <Text style={styles.headerTitle}>{t("auth.reset_password.title")}</Text>
       </View>
 
       <KeyboardAvoidingView
@@ -235,19 +211,20 @@ export default function ForgotPasswordScreen() {
             <View style={styles.logoContainer}>
               <Ionicons name="lock-closed" size={40} color="white" />
             </View>
-            <Text style={styles.title}>Forgot Password?</Text>
+            <Text style={styles.title}>
+              {t("auth.forgot_password_page.title")}
+            </Text>
             <Text style={styles.subtitle}>
-              Enter your email address and we'll send you instructions to reset
-              your password
+              {t("auth.forgot_password_page.subtitle")}
             </Text>
           </View>
 
           <View style={styles.formContainer}>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>{t("auth.email")}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your email"
+                placeholder={t("auth.forgot_password_page.email_placeholder")}
                 placeholderTextColor="#C7C7CC"
                 value={email}
                 onChangeText={setEmail}
@@ -270,11 +247,13 @@ export default function ForgotPasswordScreen() {
               {isLoading ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator color="white" size="small" />
-                  <Text style={styles.loadingText}>Sending...</Text>
+                  <Text style={styles.loadingText}>
+                    {t("auth.loading.sending_reset")}
+                  </Text>
                 </View>
               ) : (
                 <Text style={styles.sendButtonText}>
-                  Send Reset Instructions
+                  {t("auth.forgot_password_page.send_reset_code")}
                 </Text>
               )}
             </TouchableOpacity>

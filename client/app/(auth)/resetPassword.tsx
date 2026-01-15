@@ -37,7 +37,7 @@ export default function ResetPasswordScreen() {
 
   const validatePassword = (password: string) => {
     if (password.length < 6) {
-      return t("auth.errors.invalid_password");
+      return t("auth.reset_password.password_too_short");
     }
     return null;
   };
@@ -55,7 +55,10 @@ export default function ResetPasswordScreen() {
     }
 
     if (password !== confirmPassword) {
-      Alert.alert(t("common.error"), t("auth.errors.passwords_dont_match"));
+      Alert.alert(
+        t("common.error"),
+        t("auth.reset_password.passwords_dont_match")
+      );
       return;
     }
 
@@ -73,9 +76,7 @@ export default function ResetPasswordScreen() {
           [
             {
               text: t("common.ok"),
-              onPress: () => {
-                router.replace("/(auth)/signin");
-              },
+              onPress: () => router.replace("/(auth)/signin"),
             },
           ]
         );
@@ -146,11 +147,6 @@ export default function ResetPasswordScreen() {
       alignItems: "center",
       justifyContent: "center",
       marginBottom: 16,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 5,
     },
     title: {
       fontSize: 28,
@@ -171,11 +167,6 @@ export default function ResetPasswordScreen() {
       borderRadius: 16,
       padding: 24,
       marginTop: 32,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 5,
       gap: 16,
     },
     inputContainer: {
@@ -213,11 +204,6 @@ export default function ResetPasswordScreen() {
       paddingVertical: 16,
       alignItems: "center",
       marginTop: 8,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 5,
     },
     resetButtonDisabled: {
       opacity: 0.6,
@@ -226,7 +212,6 @@ export default function ResetPasswordScreen() {
       fontSize: 17,
       fontWeight: "600",
       color: "white",
-      letterSpacing: 0.5,
     },
     requirements: {
       backgroundColor: "#F8F9FA",
@@ -261,11 +246,7 @@ export default function ResetPasswordScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor="transparent"
-        translucent
-      />
+      <StatusBar barStyle="dark-content" translucent />
 
       <View style={styles.header}>
         <TouchableOpacity
@@ -274,7 +255,9 @@ export default function ResetPasswordScreen() {
         >
           <Ionicons name="chevron-back" size={20} color="#1C1C1E" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Password</Text>
+        <Text style={styles.headerTitle}>
+          {t("auth.reset_password.reset_password_title")}
+        </Text>
       </View>
 
       <KeyboardAvoidingView
@@ -286,19 +269,21 @@ export default function ResetPasswordScreen() {
             <View style={styles.logoContainer}>
               <Ionicons name="key" size={40} color="white" />
             </View>
-            <Text style={styles.title}>Create New Password</Text>
+            <Text style={styles.title}>{t("auth.reset_password.title")}</Text>
             <Text style={styles.subtitle}>
-              Your new password must be different from previously used passwords
+              {t("auth.reset_password.subtitle")}
             </Text>
           </View>
 
           <View style={styles.formContainer}>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>New Password</Text>
+              <Text style={styles.label}>
+                {t("auth.reset_password.new_password")}
+              </Text>
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
-                  placeholder="Enter new password"
+                  placeholder={t("auth.reset_password.enter_new_password")}
                   placeholderTextColor="#C7C7CC"
                   value={password}
                   onChangeText={setPassword}
@@ -321,11 +306,13 @@ export default function ResetPasswordScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Confirm Password</Text>
+              <Text style={styles.label}>
+                {t("auth.reset_password.confirm_new_password")}
+              </Text>
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
-                  placeholder="Confirm new password"
+                  placeholder={t("auth.reset_password.confirm_new_password")}
                   placeholderTextColor="#C7C7CC"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -349,10 +336,10 @@ export default function ResetPasswordScreen() {
 
             <View style={styles.requirements}>
               <Text style={styles.requirementsTitle}>
-                Password Requirements:
+                {t("auth.reset_password.password_requirements")}
               </Text>
               <Text style={styles.requirementText}>
-                • Must be at least 6 characters long
+                • {t("auth.reset_password.password_requirement_length")}
               </Text>
             </View>
 
@@ -367,10 +354,14 @@ export default function ResetPasswordScreen() {
               {isLoading ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator color="white" size="small" />
-                  <Text style={styles.loadingText}>Updating...</Text>
+                  <Text style={styles.loadingText}>
+                    {t("auth.loading.resetting_password")}
+                  </Text>
                 </View>
               ) : (
-                <Text style={styles.resetButtonText}>Reset Password</Text>
+                <Text style={styles.resetButtonText}>
+                  {t("auth.reset_password.title")}
+                </Text>
               )}
             </TouchableOpacity>
           </View>

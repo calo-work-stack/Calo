@@ -11,9 +11,8 @@ import {
   ActivityIndicator,
   Platform,
   Keyboard,
-  KeyboardAvoidingView,
 } from "react-native";
-import { X, RotateCcw, Sparkles, Zap } from "lucide-react-native";
+import { X, RotateCcw, Sparkles } from "lucide-react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { t } from "i18next";
@@ -46,7 +45,8 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
   const scannerAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0.6)).current;
+  const rippleAnim = useRef(new Animated.Value(0)).current;
   const [showDetailsInput, setShowDetailsInput] = useState(false);
   const [inputHeight, setInputHeight] = useState(110);
   const inputHeightAnim = useRef(new Animated.Value(110)).current;
@@ -56,24 +56,23 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 500,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        tension: 40,
-        friction: 7,
+        tension: 45,
+        friction: 8,
         useNativeDriver: true,
       }),
     ]).start();
 
-    // Keyboard listeners
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
       (e) => {
-        Animated.spring(keyboardOffset, {
+        Animated.timing(keyboardOffset, {
           toValue: e.endCoordinates.height,
-          duration: e.duration,
+          duration: 250,
           useNativeDriver: true,
         }).start();
       }
@@ -81,10 +80,10 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
 
     const keyboardWillHide = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
-      (e) => {
-        Animated.spring(keyboardOffset, {
+      () => {
+        Animated.timing(keyboardOffset, {
           toValue: 0,
-          duration: e.duration,
+          duration: 250,
           useNativeDriver: true,
         }).start();
       }
@@ -98,54 +97,77 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
 
   useEffect(() => {
     if (isAnalyzing) {
-      // Scanner wave
+      // Smooth vertical scanner
       Animated.loop(
         Animated.timing(scannerAnim, {
           toValue: 1,
-          duration: 3000,
+          duration: 2500,
           useNativeDriver: true,
         })
       ).start();
 
-      // Subtle pulse
+      // Gentle pulse
       Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
-            toValue: 1.03,
-            duration: 2000,
+            toValue: 1.04,
+            duration: 1800,
             useNativeDriver: true,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
+            duration: 1800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+
+      // Elegant rotation
+      Animated.loop(
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 8000,
+          useNativeDriver: true,
+        })
+      ).start();
+
+      // Glow breathing
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowAnim, {
+            toValue: 0.6,
             duration: 2000,
             useNativeDriver: true,
           }),
         ])
       ).start();
 
-      // Rotate animation
+      // Ripple effect
       Animated.loop(
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 4000,
-          useNativeDriver: true,
-        })
-      ).start();
-
-      // Shimmer effect
-      Animated.loop(
-        Animated.timing(shimmerAnim, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: true,
-        })
+        Animated.sequence([
+          Animated.timing(rippleAnim, {
+            toValue: 1,
+            duration: 2500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rippleAnim, {
+            toValue: 0,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+        ])
       ).start();
     }
   }, [isAnalyzing]);
 
   const scannerTranslateY = scannerAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, height * 0.6],
+    outputRange: [-100, height * 0.65],
   });
 
   const rotate = rotateAnim.interpolate({
@@ -153,9 +175,14 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
     outputRange: ["0deg", "360deg"],
   });
 
-  const shimmerTranslateX = shimmerAnim.interpolate({
+  const rippleScale = rippleAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [-width, width],
+    outputRange: [0.8, 2],
+  });
+
+  const rippleOpacity = rippleAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.5, 0.2, 0],
   });
 
   const handleStartAnalysis = () => {
@@ -179,7 +206,6 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Ultra Clean Image Display */}
       <Animated.View
         style={[
           styles.imageContainer,
@@ -189,50 +215,59 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
           },
         ]}
       >
-        <Image source={{ uri: imageUri }} style={styles.image} blurRadius={2} />
+        <Image source={{ uri: imageUri }} style={styles.image} />
 
-        {/* Enhanced Gradient Overlay */}
         <LinearGradient
           colors={[
-            "rgba(0,0,0,0.75)",
-            "rgba(0,0,0,0.15)",
-            "rgba(0,0,0,0.15)",
-            "rgba(0,0,0,0.9)",
+            "rgba(0,0,0,0.4)",
+            "rgba(0,0,0,0.05)",
+            "rgba(0,0,0,0.05)",
+            "rgba(0,0,0,0.7)",
           ]}
-          locations={[0, 0.25, 0.65, 1]}
+          locations={[0, 0.2, 0.7, 1]}
           style={styles.gradient}
         />
-
-        {/* Frosted Glass Effect */}
-        <View style={styles.frostOverlay} />
 
         {/* Minimalist Top Actions */}
         <View style={styles.topActions}>
           <TouchableOpacity
             style={styles.iconButton}
             onPress={onRemoveImage}
-            activeOpacity={0.6}
+            activeOpacity={0.7}
           >
-            <BlurView intensity={60} tint="dark" style={styles.iconButtonBlur}>
-              <X size={20} color="#FFF" strokeWidth={2} />
+            <BlurView intensity={40} tint="dark" style={styles.iconButtonBlur}>
+              <X size={20} color="#FFF" strokeWidth={2.5} />
             </BlurView>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.iconButton}
             onPress={onRetakePhoto}
-            activeOpacity={0.6}
+            activeOpacity={0.7}
           >
-            <BlurView intensity={60} tint="dark" style={styles.iconButtonBlur}>
-              <RotateCcw size={20} color="#FFF" strokeWidth={2} />
+            <BlurView intensity={40} tint="dark" style={styles.iconButtonBlur}>
+              <RotateCcw size={20} color="#FFF" strokeWidth={2.5} />
             </BlurView>
           </TouchableOpacity>
         </View>
 
-        {/* Ultra Sleek Scanning */}
+        {/* Refined Scanning Animation */}
         {isAnalyzing && (
           <View style={styles.scanOverlay}>
-            {/* Rotating Rings */}
+            {/* Outer Ripple */}
+            <Animated.View
+              style={[
+                styles.rippleRing,
+                {
+                  opacity: rippleOpacity,
+                  transform: [{ scale: rippleScale }],
+                },
+              ]}
+            >
+              <View style={styles.rippleBorder} />
+            </Animated.View>
+
+            {/* Rotating Outer Ring */}
             <Animated.View
               style={[
                 styles.outerRing,
@@ -241,77 +276,64 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
                 },
               ]}
             >
-              <LinearGradient
-                colors={["#10B981", "rgba(16,185,129,0)"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.ringGradient}
-              />
+              <View style={styles.ringBorder} />
             </Animated.View>
 
+            {/* Inner Ring */}
             <Animated.View
               style={[
                 styles.innerRing,
                 {
-                  transform: [{ rotate: rotate }, { scale: pulseAnim }],
+                  opacity: glowAnim,
                 },
               ]}
             >
-              <View style={styles.ringBorder} />
+              <View style={styles.innerRingBorder} />
             </Animated.View>
 
-            {/* Center Glow */}
-            <View style={styles.centerGlow}>
-              <BlurView intensity={80} tint="dark" style={styles.glowBlur}>
-                <LinearGradient
-                  colors={["#10B981", "#059669"]}
-                  style={styles.glowInner}
-                >
-                  <Sparkles size={32} color="#FFF" strokeWidth={2} />
-                </LinearGradient>
-              </BlurView>
-            </View>
-
-            {/* Scanning Wave */}
+            {/* Center Orb */}
             <Animated.View
               style={[
-                styles.scanWave,
+                styles.centerOrb,
+                {
+                  opacity: glowAnim,
+                  transform: [{ scale: pulseAnim }],
+                },
+              ]}
+            >
+              <BlurView intensity={60} tint="dark" style={styles.orbBlur}>
+                <LinearGradient
+                  colors={["#14B8A6", "#0D9488"]}
+                  style={styles.orbGradient}
+                >
+                  <Sparkles size={28} color="#FFF" strokeWidth={2} />
+                </LinearGradient>
+              </BlurView>
+            </Animated.View>
+
+            {/* Smooth Scan Line */}
+            <Animated.View
+              style={[
+                styles.scanLine,
                 { transform: [{ translateY: scannerTranslateY }] },
               ]}
             >
               <LinearGradient
                 colors={[
-                  "rgba(16,185,129,0)",
-                  "rgba(16,185,129,0.4)",
-                  "rgba(16,185,129,0)",
+                  "rgba(20,184,166,0)",
+                  "rgba(20,184,166,0.6)",
+                  "rgba(20,184,166,0.8)",
+                  "rgba(20,184,166,0.6)",
+                  "rgba(20,184,166,0)",
                 ]}
-                style={styles.waveGradient}
-              />
-            </Animated.View>
-
-            {/* Shimmer Effect */}
-            <Animated.View
-              style={[
-                styles.shimmer,
-                { transform: [{ translateX: shimmerTranslateX }] },
-              ]}
-            >
-              <LinearGradient
-                colors={[
-                  "rgba(255,255,255,0)",
-                  "rgba(255,255,255,0.1)",
-                  "rgba(255,255,255,0)",
-                ]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.shimmerGradient}
+                style={styles.scanGradient}
               />
             </Animated.View>
           </View>
         )}
       </Animated.View>
 
-      {/* Ultra Minimal Bottom UI - Initial */}
+      {/* Clean Bottom UI - Initial */}
       {!isAnalyzing && !hasBeenAnalyzed && !showDetailsInput && (
         <Animated.View
           style={[
@@ -319,31 +341,30 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
             { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
           ]}
         >
-          <BlurView intensity={90} tint="dark" style={styles.sheet}>
+          <BlurView intensity={80} tint="dark" style={styles.sheet}>
             <TouchableOpacity
               style={styles.mainButton}
               onPress={() => setShowDetailsInput(true)}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
               <LinearGradient
-                colors={["#10B981", "#059669"]}
+                colors={["#14B8A6", "#0D9488"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.buttonGradient}
               >
-                <Zap size={20} color="#FFF" strokeWidth={2.5} fill="#FFF" />
                 <Text style={styles.buttonText}>
                   {t("camera.getNutritionInfo")}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
 
-            <Text style={styles.hint}>Tap to analyze instantly</Text>
+            <Text style={styles.hint}>Tap to analyze your meal</Text>
           </BlurView>
         </Animated.View>
       )}
 
-      {/* Details Input - Sleek */}
+      {/* Details Input */}
       {!isAnalyzing && !hasBeenAnalyzed && showDetailsInput && (
         <Animated.View
           style={[
@@ -357,8 +378,8 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
             },
           ]}
         >
-          <BlurView intensity={90} tint="dark" style={styles.inputSheet}>
-            <Text style={styles.inputLabel}>Add meal details (optional)</Text>
+          <BlurView intensity={80} tint="dark" style={styles.inputSheet}>
+            <Text style={styles.inputLabel}>Meal Details (Optional)</Text>
 
             <View style={styles.inputContainer}>
               <Animated.View
@@ -369,8 +390,8 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
                   value={userComment}
                   onChangeText={onCommentChange}
                   onContentSizeChange={handleContentSizeChange}
-                  placeholder="e.g., Grilled chicken breast with roasted vegetables..."
-                  placeholderTextColor="rgba(255,255,255,0.35)"
+                  placeholder="Describe your meal for better accuracy..."
+                  placeholderTextColor="rgba(255,255,255,0.3)"
                   multiline
                   maxLength={200}
                   autoFocus
@@ -379,7 +400,7 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
               </Animated.View>
               <View style={styles.inputFooter}>
                 <Text style={styles.inputHint}>
-                  Help us identify your meal more accurately
+                  Help improve analysis accuracy
                 </Text>
                 <Text
                   style={[
@@ -407,13 +428,12 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={["#10B981", "#059669"]}
+                  colors={["#14B8A6", "#0D9488"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.primaryGradient}
                 >
-                  <Sparkles size={18} color="#FFF" strokeWidth={2.5} />
-                  <Text style={styles.primaryText}>Analyze Now</Text>
+                  <Text style={styles.primaryText}>Analyze</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -421,7 +441,7 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
         </Animated.View>
       )}
 
-      {/* Analyzing State - Minimal */}
+      {/* Analyzing State */}
       {isAnalyzing && (
         <Animated.View
           style={[
@@ -429,10 +449,10 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
             { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
           ]}
         >
-          <BlurView intensity={90} tint="dark" style={styles.sheet}>
+          <BlurView intensity={80} tint="dark" style={styles.sheet}>
             <View style={styles.analyzingContent}>
-              <ActivityIndicator size="small" color="#10B981" />
-              <Text style={styles.analyzingText}>Analyzing your meal</Text>
+              <ActivityIndicator size="small" color="#14B8A6" />
+              <Text style={styles.analyzingText}>Analyzing meal</Text>
             </View>
           </BlurView>
         </Animated.View>
@@ -459,104 +479,95 @@ const styles = StyleSheet.create({
   gradient: {
     ...StyleSheet.absoluteFillObject,
   },
-  frostOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.03)",
-  },
   topActions: {
     position: "absolute",
     top: Platform.OS === "ios" ? 60 : 20,
-    left: 16,
-    right: 16,
+    left: 20,
+    right: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     zIndex: 10,
   },
   iconButton: {
-    borderRadius: 22,
+    borderRadius: 20,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
   },
   iconButtonBlur: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-    backgroundColor: "rgba(0,0,0,0.2)",
+    borderColor: "rgba(255,255,255,0.1)",
   },
   scanOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
   },
+  rippleRing: {
+    position: "absolute",
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+  },
+  rippleBorder: {
+    flex: 1,
+    borderRadius: 160,
+    borderWidth: 1,
+    borderColor: "#14B8A6",
+  },
   outerRing: {
     position: "absolute",
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    overflow: "hidden",
-  },
-  ringGradient: {
-    flex: 1,
-    borderRadius: 140,
-    borderWidth: 3,
-    borderColor: "rgba(16,185,129,0.3)",
-  },
-  innerRing: {
-    position: "absolute",
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
   },
   ringBorder: {
     flex: 1,
-    borderRadius: 100,
-    borderWidth: 2,
-    borderColor: "rgba(16,185,129,0.5)",
+    borderRadius: 110,
+    borderWidth: 1.5,
+    borderColor: "rgba(20,184,166,0.4)",
   },
-  centerGlow: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+  innerRing: {
+    position: "absolute",
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+  },
+  innerRingBorder: {
+    flex: 1,
+    borderRadius: 80,
+    borderWidth: 1,
+    borderColor: "rgba(20,184,166,0.6)",
+  },
+  centerOrb: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     overflow: "hidden",
   },
-  glowBlur: {
+  orbBlur: {
     flex: 1,
-    borderRadius: 45,
+    borderRadius: 40,
     justifyContent: "center",
     alignItems: "center",
   },
-  glowInner: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+  orbGradient: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: "center",
     alignItems: "center",
   },
-  scanWave: {
+  scanLine: {
     position: "absolute",
-    top: 0,
     left: 0,
     right: 0,
-    height: 100,
+    height: 80,
   },
-  waveGradient: {
-    flex: 1,
-  },
-  shimmer: {
-    position: "absolute",
-    top: 0,
-    width: width * 0.5,
-    height: "100%",
-  },
-  shimmerGradient: {
+  scanGradient: {
     flex: 1,
   },
   bottomSheet: {
@@ -566,74 +577,72 @@ const styles = StyleSheet.create({
     right: 0,
   },
   sheet: {
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     paddingTop: 28,
     paddingBottom: 44,
     paddingHorizontal: 24,
     alignItems: "center",
     borderTopWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(0,0,0,0.15)",
+    borderColor: "rgba(255,255,255,0.08)",
   },
   inputSheet: {
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    paddingTop: 32,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingTop: 28,
     paddingBottom: 44,
     paddingHorizontal: 24,
     borderTopWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(0,0,0,0.15)",
+    borderColor: "rgba(255,255,255,0.08)",
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "rgba(255,255,255,0.9)",
+    fontSize: 13,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.7)",
     marginBottom: 16,
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
   },
   mainButton: {
     width: "100%",
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: "hidden",
-    marginBottom: 14,
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 10,
+    marginBottom: 12,
+    shadowColor: "#14B8A6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   buttonGradient: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 18,
-    gap: 12,
   },
   buttonText: {
     fontSize: 17,
-    fontWeight: "800",
+    fontWeight: "600",
     color: "#FFF",
     letterSpacing: 0.3,
   },
   hint: {
     fontSize: 12,
-    color: "rgba(255,255,255,0.4)",
-    fontWeight: "500",
+    color: "rgba(255,255,255,0.35)",
+    fontWeight: "400",
   },
   inputContainer: {
     marginBottom: 20,
   },
   inputWrapper: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
     overflow: "hidden",
   },
   input: {
-    padding: 18,
+    padding: 16,
     fontSize: 15,
     color: "#FFF",
     fontWeight: "400",
@@ -644,23 +653,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 8,
     paddingHorizontal: 4,
   },
   inputHint: {
     fontSize: 11,
-    color: "rgba(255,255,255,0.35)",
-    fontWeight: "500",
+    color: "rgba(255,255,255,0.3)",
+    fontWeight: "400",
     flex: 1,
     marginRight: 12,
   },
   charCount: {
     fontSize: 11,
-    color: "rgba(255,255,255,0.4)",
-    fontWeight: "600",
+    color: "rgba(255,255,255,0.35)",
+    fontWeight: "500",
   },
   charCountWarning: {
-    color: "#FBBF24",
+    color: "#F59E0B",
   },
   buttonRow: {
     flexDirection: "row",
@@ -668,40 +677,38 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     flex: 1,
-    paddingVertical: 17,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingVertical: 16,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.06)",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
   secondaryText: {
-    color: "rgba(255,255,255,0.75)",
-    fontWeight: "700",
+    color: "rgba(255,255,255,0.6)",
+    fontWeight: "600",
     fontSize: 15,
   },
   primaryButton: {
     flex: 2,
-    borderRadius: 18,
+    borderRadius: 14,
     overflow: "hidden",
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowColor: "#14B8A6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
   },
   primaryGradient: {
-    paddingVertical: 17,
+    paddingVertical: 16,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
   },
   primaryText: {
     color: "#FFF",
-    fontWeight: "800",
+    fontWeight: "600",
     fontSize: 16,
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
   analyzingContent: {
     flexDirection: "row",
@@ -710,7 +717,7 @@ const styles = StyleSheet.create({
   },
   analyzingText: {
     fontSize: 15,
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.9)",
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.8)",
   },
 });

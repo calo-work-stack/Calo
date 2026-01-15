@@ -30,6 +30,8 @@ import { useTheme } from "@/src/context/ThemeContext";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { useTranslation } from "react-i18next";
 import { chatAPI } from "@/src/services/api";
+import { useSelector } from "react-redux";
+import { RootState } from "@/src/store";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
@@ -49,6 +51,7 @@ export default function ChatInterface({ children }: ChatInterfaceProps) {
   const { colors, isDark } = useTheme();
   const { isRTL } = useLanguage();
   const { t } = useTranslation();
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -168,6 +171,12 @@ export default function ChatInterface({ children }: ChatInterfaceProps) {
 
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
+
+    // Don't send if not authenticated
+    if (!isAuthenticated) {
+      console.log("📦 [ChatInterface] Skipping send - not authenticated");
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),

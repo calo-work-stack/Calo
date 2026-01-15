@@ -14,6 +14,7 @@
     "make-admin": "tsx scripts/make-admin.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.90.1",
     "@types/nodemailer": "^6.4.17",
     "axios": "^1.10.0",
     "bcryptjs": "^2.4.3",
@@ -28,6 +29,7 @@
     "node-cron": "^3.0.3",
     "nodemailer": "^7.0.5",
     "openai": "^4.67.3",
+    "pg": "^8.17.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {

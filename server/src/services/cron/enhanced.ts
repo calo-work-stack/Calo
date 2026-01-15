@@ -127,44 +127,50 @@ export class EnhancedCronJobService {
   }
 
   /**
-   * Run startup tasks
+   * Run startup tasks - now resilient to database issues
    */
   private static async runStartupTasks() {
     console.log("🚀 Running startup tasks...");
 
     try {
-      // 1. Check database health
+      // 1. Check database health first
       const health = await DatabaseOptimizationService.checkDatabaseHealth();
       console.log("📊 Database health:", health);
+
+      // If database is critical, skip heavy operations
+      if (health.status === "critical") {
+        console.log("⚠️ Database in critical state - skipping heavy startup tasks");
+        // Only try cleanup to free resources
+        try {
+          await DatabaseOptimizationService.performIntelligentCleanup();
+        } catch (cleanupError) {
+          console.error("⚠️ Cleanup also failed:", cleanupError);
+        }
+        return;
+      }
 
       // 2. Perform cleanup if needed
       if (health.needsCleanup) {
         console.log("🧹 Database needs cleanup, performing maintenance...");
-        await DatabaseOptimizationService.performIntelligentCleanup();
+        try {
+          await DatabaseOptimizationService.performIntelligentCleanup();
+        } catch (cleanupError) {
+          console.error("⚠️ Cleanup failed, continuing:", cleanupError);
+        }
       }
 
-      // 3. Force create daily goals for all users (testing mode)
-      console.log("📊 Force creating daily goals for all users...");
-      const goalsResult =
-        await EnhancedDailyGoalsService.forceCreateGoalsForAllUsers();
-      console.log("✅ Daily goals startup task completed:", goalsResult);
+      // 3. Skip force creating daily goals on startup - let users trigger this on demand
+      // This was causing timeouts and is not critical for app startup
+      console.log("ℹ️ Skipping daily goals creation on startup (will create on demand)");
 
-      // 4. Generate missing AI recommendations (if OpenAI is available)
-      if (process.env.OPENAI_API_KEY) {
-        console.log("🤖 Generating missing AI recommendations...");
-        const recommendationsResult =
-          await EnhancedAIRecommendationService.generateRecommendationsForAllUsers();
-        console.log(
-          "✅ AI recommendations startup task completed:",
-          recommendationsResult
-        );
-      } else {
-        console.log("⚠️ OpenAI not available, skipping AI recommendations");
-      }
+      // 4. Skip AI recommendations on startup - too heavy
+      // Will generate on user request instead
+      console.log("ℹ️ Skipping AI recommendations on startup (will generate on demand)");
 
-      console.log("✅ All startup tasks completed successfully");
+      console.log("✅ Startup tasks completed");
     } catch (error) {
       console.error("💥 Startup tasks failed:", error);
+      // Don't throw - let server continue running
     }
   }
 

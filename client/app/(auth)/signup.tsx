@@ -71,8 +71,6 @@ export default function SignUpScreen() {
     }
 
     try {
-      console.log("🔄 Starting signup process...");
-
       const result = await dispatch(
         signUp({
           email,
@@ -81,8 +79,6 @@ export default function SignUpScreen() {
           birth_date: new Date(),
         })
       ).unwrap();
-
-      console.log("✅ Signup result:", result);
 
       if (result.success) {
         ToastService.success(
@@ -100,7 +96,6 @@ export default function SignUpScreen() {
         throw new Error(result.error || t("auth.failed_create_account"));
       }
     } catch (error: any) {
-      console.error("💥 Signup error in component:", error);
       ToastService.error(
         t("common.error"),
         error.message || error || t("auth.failed_create_account")
@@ -109,10 +104,7 @@ export default function SignUpScreen() {
   };
 
   const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
       paddingTop: Platform.OS === "ios" ? 50 : 30,
       paddingHorizontal: 24,
@@ -140,11 +132,7 @@ export default function SignUpScreen() {
       paddingHorizontal: 24,
       paddingBottom: 32,
     },
-    logoSection: {
-      alignItems: "center",
-      marginBottom: 40,
-      marginTop: 20,
-    },
+    logoSection: { alignItems: "center", marginBottom: 40, marginTop: 20 },
     logoContainer: {
       width: 80,
       height: 80,
@@ -166,14 +154,8 @@ export default function SignUpScreen() {
       textAlign: "center",
       marginBottom: 8,
     },
-    subtitle: {
-      fontSize: 17,
-      color: "#8E8E93",
-      textAlign: "center",
-    },
-    formContainer: {
-      gap: 16,
-    },
+    subtitle: { fontSize: 17, color: "#8E8E93", textAlign: "center" },
+    formContainer: { gap: 16 },
     inputContainer: {
       backgroundColor: "white",
       borderRadius: 12,
@@ -195,24 +177,15 @@ export default function SignUpScreen() {
       textTransform: "uppercase",
       letterSpacing: 0.5,
     },
-    input: {
-      fontSize: 17,
-      color: "#1C1C1E",
-      paddingVertical: 0,
-    },
-    passwordContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
+    input: { fontSize: 17, color: "#1C1C1E", paddingVertical: 0 },
+    passwordContainer: { flexDirection: "row", alignItems: "center" },
     passwordInput: {
       flex: 1,
       fontSize: 17,
       color: "#1C1C1E",
       paddingVertical: 0,
     },
-    eyeButton: {
-      padding: 4,
-    },
+    eyeButton: { padding: 4 },
     privacyContainer: {
       flexDirection: "row",
       alignItems: "flex-start",
@@ -234,16 +207,8 @@ export default function SignUpScreen() {
       justifyContent: "center",
       backgroundColor: acceptedPrivacyPolicy ? colors.primary : "transparent",
     },
-    privacyText: {
-      fontSize: 15,
-      color: "#8E8E93",
-      flex: 1,
-      lineHeight: 20,
-    },
-    privacyLink: {
-      color: colors.primary,
-      fontWeight: "500",
-    },
+    privacyText: { fontSize: 15, color: "#8E8E93", flex: 1, lineHeight: 20 },
+    privacyLink: { color: colors.primary, fontWeight: "500" },
     signUpButton: {
       backgroundColor: colors.primary,
       borderRadius: 12,
@@ -256,9 +221,7 @@ export default function SignUpScreen() {
       shadowRadius: 8,
       elevation: 5,
     },
-    signUpButtonDisabled: {
-      opacity: 0.6,
-    },
+    signUpButtonDisabled: { opacity: 0.6 },
     signUpButtonText: {
       fontSize: 17,
       fontWeight: "600",
@@ -271,10 +234,7 @@ export default function SignUpScreen() {
       alignItems: "center",
       marginTop: 24,
     },
-    footerText: {
-      fontSize: 15,
-      color: "#8E8E93",
-    },
+    footerText: { fontSize: 15, color: "#8E8E93" },
     linkText: {
       fontSize: 15,
       color: colors.primary,
@@ -287,11 +247,7 @@ export default function SignUpScreen() {
       justifyContent: "center",
       gap: 8,
     },
-    loadingText: {
-      color: "white",
-      fontSize: 17,
-      fontWeight: "600",
-    },
+    loadingText: { color: "white", fontSize: 17, fontWeight: "600" },
   });
 
   const isFormValid = () => {
@@ -322,7 +278,7 @@ export default function SignUpScreen() {
           >
             <Ionicons name="chevron-back" size={20} color="#1C1C1E" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Sign Up</Text>
+          <Text style={styles.headerTitle}>{t("auth.sign_up.title")}</Text>
         </View>
 
         <KeyboardAvoidingView
@@ -338,18 +294,18 @@ export default function SignUpScreen() {
               <View style={styles.logoContainer}>
                 <Ionicons name="nutrition" size={40} color="white" />
               </View>
-              <Text style={styles.title}>Create Account</Text>
-              <Text style={styles.subtitle}>
-                Join Calo and start your journey
+              <Text style={styles.title}>
+                {t("auth.sign_up.create_account")}
               </Text>
+              <Text style={styles.subtitle}>{t("auth.sign_up.subtitle")}</Text>
             </View>
 
             <View style={styles.formContainer}>
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Full Name</Text>
+                <Text style={styles.label}>{t("auth.sign_up.name_label")}</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter your full name"
+                  placeholder={t("auth.sign_up.name_placeholder")}
                   placeholderTextColor="#C7C7CC"
                   value={name}
                   onChangeText={setName}
@@ -359,10 +315,12 @@ export default function SignUpScreen() {
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Email</Text>
+                <Text style={styles.label}>
+                  {t("auth.sign_up.email_label")}
+                </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter your email"
+                  placeholder={t("auth.sign_up.email_placeholder")}
                   placeholderTextColor="#C7C7CC"
                   value={email}
                   onChangeText={setEmail}
@@ -374,11 +332,13 @@ export default function SignUpScreen() {
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Password</Text>
+                <Text style={styles.label}>
+                  {t("auth.sign_up.password_label")}
+                </Text>
                 <View style={styles.passwordContainer}>
                   <TextInput
                     style={styles.passwordInput}
-                    placeholder="Create a password"
+                    placeholder={t("auth.sign_up.password_placeholder")}
                     placeholderTextColor="#C7C7CC"
                     value={password}
                     onChangeText={setPassword}
@@ -401,11 +361,13 @@ export default function SignUpScreen() {
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Confirm Password</Text>
+                <Text style={styles.label}>
+                  {t("auth.sign_up.confirm_password_label")}
+                </Text>
                 <View style={styles.passwordContainer}>
                   <TextInput
                     style={styles.passwordInput}
-                    placeholder="Confirm your password"
+                    placeholder={t("auth.sign_up.confirm_password_placeholder")}
                     placeholderTextColor="#C7C7CC"
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
@@ -437,9 +399,14 @@ export default function SignUpScreen() {
                   )}
                 </View>
                 <Text style={styles.privacyText}>
-                  I agree to the{" "}
-                  <Text style={styles.privacyLink}>Terms of Service</Text> and{" "}
-                  <Text style={styles.privacyLink}>Privacy Policy</Text>
+                  {t("auth.sign_up.agree_text")}{" "}
+                  <Text style={styles.privacyLink}>
+                    {t("auth.sign_up.terms_of_service")}
+                  </Text>{" "}
+                  {t("auth.sign_up.and")}{" "}
+                  <Text style={styles.privacyLink}>
+                    {t("auth.sign_up.privacy_policy")}
+                  </Text>
                 </Text>
               </TouchableOpacity>
 
@@ -454,18 +421,26 @@ export default function SignUpScreen() {
                 {isLoading ? (
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator size="small" color="white" />
-                    <Text style={styles.loadingText}>Creating account...</Text>
+                    <Text style={styles.loadingText}>
+                      {t("auth.sign_up.creating_account")}
+                    </Text>
                   </View>
                 ) : (
-                  <Text style={styles.signUpButtonText}>Create Account</Text>
+                  <Text style={styles.signUpButtonText}>
+                    {t("auth.sign_up.create_account")}
+                  </Text>
                 )}
               </TouchableOpacity>
 
               <View style={styles.footer}>
-                <Text style={styles.footerText}>Already have an account?</Text>
+                <Text style={styles.footerText}>
+                  {t("auth.sign_up.already_have_account")}
+                </Text>
                 <Link href="/(auth)/signin" asChild>
                   <TouchableOpacity>
-                    <Text style={styles.linkText}>Sign In</Text>
+                    <Text style={styles.linkText}>
+                      {t("auth.sign_up.sign_in")}
+                    </Text>
                   </TouchableOpacity>
                 </Link>
               </View>

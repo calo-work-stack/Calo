@@ -1306,7 +1306,7 @@ const QuestionnaireScreen: React.FC = () => {
           styles.header,
           {
             backgroundColor: colors.background,
-            paddingTop: Math.max(insets.top, 16),
+            paddingTop: Math.max(insets.top, 24),
           },
         ]}
       >
