@@ -82,52 +82,6 @@ export default function FoodScannerScreen() {
   const scanLineAnimation = useRef(new Animated.Value(0)).current;
   const pulseAnimation = useRef(new Animated.Value(1)).current;
 
-  const texts = {
-    title: t("food_scanner.title") || "Food Scanner",
-    subtitle: t("food_scanner.subtitle") || "Scan and analyze your food",
-    scanBarcode: t("food_scanner.scan_food") || "Scan Barcode",
-    scanImage: t("food_scanner.take_picture") || "Scan Image",
-    enterBarcode: t("food_scanner.enter_barcode") || "Enter barcode",
-    scan: t("food_scanner.scan") || "Scan",
-    quantity: t("food_scanner.quantity") || "Quantity",
-    isBeverage: t("food_scanner.is_beverage") || "Is Beverage",
-    addToShoppingList:
-      t("food_scanner.add_to_shopping_list") || "Add to Shopping List",
-    addToMealHistory:
-      t("food_scanner.add_to_meal_history") || "Add to Meal History",
-    rescan: t("food_scanner.rescan") || "Scan Again",
-    scanning: t("food_scanner.scanning") || "Scanning...",
-    analyzing: t("food_scanner.analyzing") || "Analyzing...",
-    estimatingPrice:
-      t("food_scanner.estimating_price") || "Estimating price...",
-    scanSuccess: t("food_scanner.scan_success") || "Scan successful",
-    scanError: t("food_scanner.scan_error") || "Scan failed",
-    noResults: t("food_scanner.no_results") || "No results found",
-    history: t("food_scanner.history") || "History",
-    close: t("food_scanner.close") || "Close",
-    added: t("food_scanner.added") || "Added",
-    g: t("common.grams") || "g",
-    ml: t("common.milliliters") || "ml",
-    nis: t("common.shekels") || "₪",
-    calories: t("common.calories") || "Calories",
-    protein: t("common.protein") || "Protein",
-    carbs: t("common.carbs") || "Carbs",
-    fat: t("common.fat") || "Fat",
-    fiber: t("food_scanner.fiber") || "Fiber",
-    sugar: t("food_scanner.sugar") || "Sugar",
-    sodium: t("food_scanner.sodium") || "Sodium",
-    ingredients: t("food_scanner.ingredients") || "Ingredients",
-    allergens: t("food_scanner.allergens") || "Allergens",
-    healthScore: t("food_scanner.health_score") || "Health Score",
-    priceEstimate: t("food_scanner.price_estimate") || "Price Estimate",
-    compatibility: t("food_scanner.compatibility") || "Compatibility",
-    productPreview: t("food_scanner.product_preview") || "Product Preview",
-    detailedAnalysis:
-      t("food_scanner.detailed_analysis") || "Detailed Analysis",
-    alignFood: "Please align food with the scanner",
-    scanningProgress: "Scanning in progress...",
-  };
-
   useEffect(() => {
     getCameraPermissions();
     loadScanHistory();
@@ -189,9 +143,8 @@ export default function FoodScannerScreen() {
     setHasPermission(status === "granted");
     if (status !== "granted") {
       ToastService.error(
-        t("common.permission_required") || "Permission Required",
-        t("food_scanner.camera_permission_needed") ||
-          "Camera permission is needed to scan food"
+        t("common.permissionRequired"),
+        t("foodScanner.cameraPermissionNeeded")
       );
     }
   };
@@ -215,14 +168,16 @@ export default function FoodScannerScreen() {
     productData: ProductData
   ): Promise<PriceEstimate | null> => {
     try {
-      setLoadingText(texts.estimatingPrice);
+      setLoadingText(t("foodScanner.estimatingPrice"));
       const basePrice = getBasePriceByCategory(productData.category);
       const sizeMultiplier = quantity > 100 ? 1.5 : 1;
       const estimatedPrice = Math.round(basePrice * sizeMultiplier);
 
       return {
         estimated_price: estimatedPrice,
-        price_range: `${estimatedPrice - 2}-${estimatedPrice + 5} ₪`,
+        price_range: `${estimatedPrice - 2}-${estimatedPrice + 5} ${t(
+          "common.shekels"
+        )}`,
         currency: "ILS",
         confidence: "medium",
         market_context: "Estimated based on category and size",
@@ -254,14 +209,14 @@ export default function FoodScannerScreen() {
   const handleBarcodeSearch = async () => {
     if (!barcodeInput.trim()) {
       ToastService.error(
-        texts.scanError,
-        isRTL ? "אנא הכנס ברקוד" : "Please enter a barcode"
+        t("foodScanner.scanError"),
+        t("foodScanner.pleaseEnterBarcode")
       );
       return;
     }
 
     setIsLoading(true);
-    setLoadingText(texts.scanning);
+    setLoadingText(t("foodScanner.scanning"));
 
     try {
       const response = await api.post("/food-scanner/barcode", {
@@ -277,7 +232,7 @@ export default function FoodScannerScreen() {
         await loadScanHistory();
       } else {
         ToastService.handleError(
-          response.data.error || texts.noResults,
+          response.data.error || t("foodScanner.noResults"),
           "Barcode Search"
         );
       }
@@ -294,7 +249,7 @@ export default function FoodScannerScreen() {
     if (isLoading) return;
 
     setIsLoading(true);
-    setLoadingText(texts.analyzing);
+    setLoadingText(t("foodScanner.analyzing"));
     setIsScanning(false);
 
     try {
@@ -311,8 +266,8 @@ export default function FoodScannerScreen() {
         await loadScanHistory();
       } else {
         ToastService.error(
-          texts.scanError,
-          isRTL ? "מוצר לא נמצא במאגר" : "Product not found"
+          t("foodScanner.scanError"),
+          t("foodScanner.productNotFound")
         );
       }
     } catch (error) {
@@ -329,8 +284,8 @@ export default function FoodScannerScreen() {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
         ToastService.error(
-          "Permission Required",
-          isRTL ? "נדרשת הרשאת מצלמה" : "Camera permission is required"
+          t("common.permissionRequired"),
+          t("foodScanner.cameraPermissionNeeded")
         );
         return;
       }
@@ -345,7 +300,7 @@ export default function FoodScannerScreen() {
 
       if (!result.canceled && result.assets[0].base64) {
         setIsLoading(true);
-        setLoadingText(texts.analyzing);
+        setLoadingText(t("foodScanner.analyzing"));
 
         try {
           const response = await api.post("/food-scanner/image", {
@@ -360,15 +315,13 @@ export default function FoodScannerScreen() {
             setShowResults(true);
             await loadScanHistory();
             ToastService.success(
-              texts.scanSuccess,
-              isRTL ? "המוצר זוהה בהצלחה" : "Product identified successfully"
+              t("foodScanner.scanSuccess"),
+              t("foodScanner.productIdentifiedSuccessfully")
             );
           } else {
             ToastService.error(
-              texts.scanError,
-              isRTL
-                ? "לא הצלחנו לזהות את המוצר בתמונה"
-                : "Could not identify product in image"
+              t("foodScanner.scanError"),
+              t("foodScanner.couldNotIdentifyProduct")
             );
           }
         } catch (error) {
@@ -382,8 +335,8 @@ export default function FoodScannerScreen() {
     } catch (error) {
       console.error("Camera error:", error);
       ToastService.error(
-        texts.scanError,
-        isRTL ? "לא הצלחנו לפתוח את המצלמה" : "Could not open camera"
+        t("foodScanner.scanError"),
+        t("foodScanner.couldNotOpenCamera")
       );
     }
   };
@@ -411,7 +364,7 @@ export default function FoodScannerScreen() {
       const response = await api.post("/shopping-lists", {
         name: scanResult.product.name,
         quantity: quantity,
-        unit: isBeverage ? "ml" : "g",
+        unit: isBeverage ? t("common.milliliters") : t("common.grams"),
         category: scanResult.product.category,
         added_from: "scanner",
         product_barcode: scanResult.product.barcode,
@@ -420,8 +373,10 @@ export default function FoodScannerScreen() {
 
       if (response.data.success) {
         ToastService.success(
-          "Shopping List Updated",
-          `${scanResult.product.name} added to shopping list!`
+          t("foodScanner.shoppingListUpdated"),
+          t("foodScanner.addedToShoppingList", {
+            product: scanResult.product.name,
+          })
         );
       } else {
         ToastService.handleError(response.data.error, "Add to Shopping List");
@@ -481,12 +436,7 @@ export default function FoodScannerScreen() {
 
   if (hasPermission === null) {
     return (
-      <LoadingScreen
-        text={
-          t("food_scanner.requesting_camera_permissions") ||
-          "Requesting camera permissions..."
-        }
-      />
+      <LoadingScreen text={t("foodScanner.requestingCameraPermissions")} />
     );
   }
 
@@ -502,8 +452,7 @@ export default function FoodScannerScreen() {
         <Text
           style={[styles.noPermissionText, { color: colors.textSecondary }]}
         >
-          {t("food_scanner.camera_permission_required") ||
-            "Camera permission is required"}
+          {t("foodScanner.cameraPermissionRequired")}
         </Text>
         <TouchableOpacity
           style={[styles.permissionButton, { backgroundColor: colors.primary }]}
@@ -512,7 +461,7 @@ export default function FoodScannerScreen() {
           <Text
             style={[styles.permissionButtonText, { color: colors.onPrimary }]}
           >
-            {t("common.grant_permission") || "Grant Permission"}
+            {t("common.grantPermission")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -525,7 +474,6 @@ export default function FoodScannerScreen() {
     >
       <View style={styles.modernHeader}>
         <View style={styles.headerTop}>
-          {/* Icon Container with theme-aware background */}
           <View
             style={[
               styles.headerIconContainer,
@@ -535,10 +483,9 @@ export default function FoodScannerScreen() {
             <ScanLine size={28} color={colors.text} strokeWidth={2.5} />
           </View>
 
-          {/* Text Container */}
           <View style={styles.headerTextContainer}>
             <Text style={[styles.headerTitle, { color: colors.text }]}>
-              {t("food_scanner.title")}
+              {t("foodScanner.title")}
             </Text>
             <Text
               style={[
@@ -549,11 +496,10 @@ export default function FoodScannerScreen() {
                 },
               ]}
             >
-              {t("food_scanner.subtitle")}
+              {t("foodScanner.subtitle")}
             </Text>
           </View>
 
-          {/* Gallery Button with theme-aware styling */}
           <TouchableOpacity
             style={[styles.galleryButton, { backgroundColor: colors.glass }]}
             onPress={() => setShowProductsGallery(true)}
@@ -598,7 +544,7 @@ export default function FoodScannerScreen() {
                     },
                   ]}
                 >
-                  {texts.scanImage}
+                  {t("foodScanner.takePicture")}
                 </Text>
               </TouchableOpacity>
 
@@ -628,7 +574,7 @@ export default function FoodScannerScreen() {
                     },
                   ]}
                 >
-                  {texts.scanBarcode}
+                  {t("foodScanner.scanFood")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -722,7 +668,7 @@ export default function FoodScannerScreen() {
             <Text
               style={[styles.scanInstructions, { color: colors.textSecondary }]}
             >
-              {texts.alignFood}
+              {t("foodScanner.alignFood")}
             </Text>
           </View>
 
@@ -739,7 +685,7 @@ export default function FoodScannerScreen() {
                       color: colors.text,
                     },
                   ]}
-                  placeholder={texts.enterBarcode}
+                  placeholder={t("foodScanner.enterBarcode")}
                   placeholderTextColor={colors.textSecondary}
                   value={barcodeInput}
                   onChangeText={setBarcodeInput}
@@ -762,7 +708,7 @@ export default function FoodScannerScreen() {
                         { color: colors.onPrimary },
                       ]}
                     >
-                      {texts.scan}
+                      {t("foodScanner.scan")}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -786,7 +732,7 @@ export default function FoodScannerScreen() {
               <ArrowLeft size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={[styles.headerTitle, { color: colors.text }]}>
-              Details
+              {t("foodScanner.details")}
             </Text>
             <TouchableOpacity
               style={[
@@ -827,12 +773,12 @@ export default function FoodScannerScreen() {
                       quantity) /
                       100
                   )}{" "}
-                  Kcal
+                  {t("foodScanner.kcal")}
                 </Text>
                 <Text
                   style={[styles.productWeight, { color: colors.textTertiary }]}
                 >
-                  {quantity} grams
+                  {quantity} {t("foodScanner.grams")}
                 </Text>
               </View>
             </View>
@@ -854,7 +800,7 @@ export default function FoodScannerScreen() {
                   ]}
                 />
                 <Text style={[styles.healthText, { color: colors.text }]}>
-                  Rich in proteins
+                  {t("foodScanner.richInProteins")}
                 </Text>
               </View>
               <View style={styles.healthIndicator}>
@@ -865,7 +811,7 @@ export default function FoodScannerScreen() {
                   ]}
                 />
                 <Text style={[styles.healthText, { color: colors.text }]}>
-                  Rich in Vitamins & Minerals
+                  {t("foodScanner.richInVitaminsMinerals")}
                 </Text>
               </View>
               <View style={styles.healthIndicator}>
@@ -876,7 +822,7 @@ export default function FoodScannerScreen() {
                   ]}
                 />
                 <Text style={[styles.healthText, { color: colors.text }]}>
-                  Rich in Anti Oxidants
+                  {t("foodScanner.richInAntiOxidants")}
                 </Text>
               </View>
             </View>
@@ -891,12 +837,12 @@ export default function FoodScannerScreen() {
               ]}
             >
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Nutrition values
+                {t("foodScanner.nutritionValues")}
               </Text>
               <View style={styles.nutritionValues}>
                 <View style={styles.nutritionRow}>
                   <Text style={[styles.nutritionLabel, { color: colors.text }]}>
-                    Protein
+                    {t("foodScanner.protein")}
                   </Text>
                   <View
                     style={[
@@ -916,13 +862,13 @@ export default function FoodScannerScreen() {
                       (scanResult.product.nutrition_per_100g.fat * quantity) /
                         100
                     )}{" "}
-                    gm
+                    {t("common.grams")}
                   </Text>
                 </View>
 
                 <View style={styles.nutritionRow}>
                   <Text style={[styles.nutritionLabel, { color: colors.text }]}>
-                    Fibers
+                    {t("foodScanner.fibers")}
                   </Text>
                   <View
                     style={[
@@ -943,13 +889,13 @@ export default function FoodScannerScreen() {
                         quantity) /
                         100
                     )}{" "}
-                    gm
+                    {t("common.grams")}
                   </Text>
                 </View>
 
                 <View style={styles.nutritionRow}>
                   <Text style={[styles.nutritionLabel, { color: colors.text }]}>
-                    Sugar
+                    {t("foodScanner.sugar")}
                   </Text>
                   <View
                     style={[
@@ -970,13 +916,13 @@ export default function FoodScannerScreen() {
                         quantity) /
                         100
                     )}{" "}
-                    gm
+                    {t("common.grams")}
                   </Text>
                 </View>
 
                 <View style={styles.nutritionRow}>
                   <Text style={[styles.nutritionLabel, { color: colors.text }]}>
-                    Vitamins
+                    {t("foodScanner.vitamins")}
                   </Text>
                   <View
                     style={[
@@ -992,7 +938,7 @@ export default function FoodScannerScreen() {
                     />
                   </View>
                   <Text style={[styles.nutritionValue, { color: colors.text }]}>
-                    4 gm
+                    4 {t("common.grams")}
                   </Text>
                 </View>
               </View>
@@ -1008,7 +954,7 @@ export default function FoodScannerScreen() {
               ]}
             >
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Ingredients Identified
+                {t("foodScanner.ingredientsIdentified")}
               </Text>
               <View style={styles.ingredientsList}>
                 {scanResult.product.ingredients
@@ -1034,7 +980,7 @@ export default function FoodScannerScreen() {
                             { color: colors.textSecondary },
                           ]}
                         >
-                          Rich in Proteins
+                          {t("foodScanner.richInProteins")}
                         </Text>
                       </View>
                     </View>
@@ -1051,7 +997,7 @@ export default function FoodScannerScreen() {
             >
               <Plus size={20} color={colors.onPrimary} />
               <Text style={[styles.addButtonText, { color: colors.onPrimary }]}>
-                Add to Meal
+                {t("foodScanner.addToMeal")}
               </Text>
             </TouchableOpacity>
 
@@ -1107,7 +1053,7 @@ export default function FoodScannerScreen() {
               <X size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
-              {texts.history}
+              {t("foodScanner.history")}
             </Text>
             <View style={{ width: 24 }} />
           </View>
@@ -1160,7 +1106,7 @@ export default function FoodScannerScreen() {
                     { color: colors.textSecondary },
                   ]}
                 >
-                  {t("food_scanner.no_scan_history") || "No scan history"}
+                  {t("foodScanner.noScanHistory")}
                 </Text>
               </View>
             )}

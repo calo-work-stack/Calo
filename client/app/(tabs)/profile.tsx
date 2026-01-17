@@ -67,20 +67,16 @@ export default function ProfileScreen() {
   });
 
   const handleSignOut = () => {
-    Alert.alert(
-      t("profile.signout") || "Sign Out",
-      t("profile.signout_confirmation") || "Are you sure you want to sign out?",
-      [
-        { text: t("common.cancel") || "Cancel", style: "cancel" },
-        {
-          text: t("profile.signout") || "Sign Out",
-          style: "destructive",
-          onPress: () => {
-            dispatch(signOut());
-          },
+    Alert.alert(t("profile.signout"), t("profile.signout_confirmation"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("profile.signout"),
+        style: "destructive",
+        onPress: () => {
+          dispatch(signOut());
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleChangePlan = () => {
@@ -88,15 +84,15 @@ export default function ProfileScreen() {
       pathname: "/payment",
       params: {
         mode: "change",
-        currentPlan: user?.subscription_type || "FREE",
+        currentPlan: t(`profile.${user?.subscription_type}`),
       },
     });
   };
 
   const handleExitPlan = () => {
     ToastService.warning(
-      "Confirm Plan Change",
-      "Tap again to downgrade to Free plan and lose premium features.",
+      t("profile.plan.confirm_change"),
+      t("profile.plan.downgrade_warning"),
       {
         duration: 6000,
         onPress: async () => {
@@ -107,13 +103,13 @@ export default function ProfileScreen() {
               payload: { subscription_type: "FREE" },
             });
             ToastService.success(
-              "Plan Updated",
-              "You have been downgraded to the Free plan."
+              t("profile.plan.update_success"),
+              t("profile.plan.downgrade_message")
             );
           } catch (error: any) {
             ToastService.error(
-              "Update Failed",
-              error.message || "Failed to update plan"
+              t("profile.plan.update_failed"),
+              error.message || t("profile.plan.update_error")
             );
           }
         },
@@ -147,12 +143,15 @@ export default function ProfileScreen() {
 
   const handleAvatarPress = () => {
     Alert.alert(
-      "Change Avatar",
-      "Choose how you'd like to update your profile picture",
+      t("profile.avatar.change_title"),
+      t("profile.avatar.change_message"),
       [
-        { text: "Cancel", style: "cancel" },
-        { text: "Take Photo", onPress: handleTakePhoto },
-        { text: "Choose from Gallery", onPress: handleChooseFromGallery },
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("profile.avatar.take_photo"), onPress: handleTakePhoto },
+        {
+          text: t("profile.avatar.choose_gallery"),
+          onPress: handleChooseFromGallery,
+        },
       ]
     );
   };
@@ -161,7 +160,10 @@ export default function ProfileScreen() {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission needed", "Camera permission is required");
+        Alert.alert(
+          t("profile.avatar.permission_needed"),
+          t("profile.avatar.camera_permission")
+        );
         return;
       }
 
@@ -177,7 +179,7 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error("Camera error:", error);
-      Alert.alert("Error", "Failed to take photo");
+      Alert.alert(t("common.error"), t("profile.avatar.upload_error"));
     }
   };
 
@@ -186,7 +188,10 @@ export default function ProfileScreen() {
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission needed", "Gallery permission is required");
+        Alert.alert(
+          t("profile.avatar.permission_needed"),
+          t("profile.avatar.gallery_permission")
+        );
         return;
       }
 
@@ -203,7 +208,7 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error("Gallery error:", error);
-      Alert.alert("Error", "Failed to choose image");
+      Alert.alert(t("common.error"), t("profile.avatar.upload_error"));
     }
   };
 
@@ -222,13 +227,16 @@ export default function ProfileScreen() {
           })
         );
 
-        Alert.alert("Success", "Profile picture updated successfully!");
+        Alert.alert(t("common.success"), t("profile.avatar.upload_success"));
       } else {
-        throw new Error(response.error || "Failed to upload avatar");
+        throw new Error(response.error || t("profile.avatar.upload_error"));
       }
     } catch (error: any) {
       console.error("Avatar upload error:", error);
-      Alert.alert("Error", error.message || "Failed to upload avatar");
+      Alert.alert(
+        t("common.error"),
+        error.message || t("profile.avatar.upload_error")
+      );
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -236,43 +244,45 @@ export default function ProfileScreen() {
 
   const menuSections: MenuSection[] = [
     {
-      title: t("profile.personal_info") || "Personal Information",
+      title: t("profile.personal_info"),
       items: [
         {
           id: "editProfile",
-          title: t("profile.edit_profile") || "Edit Profile",
+          title: t("profile.edit_profile"),
           icon: <Edit size={20} color={colors.icon} />,
           onPress: () => handleMenuPress("editProfile"),
         },
         {
           id: "changeAvatar",
-          title: "Change Avatar",
+          title: t("profile.change_avatar"),
           icon: <Camera size={20} color={colors.icon} />,
           onPress: handleAvatarPress,
         },
         {
           id: "personalData",
-          title: t("profile.personal_data") || "Personal Data",
+          title: t("profile.personal_data"),
           icon: <Target size={20} color={colors.icon} />,
           onPress: () => handleMenuPress("personalData"),
         },
       ],
     },
     {
-      title: "Subscription Management",
+      title: t("profile.subscription_management"),
       items: [
         {
           id: "changePlan",
-          title: "Change Plan",
+          title: t("profile.change_plan"),
           icon: <Edit size={20} color={colors.icon} />,
           onPress: handleChangePlan,
-          subtitle: `Current: ${user?.subscription_type || "FREE"}`,
+          subtitle: `${t("profile.current")}: ${t(
+            `profile.${user?.subscription_type}`
+          )}`,
         },
         ...(user?.subscription_type !== "FREE"
           ? [
               {
                 id: "exitPlan",
-                title: "Exit Current Plan",
+                title: t("profile.exit_plan"),
                 icon: <LogOut size={20} color={colors.error} />,
                 onPress: handleExitPlan,
                 danger: true,
@@ -282,11 +292,11 @@ export default function ProfileScreen() {
       ],
     },
     {
-      title: t("profile.preferences") || "Preferences",
+      title: t("profile.preferences"),
       items: [
         {
           id: "notifications",
-          title: t("profile.notifications") || "Notifications",
+          title: t("profile.notifications"),
           icon: <Bell size={20} color={colors.icon} />,
           rightComponent: (
             <Switch
@@ -301,7 +311,7 @@ export default function ProfileScreen() {
         },
         {
           id: "darkMode",
-          title: "Dark Mode",
+          title: t("profile.dark_mode"),
           icon: <Moon size={20} color={colors.icon} />,
           rightComponent: (
             <Switch
@@ -314,7 +324,7 @@ export default function ProfileScreen() {
         },
         {
           id: "language",
-          title: t("profile.language") || "Language",
+          title: t("profile.language"),
           icon: <Globe size={20} color={colors.icon} />,
           subtitle: isRTL ? "עברית" : "English",
           onPress: () => setShowLanguageModal(true),
@@ -322,39 +332,39 @@ export default function ProfileScreen() {
       ],
     },
     {
-      title: t("profile.support") || "Support",
+      title: t("profile.support"),
       items: [
         {
           id: "support",
-          title: t("profile.support") || "Help Center",
+          title: t("profile.support"),
           icon: <HelpCircle size={20} color={colors.icon} />,
           onPress: () => handleMenuPress("support"),
         },
         {
           id: "about",
-          title: t("profile.about") || "About",
+          title: t("profile.about"),
           icon: <User size={20} color={colors.icon} />,
           onPress: () => handleMenuPress("about"),
         },
       ],
     },
     {
-      title: t("profile.privacy") || "Privacy",
+      title: t("profile.privacy"),
       items: [
         {
           id: "privacy",
-          title: t("profile.privacy") || "Privacy Policy",
+          title: t("profile.privacy"),
           icon: <Shield size={20} color={colors.icon} />,
           onPress: () => handleMenuPress("privacy"),
         },
       ],
     },
     {
-      title: t("profile.account") || "Account",
+      title: t("profile.account"),
       items: [
         {
           id: "signOut",
-          title: t("profile.signout") || "Sign Out",
+          title: t("profile.signout"),
           icon: <LogOut size={20} color={colors.error} />,
           onPress: handleSignOut,
           danger: true,
@@ -376,7 +386,7 @@ export default function ProfileScreen() {
             ]}
           >
             <Text style={[styles.sectionContentTitle, { color: colors.text }]}>
-              Notification Settings
+              {t("profile.notification_settings.title")}
             </Text>
             {Object.entries(notificationSettings).map(([key, value]) => (
               <View
@@ -392,9 +402,7 @@ export default function ProfileScreen() {
                     { color: colors.onSurface },
                   ]}
                 >
-                  {key
-                    .replace(/([A-Z])/g, " $1")
-                    .replace(/^./, (str) => str.toUpperCase())}
+                  {t(`profile.notification_settings.${key}`)}
                 </Text>
                 <Switch
                   value={value}
@@ -415,7 +423,7 @@ export default function ProfileScreen() {
             ]}
           >
             <Text style={[styles.sectionContentTitle, { color: colors.text }]}>
-              Privacy Settings
+              {t("profile.privacy_settings.title")}
             </Text>
             <Text
               style={[
@@ -423,12 +431,11 @@ export default function ProfileScreen() {
                 { color: colors.textSecondary },
               ]}
             >
-              Privacy settings and data management options would be displayed
-              here.
-              {"\n\n"}• Data export and deletion
-              {"\n"}• Privacy preferences
-              {"\n"}• Cookie settings
-              {"\n"}• Third-party data sharing
+              {t("profile.privacy_settings.description")}
+              {"\n\n"}• {t("profile.privacy_settings.data_export")}
+              {"\n"}• {t("profile.privacy_settings.privacy_preferences")}
+              {"\n"}• {t("profile.privacy_settings.cookie_settings")}
+              {"\n"}• {t("profile.privacy_settings.third_party")}
             </Text>
           </View>
         );
@@ -441,7 +448,7 @@ export default function ProfileScreen() {
             ]}
           >
             <Text style={[styles.sectionContentTitle, { color: colors.text }]}>
-              Help & Support
+              {t("profile.help_support.title")}
             </Text>
             <Text
               style={[
@@ -449,14 +456,11 @@ export default function ProfileScreen() {
                 { color: colors.textSecondary },
               ]}
             >
-              Welcome to your nutrition tracking app! Here are some helpful
-              tips:
-              {"\n\n"}• Use the camera to scan your meals for automatic
-              nutrition analysis
-              {"\n"}• Track your daily water intake to stay hydrated
-              {"\n"}• View your progress in the statistics tab
-              {"\n"}• Set up your profile in the questionnaire for personalized
-              recommendations
+              {t("profile.help_support.welcome")}
+              {"\n\n"}• {t("profile.help_support.tip_camera")}
+              {"\n"}• {t("profile.help_support.tip_water")}
+              {"\n"}• {t("profile.help_support.tip_progress")}
+              {"\n"}• {t("profile.help_support.tip_profile")}
             </Text>
           </View>
         );
@@ -469,7 +473,7 @@ export default function ProfileScreen() {
             ]}
           >
             <Text style={[styles.sectionContentTitle, { color: colors.text }]}>
-              About This App
+              {t("profile.about_app.title")}
             </Text>
             <Text
               style={[
@@ -477,16 +481,15 @@ export default function ProfileScreen() {
                 { color: colors.textSecondary },
               ]}
             >
-              Nutrition Tracker v1.0.0
-              {"\n\n"}A comprehensive nutrition tracking application that helps
-              you monitor your daily food intake, track your health goals, and
-              maintain a balanced diet.
+              {t("profile.about_app.version")}
               {"\n\n"}
-              Features:
-              {"\n"}• AI-powered meal analysis
-              {"\n"}• Comprehensive nutrition tracking
-              {"\n"}• Goal setting and progress monitoring
-              {"\n"}• Personalized recommendations
+              {t("profile.about_app.description")}
+              {"\n\n"}
+              {t("profile.about_app.features")}
+              {"\n"}• {t("profile.about_app.feature_ai")}
+              {"\n"}• {t("profile.about_app.feature_tracking")}
+              {"\n"}• {t("profile.about_app.feature_goals")}
+              {"\n"}• {t("profile.about_app.feature_recommendations")}
             </Text>
           </View>
         );
@@ -496,35 +499,37 @@ export default function ProfileScreen() {
   };
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return "Not set";
+    if (!dateString) return t("profile.status.not_set");
     return new Date(dateString).toLocaleDateString();
   };
 
   const getSubscriptionBadge = (type: string) => {
     switch (type) {
       case "PREMIUM":
-        return { color: "#FFD700", text: "PREMIUM" };
+        return { color: "#FFD700", text: t("profile.PREMIUM") };
       case "GOLD":
-        return { color: "#FF6B35", text: "GOLD" };
+        return { color: "#FF6B35", text: t("profile.GOLD") };
       default:
-        return { color: colors.tabIconDefault, text: "FREE" };
+        return { color: colors.tabIconDefault, text: t("profile.FREE") };
     }
   };
 
   const profileStats = [
     {
-      label: "AI Requests",
+      label: t("profile.lable.ai_requests"),
       value: (user?.ai_requests_count || 0).toString(),
       icon: <Target size={20} color={colors.error} />,
     },
     {
-      label: "Member Since",
+      label: t("profile.lable.member_since"),
       value: formatDate(user?.created_at ?? ""),
       icon: <Scale size={20} color={colors.warning} />,
     },
     {
-      label: "Profile Status",
-      value: user?.is_questionnaire_completed ? "Complete" : "Incomplete",
+      label: t("profile.lable.profile_status"),
+      value: user?.is_questionnaire_completed
+        ? t("profile.complete")
+        : t("profile.incomplete"),
       icon: <Activity size={20} color={colors.primary} />,
     },
   ];
@@ -548,7 +553,7 @@ export default function ProfileScreen() {
                 isRTL && styles.titleRTL,
               ]}
             >
-              {t("profile.title") || "Profile"}
+              {t("profile.title")}
             </Text>
             <Text
               style={[
@@ -557,7 +562,7 @@ export default function ProfileScreen() {
                 isRTL && styles.subtitleRTL,
               ]}
             >
-              {t("profile.subtitle") || "Manage your account and preferences"}
+              {t("profile.subtitle")}
             </Text>
           </View>
         </View>
@@ -615,7 +620,7 @@ export default function ProfileScreen() {
                   isRTL && styles.profileNameRTL,
                 ]}
               >
-                {user?.name || "User Name"}
+                {user?.name || t("profile.name")}
               </Text>
               <Text
                 style={[
@@ -624,7 +629,7 @@ export default function ProfileScreen() {
                   isRTL && styles.profileEmailRTL,
                 ]}
               >
-                {user?.email || "user@example.com"}
+                {user?.email || t("profile.email")}
               </Text>
               <View
                 style={[
@@ -655,7 +660,7 @@ export default function ProfileScreen() {
               isRTL && styles.sectionTitleRTL,
             ]}
           >
-            {t("profile.stats") || "Statistics"}
+            {t("profile.stats")}
           </Text>
           <View style={styles.statsContainer}>
             {profileStats.map((stat, index) => (

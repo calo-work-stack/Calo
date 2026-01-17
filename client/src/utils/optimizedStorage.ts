@@ -2,7 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
  * Optimized AsyncStorage utility that prevents "more than 10 items" error
- * by implementing debouncing, batching, and queue management
+ * and handles SQLITE_FULL errors gracefully by implementing debouncing,
+ * batching, queue management, and automatic cleanup.
  */
 
 interface QueuedOperation {
@@ -12,13 +13,84 @@ interface QueuedOperation {
   timestamp: number;
 }
 
+/**
+ * Check if error is a storage full error
+ */
+const isStorageFullError = (error: any): boolean => {
+  const message = error?.message || "";
+  return (
+    message.includes("database or disk is full") ||
+    message.includes("SQLITE_FULL") ||
+    message.includes("row too big") ||
+    message.includes("CursorWindow") ||
+    error?.code === 13 ||
+    message.includes("No space left") ||
+    message.includes("disk full")
+  );
+};
+
 class OptimizedStorage {
   private operationQueue: Map<string, QueuedOperation> = new Map();
   private processingQueue: boolean = false;
-  private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
+  private cleanupInProgress: boolean = false;
+  private debounceTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
   private readonly DEBOUNCE_MS = 100; // Debounce writes by 100ms
   private readonly BATCH_SIZE = 5; // Process max 5 operations at once
   private readonly QUEUE_DELAY_MS = 50; // Delay between batches
+
+  // Keys to preserve during emergency cleanup
+  private readonly KEYS_TO_PRESERVE = [
+    "persist:auth",
+    "userToken",
+    "userId",
+    "@user_id",
+    "@auth_token",
+  ];
+
+  /**
+   * Emergency cleanup when storage is full
+   */
+  private async performEmergencyCleanup(): Promise<boolean> {
+    if (this.cleanupInProgress) return false;
+    this.cleanupInProgress = true;
+
+    try {
+      console.log("🆘 [OptimizedStorage] Emergency cleanup triggered...");
+
+      const allKeys = await AsyncStorage.getAllKeys();
+      const keysToRemove = allKeys.filter(
+        (key) => !this.KEYS_TO_PRESERVE.some((preserve) => key.includes(preserve))
+      );
+
+      console.log(`🗑️ [OptimizedStorage] Removing ${keysToRemove.length} of ${allKeys.length} keys`);
+
+      // Remove in batches
+      const batchSize = 10;
+      for (let i = 0; i < keysToRemove.length; i += batchSize) {
+        const batch = keysToRemove.slice(i, i + batchSize);
+        try {
+          await AsyncStorage.multiRemove(batch);
+        } catch (e) {
+          // Try removing one by one
+          for (const key of batch) {
+            try {
+              await AsyncStorage.removeItem(key);
+            } catch (innerErr) {
+              // Continue with next key
+            }
+          }
+        }
+      }
+
+      console.log("✅ [OptimizedStorage] Emergency cleanup completed");
+      return true;
+    } catch (error) {
+      console.error("❌ [OptimizedStorage] Emergency cleanup failed:", error);
+      return false;
+    } finally {
+      this.cleanupInProgress = false;
+    }
+  }
 
   /**
    * Set item with debouncing to prevent rapid successive writes
@@ -93,7 +165,7 @@ class OptimizedStorage {
   }
 
   /**
-   * Process queued operations in batches
+   * Process queued operations in batches with SQLITE_FULL error handling
    */
   private async processQueue(): Promise<void> {
     if (this.processingQueue || this.operationQueue.size === 0) {
@@ -101,6 +173,7 @@ class OptimizedStorage {
     }
 
     this.processingQueue = true;
+    let encounteredStorageError = false;
 
     try {
       // Get operations sorted by timestamp
@@ -123,12 +196,16 @@ class OptimizedStorage {
               }
               // Remove from queue after successful operation
               this.operationQueue.delete(op.key);
-            } catch (error) {
-              console.error(
-                `Error processing ${op.type} for ${op.key}:`,
-                error
-              );
-              // Keep in queue for retry on next process
+            } catch (error: any) {
+              if (isStorageFullError(error)) {
+                console.warn(`⚠️ [OptimizedStorage] Storage full error for ${op.key}`);
+                encounteredStorageError = true;
+                // Remove from queue to prevent infinite retries
+                this.operationQueue.delete(op.key);
+              } else {
+                console.error(`Error processing ${op.type} for ${op.key}:`, error);
+                // Keep in queue for retry on next process
+              }
             }
           })
         );
@@ -138,8 +215,20 @@ class OptimizedStorage {
           await new Promise((resolve) => setTimeout(resolve, this.QUEUE_DELAY_MS));
         }
       }
-    } catch (error) {
+
+      // If we encountered storage errors, perform cleanup
+      if (encounteredStorageError) {
+        console.log("🆘 [OptimizedStorage] Running emergency cleanup after storage errors...");
+        await this.performEmergencyCleanup();
+      }
+    } catch (error: any) {
       console.error("Error processing storage queue:", error);
+
+      if (isStorageFullError(error)) {
+        await this.performEmergencyCleanup();
+        // Clear the queue to prevent infinite retries
+        this.operationQueue.clear();
+      }
     } finally {
       this.processingQueue = false;
 
@@ -175,12 +264,12 @@ class OptimizedStorage {
   /**
    * Get multiple items efficiently
    */
-  async multiGet(keys: string[]): Promise<[string, string | null][]> {
+  async multiGet(keys: string[]): Promise<readonly [string, string | null][]> {
     try {
       return await AsyncStorage.multiGet(keys);
     } catch (error) {
       console.error("Error in multiGet:", error);
-      return keys.map((key) => [key, null]);
+      return keys.map((key) => [key, null] as [string, string | null]);
     }
   }
 

@@ -33,12 +33,13 @@ import {
   Clock,
 } from "lucide-react-native";
 import { useTheme } from "@/src/context/ThemeContext";
+import { useTranslation } from "react-i18next"; // Add this import
 
 const { width } = Dimensions.get("window");
 
 export interface MealType {
   id: string;
-  label: string;
+  labelKey: string; // Changed to key for translation
   period: string;
   icon: React.ReactNode;
   colors: string[];
@@ -57,7 +58,7 @@ const getMealTypesWithTheme = (
 ): MealType[] => [
   {
     id: "breakfast",
-    label: "Breakfast",
+    labelKey: "camera.mealType.breakfast", // Translation key
     period: "breakfast",
     icon: <Coffee size={24} color="#ffffff" />,
     colors: ["#FEF3C7", "#F59E0B", "#D97706"],
@@ -66,7 +67,7 @@ const getMealTypesWithTheme = (
   },
   {
     id: "lunch",
-    label: "Lunch",
+    labelKey: "camera.mealType.lunch",
     period: "lunch",
     icon: <UtensilsCrossed size={24} color="#ffffff" />,
     colors: ["#DBEAFE", "#3B82F6", "#1E40AF"],
@@ -75,7 +76,7 @@ const getMealTypesWithTheme = (
   },
   {
     id: "dinner",
-    label: "Dinner",
+    labelKey: "camera.mealType.dinner",
     period: "dinner",
     icon: <ChefHat size={24} color="#ffffff" />,
     colors: ["#EDE9FE", "#8B5CF6", "#6D28D9"],
@@ -84,7 +85,7 @@ const getMealTypesWithTheme = (
   },
   {
     id: "snack",
-    label: "Snack",
+    labelKey: "camera.mealType.snack",
     period: "snack",
     icon: <Apple size={24} color="#ffffff" />,
     colors: [
@@ -97,7 +98,7 @@ const getMealTypesWithTheme = (
   },
   {
     id: "late_night",
-    label: "Late Night",
+    labelKey: "camera.mealType.lateNight",
     period: "late_night",
     icon: <MoonStar size={24} color="#ffffff" />,
     colors: [
@@ -110,7 +111,7 @@ const getMealTypesWithTheme = (
   },
   {
     id: "other",
-    label: "Other",
+    labelKey: "camera.mealType.other",
     period: "other",
     icon: <Sparkles size={24} color="#ffffff" />,
     colors: ["#F3F4F6", "#6B7280", "#374151"],
@@ -128,25 +129,27 @@ const TIME_RESTRICTIONS = {
   other: { start: 0, end: 23.59 },
 };
 
-const formatTimeString = (hour: number): string => {
+const formatTimeString = (hour: number, t: any): string => {
   const wholeHour = Math.floor(hour);
   const minutes = Math.floor((hour - wholeHour) * 60);
+  const am = t("camera.mealType.am");
+  const pm = t("camera.mealType.pm");
 
   if (wholeHour === 0)
     return minutes > 0
-      ? `12:${minutes.toString().padStart(2, "0")} AM`
-      : "12:00 AM";
+      ? `12:${minutes.toString().padStart(2, "0")} ${am}`
+      : `12:00 ${am}`;
   if (wholeHour < 12)
     return minutes > 0
-      ? `${wholeHour}:${minutes.toString().padStart(2, "0")} AM`
-      : `${wholeHour}:00 AM`;
+      ? `${wholeHour}:${minutes.toString().padStart(2, "0")} ${am}`
+      : `${wholeHour}:00 ${am}`;
   if (wholeHour === 12)
     return minutes > 0
-      ? `12:${minutes.toString().padStart(2, "0")} PM`
-      : "12:00 PM";
+      ? `12:${minutes.toString().padStart(2, "0")} ${pm}`
+      : `12:00 ${pm}`;
   return minutes > 0
-    ? `${wholeHour - 12}:${minutes.toString().padStart(2, "0")} PM`
-    : `${wholeHour - 12}:00 PM`;
+    ? `${wholeHour - 12}:${minutes.toString().padStart(2, "0")} ${pm}`
+    : `${wholeHour - 12}:00 ${pm}`;
 };
 
 const getCurrentHour = (): number => {
@@ -170,24 +173,24 @@ const isMealTypeAvailable = (mealTypeId: string): boolean => {
   return currentHour >= restriction.start && currentHour <= restriction.end;
 };
 
-const getTimeRangeString = (mealTypeId: string): string => {
+const getTimeRangeString = (mealTypeId: string, t: any): string => {
   const restriction =
     TIME_RESTRICTIONS[mealTypeId as keyof typeof TIME_RESTRICTIONS];
   if (!restriction || mealTypeId === "snack" || mealTypeId === "other")
-    return "Available anytime";
+    return t("camera.mealType.availableAnytime");
 
-  const startTime = formatTimeString(restriction.start);
-  const endTime = formatTimeString(restriction.end);
+  const startTime = formatTimeString(restriction.start, t);
+  const endTime = formatTimeString(restriction.end, t);
 
   return `${startTime} - ${endTime}`;
 };
 
-const getNextAvailableTime = (mealTypeId: string): string => {
+const getNextAvailableTime = (mealTypeId: string, t: any): string => {
   const restriction =
     TIME_RESTRICTIONS[mealTypeId as keyof typeof TIME_RESTRICTIONS];
   if (!restriction) return "";
 
-  return formatTimeString(restriction.start);
+  return formatTimeString(restriction.start, t);
 };
 
 const AnimatedTouchableOpacity =
@@ -201,6 +204,7 @@ const MealCard: React.FC<{
   index: number;
   colors: any;
 }> = ({ mealType, isSelected, isAvailable, onPress, index, colors }) => {
+  const { t } = useTranslation();
   const scale = useSharedValue(1);
   const borderWidth = useSharedValue(isSelected ? 2.5 : 1.5);
   const shadowOpacity = useSharedValue(isSelected ? 0.2 : 0.06);
@@ -330,7 +334,7 @@ const MealCard: React.FC<{
               },
             ]}
           >
-            {mealType.label}
+            {t(mealType.labelKey)}
           </Text>
 
           <Text
@@ -343,7 +347,7 @@ const MealCard: React.FC<{
               },
             ]}
           >
-            {getTimeRangeString(mealType.id)}
+            {getTimeRangeString(mealType.id, t)}
           </Text>
 
           {!isAvailable && (
@@ -359,7 +363,9 @@ const MealCard: React.FC<{
                   { color: colors.error || "#EF4444" },
                 ]}
               >
-                Opens {getNextAvailableTime(mealType.id)}
+                {t("camera.mealType.opens", {
+                  time: getNextAvailableTime(mealType.id, t),
+                })}
               </Text>
             </Animated.View>
           )}
@@ -385,6 +391,7 @@ export const MealTypeSelector: React.FC<MealTypeSelectorProps> = ({
   onSelect,
   selectedType,
 }) => {
+  const { t } = useTranslation();
   const { colors, emeraldSpectrum } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -479,10 +486,8 @@ export const MealTypeSelector: React.FC<MealTypeSelectorProps> = ({
         entering={FadeIn.delay(50).duration(500)}
         style={themedStyles.header}
       >
-        <Text style={themedStyles.title}>Select Meal Type</Text>
-        <Text style={themedStyles.subtitle}>
-          Choose the type of meal you're capturing
-        </Text>
+        <Text style={themedStyles.title}>{t("camera.mealType.title")}</Text>
+        <Text style={themedStyles.subtitle}>{t("camera.mealType.subtitle")}</Text>
         <View style={themedStyles.timeContainer}>
           <Clock size={16} color={colors.primary || "#10B981"} />
           <Text style={themedStyles.currentTime}>{currentTimeString}</Text>

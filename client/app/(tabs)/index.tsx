@@ -52,6 +52,7 @@ const { width } = Dimensions.get("window");
 
 const HomeScreen = React.memo(() => {
   const dispatch = useDispatch<AppDispatch>();
+  const { t } = useTranslation();
 
   const selectMealState = useMemo(
     () => (state: RootState) => ({
@@ -71,7 +72,6 @@ const HomeScreen = React.memo(() => {
   const { meals, isLoading } = useOptimizedSelector(selectMealState);
   const { user } = useOptimizedSelector(selectAuthState);
   const { colors, isDark } = useTheme();
-  const { t } = useTranslation();
 
   const [dailyGoals, setDailyGoals] = useState<DailyGoals>({
     calories: 0,
@@ -177,7 +177,6 @@ const HomeScreen = React.memo(() => {
   const loadDailyGoals = useCallback(async () => {
     if (!user?.user_id) return;
 
-    // FREE users don't get daily goals
     if (user.subscription_type === "FREE") {
       setDailyGoals((prev) => ({
         ...prev,
@@ -502,7 +501,7 @@ const HomeScreen = React.memo(() => {
   }, [user?.user_id, loadDailyGoals]);
 
   if (initialLoading) {
-    return <LoadingScreen text={t("home.loadingData")} />;
+    return <LoadingScreen text={t("loading.home")} />;
   }
 
   if (dataError && retryCount > 0) {
@@ -947,7 +946,7 @@ const HomeScreen = React.memo(() => {
                       <Text
                         style={[styles.activityTitle, { color: colors.text }]}
                       >
-                        {meal.name || t("common.unknown_meal")}
+                        {meal.name || t("home.unknownMeal")}
                       </Text>
                       <Text
                         style={[
@@ -964,7 +963,7 @@ const HomeScreen = React.memo(() => {
                         { color: colors.primary },
                       ]}
                     >
-                      {meal.calories || 0} {t("meals.kcal")}
+                      {meal.calories || 0} {t("common.kcal")}
                     </Text>
                   </TouchableOpacity>
                 ))

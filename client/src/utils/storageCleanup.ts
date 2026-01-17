@@ -26,13 +26,13 @@ export interface StorageInfo {
 }
 
 export class StorageCleanupService {
-  private static readonly STORAGE_WARNING_THRESHOLD = 0.5; // 50% - more aggressive
-  private static readonly STORAGE_CRITICAL_THRESHOLD = 0.7; // 70% - earlier intervention
-  private static readonly LARGE_ITEM_THRESHOLD = 512; // 512 bytes
-  private static readonly MAX_STORAGE_SIZE = 50 * 1024 * 1024; // 50MB
-  private static readonly MAX_ITEM_SIZE = 1.5 * 1024 * 1024; // 1.5MB per item (safe for SQLite)
+  private static readonly STORAGE_WARNING_THRESHOLD = 0.3; // 30% - more aggressive (was 50%)
+  private static readonly STORAGE_CRITICAL_THRESHOLD = 0.5; // 50% - earlier intervention (was 70%)
+  private static readonly LARGE_ITEM_THRESHOLD = 256; // 256 bytes (was 512)
+  private static readonly MAX_STORAGE_SIZE = 30 * 1024 * 1024; // 30MB (was 50MB - lower limit to trigger cleanup earlier)
+  private static readonly MAX_ITEM_SIZE = 1 * 1024 * 1024; // 1MB per item (was 1.5MB - stricter limit)
   private static readonly SECURE_STORE_SIZE_LIMIT = 2048; // SecureStore limit
-  private static readonly CLEANUP_AGE_DAYS = 3; // Keep only 3 days of data
+  private static readonly CLEANUP_AGE_DAYS = 2; // Keep only 2 days of data (was 3)
 
   /**
    * Safe wrapper for AsyncStorage.setItem with size validation

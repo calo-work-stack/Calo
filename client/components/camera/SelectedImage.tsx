@@ -15,7 +15,7 @@ import {
 import { X, RotateCcw, Sparkles } from "lucide-react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 
 const { width, height } = Dimensions.get("window");
 
@@ -40,6 +40,7 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
   onAnalyze,
   onCommentChange,
 }) => {
+  const { t } = useTranslation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const scannerAnim = useRef(new Animated.Value(0)).current;
@@ -359,7 +360,9 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
               </LinearGradient>
             </TouchableOpacity>
 
-            <Text style={styles.hint}>Tap to analyze your meal</Text>
+            <Text style={styles.hint}>
+              {t("camera.imagePreview.tapToAnalyze")}
+            </Text>
           </BlurView>
         </Animated.View>
       )}
@@ -379,7 +382,7 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
           ]}
         >
           <BlurView intensity={80} tint="dark" style={styles.inputSheet}>
-            <Text style={styles.inputLabel}>Meal Details (Optional)</Text>
+            <Text style={styles.inputLabel}>{t("camera.addDetails")}</Text>
 
             <View style={styles.inputContainer}>
               <Animated.View
@@ -390,7 +393,7 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
                   value={userComment}
                   onChangeText={onCommentChange}
                   onContentSizeChange={handleContentSizeChange}
-                  placeholder="Describe your meal for better accuracy..."
+                  placeholder={t("camera.detailsPlaceholder")}
                   placeholderTextColor="rgba(255,255,255,0.3)"
                   multiline
                   maxLength={200}
@@ -400,7 +403,7 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
               </Animated.View>
               <View style={styles.inputFooter}>
                 <Text style={styles.inputHint}>
-                  Help improve analysis accuracy
+                  {t("camera.imagePreview.improveAccuracy")}
                 </Text>
                 <Text
                   style={[
@@ -419,7 +422,7 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
                 onPress={handleStartAnalysis}
                 activeOpacity={0.7}
               >
-                <Text style={styles.secondaryText}>Skip</Text>
+                <Text style={styles.secondaryText}>{t("common.skip")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -433,7 +436,9 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
                   end={{ x: 1, y: 1 }}
                   style={styles.primaryGradient}
                 >
-                  <Text style={styles.primaryText}>Analyze</Text>
+                  <Text style={styles.primaryText}>
+                    {t("camera.analyzeMeal")}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -452,7 +457,7 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
           <BlurView intensity={80} tint="dark" style={styles.sheet}>
             <View style={styles.analyzingContent}>
               <ActivityIndicator size="small" color="#14B8A6" />
-              <Text style={styles.analyzingText}>Analyzing meal</Text>
+              <Text style={styles.analyzingText}>{t("camera.analyzing")}</Text>
             </View>
           </BlurView>
         </Animated.View>
@@ -601,7 +606,6 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
     marginBottom: 16,
     letterSpacing: 0.5,
-    textTransform: "uppercase",
   },
   mainButton: {
     width: "100%",

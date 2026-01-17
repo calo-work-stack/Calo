@@ -8,8 +8,9 @@ import {
   TouchableOpacity,
 } from "react-native";
 import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
-import { Droplets } from "lucide-react-native";
+import { Droplets, Flame, TrendingUp } from "lucide-react-native";
 import { useTheme } from "@/src/context/ThemeContext";
+import { useTranslation } from "react-i18next";
 
 const { width } = Dimensions.get("window");
 const isSmallScreen = width < 400;
@@ -97,6 +98,7 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
   const scrollViewRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
 
   const nutrition: NutritionData = nutritionProp || {
     calories: caloriesProp ?? defaultNutrition.calories,
@@ -113,7 +115,7 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
   const size = isSmallScreen ? 220 : 280;
   const center = size / 2;
   const radius = isSmallScreen ? 85 : 110;
-  const strokeWidth = isSmallScreen ? 16 : 22;
+  const strokeWidth = isSmallScreen ? 18 : 24;
 
   const remainingCalories = Math.max(
     nutrition.targetCalories - nutrition.calories,
@@ -122,10 +124,10 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
 
   const nutritionCards: NutritionCard[] = [
     {
-      title: "Calories",
+      title: t("home.nutrition.calories"),
       value: nutrition.calories,
       target: nutrition.targetCalories,
-      unit: "kcal",
+      unit: t("home.nutrition.units.kcal"),
       color: colors.success,
       gradient: [colors.success, colors.primaryContainer],
     },
@@ -133,10 +135,10 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
 
   if (waterIntake) {
     nutritionCards.push({
-      title: "Water",
+      title: t("home.nutrition.water"),
       value: waterIntake.current,
       target: waterIntake.target,
-      unit: "cups",
+      unit: t("home.nutrition.units.cups"),
       color: colors.primary,
       gradient: [colors.primary, colors.primaryContainer],
     });
@@ -144,59 +146,59 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
 
   nutritionCards.push(
     {
-      title: "Protein",
+      title: t("home.nutrition.protein"),
       value: nutrition.protein,
       target: nutrition.targetProtein,
-      unit: "g",
+      unit: t("home.nutrition.units.grams"),
       color: "#8B5CF6",
-      gradient: ["#8B5CF6", "#7C3AED"],
+      gradient: ["#A78BFA", "#8B5CF6"],
     },
     {
-      title: "Carbs",
+      title: t("home.nutrition.carbs"),
       value: nutrition.carbs,
       target: nutrition.targetCarbs,
-      unit: "g",
+      unit: t("home.nutrition.units.grams"),
       color: "#3B82F6",
-      gradient: ["#3B82F6", "#2563EB"],
+      gradient: ["#60A5FA", "#3B82F6"],
     },
     {
-      title: "Fat",
+      title: t("home.nutrition.fat"),
       value: nutrition.fat,
       target: nutrition.targetFat,
-      unit: "g",
+      unit: t("home.nutrition.units.grams"),
       color: colors.warning,
-      gradient: [colors.warning, "#D97706"],
+      gradient: ["#FBBF24", colors.warning],
     }
   );
 
   if (nutrition.fiber !== undefined && nutrition.targetFiber !== undefined) {
     nutritionCards.push({
-      title: "Fiber",
+      title: t("home.nutrition.fiber"),
       value: nutrition.fiber,
       target: nutrition.targetFiber,
-      unit: "g",
+      unit: t("home.nutrition.units.grams"),
       color: "#14B8A6",
-      gradient: ["#14B8A6", "#0D9488"],
+      gradient: ["#5EEAD4", "#14B8A6"],
     });
   }
 
   if (nutrition.sugar !== undefined && nutrition.targetSugar !== undefined) {
     nutritionCards.push({
-      title: "Sugar",
+      title: t("home.nutrition.sugar"),
       value: nutrition.sugar,
       target: nutrition.targetSugar,
-      unit: "g",
+      unit: t("home.nutrition.units.grams"),
       color: "#EC4899",
-      gradient: ["#EC4899", "#DB2777"],
+      gradient: ["#F9A8D4", "#EC4899"],
     });
   }
 
   if (nutrition.sodium !== undefined && nutrition.targetSodium !== undefined) {
     nutritionCards.push({
-      title: "Sodium",
+      title: t("home.nutrition.sodium"),
       value: nutrition.sodium,
       target: nutrition.targetSodium,
-      unit: "mg",
+      unit: t("home.nutrition.units.mg"),
       color: colors.error,
       gradient: [colors.error, colors.destructive],
     });
@@ -207,12 +209,12 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
     nutrition.targetSaturatedFat !== undefined
   ) {
     nutritionCards.push({
-      title: "Saturated Fat",
+      title: t("home.nutrition.saturatedFat"),
       value: nutrition.saturatedFat,
       target: nutrition.targetSaturatedFat,
-      unit: "g",
+      unit: t("home.nutrition.units.grams"),
       color: "#F97316",
-      gradient: ["#F97316", "#EA580C"],
+      gradient: ["#FB923C", "#F97316"],
     });
   }
 
@@ -221,12 +223,12 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
     nutrition.targetCholesterol !== undefined
   ) {
     nutritionCards.push({
-      title: "Cholesterol",
+      title: t("home.nutrition.cholesterol"),
       value: nutrition.cholesterol,
       target: nutrition.targetCholesterol,
-      unit: "mg",
+      unit: t("home.nutrition.units.mg"),
       color: "#6366F1",
-      gradient: ["#6366F1", "#4F46E5"],
+      gradient: ["#818CF8", "#6366F1"],
     });
   }
 
@@ -235,12 +237,12 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
     nutrition.targetVitaminA !== undefined
   ) {
     nutritionCards.push({
-      title: "Vitamin A",
+      title: t("home.nutrition.vitaminA"),
       value: nutrition.vitaminA,
       target: nutrition.targetVitaminA,
       unit: "%",
       color: colors.warning,
-      gradient: [colors.warning, "#D97706"],
+      gradient: ["#FBBF24", colors.warning],
     });
   }
 
@@ -249,7 +251,7 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
     nutrition.targetVitaminC !== undefined
   ) {
     nutritionCards.push({
-      title: "Vitamin C",
+      title: t("home.nutrition.vitaminC"),
       value: nutrition.vitaminC,
       target: nutrition.targetVitaminC,
       unit: "%",
@@ -263,18 +265,18 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
     nutrition.targetCalcium !== undefined
   ) {
     nutritionCards.push({
-      title: "Calcium",
+      title: t("home.nutrition.calcium"),
       value: nutrition.calcium,
       target: nutrition.targetCalcium,
       unit: "%",
       color: "#0EA5E9",
-      gradient: ["#0EA5E9", "#0284C7"],
+      gradient: ["#38BDF8", "#0EA5E9"],
     });
   }
 
   if (nutrition.iron !== undefined && nutrition.targetIron !== undefined) {
     nutritionCards.push({
-      title: "Iron",
+      title: t("home.nutrition.iron"),
       value: nutrition.iron,
       target: nutrition.targetIron,
       unit: "%",
@@ -299,182 +301,50 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
   const styles = StyleSheet.create({
     container: {
       backgroundColor: colors.surface,
-      borderRadius: 20,
+      borderRadius: isSmallScreen ? 28 : 32,
       overflow: "hidden",
-      borderWidth: 0.5,
-      borderColor: colors.border,
-    },
-    cardContainer: {
-      paddingBottom: isSmallScreen ? 20 : 32,
-      paddingTop: isSmallScreen ? 20 : 24,
-    },
-    circleSection: {
-      marginBottom: isSmallScreen ? 20 : 32,
-    },
-    caloriesWrapper: {
-      alignItems: "center",
-    },
-    statsRowBottom: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      marginTop: isSmallScreen ? 20 : 28,
-      paddingHorizontal: isSmallScreen ? 24 : 32,
-      gap: isSmallScreen ? 16 : 24,
-    },
-    statColumnBottom: {
-      alignItems: "center",
-      flex: 1,
-    },
-    statDivider: {
-      width: 1,
-      height: isSmallScreen ? 32 : 40,
-      backgroundColor: colors.border,
-    },
-    statNumberBottom: {
-      fontSize: isSmallScreen ? 24 : 28,
-      fontWeight: "700",
-      color: colors.text,
-      marginBottom: 4,
-    },
-    statLabelBottom: {
-      fontSize: isSmallScreen ? 12 : 13,
-      color: colors.textSecondary,
-      fontWeight: "600",
-      textTransform: "uppercase",
-      letterSpacing: 0.5,
-    },
-    circleContainer: {
-      alignItems: "center",
-      justifyContent: "center",
-      position: "relative",
-    },
-    centerTextContainer: {
-      position: "absolute",
-      alignItems: "center",
-    },
-    centerNumber: {
-      fontSize: isSmallScreen ? 32 : 44,
-      fontWeight: "800",
-      color: colors.text,
-      marginBottom: 4,
-    },
-    unitText: {
-      fontSize: isSmallScreen ? 16 : 22,
-      fontWeight: "600",
-      color: colors.textSecondary,
-    },
-    centerLabel: {
-      fontSize: isSmallScreen ? 12 : 13,
-      color: colors.textSecondary,
-      fontWeight: "500",
-    },
-    remainingText: {
-      fontSize: isSmallScreen ? 11 : 12,
-      fontWeight: "700",
-      marginTop: 4,
-    },
-    singleCircleContainer: {
-      alignItems: "center",
-    },
-    cardTitle: {
-      fontSize: isSmallScreen ? 20 : 26,
-      fontWeight: "700",
-      color: colors.text,
-      marginBottom: isSmallScreen ? 16 : 20,
-    },
-    progressPercentage: {
-      marginTop: isSmallScreen ? 16 : 20,
-    },
-    percentageText: {
-      fontSize: isSmallScreen ? 15 : 17,
-      fontWeight: "700",
+      borderWidth: 1,
+      borderColor: isDark ? colors.border + "40" : colors.border + "60",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0 : 0.04,
+      shadowRadius: 8,
+      elevation: isDark ? 0 : 2,
     },
     pagination: {
       flexDirection: "row",
       justifyContent: "center",
       alignItems: "center",
-      paddingVertical: isSmallScreen ? 16 : 20,
-      gap: 6,
+      paddingVertical: isSmallScreen ? 18 : 22,
+      gap: 8,
     },
     paginationDot: {
       width: 8,
       height: 8,
       borderRadius: 4,
-      backgroundColor: colors.muted,
+      backgroundColor: isDark ? colors.muted + "60" : colors.muted,
+      opacity: 0.5,
     },
     paginationDotActive: {
-      width: 28,
+      width: 32,
       height: 8,
       borderRadius: 4,
       backgroundColor: colors.primary,
+      opacity: 1,
     },
     additionalNutrition: {
-      paddingHorizontal: isSmallScreen ? 16 : 24,
-      paddingBottom: isSmallScreen ? 20 : 24,
+      paddingHorizontal: isSmallScreen ? 20 : 28,
+      paddingBottom: isSmallScreen ? 24 : 28,
     },
     sectionTitle: {
-      fontSize: isSmallScreen ? 16 : 18,
+      fontSize: isSmallScreen ? 17 : 19,
       fontWeight: "700",
       color: colors.text,
-      marginBottom: isSmallScreen ? 12 : 16,
+      marginBottom: isSmallScreen ? 16 : 20,
+      letterSpacing: -0.3,
     },
     nutritionList: {
-      gap: isSmallScreen ? 12 : 14,
-    },
-    nutritionRow: {
-      gap: 8,
-    },
-    nutritionRowHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-    },
-    nutritionDot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-    },
-    nutritionRowTitle: {
-      fontSize: isSmallScreen ? 13 : 14,
-      fontWeight: "600",
-      color: colors.text,
-      flex: 1,
-    },
-    nutritionRowValue: {
-      fontSize: isSmallScreen ? 12 : 13,
-      fontWeight: "700",
-      color: colors.textSecondary,
-    },
-    nutritionProgressBar: {
-      height: 6,
-      backgroundColor: colors.border,
-      borderRadius: 3,
-      overflow: "hidden",
-    },
-    nutritionProgressFill: {
-      height: "100%",
-      borderRadius: 3,
-    },
-    waterHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: isSmallScreen ? 12 : 16,
-      marginBottom: isSmallScreen ? 16 : 20,
-    },
-    waterIconContainer: {
-      width: isSmallScreen ? 48 : 56,
-      height: isSmallScreen ? 48 : 56,
-      borderRadius: isSmallScreen ? 12 : 14,
-      backgroundColor: isDark ? colors.primaryContainer : colors.emerald50,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    waterSubtitle: {
-      fontSize: isSmallScreen ? 13 : 14,
-      color: colors.textSecondary,
-      fontWeight: "600",
-      marginTop: 2,
+      gap: isSmallScreen ? 14 : 16,
     },
   });
 
@@ -500,13 +370,12 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
             radius={radius}
             strokeWidth={strokeWidth}
             isCalories={index === 0}
-            isWater={card.title === "Water"}
+            isWater={card.title === t("home.nutrition.water")}
             burnedCalories={nutrition.burnedCalories || 0}
             remainingCalories={remainingCalories}
-            onWaterIncrement={waterIntake?.onIncrement}
-            onWaterDecrement={waterIntake?.onDecrement}
             colors={colors}
             isDark={isDark}
+            t={t}
           />
         ))}
       </ScrollView>
@@ -526,10 +395,17 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
 
       {nutritionCards.length > 4 && (
         <View style={styles.additionalNutrition}>
-          <Text style={styles.sectionTitle}>Additional Nutrition</Text>
+          <Text style={styles.sectionTitle}>
+            {t("home.nutrition.additionalNutrition")}
+          </Text>
           <View style={styles.nutritionList}>
             {nutritionCards.slice(4).map((card) => (
-              <NutritionRow key={card.title} card={card} colors={colors} />
+              <NutritionRow
+                key={card.title}
+                card={card}
+                colors={colors}
+                isDark={isDark}
+              />
             ))}
           </View>
         </View>
@@ -548,10 +424,9 @@ const NutritionCardView: React.FC<{
   isWater: boolean;
   burnedCalories: number;
   remainingCalories: number;
-  onWaterIncrement?: () => void;
-  onWaterDecrement?: () => void;
   colors: any;
   isDark: boolean;
+  t: any;
 }> = ({
   card,
   size,
@@ -564,6 +439,7 @@ const NutritionCardView: React.FC<{
   remainingCalories,
   colors,
   isDark,
+  t,
 }) => {
   const progress = Math.min((card.value / card.target) * 100, 100);
   const circumference = 2 * Math.PI * radius;
@@ -573,36 +449,41 @@ const NutritionCardView: React.FC<{
   const targetMl = card.target * 250;
 
   const styles = StyleSheet.create({
-    cardContainer: { width },
-    circleSection: { marginBottom: isSmallScreen ? 20 : 32 },
+    cardContainer: {
+      width,
+      paddingBottom: isSmallScreen ? 24 : 32,
+      paddingTop: isSmallScreen ? 24 : 28,
+    },
+    circleSection: { marginBottom: isSmallScreen ? 20 : 28 },
     caloriesWrapper: { alignItems: "center" },
     statsRowBottom: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      marginTop: isSmallScreen ? 20 : 28,
+      marginTop: isSmallScreen ? 24 : 32,
       paddingHorizontal: isSmallScreen ? 24 : 32,
-      gap: isSmallScreen ? 16 : 24,
+      gap: isSmallScreen ? 20 : 28,
     },
     statColumnBottom: { alignItems: "center", flex: 1 },
     statDivider: {
       width: 1,
-      height: isSmallScreen ? 32 : 40,
-      backgroundColor: colors.border,
+      height: isSmallScreen ? 40 : 48,
+      backgroundColor: isDark ? colors.border + "40" : colors.border + "60",
     },
     statNumberBottom: {
-      fontSize: isSmallScreen ? 24 : 28,
+      fontSize: isSmallScreen ? 26 : 32,
       fontWeight: "700",
       color: colors.text,
-      marginBottom: 4,
+      marginBottom: 6,
+      letterSpacing: -0.5,
     },
     statLabelBottom: {
       fontSize: isSmallScreen ? 12 : 13,
       color: colors.textSecondary,
       fontWeight: "600",
-      textTransform: "uppercase",
       letterSpacing: 0.5,
     },
+    statIcon: { marginBottom: 8 },
     circleContainer: {
       alignItems: "center",
       justifyContent: "center",
@@ -610,59 +491,71 @@ const NutritionCardView: React.FC<{
     },
     centerTextContainer: { position: "absolute", alignItems: "center" },
     centerNumber: {
-      fontSize: isSmallScreen ? 32 : 44,
+      fontSize: isSmallScreen ? 36 : 48,
       fontWeight: "800",
       color: colors.text,
-      marginBottom: 4,
+      marginBottom: 6,
+      letterSpacing: -1.5,
     },
     unitText: {
-      fontSize: isSmallScreen ? 16 : 22,
+      fontSize: isSmallScreen ? 18 : 24,
       fontWeight: "600",
       color: colors.textSecondary,
+      letterSpacing: 0,
     },
     centerLabel: {
-      fontSize: isSmallScreen ? 12 : 13,
+      fontSize: isSmallScreen ? 13 : 14,
       color: colors.textSecondary,
       fontWeight: "500",
+      letterSpacing: 0.2,
     },
     remainingText: {
-      fontSize: isSmallScreen ? 11 : 12,
-      fontWeight: "700",
-      marginTop: 4,
+      fontSize: isSmallScreen ? 12 : 13,
+      fontWeight: "600",
+      marginTop: 6,
+      letterSpacing: 0.2,
     },
     singleCircleContainer: { alignItems: "center" },
     cardTitle: {
-      fontSize: isSmallScreen ? 20 : 26,
+      fontSize: isSmallScreen ? 22 : 28,
       fontWeight: "700",
       color: colors.text,
-      marginBottom: isSmallScreen ? 16 : 20,
+      marginBottom: isSmallScreen ? 20 : 24,
+      letterSpacing: -0.5,
     },
-    progressPercentage: { marginTop: isSmallScreen ? 16 : 20 },
-    percentageText: { fontSize: isSmallScreen ? 15 : 17, fontWeight: "700" },
+    progressPercentage: { marginTop: isSmallScreen ? 20 : 24 },
+    percentageText: {
+      fontSize: isSmallScreen ? 16 : 18,
+      fontWeight: "600",
+      letterSpacing: 0.2,
+    },
     waterHeader: {
       flexDirection: "row",
       alignItems: "center",
-      gap: isSmallScreen ? 12 : 16,
-      marginBottom: isSmallScreen ? 16 : 20,
+      gap: isSmallScreen ? 14 : 18,
+      marginBottom: isSmallScreen ? 20 : 24,
     },
     waterIconContainer: {
-      width: isSmallScreen ? 48 : 56,
-      height: isSmallScreen ? 48 : 56,
-      borderRadius: isSmallScreen ? 12 : 14,
-      backgroundColor: isDark ? colors.primaryContainer : colors.emerald50,
+      width: isSmallScreen ? 56 : 64,
+      height: isSmallScreen ? 56 : 64,
+      borderRadius: isSmallScreen ? 16 : 18,
+      backgroundColor: isDark ? colors.primaryContainer + "40" : "#E3F2FD",
       alignItems: "center",
       justifyContent: "center",
+      borderWidth: 1,
+      borderColor: isDark ? colors.primary + "20" : colors.primary + "15",
     },
     waterSubtitle: {
       fontSize: isSmallScreen ? 13 : 14,
       color: colors.textSecondary,
       fontWeight: "600",
-      marginTop: 2,
+      marginTop: 4,
+      letterSpacing: 0.2,
     },
   });
 
   return (
-    <View style={[styles.cardContainer, { width }]}>
+    <View style={styles.cardContainer}>
       <View style={styles.circleSection}>
         {isCalories && (
           <View style={styles.caloriesWrapper}>
@@ -684,7 +577,7 @@ const NutritionCardView: React.FC<{
                   cx={center}
                   cy={center}
                   r={radius}
-                  stroke={colors.border}
+                  stroke={isDark ? colors.border + "30" : colors.border + "50"}
                   strokeWidth={strokeWidth}
                   fill="none"
                 />
@@ -706,21 +599,41 @@ const NutritionCardView: React.FC<{
                 <Text style={styles.centerNumber}>
                   {remainingCalories.toLocaleString()}
                 </Text>
-                <Text style={styles.centerLabel}>Remaining</Text>
+                <Text style={styles.centerLabel}>
+                  {t("home.nutrition.remaining")}
+                </Text>
               </View>
             </View>
 
             <View style={styles.statsRowBottom}>
               <View style={styles.statColumnBottom}>
+                <View style={styles.statIcon}>
+                  <TrendingUp
+                    size={isSmallScreen ? 20 : 24}
+                    color={colors.success}
+                    strokeWidth={2}
+                  />
+                </View>
                 <Text style={styles.statNumberBottom}>
                   {card.value.toLocaleString()}
                 </Text>
-                <Text style={styles.statLabelBottom}>Eaten</Text>
+                <Text style={styles.statLabelBottom}>
+                  {t("home.nutrition.eaten")}
+                </Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statColumnBottom}>
+                <View style={styles.statIcon}>
+                  <Flame
+                    size={isSmallScreen ? 20 : 24}
+                    color={colors.warning}
+                    strokeWidth={2}
+                  />
+                </View>
                 <Text style={styles.statNumberBottom}>{burnedCalories}</Text>
-                <Text style={styles.statLabelBottom}>Burned</Text>
+                <Text style={styles.statLabelBottom}>
+                  {t("home.nutrition.burned")}
+                </Text>
               </View>
             </View>
           </View>
@@ -731,12 +644,15 @@ const NutritionCardView: React.FC<{
             <View style={styles.waterHeader}>
               <View style={styles.waterIconContainer}>
                 <Droplets
-                  size={isSmallScreen ? 26 : 30}
+                  size={isSmallScreen ? 30 : 36}
                   color={colors.primary}
+                  strokeWidth={2}
                 />
               </View>
               <View>
-                <Text style={styles.cardTitle}>{card.title} Intake</Text>
+                <Text style={styles.cardTitle}>
+                  {t("home.nutrition.waterIntake")}
+                </Text>
                 <Text style={styles.waterSubtitle}>
                   {currentMl}ml / {targetMl}ml
                 </Text>
@@ -761,7 +677,7 @@ const NutritionCardView: React.FC<{
                   cx={center}
                   cy={center}
                   r={radius}
-                  stroke={colors.border}
+                  stroke={isDark ? colors.border + "30" : colors.border + "50"}
                   strokeWidth={strokeWidth}
                   fill="none"
                 />
@@ -785,7 +701,7 @@ const NutritionCardView: React.FC<{
                   <Text style={styles.unitText}>{card.unit}</Text>
                 </Text>
                 <Text style={styles.centerLabel}>
-                  of {card.target} {card.unit}
+                  {t("home.nutrition.of")} {card.target} {card.unit}
                 </Text>
               </View>
             </View>
@@ -813,7 +729,7 @@ const NutritionCardView: React.FC<{
                   cx={center}
                   cy={center}
                   r={radius}
-                  stroke={colors.border}
+                  stroke={isDark ? colors.border + "30" : colors.border + "50"}
                   strokeWidth={strokeWidth}
                   fill="none"
                 />
@@ -837,20 +753,20 @@ const NutritionCardView: React.FC<{
                   <Text style={styles.unitText}>{card.unit}</Text>
                 </Text>
                 <Text style={styles.centerLabel}>
-                  of {card.target}
+                  {t("home.nutrition.of")} {card.target}
                   {card.unit}
                 </Text>
                 {remaining > 0 && (
                   <Text style={[styles.remainingText, { color: card.color }]}>
                     {remaining}
-                    {card.unit} left
+                    {card.unit} {t("home.nutrition.left")}
                   </Text>
                 )}
               </View>
             </View>
             <View style={styles.progressPercentage}>
               <Text style={[styles.percentageText, { color: card.color }]}>
-                {progress.toFixed(0)}% Complete
+                {progress.toFixed(0)}% {t("home.nutrition.complete")}
               </Text>
             </View>
           </View>
@@ -860,34 +776,37 @@ const NutritionCardView: React.FC<{
   );
 };
 
-const NutritionRow: React.FC<{ card: NutritionCard; colors: any }> = ({
-  card,
-  colors,
-}) => {
+const NutritionRow: React.FC<{
+  card: NutritionCard;
+  colors: any;
+  isDark: boolean;
+}> = ({ card, colors, isDark }) => {
   const progress = Math.min((card.value / card.target) * 100, 100);
 
   const styles = StyleSheet.create({
-    nutritionRow: { gap: 8 },
-    nutritionRowHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-    nutritionDot: { width: 6, height: 6, borderRadius: 3 },
+    nutritionRow: { gap: 10 },
+    nutritionRowHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+    nutritionDot: { width: 8, height: 8, borderRadius: 4 },
     nutritionRowTitle: {
-      fontSize: isSmallScreen ? 13 : 14,
+      fontSize: isSmallScreen ? 14 : 15,
       fontWeight: "600",
       color: colors.text,
       flex: 1,
+      letterSpacing: 0.1,
     },
     nutritionRowValue: {
-      fontSize: isSmallScreen ? 12 : 13,
-      fontWeight: "700",
+      fontSize: isSmallScreen ? 13 : 14,
+      fontWeight: "600",
       color: colors.textSecondary,
+      letterSpacing: 0.1,
     },
     nutritionProgressBar: {
-      height: 6,
-      backgroundColor: colors.border,
-      borderRadius: 3,
+      height: 8,
+      backgroundColor: isDark ? colors.border + "30" : colors.border + "50",
+      borderRadius: 100,
       overflow: "hidden",
     },
-    nutritionProgressFill: { height: "100%", borderRadius: 3 },
+    nutritionProgressFill: { height: "100%", borderRadius: 100 },
   });
 
   return (

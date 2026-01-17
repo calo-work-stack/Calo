@@ -5,18 +5,13 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Image,
   TextInput,
-  Modal,
   Alert,
-  ActivityIndicator,
   RefreshControl,
   Dimensions,
-  ScrollView,
-  Animated,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BlurView } from "expo-blur";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocalSearchParams } from "expo-router";
 import { RootState, AppDispatch } from "@/src/store";
@@ -30,1102 +25,35 @@ import {
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useMealDataRefresh } from "@/hooks/useMealDataRefresh";
-import {
-  Search,
-  Filter,
-  Heart,
-  Star,
-  Copy,
-  Flame,
-  Droplets,
-  Target,
-  ChevronDown,
-  ChevronUp,
-  X,
-  Trash2,
-  Camera,
-  Wheat,
-  Dumbbell,
-  Calendar,
-  Activity,
-  Plus,
-  Sunrise,
-  Sun,
-  Sunset,
-  Moon,
-  Coffee,
-  Apple,
-  Sparkles,
-  TrendingUp,
-  Zap,
-  Scale,
-  Utensils,
-} from "lucide-react-native";
-import LoadingScreen from "@/components/LoadingScreen";
+import { Search, Filter, Plus, SlidersHorizontal } from "lucide-react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import Swipeable from "react-native-gesture-handler/Swipeable";
+import LoadingScreen from "@/components/LoadingScreen";
 import ManualMealAddition from "@/components/history/ManualMealAddition";
+import MealCard from "@/components/history/MealCard";
+import InsightsCard from "@/components/history/InsightsCard";
+import FilterModal from "@/components/history/FilterModal";
 import { FilterOptions } from "@/src/types/history";
 
 const { width } = Dimensions.get("window");
-
-const CATEGORIES = [
-  {
-    key: "all",
-    label: "history.categories.all",
-    icon: Target,
-    color: "#009EAD",
-  },
-  {
-    key: "high_protein",
-    label: "history.categories.highProtein",
-    icon: Dumbbell,
-    color: "#FF3B30",
-  },
-  {
-    key: "high_carb",
-    label: "history.categories.highCarb",
-    icon: Wheat,
-    color: "#FF9F0A",
-  },
-  {
-    key: "high_fat",
-    label: "history.categories.highFat",
-    icon: Droplets,
-    color: "#05A9B8",
-  },
-  {
-    key: "balanced",
-    label: "history.categories.balanced",
-    icon: Activity,
-    color: "#34C759",
-  },
-  {
-    key: "low_calorie",
-    label: "history.categories.lowCalorie",
-    icon: Flame,
-    color: "#FF9F0A",
-  },
-];
-
-const DATE_RANGES = [
-  { key: "all", label: "history.timeRanges.all", icon: Calendar },
-  { key: "today", label: "history.timeRanges.today", icon: Calendar },
-  { key: "week", label: "history.timeRanges.thisWeek", icon: Calendar },
-  { key: "month", label: "history.timeRanges.thisMonth", icon: Calendar },
-];
-
-const NUTRITION_ICONS = {
-  calories: {
-    icon: Flame,
-    name: "nutrition.calories",
-    color: "#FF9F0A",
-    unit: "kcal",
-  },
-  protein: {
-    icon: Dumbbell,
-    name: "nutrition.protein",
-    color: "#FF3B30",
-    unit: "g",
-  },
-  carbs: { icon: Wheat, name: "nutrition.carbs", color: "#34C759", unit: "g" },
-  fat: { icon: Droplets, name: "nutrition.fat", color: "#05A9B8", unit: "g" },
-};
-
-const getMealPeriodStyle = (mealPeriod: string, colors: any) => {
-  const baseStyles = {
-    breakfast: {
-      iconColor: "#FF9F0A",
-      icon: Sunrise,
-      bgColor: colors.isDark ? "rgba(255, 159, 10, 0.2)" : "#FFF4E6",
-    },
-    lunch: {
-      iconColor: "#FF3B30",
-      icon: Sun,
-      bgColor: colors.isDark ? "rgba(255, 59, 48, 0.2)" : "#FFE5E5",
-    },
-    dinner: {
-      iconColor: "#34C759",
-      icon: Sunset,
-      bgColor: colors.isDark ? "rgba(52, 199, 89, 0.2)" : "#E6F7E6",
-    },
-    snack: {
-      iconColor: "#FF9F0A",
-      icon: Apple,
-      bgColor: colors.isDark ? "rgba(255, 159, 10, 0.2)" : "#FFF4E6",
-    },
-    late_night: {
-      iconColor: "#05A9B8",
-      icon: Moon,
-      bgColor: colors.isDark ? "rgba(5, 169, 184, 0.2)" : "#E6F7F7",
-    },
-  };
-
-  const mealType = mealPeriod?.toLowerCase().replace(/\s+/g, "_") || "other";
-  const style = baseStyles[mealType as keyof typeof baseStyles];
-
-  if (!style) {
-    return {
-      iconColor: colors.icon,
-      icon: Coffee,
-      bgColor: colors.surfaceVariant,
-    };
-  }
-
-  return style;
-};
-
-const SwipeableMealCard = ({
-  meal,
-  onDelete,
-  onDuplicate,
-  onToggleFavorite,
-  isHighlighted,
-}: any) => {
-  const { t } = useTranslation();
-  const { colors, isDark } = useTheme();
-  const dispatch = useDispatch<AppDispatch>();
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [savingRatings, setSavingRatings] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showCopyConfirm, setShowCopyConfirm] = useState(false);
-  const [localMealData, setLocalMealData] = useState({
-    taste_rating: meal.taste_rating || 0,
-    satiety_rating: meal.satiety_rating || 0,
-    energy_rating: meal.energy_rating || 0,
-    heaviness_rating: meal.heaviness_rating || 0,
-    is_favorite: meal.is_favorite || false,
-  });
-  const { immediateRefresh } = useMealDataRefresh();
-  const swipeableRef = React.useRef<any>(null);
-
-  const animatedHeight = useState(new Animated.Value(0))[0];
-  const scaleAnim = useState(new Animated.Value(1))[0];
-  const highlightAnim = useState(new Animated.Value(0))[0];
-
-  // Animate highlight when meal is selected
-  useEffect(() => {
-    if (isHighlighted) {
-      // Expand the card automatically when highlighted
-      setIsExpanded(true);
-
-      // Pulse animation for highlight
-      Animated.sequence([
-        Animated.timing(highlightAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: false,
-        }),
-        Animated.timing(highlightAnim, {
-          toValue: 0.3,
-          duration: 500,
-          useNativeDriver: false,
-        }),
-        Animated.timing(highlightAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: false,
-        }),
-        Animated.timing(highlightAnim, {
-          toValue: 0,
-          duration: 1500,
-          useNativeDriver: false,
-        }),
-      ]).start();
-    }
-  }, [isHighlighted]);
-
-  const mealPeriodStyle = getMealPeriodStyle(
-    meal.meal_period || meal.mealPeriod || "other",
-    { ...colors, isDark }
-  );
-  const MealIcon = mealPeriodStyle.icon;
-
-  useEffect(() => {
-    Animated.timing(animatedHeight, {
-      toValue: isExpanded ? 1 : 0,
-      duration: 350,
-      useNativeDriver: false,
-    }).start();
-  }, [isExpanded]);
-
-  useEffect(() => {
-    setLocalMealData({
-      taste_rating: meal.taste_rating || 0,
-      satiety_rating: meal.satiety_rating || 0,
-      energy_rating: meal.energy_rating || 0,
-      heaviness_rating: meal.heaviness_rating || 0,
-      is_favorite: meal.is_favorite || false,
-    });
-  }, [
-    meal.taste_rating,
-    meal.satiety_rating,
-    meal.energy_rating,
-    meal.heaviness_rating,
-    meal.is_favorite,
-  ]);
-
-  const handleRatingChange = (key: string, value: number) => {
-    setLocalMealData((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleToggleFavorite = async () => {
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 1.2,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    try {
-      setLocalMealData((prev) => ({ ...prev, is_favorite: !prev.is_favorite }));
-      await onToggleFavorite(meal.id || meal.meal_id?.toString());
-    } catch (error) {
-      setLocalMealData((prev) => ({ ...prev, is_favorite: !prev.is_favorite }));
-    }
-  };
-
-  const handleSaveRatings = async () => {
-    try {
-      setSavingRatings(true);
-      const mealId = meal.id || meal.meal_id?.toString();
-      if (!mealId) throw new Error("No meal ID found");
-
-      const result = await dispatch(
-        saveMealFeedback({
-          mealId,
-          feedback: {
-            tasteRating: localMealData.taste_rating,
-            satietyRating: localMealData.satiety_rating,
-            energyRating: localMealData.energy_rating,
-            heavinessRating: localMealData.heaviness_rating,
-          },
-        })
-      ).unwrap();
-
-      if (result) {
-        Alert.alert(t("common.success"), t("history.messages.ratingsSaved"));
-        immediateRefresh();
-      }
-    } catch (error) {
-      console.error("Failed to save ratings:", error);
-      Alert.alert(t("common.error"), t("history.messages.ratingsSaveFailed"));
-    } finally {
-      setSavingRatings(false);
-    }
-  };
-
-  const renderStarRating = (
-    rating: number,
-    onPress: (rating: number) => void
-  ) => {
-    return (
-      <View style={styles.starContainer}>
-        {[1, 2, 3, 4, 5].map((star) => (
-          <TouchableOpacity
-            key={star}
-            onPress={() => onPress(star)}
-            style={styles.starButton}
-            activeOpacity={0.6}
-          >
-            <Star
-              size={20}
-              color={star <= rating ? "#FF9F0A" : colors.muted}
-              fill={star <= rating ? "#FF9F0A" : "transparent"}
-              strokeWidth={2}
-            />
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
-  };
-
-  const getNutritionValue = (key: string) => {
-    switch (key) {
-      case "calories":
-        return Math.round(meal.calories || 0);
-      case "protein":
-        return Math.round(meal.protein_g || meal.protein || 0);
-      case "carbs":
-        return Math.round(meal.carbs_g || meal.carbs || 0);
-      case "fat":
-        return Math.round(meal.fats_g || meal.fat || 0);
-      default:
-        return 0;
-    }
-  };
-
-  const getIngredients = () => {
-    if (!meal.ingredients) return [];
-    if (Array.isArray(meal.ingredients)) return meal.ingredients;
-    if (typeof meal.ingredients === "string") {
-      try {
-        return JSON.parse(meal.ingredients);
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  };
-
-  const ingredients = getIngredients();
-
-  const renderLeftActions = () => (
-    <View style={styles.swipeActionWrapper}>
-      <TouchableOpacity
-        style={styles.swipeActionButton}
-        onPress={() => {
-          setShowCopyConfirm(true);
-          swipeableRef.current?.close();
-        }}
-        activeOpacity={0.85}
-      >
-        <View
-          style={[
-            styles.swipeIconWrapper,
-            {
-              backgroundColor: isDark
-                ? "rgba(52, 199, 89, 0.3)"
-                : "rgba(52, 199, 89, 0.2)",
-            },
-          ]}
-        >
-          <Copy size={24} color={colors.success} strokeWidth={2.5} />
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderRightActions = () => (
-    <View style={styles.swipeActionWrapper}>
-      <TouchableOpacity
-        style={styles.swipeActionButton}
-        onPress={() => {
-          setShowDeleteConfirm(true);
-          swipeableRef.current?.close();
-        }}
-        activeOpacity={0.85}
-      >
-        <View
-          style={[
-            styles.swipeIconWrapper,
-            {
-              backgroundColor: isDark
-                ? "rgba(255, 59, 48, 0.3)"
-                : "rgba(255, 59, 48, 0.2)",
-            },
-          ]}
-        >
-          <Trash2 size={24} color={colors.destructive} strokeWidth={2.5} />
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
-
-  return (
-    <View style={styles.swipeContainer}>
-      <Swipeable
-        ref={swipeableRef}
-        renderLeftActions={renderLeftActions}
-        renderRightActions={renderRightActions}
-        rightThreshold={40}
-        leftThreshold={40}
-        overshootLeft={false}
-        overshootRight={false}
-        friction={2}
-      >
-        <Animated.View
-          style={[
-            styles.mealCard,
-            {
-              backgroundColor: colors.card,
-              borderColor: highlightAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [colors.border, colors.primary],
-              }),
-              borderWidth: highlightAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 3],
-              }),
-              shadowColor: colors.primary,
-              shadowOpacity: highlightAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 0.3],
-              }),
-              shadowRadius: highlightAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 10],
-              }),
-              elevation: highlightAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 5],
-              }),
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.cardContent}
-            onPress={() => setIsExpanded(!isExpanded)}
-            activeOpacity={0.95}
-          >
-            <View style={styles.cardImageContainer}>
-              {meal.image_url ? (
-                <Image
-                  source={{ uri: meal.image_url }}
-                  style={[styles.cardImage, { borderColor: colors.border }]}
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.imagePlaceholder,
-                    {
-                      backgroundColor: colors.surfaceVariant,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <Camera size={32} color={colors.icon} strokeWidth={2} />
-                </View>
-              )}
-              {localMealData.is_favorite && (
-                <View
-                  style={[
-                    styles.heartBadge,
-                    {
-                      backgroundColor: colors.destructive,
-                      borderColor: colors.card,
-                    },
-                  ]}
-                >
-                  <Heart
-                    size={14}
-                    color="#FFFFFF"
-                    fill="#FFFFFF"
-                    strokeWidth={2.5}
-                  />
-                </View>
-              )}
-            </View>
-
-            <View style={styles.cardInfo}>
-              <View style={styles.mealHeader}>
-                <View style={styles.mealTitleRow}>
-                  <Text
-                    style={[styles.mealName, { color: colors.text }]}
-                    numberOfLines={1}
-                  >
-                    {meal.meal_name || meal.name || t("common.unknown_meal")}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.mealPeriodBadge,
-                    { backgroundColor: mealPeriodStyle.bgColor },
-                  ]}
-                >
-                  <MealIcon
-                    size={12}
-                    color={mealPeriodStyle.iconColor}
-                    strokeWidth={2.5}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.mealMetaRow}>
-                <View
-                  style={[
-                    styles.caloriesBadge,
-                    {
-                      backgroundColor: isDark
-                        ? "rgba(255, 159, 10, 0.2)"
-                        : "#FFF4E6",
-                    },
-                  ]}
-                >
-                  <Flame size={14} color="#FF9F0A" strokeWidth={2.5} />
-                  <Text style={[styles.caloriesText, { color: colors.text }]}>
-                    {Math.round(meal.calories || 0)}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.caloriesUnit,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    kcal
-                  </Text>
-                </View>
-
-                <Text
-                  style={[styles.mealDate, { color: colors.textSecondary }]}
-                >
-                  {new Date(
-                    meal.created_at || meal.upload_time
-                  ).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </Text>
-              </View>
-
-              {localMealData.taste_rating > 0 && (
-                <View style={styles.quickRatingRow}>
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      size={11}
-                      color={
-                        i < localMealData.taste_rating
-                          ? "#FF9F0A"
-                          : colors.muted
-                      }
-                      fill={
-                        i < localMealData.taste_rating
-                          ? "#FF9F0A"
-                          : "transparent"
-                      }
-                      strokeWidth={2}
-                    />
-                  ))}
-                </View>
-              )}
-            </View>
-
-            <View style={styles.cardActions}>
-              <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-                <TouchableOpacity
-                  onPress={handleToggleFavorite}
-                  style={[
-                    styles.favoriteButton,
-                    {
-                      backgroundColor: localMealData.is_favorite
-                        ? isDark
-                          ? "rgba(255, 59, 48, 0.2)"
-                          : "#FFE5E5"
-                        : colors.surfaceVariant,
-                    },
-                  ]}
-                  activeOpacity={0.7}
-                >
-                  <Heart
-                    size={20}
-                    color={
-                      localMealData.is_favorite
-                        ? colors.destructive
-                        : colors.icon
-                    }
-                    fill={
-                      localMealData.is_favorite
-                        ? colors.destructive
-                        : "transparent"
-                    }
-                    strokeWidth={2.5}
-                  />
-                </TouchableOpacity>
-              </Animated.View>
-
-              <View
-                style={[
-                  styles.expandButton,
-                  {
-                    backgroundColor: isExpanded
-                      ? mealPeriodStyle.bgColor
-                      : colors.surfaceVariant,
-                  },
-                ]}
-              >
-                {isExpanded ? (
-                  <ChevronUp
-                    size={18}
-                    color={isExpanded ? mealPeriodStyle.iconColor : colors.icon}
-                    strokeWidth={3}
-                  />
-                ) : (
-                  <ChevronDown
-                    size={18}
-                    color={isExpanded ? mealPeriodStyle.iconColor : colors.icon}
-                    strokeWidth={3}
-                  />
-                )}
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          <Animated.View
-            style={[
-              styles.expandedSection,
-              {
-                opacity: animatedHeight,
-                maxHeight: animatedHeight.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 2000],
-                }),
-              },
-            ]}
-          >
-            {isExpanded && (
-              <View style={styles.expandedContent}>
-                <View
-                  style={[styles.divider, { backgroundColor: colors.border }]}
-                />
-
-                <View style={styles.nutritionSection}>
-                  <View style={styles.sectionHeader}>
-                    <View
-                      style={[
-                        styles.sectionIconBg,
-                        { backgroundColor: mealPeriodStyle.bgColor },
-                      ]}
-                    >
-                      <TrendingUp
-                        size={16}
-                        color={mealPeriodStyle.iconColor}
-                        strokeWidth={2.5}
-                      />
-                    </View>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      {t("history.nutritionInfo")}
-                    </Text>
-                  </View>
-
-                  <View style={styles.nutritionGrid}>
-                    {Object.entries(NUTRITION_ICONS).map(([key, config]) => {
-                      const IconComponent = config.icon;
-                      const value = getNutritionValue(key);
-                      return (
-                        <View
-                          key={key}
-                          style={[
-                            styles.nutritionCard,
-                            { backgroundColor: colors.surfaceVariant },
-                          ]}
-                        >
-                          <View
-                            style={[
-                              styles.nutritionIconContainer,
-                              {
-                                backgroundColor: isDark
-                                  ? `${config.color}30`
-                                  : `${config.color}15`,
-                              },
-                            ]}
-                          >
-                            <IconComponent
-                              size={18}
-                              color={config.color}
-                              strokeWidth={2.5}
-                            />
-                          </View>
-                          <Text
-                            style={[
-                              styles.nutritionValue,
-                              { color: colors.text },
-                            ]}
-                          >
-                            {value}
-                            <Text
-                              style={[
-                                styles.nutritionUnit,
-                                { color: colors.textSecondary },
-                              ]}
-                            >
-                              {config.unit}
-                            </Text>
-                          </Text>
-                          <Text
-                            style={[
-                              styles.nutritionLabel,
-                              { color: colors.textSecondary },
-                            ]}
-                          >
-                            {t(config.name)}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-
-                {ingredients && ingredients.length > 0 && (
-                  <View style={styles.ingredientsSection}>
-                    <View style={styles.sectionHeader}>
-                      <View
-                        style={[
-                          styles.sectionIconBg,
-                          {
-                            backgroundColor: isDark
-                              ? "rgba(52, 199, 89, 0.2)"
-                              : "#E6F7E6",
-                          },
-                        ]}
-                      >
-                        <Apple
-                          size={16}
-                          color={colors.success}
-                          strokeWidth={2.5}
-                        />
-                      </View>
-                      <Text
-                        style={[styles.sectionTitle, { color: colors.text }]}
-                      >
-                        {t("history.ingredients")}
-                      </Text>
-                      <View
-                        style={[
-                          styles.countBadge,
-                          {
-                            backgroundColor: isDark
-                              ? "rgba(52, 199, 89, 0.2)"
-                              : "#E6F7E6",
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.countBadgeText,
-                            { color: colors.success },
-                          ]}
-                        >
-                          {ingredients.length}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.ingredientsScrollContainer}
-                    >
-                      {ingredients.map((ingredient: any, index: number) => {
-                        const ingredientName =
-                          typeof ingredient === "string"
-                            ? ingredient
-                            : ingredient.name ||
-                              ingredient.ingredient_name ||
-                              `Ingredient ${index + 1}`;
-
-                        return (
-                          <View
-                            key={`ingredient-${index}`}
-                            style={[
-                              styles.ingredientChip,
-                              {
-                                backgroundColor: isDark
-                                  ? "rgba(52, 199, 89, 0.2)"
-                                  : "#E6F7E6",
-                              },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.ingredientText,
-                                { color: colors.success },
-                              ]}
-                            >
-                              {ingredientName}
-                            </Text>
-                          </View>
-                        );
-                      })}
-                    </ScrollView>
-                  </View>
-                )}
-
-                <View style={styles.ratingSection}>
-                  <View style={styles.sectionHeader}>
-                    <View
-                      style={[
-                        styles.sectionIconBg,
-                        {
-                          backgroundColor: isDark
-                            ? "rgba(255, 159, 10, 0.2)"
-                            : "#FFF4E6",
-                        },
-                      ]}
-                    >
-                      <Star
-                        size={16}
-                        color="#FF9F0A"
-                        strokeWidth={2.5}
-                        fill="#FF9F0A"
-                      />
-                    </View>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      {t("history.rateExperience")}
-                    </Text>
-                  </View>
-
-                  <View style={styles.ratingsContainer}>
-                    {[
-                      {
-                        key: "taste_rating",
-                        label: "history.ratings.taste",
-                        Icon: Utensils,
-                        color: "#FF9F0A",
-                      },
-                      {
-                        key: "satiety_rating",
-                        label: "history.ratings.fullness",
-                        Icon: Heart,
-                        color: "#34C759",
-                      },
-                      {
-                        key: "energy_rating",
-                        label: "history.ratings.energy",
-                        Icon: Zap,
-                        color: "#05A9B8",
-                      },
-                      {
-                        key: "heaviness_rating",
-                        label: "history.ratings.heaviness",
-                        Icon: Scale,
-                        color: "#009EAD",
-                      },
-                    ].map(({ key, label, Icon, color }) => (
-                      <View
-                        key={key}
-                        style={[
-                          styles.ratingItem,
-                          { backgroundColor: colors.surfaceVariant },
-                        ]}
-                      >
-                        <View style={styles.ratingItemHeader}>
-                          <View
-                            style={[
-                              styles.ratingEmojiContainer,
-                              {
-                                backgroundColor: isDark
-                                  ? `${color}30`
-                                  : `${color}15`,
-                              },
-                            ]}
-                          >
-                            <Icon size={18} color={color} strokeWidth={2.5} />
-                          </View>
-                          <Text
-                            style={[styles.ratingLabel, { color: colors.text }]}
-                          >
-                            {t(label)}
-                          </Text>
-                        </View>
-                        {renderStarRating(
-                          localMealData[
-                            key as keyof typeof localMealData
-                          ] as number,
-                          (rating) => handleRatingChange(key, rating)
-                        )}
-                      </View>
-                    ))}
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.saveButton}
-                    onPress={handleSaveRatings}
-                    disabled={savingRatings}
-                    activeOpacity={0.8}
-                  >
-                    <View
-                      style={[
-                        styles.saveButtonGradient,
-                        { backgroundColor: colors.primary },
-                      ]}
-                    >
-                      {savingRatings ? (
-                        <ActivityIndicator size="small" color="#ffffff" />
-                      ) : (
-                        <>
-                          <Sparkles
-                            size={18}
-                            color="#ffffff"
-                            strokeWidth={2.5}
-                          />
-                          <Text style={styles.saveButtonText}>
-                            {t("history.saveRatings")}
-                          </Text>
-                        </>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </Animated.View>
-        </Animated.View>
-      </Swipeable>
-
-      <Modal
-        visible={showCopyConfirm}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowCopyConfirm(false)}
-      >
-        <BlurView
-          intensity={40}
-          tint={isDark ? "dark" : "light"}
-          style={styles.confirmModalOverlay}
-        >
-          <View style={[styles.confirmModal, { backgroundColor: colors.card }]}>
-            <View
-              style={[
-                styles.confirmIconContainer,
-                {
-                  backgroundColor: isDark
-                    ? "rgba(52, 199, 89, 0.2)"
-                    : "#E6F7E6",
-                },
-              ]}
-            >
-              <Copy size={32} color={colors.success} strokeWidth={2.5} />
-            </View>
-            <Text style={[styles.confirmTitle, { color: colors.text }]}>
-              {t("history.confirm.copyTitle")}
-            </Text>
-            <Text
-              style={[styles.confirmMessage, { color: colors.textSecondary }]}
-            >
-              {t("history.confirm.copyMessage")}
-            </Text>
-            <View style={styles.confirmActions}>
-              <TouchableOpacity
-                style={[
-                  styles.confirmCancelButton,
-                  {
-                    backgroundColor: colors.surfaceVariant,
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={() => setShowCopyConfirm(false)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[styles.confirmCancelText, { color: colors.text }]}
-                >
-                  {t("common.cancel")}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.confirmButton}
-                onPress={() => {
-                  setShowCopyConfirm(false);
-                  onDuplicate(meal.id || meal.meal_id?.toString());
-                }}
-                activeOpacity={0.8}
-              >
-                <View
-                  style={[
-                    styles.confirmButtonGradient,
-                    { backgroundColor: colors.success },
-                  ]}
-                >
-                  <Copy size={18} color="#FFFFFF" strokeWidth={2.5} />
-                  <Text style={styles.confirmButtonText}>
-                    {t("history.actions.copy")}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </BlurView>
-      </Modal>
-
-      <Modal
-        visible={showDeleteConfirm}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowDeleteConfirm(false)}
-      >
-        <BlurView
-          intensity={40}
-          tint={isDark ? "dark" : "light"}
-          style={styles.confirmModalOverlay}
-        >
-          <View style={[styles.confirmModal, { backgroundColor: colors.card }]}>
-            <View
-              style={[
-                styles.confirmIconContainer,
-                {
-                  backgroundColor: isDark
-                    ? "rgba(255, 59, 48, 0.2)"
-                    : "#FFE5E5",
-                },
-              ]}
-            >
-              <Trash2 size={32} color={colors.destructive} strokeWidth={2.5} />
-            </View>
-            <Text style={[styles.confirmTitle, { color: colors.text }]}>
-              {t("history.confirm.deleteTitle")}
-            </Text>
-            <Text
-              style={[styles.confirmMessage, { color: colors.textSecondary }]}
-            >
-              {t("history.confirm.deleteMessage")}
-            </Text>
-            <View style={styles.confirmActions}>
-              <TouchableOpacity
-                style={[
-                  styles.confirmCancelButton,
-                  {
-                    backgroundColor: colors.surfaceVariant,
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={() => setShowDeleteConfirm(false)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[styles.confirmCancelText, { color: colors.text }]}
-                >
-                  {t("common.cancel")}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.confirmButton}
-                onPress={() => {
-                  setShowDeleteConfirm(false);
-                  onDelete(meal.id || meal.meal_id?.toString());
-                }}
-                activeOpacity={0.8}
-              >
-                <View
-                  style={[
-                    styles.confirmButtonGradient,
-                    { backgroundColor: colors.destructive },
-                  ]}
-                >
-                  <Trash2 size={18} color="#FFFFFF" strokeWidth={2.5} />
-                  <Text style={styles.confirmButtonText}>
-                    {t("history.actions.delete")}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </BlurView>
-      </Modal>
-    </View>
-  );
-};
 
 export default function HistoryScreen() {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const dispatch = useDispatch<AppDispatch>();
-  const { meals, isLoading } = useSelector((state: RootState) => state.meal);
-  const { refreshAllMealData, refreshMealData } = useMealDataRefresh();
-  const { selectedMealId } = useLocalSearchParams<{ selectedMealId?: string }>();
-
   const flatListRef = useRef<FlatList>(null);
-  const [highlightedMealId, setHighlightedMealId] = useState<string | null>(null);
 
+  // URL params for deep linking
+  const { mealId: selectedMealId } = useLocalSearchParams<{ mealId?: string }>();
+
+  // Redux state
+  const { meals, isLoading } = useSelector((state: RootState) => state.meal);
+
+  // Local state
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [showManualMealModal, setShowManualMealModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [highlightedMealId, setHighlightedMealId] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterOptions>({
     category: "all",
     dateRange: "all",
@@ -1133,16 +61,19 @@ export default function HistoryScreen() {
     maxCalories: 2000,
     showFavoritesOnly: false,
   });
-  const [showManualMealModal, setShowManualMealModal] = useState(false);
 
+  // Refresh hooks
+  const { refreshAllMealData, refreshMealData } = useMealDataRefresh();
+
+  // Load meals on mount
   useEffect(() => {
     dispatch(fetchMeals());
   }, [dispatch]);
 
-  // Handle scrolling to selected meal when navigating from home screen
+  // Handle deep linking to specific meal
   useEffect(() => {
     if (selectedMealId && meals.length > 0 && !isLoading) {
-      // Reset filters to show all meals so we can find the selected one
+      // Reset filters to show all meals
       setFilters({
         category: "all",
         dateRange: "all",
@@ -1152,34 +83,27 @@ export default function HistoryScreen() {
       });
       setSearchQuery("");
 
-      // Find the index of the selected meal
       const mealIndex = meals.findIndex(
         (meal: any) =>
           (meal.meal_id?.toString() || meal.id?.toString()) === selectedMealId
       );
 
       if (mealIndex !== -1) {
-        // Account for insights card at index 0
-        const listIndex = mealIndex + 1;
-
-        // Delay to ensure the list is rendered
         setTimeout(() => {
           flatListRef.current?.scrollToIndex({
-            index: listIndex,
+            index: mealIndex + 1, // +1 for insights card
             animated: true,
             viewPosition: 0.3,
           });
 
-          // Highlight the meal temporarily
           setHighlightedMealId(selectedMealId);
-          setTimeout(() => {
-            setHighlightedMealId(null);
-          }, 3000);
+          setTimeout(() => setHighlightedMealId(null), 3000);
         }, 500);
       }
     }
   }, [selectedMealId, meals, isLoading]);
 
+  // Pull to refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -1191,58 +115,111 @@ export default function HistoryScreen() {
     }
   }, [refreshAllMealData]);
 
+  // Toggle favorite
   const handleToggleFavorite = useCallback(
     async (mealId: string) => {
       try {
-        const result = await dispatch(toggleMealFavorite(mealId)).unwrap();
-        if (result) refreshMealData();
+        await dispatch(toggleMealFavorite(mealId)).unwrap();
+        refreshMealData();
       } catch (error) {
         console.error("Failed to toggle favorite:", error);
-        Alert.alert(
-          t("common.error"),
-          t("history.messages.favoriteUpdateFailed")
-        );
+        Alert.alert(t("common.error"), t("history.messages.favoriteUpdateFailed"));
       }
     },
     [dispatch, refreshMealData, t]
   );
 
+  // Duplicate meal
   const handleDuplicateMeal = useCallback(
     async (mealId: string) => {
-      try {
-        await dispatch(
-          duplicateMeal({
-            mealId,
-            newDate: new Date().toISOString().split("T")[0],
-          })
-        ).unwrap();
-        Alert.alert(t("common.success"), t("history.messages.mealDuplicated"));
-        refreshMealData();
-      } catch (error) {
-        console.error("Failed to duplicate meal:", error);
-        Alert.alert(t("common.error"), t("history.messages.duplicateFailed"));
-      }
+      Alert.alert(
+        t("history.confirm.copyTitle"),
+        t("history.confirm.copyMessage"),
+        [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: t("common.copy"),
+            onPress: async () => {
+              try {
+                await dispatch(
+                  duplicateMeal({
+                    mealId,
+                    newDate: new Date().toISOString().split("T")[0],
+                  })
+                ).unwrap();
+                Alert.alert(t("common.success"), t("history.messages.mealDuplicated"));
+                refreshMealData();
+              } catch (error) {
+                console.error("Failed to duplicate meal:", error);
+                Alert.alert(t("common.error"), t("history.messages.duplicateFailed"));
+              }
+            },
+          },
+        ]
+      );
     },
     [dispatch, refreshMealData, t]
   );
 
+  // Delete meal
   const handleRemoveMeal = useCallback(
     async (mealId: string) => {
+      Alert.alert(
+        t("history.confirm.deleteTitle"),
+        t("history.confirm.deleteMessage"),
+        [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: t("common.delete"),
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await dispatch(removeMeal(mealId)).unwrap();
+                refreshMealData();
+              } catch (error) {
+                console.error("Failed to remove meal:", error);
+                Alert.alert(t("common.error"), t("history.messages.deleteFailed"));
+              }
+            },
+          },
+        ]
+      );
+    },
+    [dispatch, refreshMealData, t]
+  );
+
+  // Save ratings
+  const handleSaveRatings = useCallback(
+    async (mealId: string, ratings: any) => {
       try {
-        await dispatch(removeMeal(mealId)).unwrap();
+        await dispatch(
+          saveMealFeedback({
+            mealId,
+            feedback: {
+              tasteRating: ratings.taste_rating,
+              satietyRating: ratings.satiety_rating,
+              energyRating: ratings.energy_rating,
+              heavinessRating: ratings.heaviness_rating,
+            },
+          })
+        ).unwrap();
+        Alert.alert(t("common.success"), t("history.messages.ratingsSaved"));
         refreshMealData();
       } catch (error) {
-        console.error("Failed to remove meal:", error);
-        Alert.alert(t("common.error"), t("history.messages.deleteFailed"));
+        console.error("Failed to save ratings:", error);
+        Alert.alert(t("common.error"), t("history.messages.ratingsSaveFailed"));
       }
     },
     [dispatch, refreshMealData, t]
   );
 
+  // Filter meals
   const filteredMeals = useMemo(() => {
     if (!meals) return [];
+
     return meals.filter((meal: any) => {
-      if (searchQuery.trim() !== "") {
+      // Search filter
+      if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchesSearch =
           meal.name?.toLowerCase().includes(query) ||
@@ -1251,6 +228,7 @@ export default function HistoryScreen() {
         if (!matchesSearch) return false;
       }
 
+      // Category filter
       if (filters.category !== "all") {
         const calories = meal.calories || 0;
         const protein = meal.protein || meal.protein_g || 0;
@@ -1270,17 +248,10 @@ export default function HistoryScreen() {
             break;
           case "balanced":
             if (total === 0) return false;
-            const proteinRatio = protein / total;
-            const carbRatio = carbs / total;
-            const fatRatio = fat / total;
-            if (
-              proteinRatio < 0.2 ||
-              proteinRatio > 0.4 ||
-              carbRatio < 0.3 ||
-              carbRatio > 0.6 ||
-              fatRatio < 0.15 ||
-              fatRatio > 0.4
-            )
+            const pRatio = protein / total;
+            const cRatio = carbs / total;
+            const fRatio = fat / total;
+            if (pRatio < 0.2 || pRatio > 0.4 || cRatio < 0.3 || cRatio > 0.6 || fRatio < 0.15 || fRatio > 0.4)
               return false;
             break;
           case "low_calorie":
@@ -1289,14 +260,18 @@ export default function HistoryScreen() {
         }
       }
 
+      // Calorie range filter
       const calories = meal.calories || 0;
-      if (calories < filters.minCalories || calories > filters.maxCalories)
-        return false;
+      if (calories < filters.minCalories || calories > filters.maxCalories) return false;
+
+      // Favorites filter
       if (filters.showFavoritesOnly && !meal.is_favorite) return false;
 
+      // Date range filter
       if (filters.dateRange !== "all") {
         const mealDate = new Date(meal.created_at || meal.upload_time);
         const now = new Date();
+
         switch (filters.dateRange) {
           case "today":
             if (mealDate.toDateString() !== now.toDateString()) return false;
@@ -1311,27 +286,22 @@ export default function HistoryScreen() {
             break;
         }
       }
+
       return true;
     });
   }, [meals, searchQuery, filters]);
 
+  // Calculate insights
   const insights = useMemo(() => {
     if (!filteredMeals.length) return null;
-    const totalCalories = filteredMeals.reduce(
-      (sum: number, meal: any) => sum + (meal.calories || 0),
-      0
-    );
+
+    const totalCalories = filteredMeals.reduce((sum: number, meal: any) => sum + (meal.calories || 0), 0);
     const avgCalories = Math.round(totalCalories / filteredMeals.length);
     const favoriteMeals = filteredMeals.filter((meal: any) => meal.is_favorite);
-    const ratedMeals = filteredMeals.filter(
-      (meal: any) => meal.taste_rating && meal.taste_rating > 0
-    );
+    const ratedMeals = filteredMeals.filter((meal: any) => meal.taste_rating && meal.taste_rating > 0);
     const avgRating =
       ratedMeals.length > 0
-        ? ratedMeals.reduce(
-            (sum: number, meal: any) => sum + (meal.taste_rating || 0),
-            0
-          ) / ratedMeals.length
+        ? ratedMeals.reduce((sum: number, meal: any) => sum + (meal.taste_rating || 0), 0) / ratedMeals.length
         : 0;
 
     return {
@@ -1343,624 +313,165 @@ export default function HistoryScreen() {
     };
   }, [filteredMeals]);
 
+  // Check if filters are active
+  const hasActiveFilters = useMemo(() => {
+    return (
+      filters.category !== "all" ||
+      filters.dateRange !== "all" ||
+      filters.showFavoritesOnly ||
+      filters.minCalories > 0 ||
+      filters.maxCalories < 2000
+    );
+  }, [filters]);
+
+  // Render item
+  const renderItem = useCallback(
+    ({ item, index }: { item: any; index: number }) => {
+      if (item.type === "insights") {
+        return <InsightsCard insights={item.data} />;
+      }
+
+      const mealId = item.meal_id?.toString() || item.id?.toString();
+
+      return (
+        <MealCard
+          meal={item}
+          onToggleFavorite={handleToggleFavorite}
+          onDelete={handleRemoveMeal}
+          onDuplicate={handleDuplicateMeal}
+          onSaveRatings={handleSaveRatings}
+          isHighlighted={highlightedMealId === mealId}
+        />
+      );
+    },
+    [handleToggleFavorite, handleRemoveMeal, handleDuplicateMeal, handleSaveRatings, highlightedMealId]
+  );
+
+  // List data with insights card
   const listData = useMemo(() => {
-    const data = [];
-    if (insights) data.push({ type: "insights", data: insights });
+    const data: any[] = [];
+    if (insights) {
+      data.push({ type: "insights", data: insights, key: "insights" });
+    }
     return data.concat(
-      filteredMeals.map((meal: any) => ({ type: "meal", data: meal }))
+      filteredMeals.map((meal: any) => ({
+        ...meal,
+        key: meal.meal_id?.toString() || meal.id?.toString() || Math.random().toString(),
+      }))
     );
   }, [filteredMeals, insights]);
 
-  const selectedCategory = CATEGORIES.find((c) => c.key === filters.category);
+  // Empty state
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>
+        {t("history.emptyState.title")}
+      </Text>
+      <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+        {searchQuery || hasActiveFilters
+          ? t("history.emptyState.adjustedFilters")
+          : t("history.emptyState.default")}
+      </Text>
+    </View>
+  );
 
-  const renderItem = ({ item }: { item: any }) => {
-    if (item.type === "insights") {
-      return (
-        <View style={[styles.insightsCard, { borderColor: colors.border }]}>
-          <BlurView
-            intensity={80}
-            tint={isDark ? "dark" : "light"}
-            style={styles.insightsBlur}
-          >
-            <View
-              style={[
-                styles.insightsGradient,
-                { backgroundColor: colors.primary },
-              ]}
-            >
-              <View style={styles.insightsHeader}>
-                <View style={styles.insightsHeaderText}>
-                  <Text
-                    style={[styles.insightsTitle, { color: colors.onPrimary }]}
-                  >
-                    {t("history.insights.title")}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.insightsGrid}>
-                <View style={styles.insightItem}>
-                  <Text
-                    style={[styles.insightValue, { color: colors.onPrimary }]}
-                  >
-                    {item.data.totalMeals}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.insightLabel,
-                      { color: colors.onPrimary, opacity: 0.9 },
-                    ]}
-                  >
-                    {t("history.insights.totalMeals")}
-                  </Text>
-                </View>
-                <View style={styles.insightItem}>
-                  <Text
-                    style={[styles.insightValue, { color: colors.onPrimary }]}
-                  >
-                    {item.data.avgCalories}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.insightLabel,
-                      { color: colors.onPrimary, opacity: 0.9 },
-                    ]}
-                  >
-                    {t("history.insights.avgCalories")}
-                  </Text>
-                </View>
-                <View style={styles.insightItem}>
-                  <Text
-                    style={[styles.insightValue, { color: colors.onPrimary }]}
-                  >
-                    {item.data.favoriteMeals}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.insightLabel,
-                      { color: colors.onPrimary, opacity: 0.9 },
-                    ]}
-                  >
-                    {t("history.insights.favorites")}
-                  </Text>
-                </View>
-                <View style={styles.insightItem}>
-                  <Text
-                    style={[styles.insightValue, { color: colors.onPrimary }]}
-                  >
-                    {item.data.avgRating}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.insightLabel,
-                      { color: colors.onPrimary, opacity: 0.9 },
-                    ]}
-                  >
-                    {t("history.insights.avgRating")}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </BlurView>
-        </View>
-      );
-    }
-    const mealId = item.data.meal_id?.toString() || item.data.id?.toString();
-    return (
-      <SwipeableMealCard
-        key={item.data.meal_id}
-        meal={item.data}
-        onDelete={handleRemoveMeal}
-        onDuplicate={handleDuplicateMeal}
-        onToggleFavorite={handleToggleFavorite}
-        isHighlighted={mealId === highlightedMealId}
-      />
-    );
-  };
-
-  if (isLoading && !meals.length) {
+  if (isLoading && meals.length === 0) {
     return <LoadingScreen text={t("history.loading")} />;
   }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
-      >
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
-            <View>
-              <Text style={[styles.headerTitle, { color: colors.text }]}>
-                {t("history.title")}
-              </Text>
-              <Text
-                style={[styles.headerSubtitle, { color: colors.textSecondary }]}
-              >
-                Track your nutrition journey
-              </Text>
-            </View>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
+              {t("history.title")}
+            </Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+              {filteredMeals.length} {t("history.insights.totalMeals").toLowerCase()}
+            </Text>
           </View>
 
-          <View style={styles.searchContainer}>
+          {/* Search & Filter Bar */}
+          <View style={styles.searchRow}>
             <View
               style={[
                 styles.searchBar,
-                { backgroundColor: colors.card, borderColor: colors.border },
+                { backgroundColor: colors.surfaceVariant, borderColor: colors.border },
               ]}
             >
-              <Search size={20} color={colors.icon} strokeWidth={2.5} />
+              <Search size={20} color={colors.muted} />
               <TextInput
                 style={[styles.searchInput, { color: colors.text }]}
                 placeholder={t("history.searchPlaceholder")}
+                placeholderTextColor={colors.muted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                placeholderTextColor={colors.textSecondary}
               />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery("")}>
-                  <X size={18} color={colors.icon} strokeWidth={2.5} />
-                </TouchableOpacity>
-              )}
             </View>
 
             <TouchableOpacity
               style={[
                 styles.filterButton,
-                { backgroundColor: colors.card, borderColor: colors.border },
+                {
+                  backgroundColor: hasActiveFilters ? colors.primary : colors.surfaceVariant,
+                  borderColor: hasActiveFilters ? colors.primary : colors.border,
+                },
               ]}
               onPress={() => setShowFilters(true)}
               activeOpacity={0.7}
             >
-              <Filter size={20} color={colors.primary} strokeWidth={2.5} />
-              {(filters.category !== "all" ||
-                filters.dateRange !== "all" ||
-                filters.showFavoritesOnly) && (
-                <View
-                  style={[
-                    styles.filterDot,
-                    { backgroundColor: colors.destructive },
-                  ]}
-                />
-              )}
+              <SlidersHorizontal size={20} color={hasActiveFilters ? "#FFF" : colors.text} />
             </TouchableOpacity>
           </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesContent}
-          >
-            {CATEGORIES.map((category) => {
-              const isSelected = filters.category === category.key;
-              const IconComponent = category.icon;
-              return (
-                <TouchableOpacity
-                  key={category.key}
-                  onPress={() =>
-                    setFilters((prev) => ({ ...prev, category: category.key }))
-                  }
-                  activeOpacity={0.7}
-                >
-                  {isSelected ? (
-                    <View
-                      style={[
-                        styles.categoryPill,
-                        { backgroundColor: category.color },
-                      ]}
-                    >
-                      <IconComponent
-                        size={14}
-                        color="#FFFFFF"
-                        strokeWidth={2.5}
-                      />
-                      <Text style={styles.categoryPillTextSelected}>
-                        {t(category.label)}
-                      </Text>
-                    </View>
-                  ) : (
-                    <View
-                      style={[
-                        styles.categoryPillUnselected,
-                        {
-                          backgroundColor: colors.card,
-                          borderColor: colors.border,
-                        },
-                      ]}
-                    >
-                      <IconComponent
-                        size={14}
-                        color={colors.icon}
-                        strokeWidth={2.5}
-                      />
-                      <Text
-                        style={[
-                          styles.categoryPillText,
-                          { color: colors.text },
-                        ]}
-                      >
-                        {t(category.label)}
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
         </View>
 
-        {listData.length > 0 ? (
-          <FlatList
-            ref={flatListRef}
-            data={listData}
-            keyExtractor={(item, index) =>
-              item.type === "insights" ? "insights" : index.toString()
-            }
-            renderItem={renderItem}
-            contentContainerStyle={styles.mealsList}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={[selectedCategory?.color || colors.primary]}
-                tintColor={selectedCategory?.color || colors.primary}
-                progressBackgroundColor={colors.card}
-              />
-            }
-            onScrollToIndexFailed={(info) => {
-              // Fallback: scroll to approximate position
-              const wait = new Promise((resolve) => setTimeout(resolve, 500));
-              wait.then(() => {
-                flatListRef.current?.scrollToOffset({
-                  offset: info.averageItemLength * info.index,
-                  animated: true,
-                });
+        {/* Meals List */}
+        <FlatList
+          ref={flatListRef}
+          data={listData}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.key}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={renderEmptyState}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+          onScrollToIndexFailed={(info) => {
+            setTimeout(() => {
+              flatListRef.current?.scrollToIndex({
+                index: info.index,
+                animated: true,
               });
-            }}
-          />
-        ) : (
-          <View style={styles.emptyState}>
-            <View
-              style={[styles.emptyStateIcon, { backgroundColor: colors.card }]}
-            >
-              <Camera size={56} color={colors.icon} strokeWidth={2} />
-            </View>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              {t("history.emptyState.title")}
-            </Text>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              {searchQuery ||
-              filters.category !== "all" ||
-              filters.showFavoritesOnly
-                ? t("history.emptyState.adjustedFilters")
-                : t("history.emptyState.default")}
-            </Text>
-          </View>
-        )}
+            }, 100);
+          }}
+        />
 
-        <Modal
-          visible={showFilters}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setShowFilters(false)}
-        >
-          <BlurView
-            intensity={50}
-            tint={isDark ? "dark" : "light"}
-            style={styles.modalOverlay}
-          >
-            <View
-              style={[
-                styles.filterModal,
-                { backgroundColor: colors.background },
-              ]}
-            >
-              <View
-                style={[
-                  styles.modalHeader,
-                  { backgroundColor: colors.primary },
-                ]}
-              >
-                <View>
-                  <Text
-                    style={[styles.modalTitle, { color: colors.onPrimary }]}
-                  >
-                    {t("history.filter.title")}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.modalSubtitle,
-                      { color: colors.onPrimary, opacity: 0.9 },
-                    ]}
-                  >
-                    Customize your view
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setShowFilters(false)}
-                  style={[
-                    styles.closeButton,
-                    {
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.2)"
-                        : "rgba(255,255,255,0.3)",
-                    },
-                  ]}
-                  activeOpacity={0.7}
-                >
-                  <X size={22} color={colors.onPrimary} strokeWidth={2.5} />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                style={styles.filterContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.filterSection}>
-                  <Text
-                    style={[styles.filterSectionTitle, { color: colors.text }]}
-                  >
-                    {t("history.filter.category")}
-                  </Text>
-                  <View style={styles.categoryGrid}>
-                    {CATEGORIES.map((category) => {
-                      const IconComponent = category.icon;
-                      const isSelected = filters.category === category.key;
-                      return (
-                        <TouchableOpacity
-                          key={category.key}
-                          style={[
-                            styles.filterCategoryChip,
-                            {
-                              backgroundColor: isSelected
-                                ? isDark
-                                  ? `${category.color}30`
-                                  : `${category.color}20`
-                                : colors.card,
-                              borderColor: isSelected
-                                ? category.color
-                                : colors.border,
-                            },
-                          ]}
-                          onPress={() =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              category: category.key,
-                            }))
-                          }
-                          activeOpacity={0.7}
-                        >
-                          <IconComponent
-                            size={16}
-                            color={isSelected ? category.color : colors.icon}
-                            strokeWidth={2.5}
-                          />
-                          <Text
-                            style={[
-                              styles.categoryChipText,
-                              {
-                                color: isSelected
-                                  ? category.color
-                                  : colors.text,
-                              },
-                            ]}
-                          >
-                            {t(category.label)}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-
-                <View style={styles.filterSection}>
-                  <Text
-                    style={[styles.filterSectionTitle, { color: colors.text }]}
-                  >
-                    {t("history.filter.timePeriod")}
-                  </Text>
-                  <View style={styles.dateRangeGrid}>
-                    {DATE_RANGES.map((range) => {
-                      const IconComponent = range.icon;
-                      const isSelected = filters.dateRange === range.key;
-                      return (
-                        <TouchableOpacity
-                          key={range.key}
-                          style={[
-                            styles.dateRangeChip,
-                            {
-                              backgroundColor: isSelected
-                                ? isDark
-                                  ? `${selectedCategory?.color}30`
-                                  : `${selectedCategory?.color}20`
-                                : colors.card,
-                              borderColor: isSelected
-                                ? selectedCategory?.color
-                                : colors.border,
-                            },
-                          ]}
-                          onPress={() =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              dateRange: range.key,
-                            }))
-                          }
-                          activeOpacity={0.7}
-                        >
-                          <IconComponent
-                            size={16}
-                            color={
-                              isSelected ? selectedCategory?.color : colors.icon
-                            }
-                            strokeWidth={2.5}
-                          />
-                          <Text
-                            style={[
-                              styles.dateRangeChipText,
-                              {
-                                color: isSelected
-                                  ? selectedCategory?.color
-                                  : colors.text,
-                              },
-                            ]}
-                          >
-                            {t(range.label)}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-
-                <View style={styles.filterSection}>
-                  <TouchableOpacity
-                    style={[
-                      styles.favoritesToggle,
-                      {
-                        backgroundColor: filters.showFavoritesOnly
-                          ? isDark
-                            ? "rgba(255, 59, 48, 0.2)"
-                            : "#FFE5E5"
-                          : colors.card,
-                        borderColor: filters.showFavoritesOnly
-                          ? colors.destructive
-                          : colors.border,
-                      },
-                    ]}
-                    onPress={() =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        showFavoritesOnly: !prev.showFavoritesOnly,
-                      }))
-                    }
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.toggleLeft}>
-                      <View
-                        style={[
-                          styles.toggleIconBg,
-                          {
-                            backgroundColor: filters.showFavoritesOnly
-                              ? isDark
-                                ? "rgba(255, 59, 48, 0.3)"
-                                : "#FFFFFF"
-                              : colors.surfaceVariant,
-                          },
-                        ]}
-                      >
-                        <Heart
-                          size={18}
-                          color={colors.destructive}
-                          fill={
-                            filters.showFavoritesOnly
-                              ? colors.destructive
-                              : "transparent"
-                          }
-                          strokeWidth={2.5}
-                        />
-                      </View>
-                      <View>
-                        <Text
-                          style={[
-                            styles.favoritesToggleText,
-                            { color: colors.text },
-                          ]}
-                        >
-                          {t("history.filter.favoritesOnly")}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.toggleSubtext,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          Show only favorited meals
-                        </Text>
-                      </View>
-                    </View>
-                    <View
-                      style={[
-                        styles.toggleSwitch,
-                        {
-                          backgroundColor: filters.showFavoritesOnly
-                            ? colors.destructive
-                            : colors.muted,
-                        },
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.toggleSwitchThumb,
-                          {
-                            transform: [
-                              {
-                                translateX: filters.showFavoritesOnly ? 20 : 2,
-                              },
-                            ],
-                          },
-                        ]}
-                      />
-                    </View>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={[
-                      styles.resetButton,
-                      {
-                        backgroundColor: colors.card,
-                        borderColor: colors.border,
-                      },
-                    ]}
-                    onPress={() =>
-                      setFilters({
-                        category: "all",
-                        dateRange: "all",
-                        minCalories: 0,
-                        maxCalories: 2000,
-                        showFavoritesOnly: false,
-                      })
-                    }
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[styles.resetButtonText, { color: colors.text }]}
-                    >
-                      {t("history.filter.reset")}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.applyButton}
-                    onPress={() => setShowFilters(false)}
-                    activeOpacity={0.8}
-                  >
-                    <View
-                      style={[
-                        styles.applyButtonGradient,
-                        { backgroundColor: colors.primary },
-                      ]}
-                    >
-                      <Zap size={18} color="#FFFFFF" strokeWidth={2.5} />
-                      <Text style={styles.applyButtonText}>
-                        {t("history.filter.apply")}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
-            </View>
-          </BlurView>
-        </Modal>
-
+        {/* FAB - Add Meal */}
         <TouchableOpacity
-          style={[styles.floatingButton, { backgroundColor: colors.primary }]}
+          style={[styles.fab, { backgroundColor: colors.primary }]}
           onPress={() => setShowManualMealModal(true)}
           activeOpacity={0.9}
         >
-          <Plus size={24} color="#FFFFFF" strokeWidth={3} />
+          <Plus size={26} color="#FFF" strokeWidth={2.5} />
         </TouchableOpacity>
 
+        {/* Filter Modal */}
+        <FilterModal
+          visible={showFilters}
+          onClose={() => setShowFilters(false)}
+          filters={filters}
+          onFiltersChange={setFilters}
+        />
+
+        {/* Manual Meal Addition */}
         <ManualMealAddition
           visible={showManualMealModal}
           onClose={() => setShowManualMealModal(false)}
@@ -1975,21 +486,30 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
-  headerTop: { marginBottom: 20 },
+  container: {
+    flex: 1,
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  headerTop: {
+    marginBottom: 16,
+  },
   headerTitle: {
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: "800",
     letterSpacing: -0.8,
-    marginBottom: 2,
   },
-  headerSubtitle: { fontSize: 15, fontWeight: "500", letterSpacing: -0.2 },
-  searchContainer: {
+  headerSubtitle: {
+    fontSize: 15,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  searchRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
+    gap: 10,
   },
   searchBar: {
     flex: 1,
@@ -1997,7 +517,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 14,
     paddingHorizontal: 14,
-    height: 44,
+    height: 48,
     gap: 10,
     borderWidth: 1,
   },
@@ -2005,620 +525,50 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: "500",
-    letterSpacing: -0.2,
   },
   filterButton: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    position: "relative",
     borderWidth: 1,
   },
-  filterDot: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  listContent: {
+    paddingBottom: 100,
   },
-  categoriesContent: { gap: 8 },
-  categoryPill: {
-    flexDirection: "row",
+  emptyState: {
+    flex: 1,
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    gap: 6,
+    justifyContent: "center",
+    paddingVertical: 60,
+    paddingHorizontal: 40,
   },
-  categoryPillUnselected: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    gap: 6,
-    borderWidth: 1,
-  },
-  categoryPillTextSelected: {
-    fontSize: 14,
+  emptyTitle: {
+    fontSize: 20,
     fontWeight: "700",
-    color: "#FFFFFF",
-    letterSpacing: -0.2,
-  },
-  categoryPillText: { fontSize: 14, fontWeight: "600", letterSpacing: -0.2 },
-  insightsCard: {
-    marginTop: 12,
-    marginBottom: 24,
-    borderRadius: 24,
-    overflow: "hidden",
-    borderWidth: 1,
-  },
-  insightsBlur: { borderRadius: 24, overflow: "hidden" },
-  insightsGradient: { padding: 26, borderRadius: 24 },
-  insightsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 24,
-    gap: 14,
-  },
-  insightsHeaderText: { flex: 1 },
-  insightsTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-    marginBottom: 2,
-  },
-  insightsGrid: { flexDirection: "row", justifyContent: "space-between" },
-  insightItem: { alignItems: "center", flex: 1 },
-  insightValue: {
-    fontSize: 26,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-    marginBottom: 4,
-  },
-  insightLabel: {
-    fontSize: 12,
-    fontWeight: "700",
+    marginBottom: 8,
     textAlign: "center",
-    letterSpacing: -0.2,
   },
-  swipeContainer: { marginBottom: 16 },
-  mealCard: { borderRadius: 24, overflow: "hidden", borderWidth: 1 },
-  cardContent: { flexDirection: "row", padding: 18, gap: 14 },
-  cardImageContainer: { position: "relative" },
-  cardImage: { width: 90, height: 90, borderRadius: 18, borderWidth: 2 },
-  imagePlaceholder: {
-    width: 90,
-    height: 90,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-  },
-  heartBadge: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-  },
-  cardInfo: { flex: 1 },
-  mealHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 10,
-  },
-  mealTitleRow: { flex: 1, marginRight: 8 },
-  mealName: {
-    fontSize: 17,
-    fontWeight: "700",
-    letterSpacing: -0.3,
+  emptySubtitle: {
+    fontSize: 15,
+    fontWeight: "500",
+    textAlign: "center",
     lineHeight: 22,
   },
-  mealPeriodBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  mealMetaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  caloriesBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    gap: 5,
-  },
-  caloriesText: { fontSize: 15, fontWeight: "800", letterSpacing: -0.3 },
-  caloriesUnit: { fontSize: 12, fontWeight: "700", letterSpacing: -0.2 },
-  mealDate: { fontSize: 13, fontWeight: "600", letterSpacing: -0.2 },
-  quickRatingRow: { flexDirection: "row", gap: 3 },
-  cardActions: { flexDirection: "column", gap: 8, marginLeft: 8 },
-  favoriteButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  expandButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  swipeActionWrapper: {
-    justifyContent: "center",
-    alignItems: "center",
-    marginVertical: 0,
-  },
-  swipeActionButton: {
-    width: 80,
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    marginHorizontal: 10,
-  },
-  swipeIconWrapper: {
+  fab: {
+    position: "absolute",
+    bottom: 24,
+    right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
     justifyContent: "center",
     alignItems: "center",
-  },
-  confirmModalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  confirmModal: {
-    width: "88%",
-    maxWidth: 380,
-    borderRadius: 28,
-    padding: 32,
-    alignItems: "center",
-  },
-  confirmIconContainer: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  confirmTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    marginBottom: 14,
-    textAlign: "center",
-    letterSpacing: -0.6,
-  },
-  confirmMessage: {
-    fontSize: 16,
-    fontWeight: "500",
-    textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 32,
-    letterSpacing: -0.3,
-    opacity: 0.8,
-  },
-  confirmActions: { flexDirection: "row", gap: 12, width: "100%" },
-  confirmCancelButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-  },
-  confirmCancelText: { fontSize: 17, fontWeight: "700", letterSpacing: -0.4 },
-  confirmButton: { flex: 1, borderRadius: 16, overflow: "hidden" },
-  confirmButtonGradient: {
-    flexDirection: "row",
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  confirmButtonText: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    letterSpacing: -0.4,
-  },
-  expandedSection: { overflow: "hidden" },
-  expandedContent: { paddingHorizontal: 16, paddingBottom: 16 },
-  divider: { height: 1, marginBottom: 16 },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 14,
-    gap: 10,
-  },
-  sectionIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    letterSpacing: -0.3,
-    flex: 1,
-  },
-  countBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  countBadgeText: { fontSize: 13, fontWeight: "800", letterSpacing: -0.2 },
-  nutritionSection: { marginBottom: 20 },
-  nutritionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  nutritionCard: {
-    width: "48.5%",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 14,
-    gap: 6,
-  },
-  nutritionIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  nutritionValue: {
-    fontSize: 20,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-    marginBottom: 2,
-  },
-  nutritionUnit: {
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0,
-    marginBottom: 4,
-  },
-  nutritionLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    textAlign: "center",
-    letterSpacing: -0.2,
-  },
-  ingredientsSection: { marginBottom: 20 },
-  ingredientsScrollContainer: { gap: 8 },
-  ingredientChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  ingredientText: { fontSize: 13, fontWeight: "700", letterSpacing: -0.2 },
-  ratingSection: { marginBottom: 0 },
-  ratingsContainer: { gap: 10, marginBottom: 16 },
-  ratingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 14,
-    borderRadius: 16,
-  },
-  ratingItemHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-
-  ratingEmojiContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  ratingEmoji: {
-    fontSize: 18,
-  },
-
-  ratingLabel: {
-    fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: -0.3,
-  },
-
-  starContainer: {
-    flexDirection: "row",
-    gap: 4,
-  },
-
-  starButton: {
-    padding: 2,
-  },
-
-  saveButton: {
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-
-  saveButtonGradient: {
-    backgroundColor: "#0d9488",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    gap: 8,
-  },
-
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    letterSpacing: -0.3,
-  },
-
-  mealsList: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
-  },
-
-  emptyState: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
-  },
-
-  emptyStateIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-
-  emptyTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    marginBottom: 8,
-    textAlign: "center",
-    letterSpacing: -0.5,
-  },
-
-  emptyText: {
-    fontSize: 15,
-    textAlign: "center",
-    lineHeight: 22,
-    maxWidth: 300,
-    fontWeight: "500",
-    letterSpacing: -0.2,
-  },
-
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-
-  filterModal: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    maxHeight: "90%",
-  },
-
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 24,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-  },
-
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    letterSpacing: -0.5,
-    marginBottom: 2,
-  },
-
-  modalSubtitle: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "600",
-    letterSpacing: -0.2,
-  },
-
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.25)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  filterContent: {
-    padding: 24,
-  },
-
-  filterSection: {
-    marginBottom: 28,
-  },
-
-  filterSectionTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 14,
-    letterSpacing: -0.3,
-  },
-
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-
-  filterCategoryChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 2,
-    gap: 8,
-  },
-
-  categoryChipText: {
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: -0.2,
-  },
-
-  dateRangeGrid: {
-    gap: 10,
-  },
-
-  dateRangeChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 2,
-    gap: 10,
-  },
-
-  dateRangeChipText: {
-    fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: -0.2,
-  },
-
-  favoritesToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 18,
-    borderRadius: 16,
-    borderWidth: 2,
-  },
-
-  toggleLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    flex: 1,
-  },
-
-  toggleIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  favoritesToggleText: {
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: -0.3,
-  },
-
-  toggleSubtext: {
-    fontSize: 13,
-    marginTop: 2,
-    fontWeight: "600",
-    letterSpacing: -0.2,
-  },
-
-  toggleSwitch: {
-    width: 48,
-    height: 28,
-    borderRadius: 14,
-    padding: 2,
-    justifyContent: "center",
-  },
-
-  toggleSwitchThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#FFFFFF",
-  },
-
-  modalActions: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 12,
-  },
-
-  resetButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: "center",
-    borderWidth: 2,
-  },
-
-  resetButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: -0.3,
-  },
-
-  applyButton: {
-    flex: 2,
-    borderRadius: 14,
-    overflow: "hidden",
-  },
-
-  applyButtonGradient: {
-    flexDirection: "row",
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-
-  applyButtonText: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    letterSpacing: -0.3,
-  },
-
-  floatingButton: {
-    position: "absolute",
-    bottom: 24,
-    right: 24,
-    borderRadius: 30,
-    overflow: "hidden",
-  },
-
-  floatingGradient: {
-    width: 60,
-    height: 60,
-    justifyContent: "center",
-    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });

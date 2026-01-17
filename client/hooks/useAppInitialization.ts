@@ -149,14 +149,21 @@ export const useAppInitialization = (): AppInitializationState => {
         // Run initial cleanup check
         await StorageCleanupService.checkAndCleanupIfNeeded();
 
-        // Set up periodic cleanup (every 24 hours)
+        // Set up periodic cleanup (every 2 hours for more proactive cleanup)
         const cleanupInterval = setInterval(async () => {
+          console.log("🧹 [Storage] Running periodic cleanup check...");
           await StorageCleanupService.checkAndCleanupIfNeeded();
-        }, 24 * 60 * 60 * 1000); // 24 hours
+        }, 2 * 60 * 60 * 1000); // 2 hours (was 24 hours)
 
         return () => clearInterval(cleanupInterval);
       } catch (error) {
         console.error("Failed to initialize storage monitoring:", error);
+        // Even if monitoring fails, try emergency cleanup
+        try {
+          await StorageCleanupService.emergencyCleanup();
+        } catch (e) {
+          console.error("Emergency cleanup also failed:", e);
+        }
       }
     };
 

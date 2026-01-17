@@ -14,7 +14,14 @@ import Animated, {
   withTiming,
   withSequence,
 } from "react-native-reanimated";
-import Svg, { Path, Defs, LinearGradient, Stop, Rect } from "react-native-svg";
+import {
+  Droplets,
+  CheckCircle2,
+  Plus,
+  X,
+  Lightbulb,
+  GlassWater,
+} from "lucide-react-native";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useTranslation } from "react-i18next";
 
@@ -32,104 +39,15 @@ interface WaterIntakeCardProps {
 
 // Bottle size options in ml
 const BOTTLE_OPTIONS = [
-  { ml: 250, label: "250ml", icon: "cup", emoji: "🥤" },
-  { ml: 500, label: "500ml", icon: "small_bottle", emoji: "🧃" },
-  { ml: 750, label: "750ml", icon: "medium_bottle", emoji: "🍶" },
-  { ml: 1000, label: "1L", icon: "large_bottle", emoji: "🫗" },
-  { ml: 1500, label: "1.5L", icon: "xl_bottle", emoji: "🍾" },
-  { ml: 2000, label: "2L", icon: "xxl_bottle", emoji: "🏺" },
+  { ml: 250, label: "250ml", size: "xs" },
+  { ml: 500, label: "500ml", size: "sm" },
+  { ml: 750, label: "750ml", size: "md" },
+  { ml: 1000, label: "1L", size: "lg" },
+  { ml: 1500, label: "1.5L", size: "xl" },
+  { ml: 2000, label: "2L", size: "xxl" },
 ];
 
 const ML_PER_CUP = 250;
-
-const WaterCupIcon: React.FC<{
-  size: number;
-  filled?: boolean;
-  waterLevel?: number;
-  colors: any;
-}> = ({ size, filled = false, waterLevel = 0, colors }) => {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="waterGradient" x1="0%" y1="100%" x2="0%" y2="0%">
-          <Stop offset="0%" stopColor={colors.primary} stopOpacity="1" />
-          <Stop
-            offset="100%"
-            stopColor={colors.primaryContainer}
-            stopOpacity="1"
-          />
-        </LinearGradient>
-      </Defs>
-      <Path
-        d="M6 22L4 2h16l-2 20H6z"
-        stroke={filled ? colors.primary : colors.border}
-        strokeWidth="1.5"
-        fill="none"
-      />
-      {filled && waterLevel > 0 && (
-        <Path
-          d={`M4.5 ${2 + (waterLevel / 100) * 20}h15l-0.5 ${
-            20 - (waterLevel / 100) * 20
-          }H4.5z`}
-          fill="url(#waterGradient)"
-          opacity="0.9"
-        />
-      )}
-    </Svg>
-  );
-};
-
-// Bottle icon component
-const BottleIcon: React.FC<{
-  size: number;
-  fillLevel: number;
-  colors: any;
-  bottleSize: "small" | "medium" | "large" | "xl";
-}> = ({ size, fillLevel, colors, bottleSize }) => {
-  // Different bottle shapes based on size
-  const getBottlePath = () => {
-    switch (bottleSize) {
-      case "small":
-        return "M8 2h8v3l2 2v15a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7l2-2V2z";
-      case "medium":
-        return "M9 1h6v2l3 3v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6l3-3V1z";
-      case "large":
-        return "M9 0h6v3l3 2v17a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5l3-2V0z";
-      case "xl":
-        return "M10 0h4v2l4 3v17a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5l4-3V0z";
-      default:
-        return "M8 2h8v3l2 2v15a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7l2-2V2z";
-    }
-  };
-
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="bottleWaterGradient" x1="0%" y1="100%" x2="0%" y2="0%">
-          <Stop offset="0%" stopColor={colors.primary} stopOpacity="1" />
-          <Stop offset="100%" stopColor={colors.primaryContainer} stopOpacity="0.8" />
-        </LinearGradient>
-      </Defs>
-      <Path
-        d={getBottlePath()}
-        stroke={colors.primary}
-        strokeWidth="1.5"
-        fill="none"
-      />
-      {fillLevel > 0 && (
-        <Rect
-          x="7"
-          y={22 - (fillLevel / 100) * 15}
-          width="10"
-          height={(fillLevel / 100) * 15}
-          rx="1"
-          fill="url(#bottleWaterGradient)"
-          opacity="0.85"
-        />
-      )}
-    </Svg>
-  );
-};
 
 const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
   currentCups,
@@ -209,36 +127,25 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
 
   const handleBottleSelect = (mlAmount: number) => {
     setSelectedBottle(mlAmount);
-    // Animate button press
     addButtonScale.value = withSequence(
       withTiming(0.9, { duration: 100 }),
       withSpring(1, { damping: 15 })
     );
 
-    // Calculate how many cups this equals
     const cupsToAdd = Math.ceil(mlAmount / ML_PER_CUP);
 
     if (onAddVolume) {
       onAddVolume(mlAmount);
     } else {
-      // Fallback: add cups equivalent
       for (let i = 0; i < cupsToAdd && currentCups + i < maxCups; i++) {
         setTimeout(() => onIncrement(), i * 100);
       }
     }
 
-    // Close modal after short delay
     setTimeout(() => {
       setShowBottleModal(false);
       setSelectedBottle(null);
     }, 300);
-  };
-
-  const getBottleSizeType = (ml: number): "small" | "medium" | "large" | "xl" => {
-    if (ml <= 500) return "small";
-    if (ml <= 750) return "medium";
-    if (ml <= 1500) return "large";
-    return "xl";
   };
 
   const styles = StyleSheet.create({
@@ -271,7 +178,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
       width: isSmallScreen ? 64 : 72,
       height: isSmallScreen ? 64 : 72,
       borderRadius: isSmallScreen ? 20 : 24,
-      backgroundColor: isDark ? colors.primaryContainer : colors.emerald50,
+      backgroundColor: isDark ? colors.primaryContainer : "#E0F7FA",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -294,10 +201,10 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     badge: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
-      paddingHorizontal: isSmallScreen ? 16 : 20,
+      gap: 6,
+      paddingHorizontal: isSmallScreen ? 14 : 18,
       paddingVertical: isSmallScreen ? 10 : 12,
-      backgroundColor: isDark ? colors.primaryContainer : colors.emerald50,
+      backgroundColor: isDark ? colors.primaryContainer : "#E8F5E9",
       borderRadius: 100,
     },
     badgeText: {
@@ -381,8 +288,15 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     },
     cupContainer: {
       alignItems: "center",
+      width: isSmallScreen ? 34 : 40,
+      height: isSmallScreen ? 34 : 40,
+      borderRadius: isSmallScreen ? 10 : 12,
+      backgroundColor: colors.border,
+      justifyContent: "center",
     },
-    // Quick add section
+    cupContainerFilled: {
+      backgroundColor: isDark ? colors.primaryContainer : "#B2EBF2",
+    },
     quickAddSection: {
       marginBottom: isSmallScreen ? 20 : 28,
     },
@@ -400,21 +314,18 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     },
     quickAddButton: {
       flex: 1,
-      backgroundColor: isDark ? colors.primaryContainer : colors.emerald50,
+      backgroundColor: isDark ? colors.card : "#F1F8FB",
       borderRadius: 16,
-      paddingVertical: 14,
+      paddingVertical: 16,
       alignItems: "center",
       justifyContent: "center",
       borderWidth: 1,
       borderColor: colors.border,
+      gap: 6,
     },
     quickAddButtonActive: {
       backgroundColor: colors.primary,
       borderColor: colors.primary,
-    },
-    quickAddEmoji: {
-      fontSize: 20,
-      marginBottom: 4,
     },
     quickAddText: {
       fontSize: isSmallScreen ? 11 : 12,
@@ -424,7 +335,6 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     quickAddTextActive: {
       color: "#ffffff",
     },
-    // Add bottle button
     addBottleButton: {
       flexDirection: "row",
       alignItems: "center",
@@ -434,17 +344,13 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
       paddingVertical: 14,
       paddingHorizontal: 20,
       marginBottom: isSmallScreen ? 20 : 28,
-      gap: 10,
+      gap: 8,
     },
     addBottleButtonText: {
       fontSize: isSmallScreen ? 15 : 16,
       fontWeight: "700",
       color: "#ffffff",
     },
-    addBottleEmoji: {
-      fontSize: 20,
-    },
-    // Modal styles
     modalOverlay: {
       flex: 1,
       backgroundColor: "rgba(0,0,0,0.5)",
@@ -486,20 +392,20 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     },
     bottleOption: {
       width: "31%",
-      backgroundColor: isDark ? colors.card : colors.emerald50,
+      backgroundColor: isDark ? colors.card : "#F1F8FB",
       borderRadius: 20,
       padding: 16,
       alignItems: "center",
       borderWidth: 2,
       borderColor: "transparent",
+      gap: 8,
     },
     bottleOptionSelected: {
       borderColor: colors.primary,
       backgroundColor: colors.primary + "15",
     },
-    bottleOptionEmoji: {
-      fontSize: 32,
-      marginBottom: 8,
+    bottleOptionIcon: {
+      marginBottom: 4,
     },
     bottleOptionLabel: {
       fontSize: 15,
@@ -515,16 +421,18 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     modalCloseButton: {
       marginTop: 20,
       paddingVertical: 14,
+      flexDirection: "row",
       alignItems: "center",
+      justifyContent: "center",
       backgroundColor: colors.border,
       borderRadius: 14,
+      gap: 8,
     },
     modalCloseText: {
       fontSize: 15,
       fontWeight: "600",
       color: colors.text,
     },
-    // Tips section
     tipsSection: {
       marginTop: isSmallScreen ? 16 : 20,
       paddingTop: isSmallScreen ? 16 : 20,
@@ -535,7 +443,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
       flexDirection: "row",
       alignItems: "flex-start",
       gap: 14,
-      backgroundColor: isDark ? colors.primaryContainer : colors.emerald50,
+      backgroundColor: isDark ? colors.primaryContainer : "#FFF8E1",
       padding: isSmallScreen ? 16 : 20,
       borderRadius: isSmallScreen ? 18 : 20,
       borderWidth: 1,
@@ -550,9 +458,6 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
       justifyContent: "center",
       borderWidth: 1,
       borderColor: colors.border,
-    },
-    tipEmoji: {
-      fontSize: isSmallScreen ? 18 : 20,
     },
     tipTextContainer: {
       flex: 1,
@@ -569,17 +474,32 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     },
   });
 
+  const getBottleIcon = (size: string) => {
+    const iconSize =
+      size === "xs"
+        ? 32
+        : size === "sm"
+        ? 36
+        : size === "md"
+        ? 40
+        : size === "lg"
+        ? 44
+        : 48;
+    return (
+      <GlassWater size={iconSize} color={colors.primary} strokeWidth={2} />
+    );
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.card}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.iconContainer}>
-              <WaterCupIcon
+              <Droplets
                 size={isSmallScreen ? 36 : 42}
-                filled={true}
-                waterLevel={progress}
-                colors={colors}
+                color={colors.primary}
+                strokeWidth={2}
               />
             </View>
             <View style={styles.titleContainer}>
@@ -590,6 +510,11 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
 
           {isComplete && (
             <Animated.View style={[styles.badge, animatedBadgeStyle]}>
+              <CheckCircle2
+                size={18}
+                color={colors.primary}
+                strokeWidth={2.5}
+              />
               <Text style={styles.badgeText}>{t("water.goalReached")}</Text>
             </Animated.View>
           )}
@@ -630,7 +555,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
               disabled={disabled || currentCups >= maxCups}
               activeOpacity={0.7}
             >
-              <Text style={styles.quickAddEmoji}>🥤</Text>
+              <GlassWater size={22} color={colors.text} strokeWidth={2} />
               <Text style={styles.quickAddText}>1 {t("water.cup")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -639,7 +564,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
               disabled={disabled || currentCups >= maxCups}
               activeOpacity={0.7}
             >
-              <Text style={styles.quickAddEmoji}>🧃</Text>
+              <GlassWater size={26} color={colors.text} strokeWidth={2} />
               <Text style={styles.quickAddText}>500ml</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -648,7 +573,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
               disabled={disabled || currentCups >= maxCups}
               activeOpacity={0.7}
             >
-              <Text style={styles.quickAddEmoji}>🍶</Text>
+              <GlassWater size={30} color={colors.text} strokeWidth={2} />
               <Text style={styles.quickAddText}>750ml</Text>
             </TouchableOpacity>
           </View>
@@ -662,8 +587,10 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
             disabled={disabled || currentCups >= maxCups}
             activeOpacity={0.8}
           >
-            <Text style={styles.addBottleEmoji}>🫗</Text>
-            <Text style={styles.addBottleButtonText}>{t("water.addBottle")}</Text>
+            <Plus size={20} color="#ffffff" strokeWidth={3} />
+            <Text style={styles.addBottleButtonText}>
+              {t("water.addBottle")}
+            </Text>
           </TouchableOpacity>
         </Animated.View>
 
@@ -681,12 +608,19 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
                 disabled={disabled}
                 activeOpacity={0.7}
               >
-                <Animated.View style={[styles.cupContainer, animatedCupStyle]}>
-                  <WaterCupIcon
-                    size={isSmallScreen ? 32 : 38}
-                    filled={index < currentCups}
-                    waterLevel={index < currentCups ? 100 : 0}
-                    colors={colors}
+                <Animated.View
+                  style={[
+                    styles.cupContainer,
+                    index < currentCups && styles.cupContainerFilled,
+                    animatedCupStyle,
+                  ]}
+                >
+                  <Droplets
+                    size={isSmallScreen ? 20 : 24}
+                    color={
+                      index < currentCups ? colors.primary : colors.textTertiary
+                    }
+                    strokeWidth={2}
                   />
                 </Animated.View>
               </TouchableOpacity>
@@ -698,12 +632,14 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
         <View style={styles.tipsSection}>
           <View style={styles.tipsContainer}>
             <View style={styles.tipIcon}>
-              <Text style={styles.tipEmoji}>💡</Text>
+              <Lightbulb
+                size={isSmallScreen ? 22 : 24}
+                color={colors.primary}
+                strokeWidth={2}
+              />
             </View>
             <View style={styles.tipTextContainer}>
-              <Text style={styles.tipText}>
-                {t("water.tip")}
-              </Text>
+              <Text style={styles.tipText}>{t("water.tip")}</Text>
             </View>
           </View>
         </View>
@@ -721,11 +657,16 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
           activeOpacity={1}
           onPress={() => setShowBottleModal(false)}
         >
-          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
             <View style={styles.modalContent}>
               <View style={styles.modalHandle} />
               <Text style={styles.modalTitle}>{t("water.selectBottle")}</Text>
-              <Text style={styles.modalSubtitle}>{t("water.selectBottleDesc")}</Text>
+              <Text style={styles.modalSubtitle}>
+                {t("water.selectBottleDesc")}
+              </Text>
 
               <View style={styles.bottleGrid}>
                 {BOTTLE_OPTIONS.map((bottle) => (
@@ -733,12 +674,15 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
                     key={bottle.ml}
                     style={[
                       styles.bottleOption,
-                      selectedBottle === bottle.ml && styles.bottleOptionSelected,
+                      selectedBottle === bottle.ml &&
+                        styles.bottleOptionSelected,
                     ]}
                     onPress={() => handleBottleSelect(bottle.ml)}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.bottleOptionEmoji}>{bottle.emoji}</Text>
+                    <View style={styles.bottleOptionIcon}>
+                      {getBottleIcon(bottle.size)}
+                    </View>
                     <Text style={styles.bottleOptionLabel}>{bottle.label}</Text>
                     <Text style={styles.bottleOptionCups}>
                       = {Math.ceil(bottle.ml / ML_PER_CUP)} {t("water.cups")}
@@ -751,6 +695,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
                 style={styles.modalCloseButton}
                 onPress={() => setShowBottleModal(false)}
               >
+                <X size={18} color={colors.text} />
                 <Text style={styles.modalCloseText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
             </View>

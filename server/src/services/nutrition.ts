@@ -427,7 +427,8 @@ export class NutritionService {
           upload_time: true,
           analysis_status: true,
           meal_name: true,
-          meal_period: true, // Include meal_period in the select statement
+          meal_period: true,
+          description: true,
           calories: true,
           protein_g: true,
           carbs_g: true,
@@ -461,6 +462,12 @@ export class NutritionService {
           ingredients: true,
           created_at: true,
           updated_at: true,
+          // User interaction fields - favorites and ratings
+          is_favorite: true,
+          taste_rating: true,
+          satiety_rating: true,
+          energy_rating: true,
+          heaviness_rating: true,
         },
       });
 
@@ -493,7 +500,13 @@ export class NutritionService {
             ? JSON.parse(meal.ingredients || "[]")
             : meal.ingredients || [],
 
-        // Ratings and preferences
+        // Ratings and preferences (both snake_case and camelCase for compatibility)
+        taste_rating: meal.taste_rating || 0,
+        satiety_rating: meal.satiety_rating || 0,
+        energy_rating: meal.energy_rating || 0,
+        heaviness_rating: meal.heaviness_rating || 0,
+        is_favorite: meal.is_favorite || false,
+        // camelCase versions for backwards compatibility
         tasteRating: meal.taste_rating || 0,
         satietyRating: meal.satiety_rating || 0,
         energyRating: meal.energy_rating || 0,

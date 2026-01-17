@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Camera, Image as ImageIcon, ArrowLeft } from "lucide-react-native";
 import { MealType } from "./MealTypeSelector";
+import { useTranslation } from "react-i18next";
 
 interface CameraOptionsViewProps {
   selectedMealType: MealType;
@@ -17,6 +18,8 @@ export function CameraOptionsView({
   onTakePhoto,
   onSelectFromGallery,
 }: CameraOptionsViewProps) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.container}>
       {/* Minimal Header */}
@@ -37,7 +40,7 @@ export function CameraOptionsView({
       {/* Clean Content Area */}
       <View style={styles.content}>
         <View style={styles.titleSection}>
-          <Text style={styles.mainTitle}>Capture Your Meal</Text>
+          <Text style={styles.mainTitle}>{t("camera.title")}</Text>
           <View style={styles.divider} />
         </View>
 
@@ -56,14 +59,14 @@ export function CameraOptionsView({
             <View style={styles.iconCircle}>
               <Camera size={28} color="#FFFFFF" strokeWidth={2} />
             </View>
-            <Text style={styles.primaryText}>Take Photo</Text>
+            <Text style={styles.primaryText}>{t("camera.takePhoto")}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
         {/* Divider with text */}
         <View style={styles.orDividerContainer}>
           <View style={styles.orLine} />
-          <Text style={styles.orText}>or</Text>
+          <Text style={styles.orText}>{t("common.or")}</Text>
           <View style={styles.orLine} />
         </View>
 
@@ -76,13 +79,15 @@ export function CameraOptionsView({
           <View style={styles.iconCircleOutline}>
             <ImageIcon size={24} color="#14B8A6" strokeWidth={2} />
           </View>
-          <Text style={styles.secondaryText}>Choose from Gallery</Text>
+          <Text style={styles.secondaryText}>
+            {t("camera.chooseFromGallery")}
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* Subtle footer hint */}
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Get instant nutritional analysis</Text>
+        <Text style={styles.footerText}>{t("camera.getNutritionInfo")}</Text>
       </View>
     </View>
   );
