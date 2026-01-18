@@ -7,16 +7,16 @@ export interface NutritionMetric {
   target: number;
   minTarget?: number;
   maxTarget?: number;
-  percentage: number;
-  status: "excellent" | "good" | "warning" | "danger";
-  icon: React.ReactNode;
+  percentage?: number;
+  status?: "excellent" | "good" | "warning" | "danger";
+  icon?: React.ReactNode;
   color: string;
-  category: "macros" | "micros" | "lifestyle" | "quality";
-  description: string;
+  category: "macros" | "micros" | "lifestyle" | "quality" | "hydration";
+  description?: string;
   recommendation?: string;
-  trend: "up" | "down" | "stable";
-  weeklyAverage: number;
-  lastWeekChange: number;
+  trend?: "up" | "down" | "stable";
+  weeklyAverage?: number;
+  lastWeekChange?: number;
   chartData?: number[];
   chartLabels?: string[];
 }

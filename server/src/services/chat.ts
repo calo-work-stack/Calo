@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { prisma } from "../lib/database";
+import { UserContextService, ComprehensiveUserContext } from "./userContext";
 
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({
@@ -20,16 +21,16 @@ export class ChatService {
       console.log("🤖 Processing chat message:", message);
       console.log("🌐 Language:", language);
 
-      // Get user context for personalized advice
-      const userContext = await this.getUserNutritionContext(userId);
+      // Get comprehensive user context for highly personalized advice
+      const comprehensiveContext = await UserContextService.getComprehensiveContext(userId);
 
       // Get recent chat history for context (limited to 5 for faster responses)
       const recentHistory = await this.getChatHistory(userId, 5);
 
-      // Create system prompt
-      const systemPrompt = this.createNutritionSystemPrompt(
+      // Create enhanced system prompt with full user context
+      const systemPrompt = this.createEnhancedSystemPrompt(
         language,
-        userContext
+        comprehensiveContext
       );
 
       // Build conversation context
@@ -108,6 +109,97 @@ export class ChatService {
     }
   }
 
+  /**
+   * Create enhanced system prompt with comprehensive user context
+   */
+  private static createEnhancedSystemPrompt(
+    language: string,
+    context: ComprehensiveUserContext
+  ): string {
+    const isHebrew = language === "hebrew";
+    const { profile, goals, performance, streaks, recentActivity, healthInsights, achievements } = context;
+
+    // Build personalized context string
+    const userContextStr = `
+=== USER PROFILE ===
+Name's Goal: ${profile.mainGoal} | Activity: ${profile.activityLevel}
+Weight: ${profile.weight}kg → Target: ${profile.targetWeight}kg
+Dietary Style: ${profile.dietaryStyle}
+ALLERGIES (CRITICAL - NEVER SUGGEST THESE): ${profile.allergies.length > 0 ? profile.allergies.join(", ") : "None"}
+Medical Conditions: ${profile.medicalConditions.length > 0 ? profile.medicalConditions.join(", ") : "None"}
+Kosher: ${profile.kosher ? "Yes" : "No"}
+Liked Foods: ${profile.likedFoods.slice(0, 5).join(", ") || "Not specified"}
+Disliked Foods: ${profile.dislikedFoods.slice(0, 5).join(", ") || "Not specified"}
+
+=== DAILY TARGETS (Personalized to their goal) ===
+Calories: ${goals.dailyCalories}kcal | Protein: ${goals.dailyProtein}g | Carbs: ${goals.dailyCarbs}g | Fats: ${goals.dailyFats}g
+Water: ${goals.dailyWater}ml | Meals/Day: ${goals.mealsPerDay}
+TDEE: ${healthInsights.estimatedTDEE}kcal | Recommended Adjustment: ${healthInsights.recommendedDeficitOrSurplus > 0 ? "+" : ""}${healthInsights.recommendedDeficitOrSurplus}kcal
+
+=== TODAY'S PROGRESS ===
+Consumed: ${recentActivity.todayCalories}kcal | ${recentActivity.todayProtein}g protein | ${recentActivity.todayWater}ml water
+Meals Today: ${recentActivity.todayMealsCount}
+REMAINING: ${recentActivity.remainingCalories}kcal | ${recentActivity.remainingProtein}g protein | ${recentActivity.remainingWater}ml water
+${recentActivity.lastMealTime ? `Last Meal: ${new Date(recentActivity.lastMealTime).toLocaleTimeString()}` : "No meals yet today"}
+
+=== PERFORMANCE INSIGHTS ===
+30-Day Averages: ${performance.avgDailyCalories}kcal | ${performance.avgDailyProtein}g protein
+Goal Achievement: ${Math.round(performance.overallGoalAchievementRate * 100)}%
+Consistency: ${Math.round(performance.consistencyScore * 100)}%
+Best Day: ${performance.bestPerformingDayOfWeek} | Needs Work: ${performance.worstPerformingDayOfWeek}
+Trends: Calories ${performance.caloriesTrend} | Protein ${performance.proteinTrend}
+
+=== HEALTH STATUS ===
+Hydration: ${healthInsights.hydrationStatus} | Protein Intake: ${healthInsights.proteinIntakeStatus}
+BMI Category: ${healthInsights.bmiCategory}
+
+=== MOTIVATION ===
+Current Streak: ${streaks.currentDailyStreak} days | Longest: ${streaks.longestDailyStreak} days
+Level: ${achievements.currentLevel} | XP: ${achievements.totalXPEarned}
+${achievements.nearCompletion.length > 0 ? `Close to unlocking: ${achievements.nearCompletion[0]?.name}` : ""}
+`;
+
+    const basePrompt = isHebrew
+      ? `אתה יועץ תזונה AI אישי ומומחה. יש לך גישה מלאה לנתוני המשתמש ואתה צריך לתת תשובות מותאמות אישית לחלוטין.
+
+⚠️ כללים קריטיים:
+- לעולם אל תציע מזונות עם האלרגנים של המשתמש: ${profile.allergies.join(", ") || "אין"}
+- התאם המלצות קלוריות ליעד שלהם (${goals.dailyCalories}kcal) ולמטרה (${profile.mainGoal})
+- התייחס לנתונים האמיתיים שלהם - אל תהיה גנרי!
+- עודד את הרצף שלהם (${streaks.currentDailyStreak} ימים) ואת הרמה (${achievements.currentLevel})
+- הפנה לרופא לבעיות רפואיות
+
+${userContextStr}
+
+🎯 הנחיות תגובה:
+- השתמש במספרים ספציפיים מהנתונים שלהם
+- אם הם צריכים לאכול עוד ${recentActivity.remainingCalories}kcal היום - המלץ על ארוחות בהתאם
+- אם הם מתקשים בעקביות (${Math.round(performance.consistencyScore * 100)}%) - תן טיפים מעשיים
+- שמור על טון ידידותי, מעודד ומקצועי`
+      : `You are a PERSONAL expert AI nutrition consultant. You have FULL access to this user's data and must give COMPLETELY PERSONALIZED responses.
+
+⚠️ CRITICAL RULES:
+- NEVER suggest foods containing their allergies: ${profile.allergies.join(", ") || "None"}
+- ADAPT calorie recommendations to their target (${goals.dailyCalories}kcal) and goal (${profile.mainGoal})
+- REFERENCE their actual data - don't be generic!
+- ENCOURAGE their streak (${streaks.currentDailyStreak} days) and level (${achievements.currentLevel})
+- Refer to doctor for medical issues
+
+${userContextStr}
+
+🎯 RESPONSE GUIDELINES:
+- Use SPECIFIC numbers from their data
+- If they need ${recentActivity.remainingCalories}kcal more today - recommend meals accordingly
+- If they struggle with consistency (${Math.round(performance.consistencyScore * 100)}%) - give practical tips
+- Keep a friendly, encouraging, and professional tone
+- For meal suggestions: Consider their ${recentActivity.remainingCalories}kcal and ${recentActivity.remainingProtein}g protein remaining
+- For hydration: Their status is ${healthInsights.hydrationStatus}, target ${goals.dailyWater}ml
+- Reference their patterns: Best on ${performance.bestPerformingDayOfWeek}, struggles on ${performance.worstPerformingDayOfWeek}`;
+
+    return basePrompt;
+  }
+
+  // Keep old method for backwards compatibility but mark as deprecated
   private static createNutritionSystemPrompt(
     language: string,
     userContext: any

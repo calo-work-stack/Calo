@@ -339,6 +339,7 @@
     "kcal": "kcal"
   },
   "history": {
+    "title": "Meal History",
     "loading": "Loading history...",
     "greeting": "Good Morning",
     "searchPlaceholder": "Search for meals...",
@@ -767,9 +768,12 @@
     "deleteUser": "Delete User"
   },
   "statistics": {
-    "title": "Progress & Statistics",
+    "title": "Statistics",
     "subtitle": "Detailed tracking of nutritional metrics and personal progress",
+    "track_progress": "Track your nutrition journey",
     "today": "Today",
+    "this_week": "This Week",
+    "this_month": "This Month",
     "week": "Week",
     "month": "Month",
     "custom": "Custom",
@@ -878,7 +882,21 @@
     "confidence": "Confidence",
     "no_data": "No data available",
     "all": "All",
-    "data_visualization": "Data Visualization"
+    "data_visualization": "Data Visualization",
+    "analytics": "Analytics",
+    "nutrition_metrics": "Nutrition Metrics",
+    "macros": "Macros",
+    "progress_to_next": "Progress to next level",
+    "to_next_level": "to next level",
+    "daily_hydration": "Daily Hydration",
+    "stay_hydrated": "Stay hydrated for optimal health",
+    "of_goal": "of goal",
+    "remaining": "remaining",
+    "no_achievements": "No achievements yet",
+    "keep_tracking": "Keep tracking to unlock achievements!",
+    "progress_summary": "Progress Summary",
+    "nutrition_averages": "Nutrition Averages",
+    "loading": "Loading statistics..."
   },
   "devices": {
     "title": "Smart Devices",

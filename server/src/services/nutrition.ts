@@ -846,21 +846,27 @@ export class NutritionService {
       });
       if (!meal) throw new Error("Meal not found");
 
-      const additives = asJsonObject(meal.additives_json);
-      const existingFeedback = asJsonObject(additives.feedback);
-
-      const updatedAdditives = {
-        ...additives,
-        feedback: {
-          ...existingFeedback,
-          ...feedback,
-          updatedAt: new Date().toISOString(),
-        },
+      // Update the dedicated rating columns
+      const updateData: any = {
+        updated_at: new Date(),
       };
+
+      if (feedback.tasteRating !== undefined) {
+        updateData.taste_rating = feedback.tasteRating;
+      }
+      if (feedback.satietyRating !== undefined) {
+        updateData.satiety_rating = feedback.satietyRating;
+      }
+      if (feedback.energyRating !== undefined) {
+        updateData.energy_rating = feedback.energyRating;
+      }
+      if (feedback.heavinessRating !== undefined) {
+        updateData.heaviness_rating = feedback.heavinessRating;
+      }
 
       await prisma.meal.update({
         where: { meal_id: meal.meal_id },
-        data: { additives_json: updatedAdditives },
+        data: updateData,
       });
 
       // Clear related caches
@@ -877,21 +883,18 @@ export class NutritionService {
     try {
       const meal = await prisma.meal.findFirst({
         where: { meal_id: parseInt(meal_id), user_id },
+        select: { meal_id: true, is_favorite: true },
       });
       if (!meal) throw new Error("Meal not found");
 
-      const additives = asJsonObject(meal.additives_json);
-      const current = Boolean(additives.isFavorite);
-
-      const updatedAdditives = {
-        ...additives,
-        isFavorite: !current,
-        favoriteUpdatedAt: new Date().toISOString(),
-      };
+      const current = meal.is_favorite || false;
 
       await prisma.meal.update({
         where: { meal_id: meal.meal_id },
-        data: { additives_json: updatedAdditives },
+        data: {
+          is_favorite: !current,
+          updated_at: new Date(),
+        },
       });
 
       // Clear related caches

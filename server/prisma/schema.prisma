@@ -206,6 +206,7 @@ model Meal {
   analysis_status        AnalysisStatus
   meal_name              String?
   meal_period            String?
+  description            String?
   calories               Float?
   protein_g              Float?
   carbs_g                Float?
@@ -239,6 +240,14 @@ model Meal {
   ingredients            Json?
   created_at             DateTime       @default(now())
   updated_at             DateTime?      @updatedAt
+
+  // User interaction fields - favorites and ratings
+  is_favorite            Boolean        @default(false)
+  taste_rating           Int?           @default(0)
+  satiety_rating         Int?           @default(0)
+  energy_rating          Int?           @default(0)
+  heaviness_rating       Int?           @default(0)
+
   user                   User           @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@index([user_id, created_at])
@@ -246,6 +255,7 @@ model Meal {
   @@index([analysis_status])
   @@index([upload_time])
   @@index([meal_period])
+  @@index([is_favorite])
 }
 
 model NutritionPlan {

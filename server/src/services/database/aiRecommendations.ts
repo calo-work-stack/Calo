@@ -6,6 +6,7 @@ import {
   AIRecommendationResponse,
 } from "../../types/recommendations";
 import { StatisticsService } from "../statistics";
+import { UserContextService, ComprehensiveUserContext } from "../userContext";
 export interface RecommendationCreationResult {
   created: number;
   updated: number;
@@ -347,6 +348,7 @@ Be specific, actionable, and encouraging. Focus on realistic improvements.
 
   /**
    * Generate personalized recommendation for a specific user
+   * Uses comprehensive user context for intelligent personalization
    */
   private static async generatePersonalizedRecommendation(
     userId: string,
@@ -358,28 +360,20 @@ Be specific, actionable, and encouraging. Focus on realistic improvements.
         userId
       );
 
-      // Fetch questionnaire if not provided
-      if (!questionnaire) {
-        questionnaire = await prisma.userQuestionnaire.findFirst({
-          where: { user_id: userId },
-          orderBy: { date_completed: "desc" },
-        });
-      }
+      // Get comprehensive user context (cached for performance)
+      const userContext = await UserContextService.getComprehensiveContext(userId);
 
-      // Get user's recent performance data
-      const recentData = await this.getUserRecentPerformance(userId);
-
-      // Generate AI recommendations
-      const aiRecommendations = await this.generateAIRecommendations(
+      // Generate AI recommendations with full context
+      const aiRecommendations = await this.generateContextualAIRecommendations(
         userId,
-        questionnaire,
-        recentData
+        userContext
       );
 
-      // Save to database
-      const savedRecommendation = await this.saveRecommendation(
+      // Save to database with enhanced metadata
+      const savedRecommendation = await this.saveEnhancedRecommendation(
         userId,
-        aiRecommendations
+        aiRecommendations,
+        userContext
       );
 
       return savedRecommendation;
@@ -388,6 +382,301 @@ Be specific, actionable, and encouraging. Focus on realistic improvements.
 
       // Create fallback recommendation
       return await this.createFallbackRecommendation(userId);
+    }
+  }
+
+  /**
+   * Generate AI recommendations using comprehensive user context
+   */
+  private static async generateContextualAIRecommendations(
+    userId: string,
+    context: ComprehensiveUserContext
+  ): Promise<AIRecommendationResponse> {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        console.log("⚠️ No OpenAI key, using intelligent fallback");
+        return this.generateSmartFallbackRecommendations(context);
+      }
+
+      const prompt = this.buildComprehensivePrompt(context);
+      const aiResponse = await OpenAIService.generateText(prompt, 1500, 0.7);
+
+      // Parse AI response
+      const parsed = JSON.parse(aiResponse);
+      return this.validateAndNormalizeRecommendations(parsed);
+    } catch (error) {
+      console.error("AI recommendation generation failed:", error);
+      return this.generateSmartFallbackRecommendations(context);
+    }
+  }
+
+  /**
+   * Build comprehensive prompt using full user context
+   */
+  private static buildComprehensivePrompt(context: ComprehensiveUserContext): string {
+    const contextStr = UserContextService.buildPromptContext(context);
+
+    return `You are an expert AI nutritionist providing HIGHLY PERSONALIZED daily recommendations.
+Analyze ALL the user data below and generate specific, actionable recommendations.
+
+${contextStr}
+
+=== ANALYSIS REQUIREMENTS ===
+1. ADAPT recommendations to user's specific goal (${context.profile.mainGoal})
+2. ADJUST calorie/macro suggestions based on their TDEE (${context.healthInsights.estimatedTDEE}kcal) and goal
+3. CONSIDER their performance trends (Calories: ${context.performance.caloriesTrend}, Protein: ${context.performance.proteinTrend})
+4. REFERENCE their streaks to motivate (${context.streaks.currentDailyStreak} day streak)
+5. NEVER suggest foods containing their allergies: ${context.profile.allergies.join(", ") || "None"}
+6. RESPECT their dietary style: ${context.profile.dietaryStyle}
+7. CONSIDER their near-complete achievements for motivation
+8. ADDRESS any health status issues (Hydration: ${context.healthInsights.hydrationStatus}, Protein: ${context.healthInsights.proteinIntakeStatus})
+
+=== SPECIFIC FOCUS AREAS ===
+${context.performance.waterGoalAchievementRate < 0.7 ? "- User needs to increase WATER intake significantly" : ""}
+${context.performance.proteinGoalAchievementRate < 0.8 ? "- User needs more PROTEIN to meet goals" : ""}
+${context.performance.consistencyScore < 0.6 ? "- User struggles with CONSISTENCY - provide meal prep tips" : ""}
+${context.recentActivity.todayMealsCount === 0 ? "- User hasn't logged any meals TODAY - encourage starting" : ""}
+${context.streaks.currentDailyStreak >= 7 ? "- Celebrate their STREAK and encourage maintaining it" : ""}
+${context.achievements.nearCompletion.length > 0 ? `- Mention they're close to unlocking: ${context.achievements.nearCompletion[0]?.name}` : ""}
+
+=== DYNAMIC TARGETS (Personalized) ===
+${this.calculateDynamicTargets(context)}
+
+Provide recommendations in this EXACT JSON format:
+{
+  "nutrition_tips": [
+    "Specific tip 1 with exact numbers based on their goals",
+    "Specific tip 2 referencing their patterns",
+    "Specific tip 3 addressing gaps"
+  ],
+  "meal_suggestions": [
+    "Specific meal suggestion with portions tailored to their remaining ${context.recentActivity.remainingCalories}kcal",
+    "Another suggestion considering their ${context.profile.dietaryStyle} preference"
+  ],
+  "goal_adjustments": [
+    "Adjustment based on their ${context.performance.caloriesTrend} calorie trend",
+    "Suggestion based on their ${Math.round(context.performance.overallGoalAchievementRate * 100)}% goal achievement"
+  ],
+  "behavioral_insights": [
+    "Insight about their ${context.performance.bestPerformingDayOfWeek} vs ${context.performance.worstPerformingDayOfWeek} pattern",
+    "Observation about their meal timing patterns"
+  ],
+  "water_recommendation": {
+    "daily_target_ml": ${this.calculateOptimalWater(context)},
+    "current_status": "${context.healthInsights.hydrationStatus}",
+    "suggestion": "Specific hydration advice"
+  },
+  "calorie_recommendation": {
+    "suggested_target": ${this.calculateOptimalCalories(context)},
+    "reasoning": "Why this target suits their ${context.profile.mainGoal} goal"
+  },
+  "priority_level": "${this.determinePriority(context)}",
+  "confidence_score": 0.85,
+  "key_focus_areas": ["area1", "area2"],
+  "personalized_motivation": "A motivating message mentioning their ${context.streaks.currentDailyStreak} day streak and Level ${context.achievements.currentLevel}"
+}
+
+Be SPECIFIC with numbers. Reference their ACTUAL data. Make it feel personally crafted for them.`;
+  }
+
+  /**
+   * Calculate dynamic nutritional targets based on user context
+   */
+  private static calculateDynamicTargets(context: ComprehensiveUserContext): string {
+    const { profile, healthInsights, performance, goals } = context;
+
+    let calorieTarget = healthInsights.estimatedTDEE + healthInsights.recommendedDeficitOrSurplus;
+    let proteinTarget = profile.weight * 1.6; // 1.6g per kg for active individuals
+    let waterTarget = profile.weight * 35; // 35ml per kg
+
+    // Adjust based on goal
+    if (profile.mainGoal === "BUILD_MUSCLE" || profile.mainGoal === "WEIGHT_GAIN") {
+      proteinTarget = profile.weight * 2.0;
+      calorieTarget = healthInsights.estimatedTDEE + 300;
+    } else if (profile.mainGoal === "WEIGHT_LOSS" || profile.mainGoal === "LOSE_WEIGHT") {
+      calorieTarget = healthInsights.estimatedTDEE - 500;
+      proteinTarget = profile.weight * 1.8; // Higher protein to preserve muscle
+    }
+
+    // Adjust based on activity
+    if (profile.activityLevel === "VERY_ACTIVE" || profile.activityLevel === "HIGH") {
+      waterTarget *= 1.2;
+      calorieTarget *= 1.1;
+    }
+
+    return `
+Recommended Calories: ${Math.round(calorieTarget)}kcal (TDEE ${healthInsights.estimatedTDEE} ${healthInsights.recommendedDeficitOrSurplus >= 0 ? "+" : ""}${healthInsights.recommendedDeficitOrSurplus})
+Recommended Protein: ${Math.round(proteinTarget)}g (${(proteinTarget / profile.weight).toFixed(1)}g/kg body weight)
+Recommended Water: ${Math.round(waterTarget)}ml
+Current vs Target: Calories ${performance.avgDailyCalories}/${Math.round(calorieTarget)} | Protein ${performance.avgDailyProtein}/${Math.round(proteinTarget)}g`;
+  }
+
+  private static calculateOptimalWater(context: ComprehensiveUserContext): number {
+    let base = context.profile.weight * 35;
+    if (context.profile.activityLevel === "VERY_ACTIVE" || context.profile.activityLevel === "HIGH") {
+      base *= 1.2;
+    }
+    return Math.round(base / 100) * 100; // Round to nearest 100ml
+  }
+
+  private static calculateOptimalCalories(context: ComprehensiveUserContext): number {
+    const { healthInsights } = context;
+    return Math.round((healthInsights.estimatedTDEE + healthInsights.recommendedDeficitOrSurplus) / 50) * 50;
+  }
+
+  private static determinePriority(context: ComprehensiveUserContext): "low" | "medium" | "high" {
+    const { performance, healthInsights, recentActivity } = context;
+
+    // High priority conditions
+    if (performance.overallGoalAchievementRate < 0.5) return "high";
+    if (healthInsights.hydrationStatus === "low") return "high";
+    if (healthInsights.proteinIntakeStatus === "low") return "high";
+    if (recentActivity.todayMealsCount === 0 && new Date().getHours() > 14) return "high";
+
+    // Medium priority conditions
+    if (performance.consistencyScore < 0.6) return "medium";
+    if (performance.overallGoalAchievementRate < 0.8) return "medium";
+
+    return "low";
+  }
+
+  /**
+   * Generate smart fallback recommendations using context
+   */
+  private static generateSmartFallbackRecommendations(
+    context: ComprehensiveUserContext
+  ): AIRecommendationResponse {
+    const recommendations: AIRecommendationResponse = {
+      nutrition_tips: [],
+      meal_suggestions: [],
+      goal_adjustments: [],
+      behavioral_insights: [],
+      priority_level: this.determinePriority(context),
+      confidence_score: 0.7,
+      key_focus_areas: [],
+    };
+
+    // Hydration-based tips
+    if (context.healthInsights.hydrationStatus === "low") {
+      recommendations.nutrition_tips.push(
+        `Increase water intake to ${this.calculateOptimalWater(context)}ml daily - you're currently at ${context.performance.avgDailyWater}ml`
+      );
+      recommendations.key_focus_areas.push("hydration");
+    }
+
+    // Protein-based tips
+    if (context.healthInsights.proteinIntakeStatus === "low") {
+      const targetProtein = Math.round(context.profile.weight * 1.6);
+      recommendations.nutrition_tips.push(
+        `Aim for ${targetProtein}g protein daily (currently averaging ${context.performance.avgDailyProtein}g)`
+      );
+      recommendations.key_focus_areas.push("protein");
+    }
+
+    // Goal-specific recommendations
+    if (context.profile.mainGoal === "WEIGHT_LOSS" || context.profile.mainGoal === "LOSE_WEIGHT") {
+      const targetCal = this.calculateOptimalCalories(context);
+      recommendations.meal_suggestions.push(
+        `Focus on high-volume, low-calorie foods to stay within ${targetCal}kcal while feeling satisfied`
+      );
+      recommendations.goal_adjustments.push(
+        `Maintain a ${Math.abs(context.healthInsights.recommendedDeficitOrSurplus)}kcal deficit for steady weight loss`
+      );
+    } else if (context.profile.mainGoal === "BUILD_MUSCLE" || context.profile.mainGoal === "WEIGHT_GAIN") {
+      recommendations.meal_suggestions.push(
+        `Include calorie-dense nutritious foods like nuts, avocados, and whole grains`
+      );
+      recommendations.nutrition_tips.push(
+        `Prioritize protein timing - consume 20-40g protein within 2 hours of exercise`
+      );
+    }
+
+    // Consistency-based insights
+    if (context.performance.consistencyScore < 0.6) {
+      recommendations.behavioral_insights.push(
+        `Your consistency is ${Math.round(context.performance.consistencyScore * 100)}% - try meal prepping on ${context.performance.worstPerformingDayOfWeek}s`
+      );
+    }
+
+    // Streak motivation
+    if (context.streaks.currentDailyStreak > 0) {
+      recommendations.behavioral_insights.push(
+        `Great ${context.streaks.currentDailyStreak}-day streak! Keep logging to reach your longest streak of ${context.streaks.longestDailyStreak} days`
+      );
+    }
+
+    // Today's progress
+    if (context.recentActivity.todayMealsCount === 0) {
+      recommendations.meal_suggestions.push(
+        `Start your day strong - you have ${context.recentActivity.remainingCalories}kcal to distribute across meals`
+      );
+    } else if (context.recentActivity.remainingCalories > 0) {
+      recommendations.meal_suggestions.push(
+        `You have ${context.recentActivity.remainingCalories}kcal and ${context.recentActivity.remainingProtein}g protein remaining for today`
+      );
+    }
+
+    // Default recommendations if none generated
+    if (recommendations.nutrition_tips.length === 0) {
+      recommendations.nutrition_tips = [
+        `Maintain your ${context.goals.dailyCalories}kcal daily target`,
+        "Include colorful vegetables in each meal for micronutrients",
+        "Spread protein intake evenly across meals for optimal absorption",
+      ];
+    }
+
+    return recommendations;
+  }
+
+  /**
+   * Save enhanced recommendation with context metadata
+   */
+  private static async saveEnhancedRecommendation(
+    userId: string,
+    recommendations: AIRecommendationResponse,
+    context: ComprehensiveUserContext
+  ): Promise<DailyRecommendation> {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+
+      const saved = await prisma.aiRecommendation.create({
+        data: {
+          user_id: userId,
+          date: today,
+          recommendations: recommendations,
+          priority_level: recommendations.priority_level,
+          confidence_score: recommendations.confidence_score,
+          based_on: {
+            context_completeness: context.dataCompleteness,
+            goal: context.profile.mainGoal,
+            current_streak: context.streaks.currentDailyStreak,
+            goal_achievement_rate: Math.round(context.performance.overallGoalAchievementRate * 100),
+            analysis_type: "comprehensive_30_day",
+            tdee: context.healthInsights.estimatedTDEE,
+            hydration_status: context.healthInsights.hydrationStatus,
+            protein_status: context.healthInsights.proteinIntakeStatus,
+          },
+          is_read: false,
+        },
+      });
+
+      // Clear context cache after generating new recommendations
+      UserContextService.clearCache(userId);
+
+      return {
+        id: saved.id,
+        user_id: saved.user_id,
+        date: saved.date,
+        recommendations: saved.recommendations as any,
+        priority_level: saved.priority_level as "low" | "medium" | "high",
+        confidence_score: saved.confidence_score,
+        based_on: saved.based_on as any,
+        created_at: saved.created_at,
+        is_read: saved.is_read,
+      };
+    } catch (error) {
+      console.error("Error saving enhanced recommendation:", error);
+      throw error;
     }
   }
 

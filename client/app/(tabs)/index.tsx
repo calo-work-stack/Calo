@@ -501,7 +501,7 @@ const HomeScreen = React.memo(() => {
   }, [user?.user_id, loadDailyGoals]);
 
   if (initialLoading) {
-    return <LoadingScreen text={t("loading.home")} />;
+    return <LoadingScreen text={t("loading.loading", "loading.home")} />;
   }
 
   if (dataError && retryCount > 0) {

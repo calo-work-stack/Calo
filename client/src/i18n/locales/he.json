@@ -558,6 +558,7 @@
     "delete_meal": "מחיקת ארוחה"
   },
   "history": {
+    "title": "היסטוריית ארוחות",
     "loading": "טוען היסטוריה...",
     "greeting": "בוקר טוב",
     "searchPlaceholder": "חפש ארוחות...",
@@ -971,9 +972,12 @@
     "deleteUser": "מחק משתמש"
   },
   "statistics": {
-    "title": "התקדמות וסטטיסטיקות",
+    "title": "סטטיסטיקות",
     "subtitle": "מעקב מפורט אחרי מדדי תזונה והתקדמות אישית",
+    "track_progress": "עקוב אחרי המסע התזונתי שלך",
     "today": "היום",
+    "this_week": "השבוע",
+    "this_month": "החודש",
     "week": "שבוע",
     "month": "חודש",
     "custom": "מותאם אישית",
@@ -1082,7 +1086,21 @@
     "insoluble_fiber": "סיבים בלתי מסיסים",
     "confidence": "רמת ביטחון",
     "no_data": "אין נתונים זמינים",
-    "data_visualization": "הצגת נתונים"
+    "data_visualization": "הצגת נתונים",
+    "analytics": "אנליטיקה",
+    "nutrition_metrics": "מדדי תזונה",
+    "macros": "מקרו",
+    "progress_to_next": "התקדמות לרמה הבאה",
+    "to_next_level": "לרמה הבאה",
+    "daily_hydration": "הידרציה יומית",
+    "stay_hydrated": "שתה מים לבריאות מיטבית",
+    "of_goal": "מהיעד",
+    "remaining": "נותר",
+    "no_achievements": "אין הישגים עדיין",
+    "keep_tracking": "המשך לעקוב כדי לפתוח הישגים!",
+    "progress_summary": "סיכום התקדמות",
+    "nutrition_averages": "ממוצעי תזונה",
+    "loading": "טוען סטטיסטיקות..."
   },
   "devices": {
     "title": "מכשירים חכמים",

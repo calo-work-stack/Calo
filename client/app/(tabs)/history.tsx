@@ -25,14 +25,16 @@ import {
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useMealDataRefresh } from "@/hooks/useMealDataRefresh";
-import { Search, Filter, Plus, SlidersHorizontal } from "lucide-react-native";
+import { Search, Plus, SlidersHorizontal, History, Heart, Star, Flame } from "lucide-react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { LinearGradient } from "expo-linear-gradient";
 import LoadingScreen from "@/components/LoadingScreen";
 import ManualMealAddition from "@/components/history/ManualMealAddition";
 import MealCard from "@/components/history/MealCard";
 import InsightsCard from "@/components/history/InsightsCard";
 import FilterModal from "@/components/history/FilterModal";
 import { FilterOptions } from "@/src/types/history";
+import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 
 const { width } = Dimensions.get("window");
 
@@ -46,7 +48,7 @@ export default function HistoryScreen() {
   const { mealId: selectedMealId } = useLocalSearchParams<{ mealId?: string }>();
 
   // Redux state
-  const { meals, isLoading } = useSelector((state: RootState) => state.meal);
+  const { meals, isLoading, isTogglingFavorite, isSavingFeedback } = useSelector((state: RootState) => state.meal);
 
   // Local state
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,7 +60,7 @@ export default function HistoryScreen() {
     category: "all",
     dateRange: "all",
     minCalories: 0,
-    maxCalories: 2000,
+    maxCalories: 3000,
     showFavoritesOnly: false,
   });
 
@@ -73,12 +75,11 @@ export default function HistoryScreen() {
   // Handle deep linking to specific meal
   useEffect(() => {
     if (selectedMealId && meals.length > 0 && !isLoading) {
-      // Reset filters to show all meals
       setFilters({
         category: "all",
         dateRange: "all",
         minCalories: 0,
-        maxCalories: 2000,
+        maxCalories: 3000,
         showFavoritesOnly: false,
       });
       setSearchQuery("");
@@ -91,7 +92,7 @@ export default function HistoryScreen() {
       if (mealIndex !== -1) {
         setTimeout(() => {
           flatListRef.current?.scrollToIndex({
-            index: mealIndex + 1, // +1 for insights card
+            index: mealIndex + 1,
             animated: true,
             viewPosition: 0.3,
           });
@@ -115,18 +116,19 @@ export default function HistoryScreen() {
     }
   }, [refreshAllMealData]);
 
-  // Toggle favorite
+  // Toggle favorite with optimistic update
   const handleToggleFavorite = useCallback(
     async (mealId: string) => {
       try {
-        await dispatch(toggleMealFavorite(mealId)).unwrap();
-        refreshMealData();
+        console.log("❤️ Toggling favorite for meal:", mealId);
+        const result = await dispatch(toggleMealFavorite(mealId)).unwrap();
+        console.log("✅ Favorite toggled:", result);
       } catch (error) {
         console.error("Failed to toggle favorite:", error);
         Alert.alert(t("common.error"), t("history.messages.favoriteUpdateFailed"));
       }
     },
-    [dispatch, refreshMealData, t]
+    [dispatch, t]
   );
 
   // Duplicate meal
@@ -148,7 +150,6 @@ export default function HistoryScreen() {
                   })
                 ).unwrap();
                 Alert.alert(t("common.success"), t("history.messages.mealDuplicated"));
-                refreshMealData();
               } catch (error) {
                 console.error("Failed to duplicate meal:", error);
                 Alert.alert(t("common.error"), t("history.messages.duplicateFailed"));
@@ -158,7 +159,7 @@ export default function HistoryScreen() {
         ]
       );
     },
-    [dispatch, refreshMealData, t]
+    [dispatch, t]
   );
 
   // Delete meal
@@ -175,7 +176,6 @@ export default function HistoryScreen() {
             onPress: async () => {
               try {
                 await dispatch(removeMeal(mealId)).unwrap();
-                refreshMealData();
               } catch (error) {
                 console.error("Failed to remove meal:", error);
                 Alert.alert(t("common.error"), t("history.messages.deleteFailed"));
@@ -185,13 +185,14 @@ export default function HistoryScreen() {
         ]
       );
     },
-    [dispatch, refreshMealData, t]
+    [dispatch, t]
   );
 
-  // Save ratings
+  // Save ratings with feedback
   const handleSaveRatings = useCallback(
     async (mealId: string, ratings: any) => {
       try {
+        console.log("⭐ Saving ratings for meal:", mealId, ratings);
         await dispatch(
           saveMealFeedback({
             mealId,
@@ -203,14 +204,14 @@ export default function HistoryScreen() {
             },
           })
         ).unwrap();
+        console.log("✅ Ratings saved successfully");
         Alert.alert(t("common.success"), t("history.messages.ratingsSaved"));
-        refreshMealData();
       } catch (error) {
         console.error("Failed to save ratings:", error);
         Alert.alert(t("common.error"), t("history.messages.ratingsSaveFailed"));
       }
     },
-    [dispatch, refreshMealData, t]
+    [dispatch, t]
   );
 
   // Filter meals
@@ -320,9 +321,36 @@ export default function HistoryScreen() {
       filters.dateRange !== "all" ||
       filters.showFavoritesOnly ||
       filters.minCalories > 0 ||
-      filters.maxCalories < 2000
+      filters.maxCalories < 3000
     );
   }, [filters]);
+
+  // Render quick stats
+  const renderQuickStats = () => {
+    if (!insights) return null;
+
+    return (
+      <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.quickStats}>
+        <View style={[styles.quickStatCard, { backgroundColor: isDark ? "#FF9F0A20" : "#FFF8F0" }]}>
+          <Flame size={18} color="#FF9F0A" />
+          <Text style={[styles.quickStatValue, { color: colors.text }]}>{insights.avgCalories}</Text>
+          <Text style={[styles.quickStatLabel, { color: colors.muted }]}>avg kcal</Text>
+        </View>
+
+        <View style={[styles.quickStatCard, { backgroundColor: isDark ? "#FF2D5520" : "#FFF0F3" }]}>
+          <Heart size={18} color="#FF2D55" fill={insights.favoriteMeals > 0 ? "#FF2D55" : "transparent"} />
+          <Text style={[styles.quickStatValue, { color: colors.text }]}>{insights.favoriteMeals}</Text>
+          <Text style={[styles.quickStatLabel, { color: colors.muted }]}>favorites</Text>
+        </View>
+
+        <View style={[styles.quickStatCard, { backgroundColor: isDark ? "#FFB80020" : "#FFFBEB" }]}>
+          <Star size={18} color="#FFB800" fill={insights.avgRating > 0 ? "#FFB800" : "transparent"} />
+          <Text style={[styles.quickStatValue, { color: colors.text }]}>{insights.avgRating || "-"}</Text>
+          <Text style={[styles.quickStatLabel, { color: colors.muted }]}>rating</Text>
+        </View>
+      </Animated.View>
+    );
+  };
 
   // Render item
   const renderItem = useCallback(
@@ -334,14 +362,16 @@ export default function HistoryScreen() {
       const mealId = item.meal_id?.toString() || item.id?.toString();
 
       return (
-        <MealCard
-          meal={item}
-          onToggleFavorite={handleToggleFavorite}
-          onDelete={handleRemoveMeal}
-          onDuplicate={handleDuplicateMeal}
-          onSaveRatings={handleSaveRatings}
-          isHighlighted={highlightedMealId === mealId}
-        />
+        <Animated.View entering={FadeIn.delay(index * 30).duration(300)}>
+          <MealCard
+            meal={item}
+            onToggleFavorite={handleToggleFavorite}
+            onDelete={handleRemoveMeal}
+            onDuplicate={handleDuplicateMeal}
+            onSaveRatings={handleSaveRatings}
+            isHighlighted={highlightedMealId === mealId}
+          />
+        </Animated.View>
       );
     },
     [handleToggleFavorite, handleRemoveMeal, handleDuplicateMeal, handleSaveRatings, highlightedMealId]
@@ -364,6 +394,12 @@ export default function HistoryScreen() {
   // Empty state
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
+      <LinearGradient
+        colors={isDark ? ["#374151", "#1F2937"] : ["#F3F4F6", "#E5E7EB"]}
+        style={styles.emptyIconContainer}
+      >
+        <History size={48} color={colors.muted} />
+      </LinearGradient>
       <Text style={[styles.emptyTitle, { color: colors.text }]}>
         {t("history.emptyState.title")}
       </Text>
@@ -372,6 +408,23 @@ export default function HistoryScreen() {
           ? t("history.emptyState.adjustedFilters")
           : t("history.emptyState.default")}
       </Text>
+      {(searchQuery || hasActiveFilters) && (
+        <TouchableOpacity
+          style={[styles.clearFiltersButton, { backgroundColor: colors.primary }]}
+          onPress={() => {
+            setSearchQuery("");
+            setFilters({
+              category: "all",
+              dateRange: "all",
+              minCalories: 0,
+              maxCalories: 3000,
+              showFavoritesOnly: false,
+            });
+          }}
+        >
+          <Text style={styles.clearFiltersText}>{t("history.clearFilters") || "Clear Filters"}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -384,21 +437,31 @@ export default function HistoryScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
-              {t("history.title")}
-            </Text>
-            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-              {filteredMeals.length} {t("history.insights.totalMeals").toLowerCase()}
-            </Text>
-          </View>
+          <Animated.View entering={FadeInDown.duration(400)} style={styles.headerTop}>
+            <View>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>
+                {t("history.title")}
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+                {filteredMeals.length} {t("history.insights.totalMeals").toLowerCase()}
+              </Text>
+            </View>
+
+            {/* Loading indicator for favorites/ratings */}
+            {(isTogglingFavorite || isSavingFeedback) && (
+              <ActivityIndicator size="small" color={colors.primary} />
+            )}
+          </Animated.View>
+
+          {/* Quick Stats */}
+          {renderQuickStats()}
 
           {/* Search & Filter Bar */}
-          <View style={styles.searchRow}>
+          <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.searchRow}>
             <View
               style={[
                 styles.searchBar,
-                { backgroundColor: colors.surfaceVariant, borderColor: colors.border },
+                { backgroundColor: colors.card, borderColor: colors.border },
               ]}
             >
               <Search size={20} color={colors.muted} />
@@ -415,7 +478,7 @@ export default function HistoryScreen() {
               style={[
                 styles.filterButton,
                 {
-                  backgroundColor: hasActiveFilters ? colors.primary : colors.surfaceVariant,
+                  backgroundColor: hasActiveFilters ? colors.primary : colors.card,
                   borderColor: hasActiveFilters ? colors.primary : colors.border,
                 },
               ]}
@@ -423,8 +486,13 @@ export default function HistoryScreen() {
               activeOpacity={0.7}
             >
               <SlidersHorizontal size={20} color={hasActiveFilters ? "#FFF" : colors.text} />
+              {hasActiveFilters && (
+                <View style={styles.filterBadge}>
+                  <Text style={styles.filterBadgeText}>!</Text>
+                </View>
+              )}
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         </View>
 
         {/* Meals List */}
@@ -452,15 +520,25 @@ export default function HistoryScreen() {
               });
             }, 100);
           }}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          windowSize={10}
         />
 
         {/* FAB - Add Meal */}
         <TouchableOpacity
-          style={[styles.fab, { backgroundColor: colors.primary }]}
+          style={[styles.fab]}
           onPress={() => setShowManualMealModal(true)}
           activeOpacity={0.9}
         >
-          <Plus size={26} color="#FFF" strokeWidth={2.5} />
+          <LinearGradient
+            colors={["#10B981", "#059669"]}
+            style={styles.fabGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Plus size={26} color="#FFF" strokeWidth={2.5} />
+          </LinearGradient>
         </TouchableOpacity>
 
         {/* Filter Modal */}
@@ -490,15 +568,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 12,
+    paddingBottom: 16,
   },
   headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: "800",
     letterSpacing: -0.8,
   },
@@ -506,6 +587,32 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "500",
     marginTop: 2,
+  },
+  quickStats: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+  },
+  quickStatCard: {
+    flex: 1,
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    gap: 4,
+  },
+  quickStatValue: {
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  quickStatLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   searchRow: {
     flexDirection: "row",
@@ -515,10 +622,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 48,
-    gap: 10,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    height: 52,
+    gap: 12,
     borderWidth: 1,
   },
   searchInput: {
@@ -527,26 +634,52 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   filterButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
+    position: "relative",
+  },
+  filterBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#EF4444",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  filterBadgeText: {
+    color: "#FFF",
+    fontSize: 11,
+    fontWeight: "700",
   },
   listContent: {
     paddingBottom: 100,
+    paddingTop: 8,
   },
   emptyState: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 60,
+    paddingVertical: 80,
     paddingHorizontal: 40,
   },
+  emptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+  },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "800",
     marginBottom: 8,
     textAlign: "center",
   },
@@ -556,19 +689,32 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 22,
   },
+  clearFiltersButton: {
+    marginTop: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  clearFiltersText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "700",
+  },
   fab: {
     position: "absolute",
     bottom: 24,
     right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  fabGradient: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
   },
 });
