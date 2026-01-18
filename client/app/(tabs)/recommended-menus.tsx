@@ -758,7 +758,7 @@ export default function RecommendedMenusScreen() {
 
   if (isLoading) {
     return (
-      <LoadingScreen text={isRTL ? "טוען תפריטים..." : "Loading menus..."} />
+      <LoadingScreen text={t("loading.loading","loading.recommended_menus")} />
     );
   }
 

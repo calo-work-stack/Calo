@@ -85,11 +85,14 @@ export default function StatisticsScreen() {
   // Loading state
   if (isLoading && !hasData) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        edges={["top"]}
+      >
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-            {t("statistics.loading") || "Loading statistics..."}
+            {t("loading.loading", "loading.statistics")}
           </Text>
         </View>
       </SafeAreaView>
@@ -103,9 +106,17 @@ export default function StatisticsScreen() {
     const macroMetrics = categorizedMetrics.macros.slice(0, 4);
 
     return (
-      <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.metricsSection}>
+      <Animated.View
+        entering={FadeInDown.delay(200).duration(400)}
+        style={styles.metricsSection}
+      >
         <View style={styles.sectionHeader}>
-          <View style={[styles.sectionIconBg, { backgroundColor: isDark ? "#3B82F620" : "#EFF6FF" }]}>
+          <View
+            style={[
+              styles.sectionIconBg,
+              { backgroundColor: isDark ? "#3B82F620" : "#EFF6FF" },
+            ]}
+          >
             <Target size={18} color="#3B82F6" />
           </View>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -131,10 +142,16 @@ export default function StatisticsScreen() {
     const waterMetric = categorizedMetrics.hydration[0];
     if (!waterMetric) return null;
 
-    const percentage = Math.min(100, Math.round((waterMetric.value / waterMetric.target) * 100));
+    const percentage = Math.min(
+      100,
+      Math.round((waterMetric.value / waterMetric.target) * 100)
+    );
 
     return (
-      <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.hydrationSection}>
+      <Animated.View
+        entering={FadeInDown.delay(300).duration(400)}
+        style={styles.hydrationSection}
+      >
         <LinearGradient
           colors={isDark ? ["#1E3A5F", "#1E293B"] : ["#EBF8FF", "#DBEAFE"]}
           style={styles.hydrationCard}
@@ -149,8 +166,14 @@ export default function StatisticsScreen() {
               <Text style={[styles.hydrationTitle, { color: colors.text }]}>
                 {t("statistics.daily_hydration") || "Daily Hydration"}
               </Text>
-              <Text style={[styles.hydrationSubtitle, { color: colors.textSecondary }]}>
-                {t("statistics.stay_hydrated") || "Stay hydrated for better health"}
+              <Text
+                style={[
+                  styles.hydrationSubtitle,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {t("statistics.stay_hydrated") ||
+                  "Stay hydrated for better health"}
               </Text>
             </View>
           </View>
@@ -160,12 +183,19 @@ export default function StatisticsScreen() {
               <Text style={[styles.hydrationCurrent, { color: "#3B82F6" }]}>
                 {Math.round(waterMetric.value)}
               </Text>
-              <Text style={[styles.hydrationUnit, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.hydrationUnit, { color: colors.textSecondary }]}
+              >
                 / {waterMetric.target} ml
               </Text>
             </View>
 
-            <View style={[styles.hydrationBar, { backgroundColor: isDark ? "#374151" : "#E2E8F0" }]}>
+            <View
+              style={[
+                styles.hydrationBar,
+                { backgroundColor: isDark ? "#374151" : "#E2E8F0" },
+              ]}
+            >
               <LinearGradient
                 colors={["#3B82F6", "#60A5FA"]}
                 start={{ x: 0, y: 0 }}
@@ -188,9 +218,17 @@ export default function StatisticsScreen() {
     if (!weeklyData.length) return null;
 
     return (
-      <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.chartSection}>
+      <Animated.View
+        entering={FadeInDown.delay(400).duration(400)}
+        style={styles.chartSection}
+      >
         <View style={styles.sectionHeader}>
-          <View style={[styles.sectionIconBg, { backgroundColor: isDark ? "#8B5CF620" : "#F3E8FF" }]}>
+          <View
+            style={[
+              styles.sectionIconBg,
+              { backgroundColor: isDark ? "#8B5CF620" : "#F3E8FF" },
+            ]}
+          >
             <TrendingUp size={18} color="#8B5CF6" />
           </View>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -211,15 +249,23 @@ export default function StatisticsScreen() {
 
     // Get macros metrics from categorized metrics
     const macrosMetrics = categorizedMetrics.macros.filter(
-      m => m.id === "protein" || m.id === "carbs" || m.id === "fats"
+      (m) => m.id === "protein" || m.id === "carbs" || m.id === "fats"
     );
 
     if (macrosMetrics.length === 0) return null;
 
     return (
-      <Animated.View entering={FadeInDown.delay(500).duration(400)} style={styles.macrosSection}>
+      <Animated.View
+        entering={FadeInDown.delay(500).duration(400)}
+        style={styles.macrosSection}
+      >
         <View style={styles.sectionHeader}>
-          <View style={[styles.sectionIconBg, { backgroundColor: isDark ? "#10B98120" : "#D1FAE5" }]}>
+          <View
+            style={[
+              styles.sectionIconBg,
+              { backgroundColor: isDark ? "#10B98120" : "#D1FAE5" },
+            ]}
+          >
             <Zap size={18} color="#10B981" />
           </View>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -237,9 +283,17 @@ export default function StatisticsScreen() {
   // Render AI Recommendations
   const renderAIRecommendations = () => {
     return (
-      <Animated.View entering={FadeInDown.delay(550).duration(400)} style={styles.recommendationsSection}>
+      <Animated.View
+        entering={FadeInDown.delay(550).duration(400)}
+        style={styles.recommendationsSection}
+      >
         <View style={styles.sectionHeader}>
-          <View style={[styles.sectionIconBg, { backgroundColor: isDark ? "#6366F120" : "#EEF2FF" }]}>
+          <View
+            style={[
+              styles.sectionIconBg,
+              { backgroundColor: isDark ? "#6366F120" : "#EEF2FF" },
+            ]}
+          >
             <Sparkles size={18} color="#6366F1" />
           </View>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -266,9 +320,17 @@ export default function StatisticsScreen() {
   // Render stats summary
   const renderStatsSummary = () => {
     return (
-      <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.summarySection}>
+      <Animated.View
+        entering={FadeInDown.delay(600).duration(400)}
+        style={styles.summarySection}
+      >
         <View style={styles.sectionHeader}>
-          <View style={[styles.sectionIconBg, { backgroundColor: isDark ? "#EF444420" : "#FEE2E2" }]}>
+          <View
+            style={[
+              styles.sectionIconBg,
+              { backgroundColor: isDark ? "#EF444420" : "#FEE2E2" },
+            ]}
+          >
             <Flame size={18} color="#EF4444" />
           </View>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -284,9 +346,17 @@ export default function StatisticsScreen() {
   // Render achievements section
   const renderAchievements = () => {
     return (
-      <Animated.View entering={FadeInDown.delay(700).duration(400)} style={styles.achievementsSection}>
+      <Animated.View
+        entering={FadeInDown.delay(700).duration(400)}
+        style={styles.achievementsSection}
+      >
         <View style={styles.sectionHeader}>
-          <View style={[styles.sectionIconBg, { backgroundColor: isDark ? "#F59E0B20" : "#FEF3C7" }]}>
+          <View
+            style={[
+              styles.sectionIconBg,
+              { backgroundColor: isDark ? "#F59E0B20" : "#FEF3C7" },
+            ]}
+          >
             <Award size={18} color="#F59E0B" />
           </View>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -304,7 +374,10 @@ export default function StatisticsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={["top"]}
+    >
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -319,11 +392,16 @@ export default function StatisticsScreen() {
         }
       >
         {/* Header */}
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
+        <Animated.View
+          entering={FadeInDown.duration(400)}
+          style={styles.header}
+        >
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             {t("statistics.title") || "Statistics"}
           </Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+          <Text
+            style={[styles.headerSubtitle, { color: colors.textSecondary }]}
+          >
             {t("statistics.track_progress") || "Track your nutrition progress"}
           </Text>
         </Animated.View>
@@ -337,7 +415,10 @@ export default function StatisticsScreen() {
         </Animated.View>
 
         {/* Level Progress Card */}
-        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.levelSection}>
+        <Animated.View
+          entering={FadeInDown.delay(100).duration(400)}
+          style={styles.levelSection}
+        >
           <LevelProgress
             level={gamificationStats.level}
             currentXP={gamificationStats.currentXP}

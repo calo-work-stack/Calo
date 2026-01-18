@@ -416,7 +416,7 @@ export default function DevicesScreen() {
   };
 
   if (isLoading) {
-    return <LoadingScreen text={t("loading_smart_devices")} />;
+    return <LoadingScreen text={t("loading.loading", "loading.devices")} />;
   }
 
   if (error) {

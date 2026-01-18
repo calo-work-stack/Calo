@@ -429,7 +429,7 @@ export default function HistoryScreen() {
   );
 
   if (isLoading && meals.length === 0) {
-    return <LoadingScreen text={t("history.loading")} />;
+    return <LoadingScreen text={t("loading.loading","loading.history")} />;
   }
 
   return (

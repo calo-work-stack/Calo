@@ -780,7 +780,7 @@ export default function CalendarScreen() {
     (isLoading || isLoadingCalendar) &&
     Object.keys(calendarData).length === 0
   ) {
-    return <LoadingScreen text={t("loading.calendar")} />;
+    return <LoadingScreen text={t("loading.calendar", "loading.calendar")} />;
   }
 
   const hasNoData =
