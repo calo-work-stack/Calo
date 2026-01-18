@@ -339,7 +339,6 @@
     "kcal": "kcal"
   },
   "history": {
-    "title": "Meal History",
     "loading": "Loading history...",
     "greeting": "Good Morning",
     "searchPlaceholder": "Search for meals...",
