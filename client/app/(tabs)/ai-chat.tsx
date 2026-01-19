@@ -721,7 +721,7 @@ export default function AIChatScreen({
               ]}
               value={inputText}
               onChangeText={setInputText}
-              placeholder={t("ai_chat.placeholder")}
+              placeholder={t("ai_chat.type_message")}
               placeholderTextColor={colors.textTertiary}
               multiline
             />

@@ -648,19 +648,11 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   headerGradient: {
     marginHorizontal: 20,
     borderRadius: 20,
     marginBottom: 30,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
   },
   header: {
     alignItems: "center",
@@ -702,10 +694,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     zIndex: 1,
     gap: 4,
-    shadowColor: "#FFD700",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
   },
   popularText: {
     color: "#1a1a1a",
@@ -718,15 +706,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#e0e0e0",
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
   },
   recommendedCard: {
     borderWidth: 3,
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
   },
   cardGradient: {
     padding: 24,
@@ -812,14 +794,8 @@ const styles = StyleSheet.create({
   selectButton: {
     borderRadius: 16,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
   },
   recommendedButton: {
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
   },
   buttonGradient: {
     paddingVertical: 18,
@@ -874,10 +850,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
   },
   modalGradient: {
     flex: 1,

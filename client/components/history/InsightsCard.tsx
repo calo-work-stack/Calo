@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   Dimensions,
+  ScrollView,
+  Animated,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/context/ThemeContext";
@@ -18,6 +20,8 @@ import {
 } from "lucide-react-native";
 
 const { width } = Dimensions.get("window");
+const CARD_WIDTH = width - 100;
+const CARD_SPACING = 12;
 
 interface InsightsData {
   totalMeals: number;
@@ -34,6 +38,7 @@ interface InsightsCardProps {
 export default function InsightsCard({ insights }: InsightsCardProps) {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
+  const scrollX = useRef(new Animated.Value(0)).current;
 
   if (!insights) return null;
 
@@ -70,11 +75,13 @@ export default function InsightsCard({ insights }: InsightsCardProps) {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <LinearGradient
-          colors={isDark ? ["#009EAD30", "#009EAD10"] : ["#009EAD20", "#009EAD08"]}
+          colors={
+            isDark ? ["#009EAD30", "#009EAD10"] : ["#009EAD20", "#009EAD08"]
+          }
           style={styles.headerIconBg}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -89,43 +96,130 @@ export default function InsightsCard({ insights }: InsightsCardProps) {
             {t("history.insights.subtitle")}
           </Text>
         </View>
-        <View style={[styles.trendBadge, { backgroundColor: isDark ? "#10B98120" : "#10B98110" }]}>
+        <View
+          style={[
+            styles.trendBadge,
+            { backgroundColor: isDark ? "#10B98120" : "#10B98110" },
+          ]}
+        >
           <TrendingUp size={14} color="#10B981" />
         </View>
       </View>
 
-      {/* Stats Grid */}
-      <View style={styles.statsGrid}>
+      {/* Carousel */}
+      <Animated.ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={CARD_WIDTH + CARD_SPACING}
+        decelerationRate="fast"
+        contentContainerStyle={styles.scrollContent}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
+      >
         {stats.map((stat, index) => {
           const IconComponent = stat.icon;
+          const inputRange = [
+            (index - 1) * (CARD_WIDTH + CARD_SPACING),
+            index * (CARD_WIDTH + CARD_SPACING),
+            (index + 1) * (CARD_WIDTH + CARD_SPACING),
+          ];
+
+          const scale = scrollX.interpolate({
+            inputRange,
+            outputRange: [0.92, 1, 0.92],
+            extrapolate: "clamp",
+          });
+
+          const opacity = scrollX.interpolate({
+            inputRange,
+            outputRange: [0.6, 1, 0.6],
+            extrapolate: "clamp",
+          });
+
           return (
-            <View
+            <Animated.View
               key={index}
               style={[
-                styles.statItem,
-                { backgroundColor: isDark ? `${stat.color}12` : `${stat.color}08` },
+                styles.statCard,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  transform: [{ scale }],
+                  opacity,
+                },
               ]}
             >
               <LinearGradient
                 colors={stat.gradient}
-                style={styles.statIconBg}
+                style={styles.statCardGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <IconComponent size={16} color="#FFF" />
+                <View style={styles.statCardContent}>
+                  <View style={styles.statIconContainer}>
+                    <View
+                      style={[
+                        styles.statIconBg,
+                        { backgroundColor: "rgba(255, 255, 255, 0.25)" },
+                      ]}
+                    >
+                      <IconComponent size={28} color="#FFF" />
+                    </View>
+                  </View>
+                  <View style={styles.statInfo}>
+                    <Text style={styles.statValue}>
+                      {stat.value}
+                      {stat.suffix && (
+                        <Text style={styles.statSuffix}> {stat.suffix}</Text>
+                      )}
+                    </Text>
+                    <Text style={styles.statLabel} numberOfLines={2}>
+                      {stat.label}
+                    </Text>
+                  </View>
+                </View>
               </LinearGradient>
-              <Text style={[styles.statValue, { color: colors.text }]}>
-                {stat.value}
-                {stat.suffix && (
-                  <Text style={[styles.statSuffix, { color: colors.textSecondary }]}>
-                    {" "}{stat.suffix}
-                  </Text>
-                )}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]} numberOfLines={1}>
-                {stat.label}
-              </Text>
-            </View>
+            </Animated.View>
+          );
+        })}
+      </Animated.ScrollView>
+
+      {/* Pagination Dots */}
+      <View style={styles.pagination}>
+        {stats.map((_, index) => {
+          const inputRange = [
+            (index - 1) * (CARD_WIDTH + CARD_SPACING),
+            index * (CARD_WIDTH + CARD_SPACING),
+            (index + 1) * (CARD_WIDTH + CARD_SPACING),
+          ];
+
+          const dotScale = scrollX.interpolate({
+            inputRange,
+            outputRange: [0.8, 1.4, 0.8],
+            extrapolate: "clamp",
+          });
+
+          const dotOpacity = scrollX.interpolate({
+            inputRange,
+            outputRange: [0.3, 1, 0.3],
+            extrapolate: "clamp",
+          });
+
+          return (
+            <Animated.View
+              key={index}
+              style={[
+                styles.dot,
+                {
+                  backgroundColor: colors.primary,
+                  transform: [{ scale: dotScale }],
+                  opacity: dotOpacity,
+                },
+              ]}
+            />
           );
         })}
       </View>
@@ -135,22 +229,14 @@ export default function InsightsCard({ insights }: InsightsCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 16,
     marginBottom: 16,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     marginBottom: 16,
+    paddingHorizontal: 16,
   },
   headerIconBg: {
     width: 42,
@@ -178,39 +264,72 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-  },
-  statsGrid: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
   },
-  statItem: {
-    width: (width - 58) / 2,
-    padding: 14,
-    borderRadius: 16,
+  scrollContent: {
+    paddingHorizontal: 16,
+    gap: CARD_SPACING,
+  },
+  statCard: {
+    width: CARD_WIDTH,
+    height: 140,
+    borderRadius: 20,
+    overflow: "hidden",
+    borderWidth: 1,
+  },
+  statCardGradient: {
+    flex: 1,
+    padding: 20,
+  },
+  statCardContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  statIconContainer: {
+    justifyContent: "center",
     alignItems: "center",
   },
   statIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 60,
+    height: 60,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10,
+  },
+  statInfo: {
+    flex: 1,
+    justifyContent: "center",
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 36,
     fontWeight: "800",
-    letterSpacing: -0.5,
+    letterSpacing: -1,
     marginBottom: 4,
+    color: "#FFFFFF",
   },
   statSuffix: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: "600",
+    color: "rgba(255, 255, 255, 0.9)",
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "600",
-    textAlign: "center",
+    color: "rgba(255, 255, 255, 0.95)",
+    lineHeight: 18,
+  },
+  pagination: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 12,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
 });

@@ -275,7 +275,7 @@ export default function MealCard({
           {
             backgroundColor: colors.card,
             borderColor: isHighlighted ? borderColor : colors.border,
-            borderWidth: isHighlighted ? 2 : 1,
+            borderWidth: isHighlighted ? 2: 1,
           },
         ]}
       >
@@ -536,11 +536,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 20,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
   },
   mainContent: {
     flexDirection: "row",

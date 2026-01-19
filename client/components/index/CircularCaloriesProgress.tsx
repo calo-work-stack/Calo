@@ -305,11 +305,6 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
       overflow: "hidden",
       borderWidth: 1,
       borderColor: isDark ? colors.border + "40" : colors.border + "60",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0 : 0.04,
-      shadowRadius: 8,
-      elevation: isDark ? 0 : 2,
     },
     pagination: {
       flexDirection: "row",

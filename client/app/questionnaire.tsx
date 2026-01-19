@@ -1533,9 +1533,6 @@ const styles = StyleSheet.create({
     padding: 24,
     maxWidth: 320,
     width: "100%",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
   },
   modalText: {
     fontSize: 16,

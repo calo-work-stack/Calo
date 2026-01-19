@@ -963,7 +963,7 @@ const HomeScreen = React.memo(() => {
                         { color: colors.primary },
                       ]}
                     >
-                      {meal.calories || 0} {t("common.kcal")}
+                      {meal.calories || 0} {t("meals.kcal")}
                     </Text>
                   </TouchableOpacity>
                 ))

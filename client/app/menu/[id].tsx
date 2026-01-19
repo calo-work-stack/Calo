@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
   Alert,
   ActivityIndicator,
   Animated,
   Modal,
-  Dimensions,
   Share,
   Image,
 } from "react-native";
@@ -31,20 +30,15 @@ import {
   ChevronDown,
   ChevronUp,
   Utensils,
-  Award,
   DollarSign,
   Info,
   Check,
   Sparkles,
-  TrendingUp,
-  Users,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/src/services/api";
 import { DietaryIcons } from "@/components/menu/DietaryIcons";
 import { NutritionHabits } from "@/components/menu/NutritionHabits";
-
-const { width: screenWidth } = Dimensions.get("window");
 
 interface Ingredient {
   ingredient_id: string;
@@ -130,7 +124,7 @@ export default function MenuDetailsScreen() {
       }
     } catch (error) {
       console.error("Error loading menu:", error);
-      Alert.alert("Error", "Failed to load menu details");
+      Alert.alert(t("menu_details.error"), t("menu_details.failed_to_load"));
     } finally {
       setIsLoading(false);
     }
@@ -144,11 +138,11 @@ export default function MenuDetailsScreen() {
       if (response.data.success) {
         setShowStartModal(false);
         Alert.alert(
-          "Success!",
-          "Menu activated! You can now track your progress.",
+          t("menu_details.success"),
+          t("menu_details.menu_activated"),
           [
             {
-              text: "View Active Menu",
+              text: t("menu_details.view_active_menu"),
               onPress: () => router.push(`/menu/activeMenu?planId=${id}`),
             },
           ]
@@ -156,7 +150,7 @@ export default function MenuDetailsScreen() {
       }
     } catch (error) {
       console.error("Error starting menu:", error);
-      Alert.alert("Error", "Failed to start menu");
+      Alert.alert(t("menu_details.error"), t("menu_details.failed_to_start"));
     } finally {
       setIsStarting(false);
     }
@@ -166,18 +160,24 @@ export default function MenuDetailsScreen() {
     try {
       const mealCount = menu?.meals.length || 0;
       await Share.share({
-        message: `Check out this amazing ${menu?.days_count}-day meal plan: ${menu?.title}! 🍽️\n\nIncludes ${mealCount} delicious meals with ${menu?.total_calories} total calories.\n\nEstimated cost: ₪${menu?.estimated_cost || 0}`,
+        message: t("menu_details.share_message", {
+          days: menu?.days_count,
+          title: menu?.title,
+          mealCount,
+          calories: menu?.total_calories,
+          cost: menu?.estimated_cost || 0,
+        }),
       });
     } catch (error) {
       console.error("Error sharing:", error);
     }
   };
 
-  const toggleMealExpanded = (mealId: string) => {
-    setExpandedMeal(expandedMeal === mealId ? null : mealId);
-  };
+  const toggleMealExpanded = useCallback((mealId: string) => {
+    setExpandedMeal((prev) => (prev === mealId ? null : mealId));
+  }, []);
 
-  const getMealTypeEmoji = (type: string) => {
+  const getMealTypeEmoji = useCallback((type: string) => {
     const typeMap: Record<string, string> = {
       BREAKFAST: "🌅",
       LUNCH: "☀️",
@@ -187,40 +187,51 @@ export default function MenuDetailsScreen() {
       AFTERNOON_SNACK: "🍪",
     };
     return typeMap[type] || "🍽️";
-  };
+  }, []);
 
-  const getMealTypeColor = (type: string) => {
+  const getMealTypeColor = useCallback((type: string) => {
     const colorMap: Record<string, string> = {
-      BREAKFAST: colors.amber500,
-      LUNCH: colors.emerald500,
-      DINNER: colors.indigo500,
-      SNACK: colors.pink500,
-      MORNING_SNACK: colors.orange500,
-      AFTERNOON_SNACK: colors.purple500,
+      BREAKFAST: "#F59E0B",
+      LUNCH: "#10B981",
+      DINNER: "#6366F1",
+      SNACK: "#EC4899",
+      MORNING_SNACK: "#F97316",
+      AFTERNOON_SNACK: "#A855F7",
     };
-    return colorMap[type] || colors.gray500;
-  };
+    return colorMap[type] || "#6B7280";
+  }, []);
 
-  const getDifficultyLabel = () => {
-    if (!menu?.difficulty_level) return "Easy";
-    if (menu.difficulty_level <= 2) return language === "he" ? "קל" : "Easy";
-    if (menu.difficulty_level <= 3) return language === "he" ? "בינוני" : "Medium";
-    return language === "he" ? "קשה" : "Hard";
-  };
+  const getMealTypeLabel = useCallback(
+    (type: string) => {
+      return t(`menu_details.meal_types.${type}`, type);
+    },
+    [t]
+  );
 
-  const getDifficultyColor = () => {
-    if (!menu?.difficulty_level) return colors.emerald500;
-    if (menu.difficulty_level <= 2) return colors.emerald500;
-    if (menu.difficulty_level <= 3) return colors.amber500;
-    return colors.red500;
-  };
+  const mealsForDay = useMemo(
+    () => menu?.meals.filter((m) => m.day_number === selectedDay) || [],
+    [menu, selectedDay]
+  );
+
+  const uniqueDays = useMemo(
+    () =>
+      [...new Set(menu?.meals.map((m) => m.day_number) || [])].sort(
+        (a, b) => a - b
+      ),
+    [menu]
+  );
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#10B981" />
-        <Text style={styles.loadingText}>
-          {language === "he" ? "טוען תפריט..." : "Loading menu..."}
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+          {t("menu_details.loading_menu")}
         </Text>
       </View>
     );
@@ -228,56 +239,95 @@ export default function MenuDetailsScreen() {
 
   if (!menu) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>
-            {language === "he" ? "תפריט לא נמצא" : "Menu not found"}
+          <Text style={[styles.errorText, { color: colors.text }]}>
+            {t("menu_details.menu_not_found")}
           </Text>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.errorButton}>
-              {language === "he" ? "חזור" : "Go Back"}
+          <Pressable onPress={() => router.back()}>
+            <Text style={[styles.errorButton, { color: colors.primary }]}>
+              {t("menu_details.go_back")}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
-  const mealsForDay = menu.meals.filter((m) => m.day_number === selectedDay);
-  const uniqueDays = [...new Set(menu.meals.map((m) => m.day_number))].sort((a, b) => a - b);
-
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Clean Header */}
-      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      {/* Header */}
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: colors.card, borderBottomColor: colors.border },
+        ]}
+      >
+        <Pressable onPress={() => router.back()} style={styles.headerButton}>
           <ArrowLeft size={24} color={colors.text} />
-        </TouchableOpacity>
+        </Pressable>
 
         <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{menu.title}</Text>
+          <Text
+            style={[styles.headerTitle, { color: colors.text }]}
+            numberOfLines={1}
+          >
+            {menu.title}
+          </Text>
           <View style={styles.headerBadges}>
-            <View style={[styles.headerBadge, { backgroundColor: colors.surface }]}>
+            <View
+              style={[
+                styles.headerBadge,
+                { backgroundColor: colors.surfaceVariant },
+              ]}
+            >
               <Calendar size={12} color={colors.textSecondary} />
-              <Text style={[styles.headerBadgeText, { color: colors.textSecondary }]}>{menu.days_count} Days</Text>
+              <Text
+                style={[
+                  styles.headerBadgeText,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {menu.days_count} {t("menu_details.days")}
+              </Text>
             </View>
-            <View style={[styles.headerBadge, { backgroundColor: colors.surface }]}>
+            <View
+              style={[
+                styles.headerBadge,
+                { backgroundColor: colors.surfaceVariant },
+              ]}
+            >
               <Utensils size={12} color={colors.textSecondary} />
-              <Text style={[styles.headerBadgeText, { color: colors.textSecondary }]}>{menu.meals.length} Meals</Text>
+              <Text
+                style={[
+                  styles.headerBadgeText,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {menu.meals.length} {t("menu_details.meals")}
+              </Text>
             </View>
           </View>
         </View>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleShare} style={styles.headerIconButton}>
+          <Pressable onPress={handleShare} style={styles.headerIconButton}>
             <Share2 size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-          <TouchableOpacity
+          </Pressable>
+          <Pressable
             onPress={() => setIsFavorite(!isFavorite)}
             style={styles.headerIconButton}
           >
-            <Heart size={20} color={isFavorite ? "#EF4444" : colors.textSecondary} fill={isFavorite ? "#EF4444" : "transparent"} />
-          </TouchableOpacity>
+            <Heart
+              size={20}
+              color={isFavorite ? colors.error : colors.textSecondary}
+              fill={isFavorite ? colors.error : "transparent"}
+            />
+          </Pressable>
         </View>
       </View>
 
@@ -288,57 +338,106 @@ export default function MenuDetailsScreen() {
         style={styles.statsScroll}
         contentContainerStyle={styles.statsContainer}
       >
-        <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-          <View style={[styles.statIconContainer, { backgroundColor: colors.emerald500 + "20" }]}>
-            <Flame size={24} color={colors.emerald500} />
+        <View
+          style={[
+            styles.statCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <View
+            style={[
+              styles.statIconContainer,
+              { backgroundColor: colors.primary + "20" },
+            ]}
+          >
+            <Flame size={24} color={colors.primary} />
           </View>
           <Text style={[styles.statValue, { color: colors.text }]}>
             {Math.round(menu.total_calories / menu.days_count)}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Avg Cal/Day
+            {t("menu_details.avg_cal_day")}
           </Text>
         </View>
 
-        <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-          <View style={[styles.statIconContainer, { backgroundColor: colors.indigo500 + "20" }]}>
-            <Target size={24} color={colors.indigo500} />
+        <View
+          style={[
+            styles.statCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <View
+            style={[
+              styles.statIconContainer,
+              { backgroundColor: colors.primary + "20" },
+            ]}
+          >
+            <Target size={24} color={colors.primary} />
           </View>
           <Text style={[styles.statValue, { color: colors.text }]}>
-            {menu.total_protein ? Math.round(menu.total_protein / menu.days_count) : 0}g
+            {menu.total_protein
+              ? Math.round(menu.total_protein / menu.days_count)
+              : 0}
+            g
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Protein/Day
+            {t("menu_details.protein_day")}
           </Text>
         </View>
 
-        <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-          <View style={[styles.statIconContainer, { backgroundColor: colors.amber500 + "20" }]}>
-            <DollarSign size={24} color={colors.amber500} />
+        <View
+          style={[
+            styles.statCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <View
+            style={[
+              styles.statIconContainer,
+              { backgroundColor: colors.warning + "20" },
+            ]}
+          >
+            <DollarSign size={24} color={colors.warning} />
           </View>
           <Text style={[styles.statValue, { color: colors.text }]}>
             ₪{menu.estimated_cost || 0}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Est. Cost
+            {t("menu_details.est_cost")}
           </Text>
         </View>
 
-        <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-          <View style={[styles.statIconContainer, { backgroundColor: colors.pink500 + "20" }]}>
-            <Clock size={24} color={colors.pink500} />
+        <View
+          style={[
+            styles.statCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <View
+            style={[
+              styles.statIconContainer,
+              { backgroundColor: colors.error + "20" },
+            ]}
+          >
+            <Clock size={24} color={colors.error} />
           </View>
           <Text style={[styles.statValue, { color: colors.text }]}>
-            {menu.prep_time_minutes || 30}m
+            {menu.prep_time_minutes || 30}
+            {t("menu_details.min")}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Avg Prep
+            {t("menu_details.avg_prep")}
           </Text>
         </View>
       </ScrollView>
 
       {/* Day Selector */}
-      <View style={[styles.daySelectorContainer, { backgroundColor: colors.card }]}>
+      <View
+        style={[
+          styles.daySelectorContainer,
+          { backgroundColor: colors.surface, borderBottomColor: colors.border },
+        ]}
+      >
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -347,16 +446,22 @@ export default function MenuDetailsScreen() {
           {uniqueDays.map((day) => {
             const isSelected = selectedDay === day;
             const dayMeals = menu.meals.filter((m) => m.day_number === day);
-            const totalCalories = dayMeals.reduce((sum, m) => sum + m.calories, 0);
+            const totalCalories = dayMeals.reduce(
+              (sum, m) => sum + m.calories,
+              0
+            );
 
             return (
-              <TouchableOpacity
+              <Pressable
                 key={day}
                 onPress={() => setSelectedDay(day)}
                 style={[
                   styles.dayTab,
                   {
-                    backgroundColor: isSelected ? colors.emerald500 : colors.background,
+                    backgroundColor: isSelected
+                      ? colors.primary
+                      : colors.surfaceVariant,
+                    borderColor: isSelected ? colors.primary : colors.border,
                   },
                 ]}
               >
@@ -366,7 +471,7 @@ export default function MenuDetailsScreen() {
                     { color: isSelected ? "#ffffff" : colors.textSecondary },
                   ]}
                 >
-                  DAY
+                  {t("menu_details.day")}
                 </Text>
                 <Text
                   style={[
@@ -379,12 +484,16 @@ export default function MenuDetailsScreen() {
                 <Text
                   style={[
                     styles.dayTabCalories,
-                    { color: isSelected ? "rgba(255,255,255,0.8)" : colors.textSecondary },
+                    {
+                      color: isSelected
+                        ? "rgba(255,255,255,0.9)"
+                        : colors.textSecondary,
+                    },
                   ]}
                 >
-                  {Math.round(totalCalories)} kcal
+                  {Math.round(totalCalories)} {t("menu_details.kcal")}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </ScrollView>
@@ -394,6 +503,7 @@ export default function MenuDetailsScreen() {
       <Animated.ScrollView
         style={[styles.mealsScrollView, { opacity: fadeAnim }]}
         contentContainerStyle={styles.mealsContainer}
+        showsVerticalScrollIndicator={false}
       >
         {mealsForDay.map((meal) => {
           const isExpanded = expandedMeal === meal.meal_id;
@@ -403,20 +513,30 @@ export default function MenuDetailsScreen() {
           return (
             <View
               key={meal.meal_id}
-              style={[styles.mealCard, { backgroundColor: colors.card }]}
+              style={[
+                styles.mealCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
             >
               {/* Meal Header */}
-              <TouchableOpacity
+              <Pressable
                 onPress={() => toggleMealExpanded(meal.meal_id)}
                 style={styles.mealHeader}
-                activeOpacity={0.7}
               >
-                {/* Circular Meal Image */}
+                {/* Meal Image */}
                 <View style={styles.mealImageContainer}>
                   {meal.image_url ? (
-                    <Image source={{ uri: meal.image_url }} style={styles.mealImage} />
+                    <Image
+                      source={{ uri: meal.image_url }}
+                      style={styles.mealImage}
+                    />
                   ) : (
-                    <View style={[styles.mealImagePlaceholder, { backgroundColor: mealTypeColor + "20" }]}>
+                    <View
+                      style={[
+                        styles.mealImagePlaceholder,
+                        { backgroundColor: mealTypeColor + "20" },
+                      ]}
+                    >
                       <Text style={styles.mealImageEmoji}>{mealTypeEmoji}</Text>
                     </View>
                   )}
@@ -425,32 +545,58 @@ export default function MenuDetailsScreen() {
                 {/* Meal Info */}
                 <View style={styles.mealInfo}>
                   <View style={styles.mealTypeRow}>
-                    <View style={[styles.mealTypeBadge, { backgroundColor: mealTypeColor }]}>
-                      <Text style={styles.mealTypeText}>{meal.meal_type}</Text>
+                    <View
+                      style={[
+                        styles.mealTypeBadge,
+                        { backgroundColor: mealTypeColor },
+                      ]}
+                    >
+                      <Text style={styles.mealTypeText}>
+                        {getMealTypeLabel(meal.meal_type)}
+                      </Text>
                     </View>
                     {meal.prep_time_minutes && (
                       <View style={styles.prepTimeBadge}>
                         <Clock size={12} color={colors.textSecondary} />
-                        <Text style={[styles.prepTimeText, { color: colors.textSecondary }]}>
-                          {meal.prep_time_minutes}min
+                        <Text
+                          style={[
+                            styles.prepTimeText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {meal.prep_time_minutes}
+                          {t("menu_details.min")}
                         </Text>
                       </View>
                     )}
                   </View>
-                  <Text style={[styles.mealName, { color: colors.text }]} numberOfLines={2}>
+                  <Text
+                    style={[styles.mealName, { color: colors.text }]}
+                    numberOfLines={2}
+                  >
                     {meal.name}
                   </Text>
                   <View style={styles.mealMetaRow}>
                     <View style={styles.mealMetaItem}>
-                      <Flame size={14} color={colors.emerald500} />
-                      <Text style={[styles.mealMetaText, { color: colors.textSecondary }]}>
-                        {Math.round(meal.calories)} cal
+                      <Flame size={14} color={colors.primary} />
+                      <Text
+                        style={[
+                          styles.mealMetaText,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {Math.round(meal.calories)} {t("menu_details.cal")}
                       </Text>
                     </View>
                     <View style={styles.mealMetaItem}>
-                      <Target size={14} color={colors.indigo500} />
-                      <Text style={[styles.mealMetaText, { color: colors.textSecondary }]}>
-                        {Math.round(meal.protein)}g protein
+                      <Target size={14} color={colors.primary} />
+                      <Text
+                        style={[
+                          styles.mealMetaText,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {Math.round(meal.protein)}g {t("menu_details.protein")}
                       </Text>
                     </View>
                     {meal.dietary_tags && meal.dietary_tags.length > 0 && (
@@ -462,52 +608,120 @@ export default function MenuDetailsScreen() {
                 {/* Expand Icon */}
                 <View style={styles.expandIconContainer}>
                   {isExpanded ? (
-                    <ChevronUp size={24} color={colors.textSecondary} />
+                    <ChevronUp size={22} color={colors.textSecondary} />
                   ) : (
-                    <ChevronDown size={24} color={colors.textSecondary} />
+                    <ChevronDown size={22} color={colors.textSecondary} />
                   )}
                 </View>
-              </TouchableOpacity>
+              </Pressable>
 
               {/* Expanded Content */}
               {isExpanded && (
                 <View style={styles.expandedContent}>
                   {/* Nutrition Grid */}
-                  <View style={[styles.nutritionSection, { borderTopColor: colors.border }]}>
+                  <View
+                    style={[
+                      styles.nutritionSection,
+                      { borderTopColor: colors.border },
+                    ]}
+                  >
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      Nutrition Facts
+                      {t("menu_details.nutrition_facts")}
                     </Text>
-                    <View style={styles.nutritionGrid}>
+                    <View
+                      style={[
+                        styles.nutritionGrid,
+                        { backgroundColor: colors.surfaceVariant },
+                      ]}
+                    >
                       <View style={styles.nutritionItem}>
-                        <Text style={[styles.nutritionValue, { color: colors.emerald500 }]}>
+                        <Text
+                          style={[
+                            styles.nutritionValue,
+                            { color: colors.primary },
+                          ]}
+                        >
                           {Math.round(meal.calories)}
                         </Text>
-                        <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>
-                          Calories
+                        <Text
+                          style={[
+                            styles.nutritionLabel,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {t("menu_details.calories")}
                         </Text>
                       </View>
+                      <View
+                        style={[
+                          styles.nutritionDivider,
+                          { backgroundColor: colors.border },
+                        ]}
+                      />
                       <View style={styles.nutritionItem}>
-                        <Text style={[styles.nutritionValue, { color: colors.indigo500 }]}>
+                        <Text
+                          style={[
+                            styles.nutritionValue,
+                            { color: colors.primary },
+                          ]}
+                        >
                           {Math.round(meal.protein)}g
                         </Text>
-                        <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>
-                          Protein
+                        <Text
+                          style={[
+                            styles.nutritionLabel,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {t("menu_details.protein")}
                         </Text>
                       </View>
+                      <View
+                        style={[
+                          styles.nutritionDivider,
+                          { backgroundColor: colors.border },
+                        ]}
+                      />
                       <View style={styles.nutritionItem}>
-                        <Text style={[styles.nutritionValue, { color: colors.amber500 }]}>
+                        <Text
+                          style={[
+                            styles.nutritionValue,
+                            { color: colors.warning },
+                          ]}
+                        >
                           {Math.round(meal.carbs)}g
                         </Text>
-                        <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>
-                          Carbs
+                        <Text
+                          style={[
+                            styles.nutritionLabel,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {t("menu_details.carbs")}
                         </Text>
                       </View>
+                      <View
+                        style={[
+                          styles.nutritionDivider,
+                          { backgroundColor: colors.border },
+                        ]}
+                      />
                       <View style={styles.nutritionItem}>
-                        <Text style={[styles.nutritionValue, { color: colors.pink500 }]}>
+                        <Text
+                          style={[
+                            styles.nutritionValue,
+                            { color: colors.error },
+                          ]}
+                        >
                           {Math.round(meal.fat)}g
                         </Text>
-                        <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>
-                          Fat
+                        <Text
+                          style={[
+                            styles.nutritionLabel,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {t("menu_details.fat")}
                         </Text>
                       </View>
                     </View>
@@ -516,28 +730,43 @@ export default function MenuDetailsScreen() {
                   {/* Ingredients */}
                   <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                      <Sparkles size={18} color={colors.emerald500} />
-                      <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                        Ingredients
+                      <Sparkles size={18} color={colors.primary} />
+                      <Text
+                        style={[styles.sectionTitle, { color: colors.text }]}
+                      >
+                        {t("menu_details.ingredients")}
                       </Text>
                     </View>
                     <View style={styles.ingredientsList}>
                       {meal.ingredients.map((ingredient) => (
-                        <View key={ingredient.ingredient_id} style={styles.ingredientItem}>
+                        <View
+                          key={ingredient.ingredient_id}
+                          style={styles.ingredientItem}
+                        >
                           <View
                             style={[
                               styles.ingredientDot,
-                              { backgroundColor: colors.emerald500 },
+                              { backgroundColor: colors.primary },
                             ]}
                           />
-                          <Text style={[styles.ingredientText, { color: colors.text }]}>
+                          <Text
+                            style={[
+                              styles.ingredientText,
+                              { color: colors.text },
+                            ]}
+                          >
                             <Text style={styles.ingredientQuantity}>
                               {ingredient.quantity} {ingredient.unit}
                             </Text>{" "}
                             {ingredient.name}
                           </Text>
                           {ingredient.estimated_cost && (
-                            <Text style={[styles.ingredientCost, { color: colors.textSecondary }]}>
+                            <Text
+                              style={[
+                                styles.ingredientCost,
+                                { color: colors.textSecondary },
+                              ]}
+                            >
                               ₪{ingredient.estimated_cost.toFixed(1)}
                             </Text>
                           )}
@@ -550,18 +779,25 @@ export default function MenuDetailsScreen() {
                   {meal.cooking_method && (
                     <View style={styles.section}>
                       <View style={styles.sectionHeader}>
-                        <ChefHat size={18} color={colors.indigo500} />
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                          Cooking Method
+                        <ChefHat size={18} color={colors.primary} />
+                        <Text
+                          style={[styles.sectionTitle, { color: colors.text }]}
+                        >
+                          {t("menu_details.cooking_method")}
                         </Text>
                       </View>
                       <View
                         style={[
                           styles.cookingMethodBadge,
-                          { backgroundColor: colors.indigo500 + "15" },
+                          { backgroundColor: colors.primary + "15" },
                         ]}
                       >
-                        <Text style={[styles.cookingMethodText, { color: colors.indigo500 }]}>
+                        <Text
+                          style={[
+                            styles.cookingMethodText,
+                            { color: colors.primary },
+                          ]}
+                        >
                           {meal.cooking_method}
                         </Text>
                       </View>
@@ -572,18 +808,25 @@ export default function MenuDetailsScreen() {
                   {meal.instructions && (
                     <View style={styles.section}>
                       <View style={styles.sectionHeader}>
-                        <Info size={18} color={colors.amber500} />
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                          Instructions
+                        <Info size={18} color={colors.warning} />
+                        <Text
+                          style={[styles.sectionTitle, { color: colors.text }]}
+                        >
+                          {t("menu_details.instructions")}
                         </Text>
                       </View>
                       <View
                         style={[
                           styles.instructionsContainer,
-                          { backgroundColor: colors.background },
+                          { backgroundColor: colors.surfaceVariant },
                         ]}
                       >
-                        <Text style={[styles.instructionsText, { color: colors.textSecondary }]}>
+                        <Text
+                          style={[
+                            styles.instructionsText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           {meal.instructions}
                         </Text>
                       </View>
@@ -600,29 +843,28 @@ export default function MenuDetailsScreen() {
           <NutritionHabits />
         </View>
 
-        {/* Bottom Spacing */}
-        <View style={{ height: 100 }} />
+        {/* Bottom Spacing for FAB */}
+        <View style={{ height: 120 }} />
       </Animated.ScrollView>
 
       {/* Floating Action Button */}
       {!menu.is_active && (
-        <TouchableOpacity
-          onPress={() => setShowStartModal(true)}
-          style={[styles.fab, { backgroundColor: colors.emerald500 }]}
-          activeOpacity={0.9}
-        >
-          <LinearGradient
-            colors={[colors.emerald500, colors.emerald600]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.fabGradient}
+        <View style={styles.fabContainer}>
+          <Pressable
+            onPress={() => setShowStartModal(true)}
+            style={[styles.fab, { backgroundColor: colors.primary }]}
           >
-            <Sparkles size={24} color="#ffffff" />
-            <Text style={styles.fabText}>
-              {language === "he" ? "התחל תפריט" : "Start Menu"}
-            </Text>
-          </LinearGradient>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={[colors.primary, colors.primary]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.fabGradient}
+            >
+              <Sparkles size={22} color="#ffffff" />
+              <Text style={styles.fabText}>{t("menu_details.start_menu")}</Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
       )}
 
       {/* Start Modal */}
@@ -632,77 +874,101 @@ export default function MenuDetailsScreen() {
         animationType="fade"
         onRequestClose={() => setShowStartModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.startModal, { backgroundColor: colors.card }]}>
-            <View style={styles.modalHeader}>
-              <View
-                style={[
-                  styles.modalIconContainer,
-                  { backgroundColor: colors.emerald500 + "20" },
-                ]}
-              >
-                <Sparkles size={32} color={colors.emerald500} />
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowStartModal(false)}
+        >
+          <Pressable onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.startModal, { backgroundColor: colors.card }]}>
+              <View style={styles.modalHeader}>
+                <View
+                  style={[
+                    styles.modalIconContainer,
+                    { backgroundColor: colors.primary + "20" },
+                  ]}
+                >
+                  <Sparkles size={32} color={colors.primary} />
+                </View>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>
+                  {t("menu_details.start_this_menu")}
+                </Text>
+                <Text
+                  style={[
+                    styles.modalSubtitle,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {t("menu_details.activate_description")}
+                </Text>
               </View>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>
-                {language === "he" ? "התחל את התפריט?" : "Start This Menu?"}
-              </Text>
-              <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-                {language === "he"
-                  ? "התפריט יופעל ותוכל לעקוב אחרי ההתקדמות שלך"
-                  : "This will activate your menu and you'll be able to track your progress"}
-              </Text>
-            </View>
 
-            <View style={styles.modalFeatures}>
-              <View style={styles.modalFeature}>
-                <Check size={20} color={colors.emerald500} />
-                <Text style={[styles.modalFeatureText, { color: colors.text }]}>
-                  Track ingredient checkmarks
-                </Text>
+              <View style={styles.modalFeatures}>
+                <View style={styles.modalFeature}>
+                  <Check size={20} color={colors.success} />
+                  <Text
+                    style={[styles.modalFeatureText, { color: colors.text }]}
+                  >
+                    {t("menu_details.track_ingredients")}
+                  </Text>
+                </View>
+                <View style={styles.modalFeature}>
+                  <Check size={20} color={colors.success} />
+                  <Text
+                    style={[styles.modalFeatureText, { color: colors.text }]}
+                  >
+                    {t("menu_details.daily_progress")}
+                  </Text>
+                </View>
+                <View style={styles.modalFeature}>
+                  <Check size={20} color={colors.success} />
+                  <Text
+                    style={[styles.modalFeatureText, { color: colors.text }]}
+                  >
+                    {t("menu_details.completion_rewards")}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.modalFeature}>
-                <Check size={20} color={colors.emerald500} />
-                <Text style={[styles.modalFeatureText, { color: colors.text }]}>
-                  Daily progress tracking
-                </Text>
-              </View>
-              <View style={styles.modalFeature}>
-                <Check size={20} color={colors.emerald500} />
-                <Text style={[styles.modalFeatureText, { color: colors.text }]}>
-                  Completion rewards
-                </Text>
+
+              <View style={styles.modalActions}>
+                <Pressable
+                  onPress={() => setShowStartModal(false)}
+                  style={[
+                    styles.modalButton,
+                    { backgroundColor: colors.surfaceVariant },
+                  ]}
+                >
+                  <Text
+                    style={[styles.modalButtonText, { color: colors.text }]}
+                  >
+                    {t("menu_details.cancel")}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={handleStartMenu}
+                  disabled={isStarting}
+                  style={[
+                    styles.modalButton,
+                    { backgroundColor: colors.primary, flex: 1 },
+                  ]}
+                >
+                  {isStarting ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <>
+                      <Sparkles size={18} color="#ffffff" />
+                      <Text
+                        style={[styles.modalButtonText, { color: "#ffffff" }]}
+                      >
+                        {t("menu_details.start_now")}
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
               </View>
             </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                onPress={() => setShowStartModal(false)}
-                style={[styles.modalButton, { backgroundColor: colors.background }]}
-              >
-                <Text style={[styles.modalButtonText, { color: colors.text }]}>
-                  {language === "he" ? "ביטול" : "Cancel"}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleStartMenu}
-                disabled={isStarting}
-                style={[styles.modalButton, { backgroundColor: colors.emerald500, flex: 1 }]}
-              >
-                {isStarting ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
-                ) : (
-                  <>
-                    <Sparkles size={18} color="#ffffff" />
-                    <Text style={[styles.modalButtonText, { color: "#ffffff" }]}>
-                      {language === "he" ? "התחל עכשיו" : "Start Now"}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );
@@ -716,13 +982,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FAFAFA",
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
     fontWeight: "500",
-    color: "#6B7280",
   },
   errorContainer: {
     flex: 1,
@@ -734,19 +998,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     marginBottom: 16,
-    color: "#111827",
   },
   errorButton: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#10B981",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
   },
   headerButton: {
@@ -758,12 +1020,11 @@ const styles = StyleSheet.create({
   headerCenter: {
     flex: 1,
     alignItems: "center",
-    gap: 4,
+    gap: 6,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#111827",
   },
   headerBadges: {
     flexDirection: "row",
@@ -773,15 +1034,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    backgroundColor: "#F9FAFB",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
   headerBadgeText: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#6B7280",
   },
   headerActions: {
     flexDirection: "row",
@@ -794,29 +1053,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   statsScroll: {
-    maxHeight: 130,
-    marginTop: 12,
+    maxHeight: 140,
+    marginTop: 16,
   },
   statsContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     gap: 12,
   },
   statCard: {
-    width: 110,
+    width: 115,
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 18,
     alignItems: "center",
-    gap: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    gap: 10,
+    borderWidth: 1,
   },
   statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -826,76 +1081,73 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 11,
-    fontWeight: "500",
+    fontWeight: "600",
     textAlign: "center",
   },
   daySelectorContainer: {
     marginTop: 20,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.05)",
   },
   daySelector: {
-    paddingHorizontal: 20,
-    gap: 12,
+    paddingHorizontal: 16,
+    gap: 10,
   },
   dayTab: {
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: "center",
-    minWidth: 90,
+    minWidth: 95,
     gap: 4,
+    borderWidth: 1,
   },
   dayTabLabel: {
     fontSize: 10,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    fontWeight: "700",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
   },
   dayTabNumber: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "800",
   },
   dayTabCalories: {
     fontSize: 11,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   mealsScrollView: {
     flex: 1,
   },
   mealsContainer: {
-    padding: 20,
+    padding: 16,
     gap: 16,
   },
   mealCard: {
-    borderRadius: 20,
+    borderRadius: 18,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
+    borderWidth: 1,
   },
   mealHeader: {
     flexDirection: "row",
-    padding: 12,
-    gap: 12,
+    padding: 16,
+    gap: 14,
   },
   mealImageContainer: {},
   mealImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
   },
   mealImagePlaceholder: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: "center",
     alignItems: "center",
   },
   mealImageEmoji: {
-    fontSize: 32,
+    fontSize: 34,
   },
   mealInfo: {
     flex: 1,
@@ -925,7 +1177,7 @@ const styles = StyleSheet.create({
   },
   prepTimeText: {
     fontSize: 11,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   mealName: {
     fontSize: 17,
@@ -935,6 +1187,7 @@ const styles = StyleSheet.create({
   mealMetaRow: {
     flexDirection: "row",
     gap: 12,
+    flexWrap: "wrap",
   },
   mealMetaItem: {
     flexDirection: "row",
@@ -942,8 +1195,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   mealMetaText: {
-    fontSize: 12,
-    fontWeight: "500",
+    fontSize: 13,
+    fontWeight: "600",
   },
   expandIconContainer: {
     justifyContent: "center",
@@ -956,7 +1209,7 @@ const styles = StyleSheet.create({
   nutritionSection: {
     paddingTop: 20,
     borderTopWidth: 1,
-    gap: 12,
+    gap: 14,
   },
   sectionTitle: {
     fontSize: 16,
@@ -965,10 +1218,17 @@ const styles = StyleSheet.create({
   nutritionGrid: {
     flexDirection: "row",
     justifyContent: "space-around",
+    paddingVertical: 16,
+    borderRadius: 12,
   },
   nutritionItem: {
     alignItems: "center",
-    gap: 4,
+    gap: 6,
+    flex: 1,
+  },
+  nutritionDivider: {
+    width: 1,
+    height: 32,
   },
   nutritionValue: {
     fontSize: 20,
@@ -987,12 +1247,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   ingredientsList: {
-    gap: 10,
+    gap: 12,
   },
   ingredientItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
   },
   ingredientDot: {
     width: 6,
@@ -1013,7 +1273,7 @@ const styles = StyleSheet.create({
   },
   cookingMethodBadge: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 12,
   },
   cookingMethodText: {
@@ -1029,24 +1289,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
   },
-  fab: {
+  fabContainer: {
     position: "absolute",
     bottom: 24,
     right: 20,
-    borderRadius: 30,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    left: 20,
+    alignItems: "flex-end",
+  },
+  fab: {
+    borderRadius: 32,
   },
   fabGradient: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 30,
+    paddingHorizontal: 28,
+    borderRadius: 32,
   },
   fabText: {
     fontSize: 16,
@@ -1062,24 +1321,24 @@ const styles = StyleSheet.create({
   },
   startModal: {
     width: "100%",
-    maxWidth: 400,
+    maxWidth: 420,
     borderRadius: 24,
-    padding: 24,
+    padding: 28,
   },
   modalHeader: {
     alignItems: "center",
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 28,
   },
   modalIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: "center",
     alignItems: "center",
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "800",
     textAlign: "center",
   },
@@ -1089,8 +1348,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   modalFeatures: {
-    gap: 12,
-    marginBottom: 24,
+    gap: 14,
+    marginBottom: 28,
   },
   modalFeature: {
     flexDirection: "row",
@@ -1099,7 +1358,7 @@ const styles = StyleSheet.create({
   },
   modalFeatureText: {
     fontSize: 15,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   modalActions: {
     flexDirection: "row",
@@ -1113,14 +1372,13 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 14,
-    minWidth: 100,
+    minWidth: 110,
   },
   modalButtonText: {
     fontSize: 16,
     fontWeight: "700",
   },
   habitsSection: {
-    paddingHorizontal: 20,
-    marginTop: 16,
+    marginTop: 8,
   },
 });
