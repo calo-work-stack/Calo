@@ -59,14 +59,14 @@ const HomeScreen = React.memo(() => {
       meals: state.meal.meals,
       isLoading: state.meal.isLoading,
     }),
-    []
+    [],
   );
 
   const selectAuthState = useMemo(
     () => (state: RootState) => ({
       user: state.auth.user,
     }),
-    []
+    [],
   );
 
   const { meals, isLoading } = useOptimizedSelector(selectMealState);
@@ -78,11 +78,15 @@ const HomeScreen = React.memo(() => {
     protein: 0,
     carbs: 0,
     fat: 0,
+    water: 0,
     targetCalories: 2205,
     targetProtein: 120,
     targetCarbs: 200,
     targetFat: 60,
+    waterMl: 2500,
   });
+  const [waterGoalMl, setWaterGoalMl] = useState(2500); // Default 2500ml (10 cups)
+  const waterGoalCups = Math.ceil(waterGoalMl / 250); // Convert ml to cups (250ml per cup)
   const [refreshing, setRefreshing] = useState(false);
   const [, setIsDataLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -125,7 +129,7 @@ const HomeScreen = React.memo(() => {
   const isLoadingRef = useRef(false);
   const lastDataLoadRef = useRef<number>(0);
   const waterSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
+    null,
   );
 
   const processedMealsData = useMemo(() => {
@@ -139,25 +143,25 @@ const HomeScreen = React.memo(() => {
 
     const sortedMeals = [...meals].sort(
       (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
 
     const today = new Date().toISOString().split("T")[0];
     const todayMeals = meals.filter((meal: { created_at: string }) =>
-      meal.created_at.startsWith(today)
+      meal.created_at.startsWith(today),
     );
 
     const dailyTotals = todayMeals.reduce(
       (
         acc: { calories: any; protein: any; carbs: any; fat: any },
-        meal: { calories: any; protein: any; carbs: any; fat: any }
+        meal: { calories: any; protein: any; carbs: any; fat: any },
       ) => ({
         calories: acc.calories + (meal.calories || 0),
         protein: acc.protein + (meal.protein || 0),
         carbs: acc.carbs + (meal.carbs || 0),
         fat: acc.fat + (meal.fat || 0),
       }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      { calories: 0, protein: 0, carbs: 0, fat: 0 },
     );
 
     return {
@@ -185,6 +189,7 @@ const HomeScreen = React.memo(() => {
         targetCarbs: 250,
         targetFat: 65,
       }));
+      setWaterGoalMl(2500); // Default 2500ml for free users
       return;
     }
 
@@ -200,6 +205,8 @@ const HomeScreen = React.memo(() => {
           targetCarbs: goalsResponse.data.carbs_g || 200,
           targetFat: goalsResponse.data.fats_g || 60,
         }));
+        // Set water goal from DailyGoal table
+        setWaterGoalMl(goalsResponse.data.water_ml || 2500);
       } else {
         const createResponse = await dailyGoalsAPI.createDailyGoals();
         if (createResponse.success && createResponse.data) {
@@ -210,6 +217,8 @@ const HomeScreen = React.memo(() => {
             targetCarbs: createResponse.data.carbs_g || 200,
             targetFat: createResponse.data.fats_g || 60,
           }));
+          // Set water goal from DailyGoal table
+          setWaterGoalMl(createResponse.data.water_ml || 2500);
         }
       }
     } catch (error) {
@@ -221,9 +230,10 @@ const HomeScreen = React.memo(() => {
         targetCarbs: 200,
         targetFat: 60,
       }));
+      setWaterGoalMl(2500); // Default on error
     }
   }, [user?.user_id, user?.subscription_type, t]);
-
+  console.log(dailyGoals);
   const loadWaterIntake = useCallback(async () => {
     if (!user?.user_id) return;
 
@@ -266,7 +276,7 @@ const HomeScreen = React.memo(() => {
           },
           {
             timeout: 10000,
-          }
+          },
         );
 
         if (response.data.success) {
@@ -295,12 +305,11 @@ const HomeScreen = React.memo(() => {
         }
       }
     },
-    [user?.user_id, t]
+    [user?.user_id, t],
   );
 
   const incrementWater = useCallback(() => {
-    const goalMaxCups = 10;
-    if (waterCups >= goalMaxCups) return;
+    if (waterCups >= waterGoalCups) return;
 
     const newTotal = waterCups + 1;
     setWaterCups(newTotal);
@@ -312,7 +321,7 @@ const HomeScreen = React.memo(() => {
     waterSyncTimeoutRef.current = setTimeout(() => {
       syncWaterWithServer(newTotal);
     }, 1000);
-  }, [waterCups, syncWaterWithServer]);
+  }, [waterCups, waterGoalCups, syncWaterWithServer]);
 
   const decrementWater = useCallback(() => {
     if (waterCups <= 0) return;
@@ -331,10 +340,9 @@ const HomeScreen = React.memo(() => {
 
   const addWaterVolume = useCallback(
     (mlAmount: number) => {
-      const goalMaxCups = 10;
       const ML_PER_CUP = 250;
       const cupsToAdd = Math.ceil(mlAmount / ML_PER_CUP);
-      const newTotal = Math.min(waterCups + cupsToAdd, goalMaxCups);
+      const newTotal = Math.min(waterCups + cupsToAdd, waterGoalCups);
 
       if (newTotal === waterCups) return;
 
@@ -348,7 +356,7 @@ const HomeScreen = React.memo(() => {
         syncWaterWithServer(newTotal);
       }, 1000);
     },
-    [waterCups, syncWaterWithServer]
+    [waterCups, syncWaterWithServer],
   );
 
   const loadAllData = useCallback(
@@ -387,7 +395,7 @@ const HomeScreen = React.memo(() => {
         setDataError(
           error instanceof APIError
             ? error.message
-            : t("common.failed_to_load_data")
+            : t("common.failed_to_load_data"),
         );
         setRetryCount((prev) => prev + 1);
       } finally {
@@ -397,7 +405,7 @@ const HomeScreen = React.memo(() => {
         lastDataLoadRef.current = now;
       }
     },
-    [user?.user_id, dispatch, retryCount, loadDailyGoals, t]
+    [user?.user_id, dispatch, retryCount, loadDailyGoals, t],
   );
 
   const onRefresh = useCallback(async () => {
@@ -458,7 +466,7 @@ const HomeScreen = React.memo(() => {
     };
     return now.toLocaleDateString(
       currentLanguage === "he" ? "he-IL" : "en-US",
-      options
+      options,
     );
   };
 
@@ -652,7 +660,8 @@ const HomeScreen = React.memo(() => {
 
           <WaterIntakeCard
             currentCups={waterCups}
-            maxCups={10}
+            maxCups={waterGoalCups}
+            targetMl={waterGoalMl}
             onIncrement={incrementWater}
             onDecrement={decrementWater}
             onAddVolume={addWaterVolume}

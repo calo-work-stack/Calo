@@ -155,7 +155,29 @@ export function useStatistics(initialPeriod: TimePeriod = "week") {
         statisticsData = statisticsResponse.data.data;
       }
 
-      if (questionnaireResponse.data.success && questionnaireResponse.data.data) {
+      // Get daily goals from the statistics response (from DailyGoal table)
+      // Fall back to questionnaire data only if dailyGoals is not available
+      const dailyGoals = statisticsData?.dailyGoals;
+
+      if (dailyGoals) {
+        // Use goals from DailyGoal table (preferred)
+        let mealsPerDay = 3;
+        if (questionnaireResponse.data.success && questionnaireResponse.data.data?.meals_per_day) {
+          const cleanedMeals = questionnaireResponse.data.data.meals_per_day.toString().replace(/[^0-9]/g, "");
+          mealsPerDay = parseInt(cleanedMeals) || 3;
+        }
+
+        userQuestionnaire = {
+          mealsPerDay,
+          dailyCalories: dailyGoals.calories || 2000,
+          dailyProtein: dailyGoals.protein_g || 120,
+          dailyCarbs: dailyGoals.carbs_g || 250,
+          dailyFats: dailyGoals.fats_g || 70,
+          dailyFiber: dailyGoals.fiber_g || 25,
+          dailyWater: dailyGoals.water_ml || 2500,
+        };
+      } else if (questionnaireResponse.data.success && questionnaireResponse.data.data) {
+        // Fall back to questionnaire data if no dailyGoals
         const qData = questionnaireResponse.data.data;
         let mealsPerDay = 3;
         if (qData.meals_per_day) {

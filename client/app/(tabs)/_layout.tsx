@@ -24,10 +24,6 @@ export default function TabLayout() {
   const router = useRouter();
   const colorScheme = useColorScheme();
 
-  const canAccessDevices = user && user.subscription_type !== "FREE";
-  const canAccessAIChat = user && user.subscription_type !== "FREE";
-  const canAccessDashboard = user && (user.is_admin || user.is_super_admin);
-
   // Since your tab bar is floating, calculate the space it occupies
   // From your ScrollableTabBar config:
   const TAB_BAR_HEIGHT = 30; // TAB_CONFIG.barHeight
@@ -168,42 +164,39 @@ export default function TabLayout() {
               ),
             }}
           />
-          {canAccessAIChat && (
-            <Tabs.Screen
-              name="ai-chat"
-              options={{
-                title: t("tabs.ai_chat"),
-                tabBarIcon: ({ color }) => (
-                  <MessageSquare size={28} color={color} />
-                ),
-                href: shouldShowAiChat ? undefined : null,
-              }}
-            />
-          )}
-          {canAccessDevices && (
-            <Tabs.Screen
-              name="devices"
-              options={{
-                title: t("tabs.devices"),
-                tabBarIcon: ({ color }) => (
-                  <IconSymbol size={24} name="watch.digital" color={color} />
-                ),
-                href: shouldShowDevices ? undefined : null,
-              }}
-            />
-          )}
-          {canAccessDashboard && (
-            <Tabs.Screen
-              name="dashboard"
-              options={{
-                title: t("tabs.dashboard"),
-                href: null, // Hide from tab bar
-                tabBarIcon: ({ color }) => (
-                  <IconSymbol size={24} name="shield.fill" color={color} />
-                ),
-              }}
-            />
-          )}
+          <Tabs.Screen
+            name="ai-chat"
+            options={{
+              title: t("tabs.ai_chat"),
+              tabBarIcon: ({ color }) => (
+                <MessageSquare size={28} color={color} />
+              ),
+              // Hide from tab bar for users without access
+              href: shouldShowAiChat ? undefined : null,
+            }}
+          />
+          <Tabs.Screen
+            name="devices"
+            options={{
+              title: t("tabs.devices"),
+              tabBarIcon: ({ color }) => (
+                <IconSymbol size={24} name="watch.digital" color={color} />
+              ),
+              // Hide from tab bar for users without access
+              href: shouldShowDevices ? undefined : null,
+            }}
+          />
+          <Tabs.Screen
+            name="dashboard"
+            options={{
+              title: t("tabs.dashboard"),
+              // Hide from tab bar for non-admin users
+              href: shouldShowDashboard ? undefined : null,
+              tabBarIcon: ({ color }) => (
+                <IconSymbol size={24} name="shield.fill" color={color} />
+              ),
+            }}
+          />
           <Tabs.Screen
             name="profile"
             options={{

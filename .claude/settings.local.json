@@ -14,7 +14,9 @@
       "Bash(tail:*)",
       "Bash(find:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(npm run build)",
+      "Bash(npx expo:*)"
     ]
   }
 }

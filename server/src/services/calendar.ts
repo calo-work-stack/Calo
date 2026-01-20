@@ -141,7 +141,7 @@ export class CalendarService {
               protein: Number(dayGoal.protein_g),
               carbs: Number(dayGoal.carbs_g),
               fat: Number(dayGoal.fats_g),
-              water: defaultGoals.water,
+              water: Number(dayGoal.water_ml) || defaultGoals.water,
             }
           : defaultGoals;
 
@@ -194,6 +194,7 @@ export class CalendarService {
           fat_actual: totals.fat,
           meal_count: mainMealsCount,
           quality_score,
+          water_goal_ml: goals.water,
           water_intake_ml: waterIntake,
           events: formattedEvents,
         };

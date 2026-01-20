@@ -79,7 +79,11 @@ export default function DashboardScreen() {
   >("overview");
 
   useEffect(() => {
-    if (user?.subscription_type !== ADMIN_PLAN) {
+    // Check if user has admin privileges (either through is_admin/is_super_admin flags or ADMIN subscription)
+    const hasAdminAccess =
+      user?.is_admin || user?.is_super_admin || user?.subscription_type === ADMIN_PLAN;
+
+    if (!hasAdminAccess) {
       Alert.alert("Access Denied", "Admin privileges required");
       router.replace("/(tabs)");
       return;

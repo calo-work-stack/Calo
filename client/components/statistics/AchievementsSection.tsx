@@ -1182,7 +1182,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   progressBarContainer: {
-    height: 8,
+    height: 8,  
     backgroundColor: "rgba(0, 0, 0, 0.08)",
     borderRadius: 4,
     overflow: "hidden",

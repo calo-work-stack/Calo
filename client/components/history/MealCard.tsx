@@ -134,7 +134,46 @@ export default function MealCard({
   const PeriodIcon = periodConfig.icon;
 
   const mealId = meal.id || meal.meal_id?.toString();
-  const ingredients: Ingredient[] = meal.ingredients || [];
+
+  // Normalize ingredients - handle both string arrays (manual meals) and object arrays (AI analyzed meals)
+  const normalizeIngredients = (rawIngredients: any): Ingredient[] => {
+    if (!rawIngredients || !Array.isArray(rawIngredients)) return [];
+
+    return rawIngredients.map((ing: any) => {
+      // If it's already an object with name property, use it
+      if (typeof ing === 'object' && ing !== null && 'name' in ing) {
+        return {
+          name: ing.name || 'Unknown',
+          calories: Number(ing.calories) || 0,
+          protein: Number(ing.protein) || 0,
+          carbs: Number(ing.carbs) || 0,
+          fat: Number(ing.fat) || 0,
+          fiber: Number(ing.fiber) || 0,
+          sugar: Number(ing.sugar) || 0,
+        };
+      }
+      // If it's a string (from manual meal), convert to object
+      if (typeof ing === 'string') {
+        return {
+          name: ing,
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+        };
+      }
+      // Fallback for unexpected types
+      return {
+        name: String(ing) || 'Unknown',
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+      };
+    });
+  };
+
+  const ingredients: Ingredient[] = normalizeIngredients(meal.ingredients);
 
   const handleToggleFavorite = useCallback(() => {
     Animated.sequence([
@@ -222,7 +261,7 @@ export default function MealCard({
 
   const renderLeftActions = () => (
     <TouchableOpacity
-      style={[styles.swipeAction, { backgroundColor: isDark ? "#10B98120" : "#10B98115" }]}
+      style={[styles.swipeAction]}
       onPress={() => {
         swipeableRef.current?.close();
         onDuplicate(mealId);
@@ -239,7 +278,7 @@ export default function MealCard({
 
   const renderRightActions = () => (
     <TouchableOpacity
-      style={[styles.swipeAction, { backgroundColor: isDark ? "#EF444420" : "#EF444415" }]}
+      style={[styles.swipeAction]}
       onPress={() => {
         swipeableRef.current?.close();
         onDelete(mealId);
@@ -429,9 +468,11 @@ export default function MealCard({
                       <Text style={[styles.ingredientName, { color: colors.text }]} numberOfLines={1}>
                         {ing.name}
                       </Text>
-                      <Text style={[styles.ingredientCals, { color: colors.muted }]}>
-                        {Math.round(ing.calories)} cal
-                      </Text>
+                      {ing.calories > 0 && (
+                        <Text style={[styles.ingredientCals, { color: colors.muted }]}>
+                          {Math.round(ing.calories)} cal
+                        </Text>
+                      )}
                     </View>
                   ))}
                   {ingredients.length > 6 && (
@@ -683,7 +724,7 @@ const styles = StyleSheet.create({
   swipeIconBg: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
   },

@@ -10,7 +10,7 @@ import { UsageTrackingService } from "../services/usageTracking";
 const router = Router();
 
 const waterIntakeSchema = z.object({
-  cups_consumed: z.number().min(0).max(25),
+  cups_consumed: z.number().min(0).max(50), // Allow up to 50 cups (12.5L) for flexible water goals
   date: z.string().optional(),
 });
 
@@ -44,8 +44,16 @@ router.post(
       const { cups_consumed, date } = validationResult.data;
       const trackingDate = date ? new Date(date) : new Date();
 
-      // Limit water intake to maximum goal (10 cups/2500ml)
-      const maxCups = 10;
+      // Get user's water goal from DailyGoal table
+      const userDailyGoal = await prisma.dailyGoal.findFirst({
+        where: { user_id: userId },
+        orderBy: { created_at: "desc" },
+        select: { water_ml: true },
+      });
+
+      // Calculate max cups based on user's water goal (default 2500ml = 10 cups)
+      const waterGoalMl = userDailyGoal?.water_ml || 2500;
+      const maxCups = Math.ceil(waterGoalMl / 250);
       const limitedCups = Math.min(cups_consumed, maxCups);
       const limitedMilliliters = limitedCups * 250;
 
@@ -56,80 +64,26 @@ router.post(
         trackingDate.getDate()
       );
 
-      // Use transaction with proper error handling for race conditions
-      let waterRecord;
-
-      try {
-        waterRecord = await prisma.$transaction(
-          async (tx) => {
-            // First, try to find existing record
-            const existingRecord = await tx.waterIntake.findFirst({
-              where: {
-                user_id: userId,
-                date: startOfDay,
-              },
-            });
-
-            if (existingRecord) {
-              // Update existing record
-              return await tx.waterIntake.update({
-                where: {
-                  id: existingRecord.id,
-                },
-                data: {
-                  cups_consumed: limitedCups,
-                  milliliters_consumed: limitedMilliliters,
-                  updated_at: new Date(),
-                },
-              });
-            } else {
-              // Create new record
-              return await tx.waterIntake.create({
-                data: {
-                  user_id: userId,
-                  date: startOfDay,
-                  cups_consumed: limitedCups,
-                  milliliters_consumed: limitedMilliliters,
-                },
-              });
-            }
+      // Use atomic upsert - faster than transaction with find/update pattern
+      const waterRecord = await prisma.waterIntake.upsert({
+        where: {
+          user_id_date: {
+            user_id: userId,
+            date: startOfDay,
           },
-          {
-            isolationLevel: "Serializable",
-            timeout: 10000,
-          }
-        );
-      } catch (error: any) {
-        console.error("💥 Water intake transaction failed:", error);
-
-        // Fallback: try simple upsert one more time
-        try {
-          waterRecord = await prisma.waterIntake.upsert({
-            where: {
-              user_id_date: {
-                user_id: userId,
-                date: startOfDay,
-              },
-            },
-            update: {
-              cups_consumed: limitedCups,
-              milliliters_consumed: limitedMilliliters,
-              updated_at: new Date(),
-            },
-            create: {
-              user_id: userId,
-              date: startOfDay,
-              cups_consumed: limitedCups,
-              milliliters_consumed: limitedMilliliters,
-            },
-          });
-        } catch (fallbackError: any) {
-          console.error("💥 Water intake fallback failed:", fallbackError);
-          throw new Error(
-            "Failed to save water intake after multiple attempts"
-          );
-        }
-      }
+        },
+        update: {
+          cups_consumed: limitedCups,
+          milliliters_consumed: limitedMilliliters,
+          updated_at: new Date(),
+        },
+        create: {
+          user_id: userId,
+          date: startOfDay,
+          cups_consumed: limitedCups,
+          milliliters_consumed: limitedMilliliters,
+        },
+      });
 
       // Calculate XP based on water intake
       let xpAwarded = 0;
@@ -635,126 +589,6 @@ router.post("/save", authenticateToken, async (req: AuthRequest, res) => {
     res.status(500).json({
       success: false,
       error: message,
-    });
-  }
-});
-
-// Get user meals
-router.get("/meals", authenticateToken, async (req: AuthRequest, res) => {
-  try {
-    console.log("Get meals request for user:", req.user.user_id);
-
-    const meals = await NutritionService.getUserMeals(req.user.user_id);
-
-    res.json({
-      success: true,
-      data: meals,
-    });
-  } catch (error) {
-    console.error("Get meals error:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to fetch meals";
-    res.status(500).json({
-      success: false,
-      error: message,
-    });
-  }
-});
-
-// Add manual meal
-router.post(
-  "/meals/manual",
-  authenticateToken,
-  async (req: AuthRequest, res) => {
-    try {
-      const userId = req.user?.user_id;
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          error: "User not authenticated",
-        });
-      }
-
-      const {
-        mealName,
-        calories,
-        protein,
-        carbs,
-        fat,
-        fiber,
-        sugar,
-        sodium,
-        ingredients,
-        mealPeriod,
-        imageUrl,
-        date,
-      } = req.body;
-
-      if (!mealName || !calories) {
-        return res.status(400).json({
-          success: false,
-          error: "Meal name and calories are required",
-        });
-      }
-
-      const meal = await prisma.meal.create({
-        data: {
-          user_id: userId,
-          meal_name: mealName,
-          calories: parseFloat(calories),
-          protein_g: protein ? parseFloat(protein) : null,
-          carbs_g: carbs ? parseFloat(carbs) : null,
-          fats_g: fat ? parseFloat(fat) : null,
-          fiber_g: fiber ? parseFloat(fiber) : null,
-          sugar_g: sugar ? parseFloat(sugar) : null,
-          sodium_mg: sodium ? parseFloat(sodium) : null,
-          ingredients: ingredients || null,
-          meal_period: mealPeriod || "other",
-          image_url:
-            imageUrl ||
-            "https://via.placeholder.com/400x300.png?text=Manual+Entry",
-          analysis_status: "COMPLETED",
-          upload_time: date ? new Date(date) : new Date(),
-          created_at: new Date(),
-        },
-      });
-
-      res.json({
-        success: true,
-        data: meal,
-      });
-    } catch (error) {
-      console.error("Add manual meal error:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to add manual meal",
-      });
-    }
-  }
-);
-
-// Get usage stats
-router.get("/usage-stats", authenticateToken, async (req: AuthRequest, res) => {
-  try {
-    const userId = req.user?.user_id;
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        error: "User not authenticated",
-      });
-    }
-
-    const stats = await UsageTrackingService.getUserUsageStats(userId);
-
-    res.json({
-      success: true,
-      data: stats,
-    });
-  } catch (error) {
-    console.error("Get usage stats error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to get usage stats",
     });
   }
 });

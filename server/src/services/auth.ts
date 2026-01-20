@@ -9,6 +9,20 @@ const JWT_EXPIRES_IN = "7d";
 const SESSION_EXPIRES_DAYS = 7;
 const PASSWORD_RESET_EXPIRES = "15m";
 
+// Token cache for performance - avoid DB hit on every request
+const TOKEN_CACHE_TTL_MS = 60000; // 60 seconds cache
+const tokenCache = new Map<string, { user: any; expiresAt: number }>();
+
+// Cleanup expired cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, entry] of tokenCache.entries()) {
+    if (entry.expiresAt < now) {
+      tokenCache.delete(token);
+    }
+  }
+}, 30000); // Clean up every 30 seconds
+
 const userSelectFields = {
   user_id: true,
   email: true,
@@ -470,6 +484,12 @@ export class AuthService {
 
   static async verifyToken(token: string) {
     try {
+      // Check cache first to avoid DB hit
+      const cached = tokenCache.get(token);
+      if (cached && cached.expiresAt > Date.now()) {
+        return cached.user;
+      }
+
       const decoded = jwt.verify(token, JWT_SECRET) as {
         user_id: string;
         email: string;
@@ -492,16 +512,27 @@ export class AuthService {
       });
 
       if (!session || session.expiresAt < new Date()) {
+        // Remove from cache if expired
+        tokenCache.delete(token);
         throw new Error("Session expired");
       }
 
+      // Cache the result for 60 seconds
+      tokenCache.set(token, {
+        user: session.user,
+        expiresAt: Date.now() + TOKEN_CACHE_TTL_MS,
+      });
+
       return session.user;
     } catch {
+      tokenCache.delete(token);
       throw new Error("Invalid token");
     }
   }
 
   static async signOut(token: string) {
+    // Clear from cache immediately
+    tokenCache.delete(token);
     await prisma.session.deleteMany({ where: { token } });
   }
   static async sendPasswordResetEmail(email: string): Promise<void> {

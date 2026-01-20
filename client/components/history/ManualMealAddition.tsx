@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -120,6 +120,7 @@ export default function ManualMealAddition({
   const [isLoading, setIsLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const isSubmittingRef = useRef(false); // Prevent double submissions
   const [mealData, setMealData] = useState({
     mealName: "",
     calories: "",
@@ -215,6 +216,11 @@ export default function ManualMealAddition({
   };
 
   const handleSubmit = async () => {
+    // Prevent double submissions
+    if (isSubmittingRef.current || isLoading) {
+      return;
+    }
+
     if (!mealData.mealName.trim() || !mealData.calories.trim()) {
       Alert.alert(
         t("common.error"),
@@ -233,6 +239,7 @@ export default function ManualMealAddition({
     }
 
     try {
+      isSubmittingRef.current = true;
       setIsLoading(true);
 
       const ingredientsArray = mealData.ingredients
@@ -284,6 +291,7 @@ export default function ManualMealAddition({
       Alert.alert(t("common.error"), t("history.manualMeal.error.addFailed"));
     } finally {
       setIsLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 

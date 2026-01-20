@@ -34,6 +34,17 @@ export interface StatisticsData {
   averageSugar: number;
   averageSodium: number;
   averageFluids: number;
+  // Daily goals from DailyGoal table
+  dailyGoals: {
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fats_g: number;
+    fiber_g: number;
+    sugar_g: number;
+    sodium_mg: number;
+    water_ml: number;
+  };
   achievements: any[];
   dailyBreakdown: any[];
   successfulDays: number;
@@ -71,10 +82,16 @@ export interface PeriodStatistics {
   start_date: string;
   end_date: string;
   total_days: number;
+  // User gamification data
+  level: number;
+  currentXP: number;
+  totalPoints: number;
   goals: NutritionGoals;
   consumption: NutritionGoals;
   progress_percentages: NutritionGoals;
   daily_averages: NutritionGoals;
+  // Daily goals from DailyGoal table (per day, not multiplied by period)
+  dailyGoals: NutritionGoals;
   meal_count: number;
   completion_rate: number;
   currentStreak: number;
@@ -355,6 +372,10 @@ export class StatisticsService {
           start_date: definedStartDate.toISOString().split("T")[0],
           end_date: definedEndDate.toISOString().split("T")[0],
           total_days: totalDays,
+          // Include user gamification data
+          level: user.level || 1,
+          currentXP: user.total_points || 0,
+          totalPoints: user.total_points || 0,
           goals: periodGoals,
           consumption: periodConsumption,
           progress_percentages: this.calculateProgressPercentages(
@@ -362,6 +383,8 @@ export class StatisticsService {
             periodConsumption
           ),
           daily_averages: averages,
+          // Include daily goals from DailyGoal table (per day, not multiplied by period)
+          dailyGoals: userGoals,
           meal_count: meals.length,
           completion_rate: Math.round(
             (periodConsumption.calories / periodGoals.calories) * 100
@@ -409,6 +432,8 @@ export class StatisticsService {
         averageSugar: averages.sugar,
         averageSodium: averages.sodium,
         averageFluids: averages.fluids,
+        // Include daily goals from DailyGoal table
+        dailyGoals: userGoals,
         achievements: achievementData,
         dailyBreakdown: dailyBreakdown,
         successfulDays: streakMetrics.successfulDays,

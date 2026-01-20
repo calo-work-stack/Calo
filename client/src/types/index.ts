@@ -48,7 +48,7 @@ export const MealAnalysisSchema = z.object({
         fat: z.number(),
         fiber: z.number().optional(),
         sugar: z.number().optional(),
-      })
+      }),
     )
     .optional(),
   recommendations: z.string().optional(),
@@ -325,8 +325,10 @@ export interface DailyGoals {
   protein: number;
   carbs: number;
   fat: number;
+  water: number;
   targetCalories: number;
   targetProtein: number;
   targetCarbs: number;
   targetFat: number;
+  waterMl: number;
 }

@@ -13,6 +13,12 @@ export class CronJobService {
       await this.emergencyDatabaseCleanup();
     });
 
+    // Delete AI chats older than 1 year - runs daily at 3:00 AM
+    cron.schedule("0 3 * * *", async () => {
+      console.log("🗑️ Running yearly AI chat cleanup");
+      await this.deleteOldAIChats();
+    });
+
     // Create daily goals for all users at 00:30 AM
     cron.schedule("30 0 * * *", async () => {
       console.log("📊 Running daily goals creation at 00:30 AM");
@@ -338,6 +344,39 @@ export class CronJobService {
     } catch (error) {
       console.error("❌ Immediate cleanup and setup failed:", error);
       throw error;
+    }
+  }
+
+  /**
+   * Delete AI chat messages older than 1 year
+   * This runs as a scheduled job daily at 3:00 AM
+   */
+  static async deleteOldAIChats(): Promise<void> {
+    try {
+      console.log("🗑️ Starting yearly AI chat cleanup...");
+
+      await prisma.$connect();
+
+      // Calculate date 1 year ago
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+      // Delete all chat messages older than 1 year
+      const deletedChats = await prisma.chatMessage.deleteMany({
+        where: {
+          created_at: {
+            lt: oneYearAgo,
+          },
+        },
+      });
+
+      console.log(
+        `✅ Yearly AI chat cleanup completed: ${deletedChats.count} messages deleted (older than ${oneYearAgo.toISOString()})`
+      );
+    } catch (error) {
+      console.error("❌ Yearly AI chat cleanup failed:", error);
+    } finally {
+      await prisma.$disconnect();
     }
   }
 }

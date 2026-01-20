@@ -31,6 +31,7 @@ const isSmallScreen = width < 400;
 interface WaterIntakeCardProps {
   currentCups: number;
   maxCups?: number;
+  targetMl?: number; // Actual water goal in ml (for accurate display)
   onIncrement: () => void;
   onDecrement: () => void;
   onAddVolume?: (mlAmount: number) => void;
@@ -52,6 +53,7 @@ const ML_PER_CUP = 250;
 const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
   currentCups,
   maxCups = 10,
+  targetMl: targetMlProp,
   onIncrement,
   onDecrement,
   onAddVolume,
@@ -64,7 +66,8 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
 
   const progress = Math.min((currentCups / maxCups) * 100, 100);
   const currentMl = currentCups * ML_PER_CUP;
-  const targetMl = maxCups * ML_PER_CUP;
+  // Use the actual target ml if provided, otherwise calculate from cups
+  const targetMl = targetMlProp || maxCups * ML_PER_CUP;
   const isComplete = currentCups >= maxCups;
 
   const progressWidth = useSharedValue(0);

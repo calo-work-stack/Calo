@@ -124,7 +124,7 @@ const setCachedResponse = (cacheKey: string, data: any, ttl: number): void => {
 // Request deduplication - prevent multiple identical requests
 const deduplicateRequest = async <T>(
   key: string,
-  requestFn: () => Promise<T>
+  requestFn: () => Promise<T>,
 ): Promise<T> => {
   // If same request is already in flight, return that promise
   if (requestQueue.has(key)) {
@@ -180,7 +180,7 @@ class APIError extends Error {
     message: string,
     public status?: number,
     public code?: string,
-    public retryable: boolean = false
+    public retryable: boolean = false,
   ) {
     super(message);
     this.name = "APIError";
@@ -228,7 +228,7 @@ const createApiInstance = (): AxiosInstance => {
       }
       return config;
     },
-    (error) => Promise.reject(error)
+    (error) => Promise.reject(error),
   );
 
   // Optimized response interceptor with faster retry logic
@@ -268,7 +268,7 @@ const createApiInstance = (): AxiosInstance => {
       }
 
       return Promise.reject(error);
-    }
+    },
   );
 
   return instance;
@@ -347,10 +347,11 @@ export const dailyGoalsAPI = {
       const response = await api.get("/daily-goals");
       if (!response.data.success) {
         throw new APIError(
-          response.data.error || "Failed to fetch daily goals"
+          response.data.error || "Failed to fetch daily goals",
         );
       }
       setCachedResponse(cacheKey, response.data, 300000);
+      console.log(response.data, " i am here");
       return response.data;
     });
   },
@@ -369,7 +370,7 @@ export const dailyGoalsAPI = {
       });
       if (!response.data.success) {
         throw new APIError(
-          response.data.error || "Failed to fetch historical goals"
+          response.data.error || "Failed to fetch historical goals",
         );
       }
       setCachedResponse(cacheKey, response.data, 600000); // 10 min cache
@@ -417,7 +418,7 @@ export const nutritionAPI = {
     updateText?: string,
     editedIngredients: any[] = [],
     language: string = "english",
-    mealPeriod?: string
+    mealPeriod?: string,
   ): Promise<any> {
     if (!imageBase64?.trim()) {
       throw new APIError("Image data is required");
@@ -437,7 +438,7 @@ export const nutritionAPI = {
         timeout: 120000, // 120s timeout - AI analysis can take time
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
-      }
+      },
     );
 
     if (!response.data.success) {
@@ -459,7 +460,7 @@ export const nutritionAPI = {
     name: string,
     quantity: number = 1,
     unit: string = "pieces",
-    category: string = "Manual"
+    category: string = "Manual",
   ): Promise<any> {
     const response = await api.post("/shopping-lists", {
       name: name.trim(),
@@ -477,7 +478,7 @@ export const nutritionAPI = {
 
   async saveMeal(
     mealData: MealAnalysisData,
-    imageBase64?: string
+    imageBase64?: string,
   ): Promise<any> {
     const response = await api.post("/nutrition/save", {
       mealData,
@@ -503,7 +504,7 @@ export const nutritionAPI = {
 
     return deduplicateRequest(cacheKey, async () => {
       const response = await api.get(
-        `/nutrition/meals?offset=${offset}&limit=${limit}`
+        `/nutrition/meals?offset=${offset}&limit=${limit}`,
       );
       if (!response.data.success) {
         throw new APIError(response.data.error || "Failed to fetch meals");
@@ -582,7 +583,7 @@ export const nutritionAPI = {
   async saveMealFeedback(mealId: string, feedback: any): Promise<any> {
     const response = await api.post(
       `/nutrition/meals/${mealId}/feedback`,
-      feedback
+      feedback,
     );
     return response.data;
   },
@@ -830,19 +831,23 @@ export const questionnaireAPI = {
 export const chatAPI = {
   async sendMessage(
     message: string,
-    language: string = "hebrew"
+    language: string = "hebrew",
   ): Promise<any> {
     if (!message?.trim()) {
       throw new APIError("Message cannot be empty");
     }
 
     // Use longer timeout for AI chat - AI responses can take time
-    const response = await api.post("/chat/message", {
-      message: message.trim(),
-      language,
-    }, {
-      timeout: 60000, // 60 second timeout for AI chat
-    });
+    const response = await api.post(
+      "/chat/message",
+      {
+        message: message.trim(),
+        language,
+      },
+      {
+        timeout: 60000, // 60 second timeout for AI chat
+      },
+    );
 
     if (!response.data.success) {
       throw new APIError(response.data.error || "Failed to send message");
@@ -887,7 +892,7 @@ export const calendarAPI = {
 
         if (!response.data.success) {
           throw new APIError(
-            response.data.error || "Failed to fetch calendar data"
+            response.data.error || "Failed to fetch calendar data",
           );
         }
 
@@ -901,7 +906,7 @@ export const calendarAPI = {
   async getStatistics(year: number, month: number): Promise<any> {
     const cacheKey = getCacheKey(
       "GET",
-      `/calendar/statistics/${year}/${month}`
+      `/calendar/statistics/${year}/${month}`,
     );
     const cached = getCachedResponse(cacheKey);
     if (cached) return cached;
@@ -924,7 +929,7 @@ export const calendarAPI = {
     date: string,
     title: string,
     type: string,
-    description?: string
+    description?: string,
   ): Promise<any> {
     const response = await api.post("/calendar/events", {
       date,
@@ -961,7 +966,7 @@ export const calendarAPI = {
   async getEnhancedStatistics(year: number, month: number): Promise<any> {
     const cacheKey = getCacheKey(
       "GET",
-      `/calendar/statistics/enhanced/${year}/${month}`
+      `/calendar/statistics/enhanced/${year}/${month}`,
     );
     const cached = getCachedResponse(cacheKey);
     if (cached) return cached;
@@ -970,12 +975,12 @@ export const calendarAPI = {
       `/calendar/statistics/enhanced/${year}/${month}`,
       {
         timeout: 30000, // 30s timeout for enhanced statistics
-      }
+      },
     );
 
     if (!response.data.success) {
       throw new APIError(
-        response.data.error || "Failed to fetch enhanced statistics"
+        response.data.error || "Failed to fetch enhanced statistics",
       );
     }
 
@@ -1020,7 +1025,7 @@ export const mealPlanAPI = {
       const response = await api.get("/meal-plans/current");
       if (!response.data.success) {
         throw new APIError(
-          response.data.error || "Failed to fetch current meal plan"
+          response.data.error || "Failed to fetch current meal plan",
         );
       }
       setCachedResponse(cacheKey, response.data, 300000); // 5 min cache
@@ -1049,7 +1054,7 @@ export const mealPlanAPI = {
     const response = await api.get("/meal-plans/recommended");
     if (!response.data.success) {
       throw new APIError(
-        response.data.error || "Failed to fetch recommended menus"
+        response.data.error || "Failed to fetch recommended menus",
       );
     }
     setCachedResponse(cacheKey, response.data, 600000); // 10 min cache
@@ -1074,7 +1079,7 @@ export const mealPlanAPI = {
     planId: string,
     dayOfWeek: number,
     mealTiming: string,
-    preferences: any
+    preferences: any,
   ): Promise<any> {
     const response = await api.put(
       `/meal-plans/${planId}/replace`,
@@ -1086,7 +1091,7 @@ export const mealPlanAPI = {
       },
       {
         timeout: 12000, // 12 second timeout
-      }
+      },
     );
 
     if (!response.data.success) {
@@ -1112,7 +1117,7 @@ export const mealPlanAPI = {
   async swapMeal(planId: string, swapRequest: any): Promise<any> {
     const response = await api.post(
       `/meal-plans/${planId}/swap-meal`,
-      swapRequest
+      swapRequest,
     );
     if (!response.data.success) {
       throw new APIError(response.data.error || "Failed to swap meal");

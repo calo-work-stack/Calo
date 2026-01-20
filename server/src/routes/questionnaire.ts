@@ -3,6 +3,7 @@ import { prisma } from "../lib/database";
 import { authenticateToken, AuthRequest } from "../middleware/auth";
 import { questionnaireSchema } from "../types/questionnaire";
 import { DailyGoalsService } from "../services/dailyGoal";
+import { QuestionnaireValidationService } from "../services/questionnaireValidation";
 
 const router = Router();
 
@@ -584,6 +585,10 @@ router.post("/", authenticateToken, async (req: AuthRequest, res) => {
     } else {
       console.log("ℹ️ Skipping menu generation for questionnaire update");
     }
+
+    // Schedule async validation of open-text fields in the background
+    // This validates inputs without blocking the user's workflow
+    QuestionnaireValidationService.scheduleValidation(userId, validatedData);
   } catch (error) {
     console.error("💥 Questionnaire save error:", error);
     res.status(500).json({

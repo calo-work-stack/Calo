@@ -259,21 +259,15 @@ router.get("/comparison/:year/:month", async (req: AuthRequest, res) => {
 
     console.log("📊 Get month comparison request for:", yearNum, monthNum);
 
-    // Get current month data
-    const currentMonth = await CalendarService.getCalendarData(
-      req.user.user_id,
-      yearNum,
-      monthNum
-    );
-
-    // Get previous month data
+    // Calculate previous month values
     const prevMonth = monthNum === 1 ? 12 : monthNum - 1;
     const prevYear = monthNum === 1 ? yearNum - 1 : yearNum;
-    const previousMonth = await CalendarService.getCalendarData(
-      req.user.user_id,
-      prevYear,
-      prevMonth
-    );
+
+    // Fetch both months in parallel for faster response
+    const [currentMonth, previousMonth] = await Promise.all([
+      CalendarService.getCalendarData(req.user.user_id, yearNum, monthNum),
+      CalendarService.getCalendarData(req.user.user_id, prevYear, prevMonth),
+    ]);
 
     res.json({
       success: true,

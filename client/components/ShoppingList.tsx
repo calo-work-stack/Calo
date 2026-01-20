@@ -19,11 +19,15 @@ import {
   X,
   Edit3,
   Save,
+  Apple,
+  Beef,
+  Milk,
+  Carrot,
 } from "lucide-react-native";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { api, nutritionAPI } from "@/src/services/api";
-import { useShoppingList } from "@/hooks/useShoppingList"; // Assuming this hook exists
+import { useShoppingList } from "@/hooks/useShoppingList";
 
 interface ShoppingListItem {
   id: string;
@@ -32,8 +36,8 @@ interface ShoppingListItem {
   unit: string;
   category?: string;
   is_purchased: boolean;
-  added_from?: string; // 'menu', 'scanner', 'manual'
-  estimated_cost?: number; // Added for price integration
+  added_from?: string;
+  estimated_cost?: number;
 }
 
 interface ShoppingListProps {
@@ -47,6 +51,24 @@ interface ShoppingListProps {
   }>;
 }
 
+const categoryIcons: { [key: string]: any } = {
+  'Fruits': Apple,
+  'Meat': Beef,
+  'Dairy': Milk,
+  'Vegetables': Carrot,
+  'Manual': ShoppingCart,
+  'From Meal': ShoppingCart,
+};
+
+const categoryColors: { [key: string]: string } = {
+  'Fruits': '#EF4444',
+  'Meat': '#8B5CF6',
+  'Dairy': '#3B82F6',
+  'Vegetables': '#10B981',
+  'Manual': '#F59E0B',
+  'From Meal': '#F59E0B',
+};
+
 export default function ShoppingList({
   visible,
   onClose,
@@ -55,7 +77,6 @@ export default function ShoppingList({
   const { colors } = useTheme();
   const { t } = useLanguage();
 
-  // Ensure modal can be closed properly
   const handleModalClose = useCallback(() => {
     console.log("ShoppingList modal closing");
     onClose();
@@ -84,11 +105,10 @@ export default function ShoppingList({
     quantity: 1,
     unit: "pieces",
     category: "Manual",
-    estimated_cost: 0, // Initialize estimated_cost
+    estimated_cost: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
 
-  // Add initial items when component mounts (for meal ingredients)
   useEffect(() => {
     if (visible && initialItems.length > 0) {
       const itemsToAdd = initialItems.map((item) => ({
@@ -97,7 +117,7 @@ export default function ShoppingList({
         unit: item.unit || "pieces",
         category: item.category || "From Meal",
         added_from: "meal",
-        estimated_cost: 0, // Initialize estimated_cost for initial items
+        estimated_cost: 0,
       }));
 
       if (itemsToAdd.length === 1) {
@@ -135,7 +155,7 @@ export default function ShoppingList({
       quantity: 1,
       unit: "pieces",
       category: "Manual",
-      estimated_cost: 0, // Reset estimated_cost
+      estimated_cost: 0,
     });
     setShowAddModal(false);
   };
@@ -152,7 +172,7 @@ export default function ShoppingList({
       quantity: editingItem.quantity,
       unit: editingItem.unit,
       category: editingItem.category,
-      estimated_cost: editingItem.estimated_cost || 0, // Ensure estimated_cost is passed
+      estimated_cost: editingItem.estimated_cost || 0,
     });
 
     setEditingItem(null);
@@ -173,125 +193,104 @@ export default function ShoppingList({
     ]);
   };
 
-  const renderItem = (item: ShoppingListItem) => (
-    <View
-      key={item.id}
-      style={[
-        styles.listItem,
-        {
-          backgroundColor: colors.card,
-          borderColor: colors.border,
-          opacity: item.is_purchased ? 0.6 : 1,
-        },
-      ]}
-    >
-      <TouchableOpacity
+  const renderItem = (item: ShoppingListItem) => {
+    const IconComponent = categoryIcons[item.category || 'Manual'] || ShoppingCart;
+    const categoryColor = categoryColors[item.category || 'Manual'] || colors.emerald500;
+
+    return (
+      <View
+        key={item.id}
         style={[
-          styles.checkbox,
+          styles.listItem,
           {
-            borderColor: item.is_purchased ? colors.emerald500 : colors.border,
-            backgroundColor: item.is_purchased
-              ? colors.emerald500
-              : "transparent",
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            opacity: item.is_purchased ? 0.6 : 1,
           },
         ]}
-        onPress={() => handleTogglePurchased(item.id)}
       >
-        {item.is_purchased && <Check size={16} color="#ffffff" />}
-      </TouchableOpacity>
+        {/* Category Icon */}
+        <View
+          style={[
+            styles.iconContainer,
+            { backgroundColor: categoryColor + '15' }
+          ]}
+        >
+          <IconComponent size={24} color={categoryColor} strokeWidth={2} />
+        </View>
 
-      <View style={styles.itemContent}>
-        {editingItem?.id === item.id ? (
-          <View style={styles.editForm}>
-            <TextInput
-              style={[
-                styles.editInput,
-                { color: colors.text, borderColor: colors.border },
-              ]}
-              value={editingItem.name}
-              onChangeText={(text) =>
-                setEditingItem({ ...editingItem, name: text })
-              }
-              placeholder="Item name"
-              placeholderTextColor={colors.icon}
-            />
-            <View style={styles.quantityRow}>
+        {/* Item Content */}
+        <View style={styles.itemContent}>
+          {editingItem?.id === item.id ? (
+            <View style={styles.editForm}>
               <TextInput
                 style={[
-                  styles.quantityInput,
+                  styles.editInput,
                   { color: colors.text, borderColor: colors.border },
                 ]}
-                value={String(editingItem.quantity)}
+                value={editingItem.name}
                 onChangeText={(text) =>
-                  setEditingItem({
-                    ...editingItem,
-                    quantity: parseFloat(text) || 1,
-                  })
+                  setEditingItem({ ...editingItem, name: text })
                 }
-                keyboardType="numeric"
-                placeholder="1"
+                placeholder="Item name"
                 placeholderTextColor={colors.icon}
               />
-              <TextInput
-                style={[
-                  styles.unitInput,
-                  { color: colors.text, borderColor: colors.border },
-                ]}
-                value={editingItem.unit}
-                onChangeText={(text) =>
-                  setEditingItem({ ...editingItem, unit: text })
-                }
-                placeholder="unit"
-                placeholderTextColor={colors.icon}
-              />
+              <View style={styles.quantityRow}>
+                <TextInput
+                  style={[
+                    styles.quantityInput,
+                    { color: colors.text, borderColor: colors.border },
+                  ]}
+                  value={String(editingItem.quantity)}
+                  onChangeText={(text) =>
+                    setEditingItem({
+                      ...editingItem,
+                      quantity: parseFloat(text) || 1,
+                    })
+                  }
+                  keyboardType="numeric"
+                  placeholder="1"
+                  placeholderTextColor={colors.icon}
+                />
+                <TextInput
+                  style={[
+                    styles.unitInput,
+                    { color: colors.text, borderColor: colors.border },
+                  ]}
+                  value={editingItem.unit}
+                  onChangeText={(text) =>
+                    setEditingItem({ ...editingItem, unit: text })
+                  }
+                  placeholder="unit"
+                  placeholderTextColor={colors.icon}
+                />
+              </View>
             </View>
-            <TextInput
-              style={[
-                styles.editInput,
-                { color: colors.text, borderColor: colors.border },
-              ]}
-              value={String(editingItem.estimated_cost)}
-              onChangeText={(text) =>
-                setEditingItem({
-                  ...editingItem,
-                  estimated_cost: parseFloat(text) || 0,
-                })
-              }
-              keyboardType="numeric"
-              placeholder="Estimated Cost"
-              placeholderTextColor={colors.icon}
-            />
-          </View>
-        ) : (
-          <View>
-            <Text
-              style={[
-                styles.itemName,
-                {
-                  color: colors.text,
-                  textDecorationLine: item.is_purchased
-                    ? "line-through"
-                    : "none",
-                },
-              ]}
-            >
-              {item.name}
-            </Text>
-            <Text style={[styles.itemDetails, { color: colors.icon }]}>
-              {item.quantity} {item.unit}
-              {item.category && ` • ${item.category}`}
-              {item.added_from && ` • from ${item.added_from}`}
-              {item.estimated_cost !== undefined &&
-                item.estimated_cost > 0 &&
-                ` • $${item.estimated_cost.toFixed(2)}`}
-            </Text>
-          </View>
-        )}
-      </View>
+          ) : (
+            <View>
+              <Text
+                style={[
+                  styles.itemName,
+                  {
+                    color: colors.text,
+                    textDecorationLine: item.is_purchased
+                      ? "line-through"
+                      : "none",
+                  },
+                ]}
+              >
+                {item.name}
+              </Text>
+              <Text style={[styles.itemDetails, { color: colors.icon }]}>
+                {item.quantity} {item.unit}
+              </Text>
+            </View>
+          )}
+        </View>
 
-      <View style={styles.itemActions}>
+        {/* Checkbox */}
         {editingItem?.id === item.id ? (
-          <>
+          <View style={styles.itemActions}>
             <TouchableOpacity
               style={[
                 styles.actionButton,
@@ -307,45 +306,28 @@ export default function ShoppingList({
             >
               <X size={16} color={colors.text} />
             </TouchableOpacity>
-          </>
+          </View>
         ) : (
-          <>
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: colors.surface }]}
-              onPress={() => setEditingItem(item)}
-            >
-              <Edit3 size={16} color={colors.text} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: "#ef4444" }]}
-              onPress={() => handleDeleteItem(item.id)}
-            >
-              <Trash2 size={16} color="#ffffff" />
-            </TouchableOpacity>
-          </>
+          <TouchableOpacity
+            style={[
+              styles.checkbox,
+              {
+                borderColor: item.is_purchased ? colors.emerald500 : colors.border,
+                backgroundColor: item.is_purchased
+                  ? colors.emerald500
+                  : "transparent",
+              },
+            ]}
+            onPress={() => handleTogglePurchased(item.id)}
+          >
+            {item.is_purchased && <Check size={16} color="#ffffff" strokeWidth={3} />}
+          </TouchableOpacity>
         )}
       </View>
-    </View>
-  );
-
-  const handleClearPurchased = () => {
-    Alert.alert(
-      "Clear Purchased",
-      "Remove all purchased items from the list?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Clear",
-          onPress: async () => {
-            const purchasedIds = shoppingList
-              .filter((item: { is_purchased: any }) => item.is_purchased)
-              .map((item: { id: any }) => item.id);
-            purchasedIds.forEach((id: any) => deleteItem(id));
-          },
-        },
-      ]
     );
   };
+
+  const unpurchasedCount = shoppingList.filter((item: { is_purchased: any }) => !item.is_purchased).length;
 
   return (
     <Modal
@@ -361,15 +343,11 @@ export default function ShoppingList({
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <View style={styles.headerLeft}>
-              <ShoppingCart size={24} color={colors.emerald500} />
               <Text style={[styles.headerTitle, { color: colors.text }]}>
-                Shopping List (
-                {
-                  shoppingList.filter(
-                    (item: { is_purchased: any }) => !item.is_purchased
-                  ).length
-                }{" "}
-                items)
+                Grocery List
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+                {unpurchasedCount} items left to buy
               </Text>
             </View>
             <TouchableOpacity
@@ -473,22 +451,6 @@ export default function ShoppingList({
                     placeholderTextColor={colors.icon}
                   />
                 </View>
-                <TextInput
-                  style={[
-                    styles.input,
-                    { color: colors.text, borderColor: colors.border },
-                  ]}
-                  value={String(newItem.estimated_cost)}
-                  onChangeText={(text) =>
-                    setNewItem({
-                      ...newItem,
-                      estimated_cost: parseFloat(text) || 0,
-                    })
-                  }
-                  keyboardType="numeric"
-                  placeholder="Estimated Cost"
-                  placeholderTextColor={colors.icon}
-                />
                 <View style={styles.formActions}>
                   <TouchableOpacity
                     style={[
@@ -523,32 +485,14 @@ export default function ShoppingList({
             )}
           </ScrollView>
 
-          {/* Footer Actions */}
-          <View style={[styles.footer, { borderTopColor: colors.border }]}>
-            <TouchableOpacity
-              style={[styles.footerButton, { backgroundColor: colors.surface }]}
-              onPress={() => setShowAddModal(!showAddModal)}
-            >
-              <Plus size={20} color={colors.text} />
-              <Text style={[styles.footerButtonText, { color: colors.text }]}>
-                Add Item
-              </Text>
-            </TouchableOpacity>
-
-            {shoppingList.some(
-              (item: { is_purchased: any }) => item.is_purchased
-            ) && (
-              <TouchableOpacity
-                style={[styles.footerButton, { backgroundColor: "#ef4444" }]}
-                onPress={handleClearPurchased}
-              >
-                <Trash2 size={20} color="#ffffff" />
-                <Text style={[styles.footerButtonText, { color: "#ffffff" }]}>
-                  Clear Purchased
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          {/* Floating Add Button */}
+          <TouchableOpacity
+            style={[styles.floatingButton, { backgroundColor: colors.emerald500 }]}
+            onPress={() => setShowAddModal(!showAddModal)}
+            activeOpacity={0.9}
+          >
+            <Plus size={28} color="#ffffff" strokeWidth={2.5} />
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -562,7 +506,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    height: "85%",
+    height: "90%",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: "hidden",
@@ -570,26 +514,29 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    padding: 20,
+    alignItems: "flex-start",
+    padding: 24,
+    paddingBottom: 20,
     borderBottomWidth: 1,
   },
   headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
     flex: 1,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 28,
     fontWeight: "700",
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    fontWeight: "500",
   },
   closeButton: {
     padding: 4,
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: 16,
   },
   loadingContainer: {
     flex: 1,
@@ -619,19 +566,27 @@ const styles = StyleSheet.create({
   },
   itemsList: {
     gap: 12,
+    paddingBottom: 100,
   },
   listItem: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     gap: 12,
   },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     borderWidth: 2,
     justifyContent: "center",
     alignItems: "center",
@@ -640,12 +595,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     marginBottom: 4,
   },
   itemDetails: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: "500",
   },
   itemActions: {
     flexDirection: "row",
@@ -691,6 +647,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: 20,
     gap: 12,
+    marginBottom: 100,
   },
   addFormTitle: {
     fontSize: 16,
@@ -722,23 +679,19 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#ffffff",
   },
-  footer: {
-    flexDirection: "row",
-    padding: 20,
-    borderTopWidth: 1,
-    gap: 12,
-  },
-  footerButton: {
-    flex: 1,
-    flexDirection: "row",
+  floatingButton: {
+    position: "absolute",
+    bottom: 24,
+    alignSelf: "center",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: "center",
     alignItems: "center",
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  footerButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
 });

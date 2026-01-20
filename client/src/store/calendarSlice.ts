@@ -13,6 +13,7 @@ interface DayData {
   fat_actual: number;
   meal_count: number;
   quality_score: number;
+  water_goal_ml: number;
   water_intake_ml: number;
   events: Array<{
     id: string;
@@ -90,6 +91,17 @@ export interface StatisticsData {
   averageCompletion: number;
   bestStreak: number;
   currentStreak: number;
+  // Daily goals from DailyGoal table
+  dailyGoals?: {
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fats_g: number;
+    fiber_g: number;
+    sugar_g: number;
+    sodium_mg: number;
+    water_ml: number;
+  };
   nutritionBreakdown: {
     calories: number;
     protein: number;
@@ -99,6 +111,9 @@ export interface StatisticsData {
   };
   eventCount: number;
   timeRange: string;
+  // Additional fields that may come from the API
+  level?: number;
+  currentXP?: number;
 }
 
 interface Badge {

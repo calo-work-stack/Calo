@@ -10,6 +10,7 @@ export interface DayData {
   fat_actual: number;
   meal_count: number;
   quality_score: number;
+  water_goal_ml: number;
   water_intake_ml: number;
   events: CalendarEventSimple[];
 }

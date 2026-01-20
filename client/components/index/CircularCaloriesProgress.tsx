@@ -112,14 +112,16 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
     targetFat: dailyGoals?.targetFat ?? defaultNutrition.targetFat,
   };
 
-  const size = isSmallScreen ? 220 : 280;
+  const size = isSmallScreen ? 220 : 240;
   const center = size / 2;
-  const radius = isSmallScreen ? 85 : 110;
-  const strokeWidth = isSmallScreen ? 18 : 24;
+  const radius = isSmallScreen ? 85 : 100;
+  const strokeWidth = isSmallScreen ? 18 : 20;
 
   const remainingCalories = Math.max(
-    nutrition.targetCalories - nutrition.calories,
-    0
+    nutrition.targetCalories -
+      nutrition.calories +
+      (nutrition.burnedCalories || 0),
+    0,
   );
 
   const nutritionCards: NutritionCard[] = [
@@ -168,7 +170,7 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
       unit: t("home.nutrition.units.grams"),
       color: colors.warning,
       gradient: ["#FBBF24", colors.warning],
-    }
+    },
   );
 
   if (nutrition.fiber !== undefined && nutrition.targetFiber !== undefined) {
@@ -301,7 +303,7 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
   const styles = StyleSheet.create({
     container: {
       backgroundColor: colors.surface,
-      borderRadius: isSmallScreen ? 28 : 32,
+      borderRadius: 24,
       overflow: "hidden",
       borderWidth: 1,
       borderColor: isDark ? colors.border + "40" : colors.border + "60",
@@ -310,7 +312,7 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
       flexDirection: "row",
       justifyContent: "center",
       alignItems: "center",
-      paddingVertical: isSmallScreen ? 18 : 22,
+      paddingVertical: 20,
       gap: 8,
     },
     paginationDot: {
@@ -328,18 +330,18 @@ const CircularCaloriesProgress: React.FC<CircularCaloriesProgressProps> = ({
       opacity: 1,
     },
     additionalNutrition: {
-      paddingHorizontal: isSmallScreen ? 20 : 28,
-      paddingBottom: isSmallScreen ? 24 : 28,
+      paddingHorizontal: 24,
+      paddingBottom: 28,
     },
     sectionTitle: {
-      fontSize: isSmallScreen ? 17 : 19,
+      fontSize: 16,
       fontWeight: "700",
       color: colors.text,
-      marginBottom: isSmallScreen ? 16 : 20,
+      marginBottom: 16,
       letterSpacing: -0.3,
     },
     nutritionList: {
-      gap: isSmallScreen ? 14 : 16,
+      gap: 16,
     },
   });
 
@@ -446,94 +448,112 @@ const NutritionCardView: React.FC<{
   const styles = StyleSheet.create({
     cardContainer: {
       width,
-      paddingBottom: isSmallScreen ? 24 : 32,
-      paddingTop: isSmallScreen ? 24 : 28,
+      paddingBottom: 32,
+      paddingTop: 20,
     },
-    circleSection: { marginBottom: isSmallScreen ? 20 : 28 },
+    circleSection: {
+      marginBottom: 0,
+      paddingHorizontal: 24,
+    },
     caloriesWrapper: { alignItems: "center" },
     statsRowBottom: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-start",
       justifyContent: "center",
-      marginTop: isSmallScreen ? 24 : 32,
-      paddingHorizontal: isSmallScreen ? 24 : 32,
-      gap: isSmallScreen ? 20 : 28,
+      marginTop: 24,
+      gap: 32,
+      paddingHorizontal: 20,
     },
-    statColumnBottom: { alignItems: "center", flex: 1 },
+    statColumnBottom: {
+      alignItems: "center",
+    },
+    iconBadge: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 8,
+    },
     statDivider: {
       width: 1,
-      height: isSmallScreen ? 40 : 48,
+      height: 60,
       backgroundColor: isDark ? colors.border + "40" : colors.border + "60",
+      marginTop: 8,
     },
     statNumberBottom: {
-      fontSize: isSmallScreen ? 26 : 32,
+      fontSize: 28,
       fontWeight: "700",
       color: colors.text,
-      marginBottom: 6,
+      marginBottom: 2,
       letterSpacing: -0.5,
     },
     statLabelBottom: {
-      fontSize: isSmallScreen ? 12 : 13,
+      fontSize: 11,
       color: colors.textSecondary,
-      fontWeight: "600",
+      fontWeight: "500",
+      textTransform: "uppercase",
       letterSpacing: 0.5,
     },
-    statIcon: { marginBottom: 8 },
     circleContainer: {
       alignItems: "center",
       justifyContent: "center",
       position: "relative",
     },
-    centerTextContainer: { position: "absolute", alignItems: "center" },
+    centerTextContainer: {
+      position: "absolute",
+      alignItems: "center",
+    },
     centerNumber: {
-      fontSize: isSmallScreen ? 36 : 48,
-      fontWeight: "800",
+      fontSize: 40,
+      fontWeight: "700",
       color: colors.text,
-      marginBottom: 6,
-      letterSpacing: -1.5,
+      marginBottom: 2,
+      letterSpacing: -1,
     },
     unitText: {
-      fontSize: isSmallScreen ? 18 : 24,
+      fontSize: 20,
       fontWeight: "600",
       color: colors.textSecondary,
-      letterSpacing: 0,
     },
     centerLabel: {
-      fontSize: isSmallScreen ? 13 : 14,
+      fontSize: 12,
       color: colors.textSecondary,
       fontWeight: "500",
-      letterSpacing: 0.2,
+      letterSpacing: 0,
+      textAlign: "center",
+      maxWidth: 140,
     },
     remainingText: {
-      fontSize: isSmallScreen ? 12 : 13,
+      fontSize: 13,
       fontWeight: "600",
       marginTop: 6,
       letterSpacing: 0.2,
     },
     singleCircleContainer: { alignItems: "center" },
     cardTitle: {
-      fontSize: isSmallScreen ? 22 : 28,
+      fontSize: 28,
       fontWeight: "700",
       color: colors.text,
-      marginBottom: isSmallScreen ? 20 : 24,
+      marginBottom: 24,
       letterSpacing: -0.5,
     },
-    progressPercentage: { marginTop: isSmallScreen ? 20 : 24 },
+    progressPercentage: { marginTop: 24 },
     percentageText: {
-      fontSize: isSmallScreen ? 16 : 18,
+      fontSize: 18,
       fontWeight: "600",
       letterSpacing: 0.2,
     },
     waterHeader: {
       flexDirection: "row",
       alignItems: "center",
-      gap: isSmallScreen ? 14 : 18,
-      marginBottom: isSmallScreen ? 20 : 24,
+      gap: 18,
+      marginBottom: 24,
     },
     waterIconContainer: {
-      width: isSmallScreen ? 56 : 64,
-      height: isSmallScreen ? 56 : 64,
-      borderRadius: isSmallScreen ? 16 : 18,
+      width: 64,
+      height: 64,
+      borderRadius: 18,
       backgroundColor: isDark ? colors.primaryContainer + "40" : "#E3F2FD",
       alignItems: "center",
       justifyContent: "center",
@@ -541,7 +561,7 @@ const NutritionCardView: React.FC<{
       borderColor: isDark ? colors.primary + "20" : colors.primary + "15",
     },
     waterSubtitle: {
-      fontSize: isSmallScreen ? 13 : 14,
+      fontSize: 14,
       color: colors.textSecondary,
       fontWeight: "600",
       marginTop: 4,
@@ -594,41 +614,37 @@ const NutritionCardView: React.FC<{
                 <Text style={styles.centerNumber}>
                   {remainingCalories.toLocaleString()}
                 </Text>
-                <Text style={styles.centerLabel}>
-                  {t("home.nutrition.remaining")}
-                </Text>
+                <Text style={styles.centerLabel}>Remaining/Exceeded</Text>
               </View>
             </View>
 
             <View style={styles.statsRowBottom}>
               <View style={styles.statColumnBottom}>
-                <View style={styles.statIcon}>
-                  <TrendingUp
-                    size={isSmallScreen ? 20 : 24}
-                    color={colors.success}
-                    strokeWidth={2}
-                  />
+                <View
+                  style={[
+                    styles.iconBadge,
+                    { backgroundColor: colors.emerald500 },
+                  ]}
+                >
+                  <TrendingUp size={12} color="#FFFFFF" strokeWidth={2.5} />
                 </View>
                 <Text style={styles.statNumberBottom}>
                   {card.value.toLocaleString()}
                 </Text>
-                <Text style={styles.statLabelBottom}>
-                  {t("home.nutrition.eaten")}
-                </Text>
+                <Text style={styles.statLabelBottom}>Eaten</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statColumnBottom}>
-                <View style={styles.statIcon}>
-                  <Flame
-                    size={isSmallScreen ? 20 : 24}
-                    color={colors.warning}
-                    strokeWidth={2}
-                  />
+                <View
+                  style={[
+                    styles.iconBadge,
+                    { backgroundColor: colors.warning },
+                  ]}
+                >
+                  <Flame size={12} color="#FFFFFF" strokeWidth={2.5} />
                 </View>
                 <Text style={styles.statNumberBottom}>{burnedCalories}</Text>
-                <Text style={styles.statLabelBottom}>
-                  {t("home.nutrition.burned")}
-                </Text>
+                <Text style={styles.statLabelBottom}>Burned</Text>
               </View>
             </View>
           </View>
@@ -638,11 +654,7 @@ const NutritionCardView: React.FC<{
           <View style={styles.singleCircleContainer}>
             <View style={styles.waterHeader}>
               <View style={styles.waterIconContainer}>
-                <Droplets
-                  size={isSmallScreen ? 30 : 36}
-                  color={colors.primary}
-                  strokeWidth={2}
-                />
+                <Droplets size={36} color={colors.primary} strokeWidth={2} />
               </View>
               <View>
                 <Text style={styles.cardTitle}>
@@ -783,14 +795,14 @@ const NutritionRow: React.FC<{
     nutritionRowHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
     nutritionDot: { width: 8, height: 8, borderRadius: 4 },
     nutritionRowTitle: {
-      fontSize: isSmallScreen ? 14 : 15,
+      fontSize: 15,
       fontWeight: "600",
       color: colors.text,
       flex: 1,
       letterSpacing: 0.1,
     },
     nutritionRowValue: {
-      fontSize: isSmallScreen ? 13 : 14,
+      fontSize: 14,
       fontWeight: "600",
       color: colors.textSecondary,
       letterSpacing: 0.1,

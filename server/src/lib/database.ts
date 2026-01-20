@@ -5,6 +5,7 @@ declare global {
 }
 
 // Create Prisma client optimized for Supabase pooler
+// Connection pool settings help handle concurrent requests efficiently
 export const prisma =
   global.__prisma ||
   new PrismaClient({
@@ -13,6 +14,11 @@ export const prisma =
       db: {
         url: process.env.DATABASE_URL,
       },
+    },
+    // Optimize transaction behavior for faster responses
+    transactionOptions: {
+      maxWait: 5000, // Max time to wait for a connection (5s)
+      timeout: 10000, // Max transaction duration (10s)
     },
   });
 
