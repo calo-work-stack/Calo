@@ -11,8 +11,10 @@ datasource db {
 model User {
   user_id                    String                 @id @default(cuid())
   email                      String                 @unique
+  email_hash                 String?                @unique // Hash for encrypted email lookups
   password_hash              String
-  name                       String?
+  name                       String? //Encrypted
+  phone_number               String? // Encrypted
   avatar_url                 String?
   signup_date                DateTime               @default(now())
   subscription_type          SubscriptionType
@@ -242,13 +244,13 @@ model Meal {
   updated_at             DateTime?      @updatedAt
 
   // User interaction fields - favorites and ratings
-  is_favorite            Boolean        @default(false)
-  taste_rating           Int?           @default(0)
-  satiety_rating         Int?           @default(0)
-  energy_rating          Int?           @default(0)
-  heaviness_rating       Int?           @default(0)
+  is_favorite      Boolean @default(false)
+  taste_rating     Int?    @default(0)
+  satiety_rating   Int?    @default(0)
+  energy_rating    Int?    @default(0)
+  heaviness_rating Int?    @default(0)
 
-  user                   User           @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@index([user_id, created_at])
   @@index([user_id, upload_time])

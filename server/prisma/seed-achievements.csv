@@ -1,31 +1,31 @@
 id,key,title,description,category,max_progress,points_awarded,icon,rarity,created_at,updated_at
-ach_001,first_scan,First Steps,Analyze your first meal,MILESTONE,1,50,🎯,COMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_002,first_water_goal,Hydration Hero,Complete your first water goal (8 cups),GOAL,1,100,💧,COMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_003,first_complete_day,Perfect Day,Complete both water and calorie goals in one day,MILESTONE,1,150,✨,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_004,streak_3_days,Getting Started,Maintain a 3-day streak,STREAK,3,200,🔥,COMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_005,streak_7_days,Week Warrior,Maintain a 7-day streak,STREAK,7,500,📅,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_006,streak_14_days,Fortnight Fighter,Maintain a 14-day streak,STREAK,14,1000,💪,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_007,streak_30_days,Monthly Master,Maintain a 30-day streak,STREAK,30,2500,👑,EPIC,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_008,streak_100_days,Century Champion,Maintain a 100-day streak,STREAK,100,10000,🏆,LEGENDARY,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_009,water_warrior,Water Warrior,Drink 10+ cups of water in a day,GOAL,1,200,🌊,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_010,hydration_habit,Hydration Habit,Meet water goals for 7 consecutive days,STREAK,7,750,💦,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_011,aqua_master,Aqua Master,Meet water goals for 30 days total,GOAL,30,1500,🏔️,EPIC,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_012,total_5_days,Getting the Hang,5 total complete days,MILESTONE,5,250,🌟,COMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_013,total_10_days,Double Digits,10 total complete days,MILESTONE,10,500,⭐,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_014,total_25_days,Quarter Century,25 total complete days,MILESTONE,25,1250,🎖️,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_015,total_50_days,Half Century,50 total complete days,MILESTONE,50,2500,🥇,EPIC,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_016,total_100_days,Centurion,100 total complete days,MILESTONE,100,5000,👑,LEGENDARY,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_017,calorie_champion,Calorie Champion,Meet calorie goals for 7 consecutive days,STREAK,7,750,🍎,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_018,protein_power,Protein Power,Consume 100g+ protein in a day,GOAL,1,300,💪,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_019,balanced_week,Balanced Week,Meet all macro goals for 7 consecutive days,STREAK,7,1000,⚖️,EPIC,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_020,level_5,Rising Star,Reach Level 5,LEVEL,5,500,⭐,COMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_021,level_10,Dedicated User,Reach Level 10,LEVEL,10,1000,🌟,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_022,level_25,Expert Tracker,Reach Level 25,LEVEL,25,2500,🔥,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_023,level_50,Nutrition Master,Reach Level 50,LEVEL,50,5000,👑,EPIC,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_024,early_bird,Early Bird,Log a meal before 8 AM,SPECIAL,1,100,🐦,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_025,night_owl,Night Owl,Log a meal after 10 PM,SPECIAL,1,100,🦉,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_026,weekend_warrior,Weekend Warrior,Complete goals on both Saturday and Sunday,SPECIAL,1,300,🎯,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_027,consistency_king,Consistency King,Log meals every day for a week,STREAK,7,1000,📊,EPIC,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_028,macro_master,Macro Master,Hit perfect macro ratios (40/30/30) for a day,GOAL,1,500,🎯,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_029,fiber_friend,Fiber Friend,Consume 35g+ fiber in a day,GOAL,1,250,🌾,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
-ach_030,iron_will,Iron Will,Complete goals for 365 days total,MILESTONE,365,25000,💎,LEGENDARY,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_001,first_scan,First Steps,Analyze your first meal,MILESTONE,1,50,Target,COMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_002,first_water_goal,Hydration Hero,Complete your first water goal (8 cups),GOAL,1,100,Droplet,COMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_003,first_complete_day,Perfect Day,Complete both water and calorie goals in one day,MILESTONE,1,150,Sparkles,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_004,streak_3_days,Getting Started,Maintain a 3-day streak,STREAK,3,200,Flame,COMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_005,streak_7_days,Week Warrior,Maintain a 7-day streak,STREAK,7,500,Calendar,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_006,streak_14_days,Fortnight Fighter,Maintain a 14-day streak,STREAK,14,1000,Dumbbell,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_007,streak_30_days,Monthly Master,Maintain a 30-day streak,STREAK,30,2500,Crown,EPIC,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_008,streak_100_days,Century Champion,Maintain a 100-day streak,STREAK,100,10000,Trophy,LEGENDARY,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_009,water_warrior,Water Warrior,Drink 10+ cups of water in a day,GOAL,1,200,Waves,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_010,hydration_habit,Hydration Habit,Meet water goals for 7 consecutive days,STREAK,7,750,Droplets,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_011,aqua_master,Aqua Master,Meet water goals for 30 days total,GOAL,30,1500,Mountain,EPIC,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_012,total_5_days,Getting the Hang,5 total complete days,MILESTONE,5,250,Star,COMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_013,total_10_days,Double Digits,10 total complete days,MILESTONE,10,500,Sparkle,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_014,total_25_days,Quarter Century,25 total complete days,MILESTONE,25,1250,Medal,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_015,total_50_days,Half Century,50 total complete days,MILESTONE,50,2500,Award,EPIC,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_016,total_100_days,Centurion,100 total complete days,MILESTONE,100,5000,Crown,LEGENDARY,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_017,calorie_champion,Calorie Champion,Meet calorie goals for 7 consecutive days,STREAK,7,750,Apple,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_018,protein_power,Protein Power,Consume 100g+ protein in a day,GOAL,1,300,Dumbbell,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_019,balanced_week,Balanced Week,Meet all macro goals for 7 consecutive days,STREAK,7,1000,Scale,EPIC,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_020,level_5,Rising Star,Reach Level 5,LEVEL,5,500,Star,COMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_021,level_10,Dedicated User,Reach Level 10,LEVEL,10,1000,Sparkles,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_022,level_25,Expert Tracker,Reach Level 25,LEVEL,25,2500,Flame,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_023,level_50,Nutrition Master,Reach Level 50,LEVEL,50,5000,Crown,EPIC,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_024,early_bird,Early Bird,Log a meal before 8 AM,SPECIAL,1,100,Bird,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_025,night_owl,Night Owl,Log a meal after 10 PM,SPECIAL,1,100,Moon,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_026,weekend_warrior,Weekend Warrior,Complete goals on both Saturday and Sunday,SPECIAL,1,300,Target,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_027,consistency_king,Consistency King,Log meals every day for a week,STREAK,7,1000,BarChart3,EPIC,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_028,macro_master,Macro Master,Hit perfect macro ratios (40/30/30) for a day,GOAL,1,500,Target,RARE,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_029,fiber_friend,Fiber Friend,Consume 35g+ fiber in a day,GOAL,1,250,Wheat,UNCOMMON,2025-10-12 12:00:00,2025-10-12 12:00:00
+ach_030,iron_will,Iron Will,Complete goals for 365 days total,MILESTONE,365,25000,Gem,LEGENDARY,2025-10-12 12:00:00,2025-10-12 12:00:00

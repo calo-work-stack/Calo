@@ -46,6 +46,7 @@ import DynamicListInput from "@/components/questionnaire/DynamicListInput";
 import CheckboxGroup from "@/components/questionnaire/CheckBoxGroup";
 import CustomSwitch from "@/components/questionnaire/CustomSwitch";
 import LoadingScreen from "@/components/LoadingScreen";
+import { signOut } from "@/src/store/authSlice";
 
 // Screen dimensions - used in styles
 
@@ -157,7 +158,7 @@ const QuestionnaireScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { user } = useSelector((state: RootState) => state.auth);
   const { questionnaire, isSaving, isLoading, error } = useSelector(
-    (state: RootState) => state.questionnaire
+    (state: RootState) => state.questionnaire,
   );
   const searchParams = useLocalSearchParams();
   const isEditMode = searchParams?.mode === "edit";
@@ -207,7 +208,7 @@ const QuestionnaireScreen: React.FC = () => {
 
   // Validate allergen with detailed feedback
   const validateAllergen = (
-    allergen: string
+    allergen: string,
   ): { valid: boolean; errorKey?: string } => {
     const normalized = allergen.toLowerCase().trim();
 
@@ -225,7 +226,7 @@ const QuestionnaireScreen: React.FC = () => {
 
     // Check if it's a known allergen
     const isKnown = KNOWN_ALLERGENS.some(
-      (known) => known.toLowerCase() === normalized
+      (known) => known.toLowerCase() === normalized,
     );
     if (isKnown) {
       return { valid: true };
@@ -289,27 +290,27 @@ const QuestionnaireScreen: React.FC = () => {
         weight_kg: safeString(questionnaire.weight_kg, DEFAULT_WEIGHT),
         target_weight_kg: safeString(
           questionnaire.target_weight_kg,
-          DEFAULT_TARGET_WEIGHT
+          DEFAULT_TARGET_WEIGHT,
         ),
         additional_personal_info: safeArray(
-          questionnaire.additional_personal_info
+          questionnaire.additional_personal_info,
         ),
         main_goal: safeString(questionnaire.main_goal),
         secondary_goal: safeString(questionnaire.secondary_goal) || null,
         goal_timeframe_days: safeString(questionnaire.goal_timeframe_days),
         commitment_level: safeString(questionnaire.commitment_level),
         physical_activity_level: safeString(
-          questionnaire.physical_activity_level
+          questionnaire.physical_activity_level,
         ),
         sport_frequency: safeString(questionnaire.sport_frequency),
         medical_conditions_text: safeArray(
-          questionnaire.medical_conditions_text
+          questionnaire.medical_conditions_text,
         ),
         medications: safeArray(questionnaire.medications),
         meals_per_day: safeString(questionnaire.meals_per_day) || "3",
         cooking_preference: safeString(questionnaire.cooking_preference),
         available_cooking_methods: safeArray(
-          questionnaire.available_cooking_methods
+          questionnaire.available_cooking_methods,
         ),
         daily_food_budget: safeString(questionnaire.daily_food_budget),
         kosher: safeBoolean(questionnaire.kosher),
@@ -317,7 +318,7 @@ const QuestionnaireScreen: React.FC = () => {
         dietary_style: safeString(questionnaire.dietary_style),
         sleep_hours_per_night: safeString(
           questionnaire.sleep_hours_per_night,
-          DEFAULT_SLEEP_HOURS
+          DEFAULT_SLEEP_HOURS,
         ),
         smoking_status: questionnaire.smoking_status as "YES" | "NO" | null,
         program_duration: safeString(questionnaire.program_duration),
@@ -342,7 +343,7 @@ const QuestionnaireScreen: React.FC = () => {
   const handleArrayToggle = (
     array: string[],
     item: string,
-    key: keyof QuestionnaireData
+    key: keyof QuestionnaireData,
   ) => {
     const newArray = array.includes(item)
       ? array.filter((i) => i !== item)
@@ -376,14 +377,14 @@ const QuestionnaireScreen: React.FC = () => {
 
       // Validate allergies
       const invalidAllergies = formData.allergies.filter(
-        (allergen) => !validateAllergen(allergen).valid
+        (allergen) => !validateAllergen(allergen).valid,
       );
       if (invalidAllergies.length > 0) {
         Alert.alert(
           t("validation.invalidAllergen"),
           t("validation.pleaseRemoveInvalid") +
             ": " +
-            invalidAllergies.join(", ")
+            invalidAllergies.join(", "),
         );
         return;
       }
@@ -458,7 +459,7 @@ const QuestionnaireScreen: React.FC = () => {
         // ✅ CRITICAL FIX 4: If state didn't update, FORCE it again
         if (!updatedUser?.is_questionnaire_completed && !isEditMode) {
           console.log(
-            "⚠️ [Questionnaire] State didn't update! FORCING AGAIN..."
+            "⚠️ [Questionnaire] State didn't update! FORCING AGAIN...",
           );
 
           store.dispatch({
@@ -488,13 +489,13 @@ const QuestionnaireScreen: React.FC = () => {
                 text: t("questionnaire.backToProfile"),
                 onPress: () => {
                   console.log(
-                    "🚀 [Questionnaire] Edit mode - going to profile"
+                    "🚀 [Questionnaire] Edit mode - going to profile",
                   );
                   router.replace("/(tabs)/profile");
                 },
               },
             ],
-            { cancelable: false }
+            { cancelable: false },
           );
         } else {
           // First time completion
@@ -513,12 +514,12 @@ const QuestionnaireScreen: React.FC = () => {
           // ✅ CRITICAL: Navigate WITHOUT alert to prevent delay
           if (hasSubscription) {
             console.log(
-              "🚀 [Questionnaire] Has subscription - going to tabs NOW"
+              "🚀 [Questionnaire] Has subscription - going to tabs NOW",
             );
             router.replace("/(tabs)");
           } else {
             console.log(
-              "🚀 [Questionnaire] No subscription - going to payment NOW"
+              "🚀 [Questionnaire] No subscription - going to payment NOW",
             );
             router.replace("/payment-plan");
           }
@@ -528,7 +529,7 @@ const QuestionnaireScreen: React.FC = () => {
         console.error("❌ [Questionnaire] Save failed:", result);
         Alert.alert(
           t("questionnaire.error"),
-          (result as any)?.payload || t("questionnaire.saveError")
+          (result as any)?.payload || t("questionnaire.saveError"),
         );
       }
     } catch (error: any) {
@@ -599,24 +600,58 @@ const QuestionnaireScreen: React.FC = () => {
       // If not on first step, go to previous step
       setCurrentStep(currentStep - 1);
     } else {
-      // On first step - check authentication and user state
+      // On first step - comprehensive authentication check
+      console.log("🔙 [Questionnaire] Back button pressed on first step");
+      console.log("🔙 [Questionnaire] State:", {
+        isAuthenticated,
+        hasUser: !!user,
+        isEditMode,
+        questionnaireCompleted: user?.is_questionnaire_completed,
+      });
+
+      // CRITICAL: If no user at all, force to sign in
       if (!isAuthenticated || !user) {
-        // Not authenticated - go to sign in
-        console.log("🔙 Not authenticated - redirecting to sign in");
+        console.log("🔙 [Questionnaire] No valid user - forcing to sign in");
+        // Clear any stale auth state
+        dispatch({ type: "auth/forceSignOut" });
         router.replace("/(auth)/signin");
-      } else if (isEditMode) {
-        // Edit mode - go back to profile
-        console.log("🔙 Edit mode - going back to profile");
-        router.back();
-      } else if (user?.is_questionnaire_completed) {
-        // User has completed questionnaire before - go back
-        console.log("🔙 Questionnaire already completed - going back");
-        router.back();
-      } else {
-        // First time completing questionnaire - go to sign in
-        console.log("🔙 First time questionnaire - redirecting to sign in");
-        router.replace("/(auth)/signin");
+        return;
       }
+
+      // If in edit mode, go back to profile
+      if (isEditMode) {
+        console.log("🔙 [Questionnaire] Edit mode - going to profile");
+        router.replace("/(tabs)/profile");
+        return;
+      }
+
+      // If questionnaire was already completed, allow back navigation
+      if (user.is_questionnaire_completed) {
+        console.log("🔙 [Questionnaire] Already completed - going back");
+        router.back();
+        return;
+      }
+
+      // First time completing questionnaire - give option to sign out
+      console.log("🔙 [Questionnaire] First time - offering sign out option");
+      Alert.alert(
+        t("questionnaire.exitQuestionnaire"),
+        t("questionnaire.exitQuestionnaireDesc"),
+        [
+          {
+            text: t("common.cancel"),
+            style: "cancel",
+          },
+          {
+            text: t("auth.sign_out"),
+            style: "destructive",
+            onPress: async () => {
+              await dispatch(signOut());
+              router.replace("/(auth)/signin");
+            },
+          },
+        ],
+      );
     }
   };
   const getStepIcon = (step: number) => {
@@ -1072,7 +1107,7 @@ const QuestionnaireScreen: React.FC = () => {
                 handleArrayToggle(
                   formData.available_cooking_methods,
                   value,
-                  "available_cooking_methods"
+                  "available_cooking_methods",
                 )
               }
             />
@@ -1121,11 +1156,11 @@ const QuestionnaireScreen: React.FC = () => {
               label={t("questionnaire.otherAllergies")}
               placeholder={t("questionnaire.addAllergyPlaceholder")}
               items={formData.allergies.filter(
-                (a) => !commonAllergens.includes(a)
+                (a) => !commonAllergens.includes(a),
               )}
               onItemsChange={(items) => {
                 const commonSelected = formData.allergies.filter((a) =>
-                  commonAllergens.includes(a)
+                  commonAllergens.includes(a),
                 );
                 const allAllergies = [...commonSelected, ...items];
 
@@ -1139,8 +1174,8 @@ const QuestionnaireScreen: React.FC = () => {
                       t(
                         `validation.${
                           validation.errorKey || "allergenNotRecognized"
-                        }`
-                      )
+                        }`,
+                      ),
                     );
                     return;
                   }
@@ -1173,7 +1208,7 @@ const QuestionnaireScreen: React.FC = () => {
               label={t("questionnaire.sleepHours")}
               value={
                 parseInt(
-                  formData.sleep_hours_per_night || DEFAULT_SLEEP_HOURS
+                  formData.sleep_hours_per_night || DEFAULT_SLEEP_HOURS,
                 ) || parseInt(DEFAULT_SLEEP_HOURS)
               }
               onValueChange={(value: number) =>

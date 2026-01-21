@@ -7,8 +7,6 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import { ScrollableTabBar } from "@/components/ScrollableTabBar";
 import { useTheme } from "@/src/context/ThemeContext";
 import { MessageSquare } from "lucide-react-native";
-import { useSelector } from "react-redux";
-import { RootState } from "@/src/store";
 import { TabBarIcon } from "@/components/navigation/TabBarIcon";
 import { useOptimizedAuthSelector } from "@/hooks/useOptimizedAuthSelector";
 import { useRouter } from "expo-router";
@@ -25,12 +23,10 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
 
   // Since your tab bar is floating, calculate the space it occupies
-  // From your ScrollableTabBar config:
-  const TAB_BAR_HEIGHT = 30; // TAB_CONFIG.barHeight
-  const FLOATING_MARGIN = 16; // TAB_CONFIG.floatingMargin (bottom margin from screen edge)
-  const SAFE_AREA_PADDING = 10; // Extra padding to ensure no overlap
+  const TAB_BAR_HEIGHT = 30;
+  const FLOATING_MARGIN = 16;
+  const SAFE_AREA_PADDING = 10;
 
-  // Total bottom space needed for floating tab bar
   const totalBottomSpace =
     TAB_BAR_HEIGHT + FLOATING_MARGIN * 2 + SAFE_AREA_PADDING;
 
@@ -59,6 +55,8 @@ export default function TabLayout() {
     }
   }, [user]);
 
+  console.log(shouldShowAiChat, shouldShowDashboard, shouldShowDevices);
+
   return (
     <ProtectedRoute>
       <View
@@ -71,19 +69,10 @@ export default function TabLayout() {
           screenOptions={{
             headerShown: false,
             tabBarHideOnKeyboard: true,
-
-            // Add bottom padding to prevent content from going behind floating tab bar
             sceneStyle: {
               paddingBottom: totalBottomSpace,
-              // Ensure the scene background matches your theme
               backgroundColor: colors.background,
             },
-
-            // Alternative: if sceneStyle doesn't work, try contentStyle
-            // contentStyle: {
-            //   paddingBottom: totalBottomSpace,
-            //   backgroundColor: colors.background,
-            // },
           }}
           tabBar={(props) => <ScrollableTabBar {...props} />}
         >
@@ -127,7 +116,6 @@ export default function TabLayout() {
               ),
             }}
           />
-
           <Tabs.Screen
             name="camera"
             options={{
@@ -190,11 +178,11 @@ export default function TabLayout() {
             name="dashboard"
             options={{
               title: t("tabs.dashboard"),
-              // Hide from tab bar for non-admin users
-              href: shouldShowDashboard ? undefined : null,
               tabBarIcon: ({ color }) => (
                 <IconSymbol size={24} name="shield.fill" color={color} />
               ),
+              // Hide from tab bar for non-admin users
+              href: shouldShowDashboard ? undefined : null,
             }}
           />
           <Tabs.Screen
@@ -217,7 +205,7 @@ export default function TabLayout() {
             right: 0,
             height: totalBottomSpace,
             backgroundColor: colors.background,
-            zIndex: -1, // Behind everything else
+            zIndex: -1,
           }}
         />
       </View>

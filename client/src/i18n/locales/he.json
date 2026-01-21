@@ -28,6 +28,8 @@
     "saveFailed": "שמירת השאלון נכשלה. אנא נסה שוב.",
     "step": "שלב",
     "sectionUnavailable": "חלק זה אינו זמין כרגע.",
+    "exitQuestionnaire": "לצאת משאלון?",
+    "exitQuestionnaireDesc": "עדיין לא השלמת את השאלון. אם תצא עכשיו, תצטרך להתחבר שוב. האם אתה רוצה להתנתק?",
     "steps": {
       "personal": {
         "title": "מידע אישי",
@@ -216,6 +218,7 @@
     "edit": "ערוך",
     "or": "או",
     "loading": "טוען...",
+    "unlocked":"פתוח",
     "error": "שגיאה",
     "success": "הצלחה",
     "update": "עדכון",

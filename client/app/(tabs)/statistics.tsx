@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -19,13 +19,12 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 // Components
 import PeriodSelector from "@/components/statistics/PeriodSelector";
 import LevelProgress from "@/components/statistics/LevelProgress";
-import StatsSummary from "@/components/statistics/StatsSummary";
 import NutritionMetricCard from "@/components/statistics/NutritionMetricCard";
 import WeeklyChart from "@/components/statistics/charts/WeeklyChart";
 import MacrosChart from "@/components/statistics/charts/MacrosChart";
 import { AchievementsSection } from "@/components/statistics/AchievementsSection";
 import { AIRecommendationsSection } from "@/components/statistics/AIRecommendationsSection";
-
+import LoadingScreen from "@/components/LoadingScreen";
 // Icons
 import {
   TrendingUp,
@@ -36,6 +35,7 @@ import {
   Zap,
   Sparkles,
 } from "lucide-react-native";
+import useOptimizedAuthSelector from "@/hooks/useOptimizedAuthSelector";
 
 const { width } = Dimensions.get("window");
 
@@ -43,6 +43,7 @@ export default function StatisticsScreen() {
   const { t, i18n } = useTranslation();
   const { language } = useLanguage();
   const { colors, isDark } = useTheme();
+  const { user } = useOptimizedAuthSelector();
 
   const {
     statisticsData,
@@ -76,6 +77,13 @@ export default function StatisticsScreen() {
     fetchAchievements();
   }, [fetchAchievements]);
 
+  const shouldShowAiRecommendations = useMemo(() => {
+    return (
+      user?.subscription_type === "GOLD" ||
+      user?.subscription_type === "PLATINUM"
+    );
+  }, [user?.subscription_type]);
+
   // Handle refresh
   const handleRefresh = useCallback(async () => {
     await refresh();
@@ -83,21 +91,8 @@ export default function StatisticsScreen() {
   }, [refresh, fetchAchievements]);
 
   // Loading state
-  if (isLoading && !hasData) {
-    return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        edges={["top"]}
-      >
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-            {t("loading.loading", "loading.statistics")}
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  if (isLoading)
+    return <LoadingScreen text={t("loading.loading", "loading.statistics")} />;
 
   // Render nutrition metrics grid
   const renderNutritionMetrics = () => {
@@ -144,7 +139,7 @@ export default function StatisticsScreen() {
 
     const percentage = Math.min(
       100,
-      Math.round((waterMetric.value / waterMetric.target) * 100)
+      Math.round((waterMetric.value / waterMetric.target) * 100),
     );
 
     return (
@@ -249,7 +244,7 @@ export default function StatisticsScreen() {
 
     // Get macros metrics from categorized metrics
     const macrosMetrics = categorizedMetrics.macros.filter(
-      (m) => m.id === "protein" || m.id === "carbs" || m.id === "fats"
+      (m) => m.id === "protein" || m.id === "carbs" || m.id === "fats",
     );
 
     if (macrosMetrics.length === 0) return null;
@@ -296,9 +291,6 @@ export default function StatisticsScreen() {
           >
             <Sparkles size={18} color="#6366F1" />
           </View>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {t("statistics.ai_recommendations") || "AI Recommendations"}
-          </Text>
         </View>
 
         <AIRecommendationsSection
@@ -313,32 +305,6 @@ export default function StatisticsScreen() {
             emerald700: "#047857",
           }}
         />
-      </Animated.View>
-    );
-  };
-
-  // Render stats summary
-  const renderStatsSummary = () => {
-    return (
-      <Animated.View
-        entering={FadeInDown.delay(600).duration(400)}
-        style={styles.summarySection}
-      >
-        <View style={styles.sectionHeader}>
-          <View
-            style={[
-              styles.sectionIconBg,
-              { backgroundColor: isDark ? "#EF444420" : "#FEE2E2" },
-            ]}
-          >
-            <Flame size={18} color="#EF4444" />
-          </View>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {t("statistics.progress_summary") || "Progress Summary"}
-          </Text>
-        </View>
-
-        <StatsSummary progressStats={progressStats} />
       </Animated.View>
     );
   };
@@ -445,10 +411,7 @@ export default function StatisticsScreen() {
         {renderMacrosBreakdown()}
 
         {/* AI Recommendations */}
-        {renderAIRecommendations()}
-
-        {/* Stats Summary */}
-        {renderStatsSummary()}
+        {shouldShowAiRecommendations && renderAIRecommendations()}
 
         {/* Achievements Section */}
         {renderAchievements()}

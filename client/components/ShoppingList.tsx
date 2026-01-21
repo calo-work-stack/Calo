@@ -52,21 +52,21 @@ interface ShoppingListProps {
 }
 
 const categoryIcons: { [key: string]: any } = {
-  'Fruits': Apple,
-  'Meat': Beef,
-  'Dairy': Milk,
-  'Vegetables': Carrot,
-  'Manual': ShoppingCart,
-  'From Meal': ShoppingCart,
+  Fruits: Apple,
+  Meat: Beef,
+  Dairy: Milk,
+  Vegetables: Carrot,
+  Manual: ShoppingCart,
+  "From Meal": ShoppingCart,
 };
 
 const categoryColors: { [key: string]: string } = {
-  'Fruits': '#EF4444',
-  'Meat': '#8B5CF6',
-  'Dairy': '#3B82F6',
-  'Vegetables': '#10B981',
-  'Manual': '#F59E0B',
-  'From Meal': '#F59E0B',
+  Fruits: "#EF4444",
+  Meat: "#8B5CF6",
+  Dairy: "#3B82F6",
+  Vegetables: "#10B981",
+  Manual: "#F59E0B",
+  "From Meal": "#F59E0B",
 };
 
 export default function ShoppingList({
@@ -118,6 +118,7 @@ export default function ShoppingList({
         category: item.category || "From Meal",
         added_from: "meal",
         estimated_cost: 0,
+        is_purchased: false, // ✅ FIX
       }));
 
       if (itemsToAdd.length === 1) {
@@ -194,8 +195,10 @@ export default function ShoppingList({
   };
 
   const renderItem = (item: ShoppingListItem) => {
-    const IconComponent = categoryIcons[item.category || 'Manual'] || ShoppingCart;
-    const categoryColor = categoryColors[item.category || 'Manual'] || colors.emerald500;
+    const IconComponent =
+      categoryIcons[item.category || "Manual"] || ShoppingCart;
+    const categoryColor =
+      categoryColors[item.category || "Manual"] || colors.emerald500;
 
     return (
       <View
@@ -213,7 +216,7 @@ export default function ShoppingList({
         <View
           style={[
             styles.iconContainer,
-            { backgroundColor: categoryColor + '15' }
+            { backgroundColor: categoryColor + "15" },
           ]}
         >
           <IconComponent size={24} color={categoryColor} strokeWidth={2} />
@@ -312,7 +315,9 @@ export default function ShoppingList({
             style={[
               styles.checkbox,
               {
-                borderColor: item.is_purchased ? colors.emerald500 : colors.border,
+                borderColor: item.is_purchased
+                  ? colors.emerald500
+                  : colors.border,
                 backgroundColor: item.is_purchased
                   ? colors.emerald500
                   : "transparent",
@@ -320,14 +325,18 @@ export default function ShoppingList({
             ]}
             onPress={() => handleTogglePurchased(item.id)}
           >
-            {item.is_purchased && <Check size={16} color="#ffffff" strokeWidth={3} />}
+            {item.is_purchased && (
+              <Check size={16} color="#ffffff" strokeWidth={3} />
+            )}
           </TouchableOpacity>
         )}
       </View>
     );
   };
 
-  const unpurchasedCount = shoppingList.filter((item: { is_purchased: any }) => !item.is_purchased).length;
+  const unpurchasedCount = shoppingList.filter(
+    (item: { is_purchased: any }) => !item.is_purchased,
+  ).length;
 
   return (
     <Modal
@@ -346,7 +355,9 @@ export default function ShoppingList({
               <Text style={[styles.headerTitle, { color: colors.text }]}>
                 Grocery List
               </Text>
-              <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.headerSubtitle, { color: colors.textSecondary }]}
+              >
                 {unpurchasedCount} items left to buy
               </Text>
             </View>
@@ -487,7 +498,10 @@ export default function ShoppingList({
 
           {/* Floating Add Button */}
           <TouchableOpacity
-            style={[styles.floatingButton, { backgroundColor: colors.emerald500 }]}
+            style={[
+              styles.floatingButton,
+              { backgroundColor: colors.emerald500 },
+            ]}
             onPress={() => setShowAddModal(!showAddModal)}
             activeOpacity={0.9}
           >

@@ -316,7 +316,8 @@ Is this input appropriate for a health/nutrition app questionnaire?`;
 
         // Determine the appropriate empty value based on field type
         if (OPEN_TEXT_FIELDS.includes(fieldName as any)) {
-          // Most open text fields are arrays in the schema
+          // ALL open text fields in the schema are String[] arrays
+          // They cannot be set to null - must use empty array []
           const arrayFields = [
             "additional_personal_info",
             "main_goal_text",
@@ -326,12 +327,24 @@ Is this input appropriate for a health/nutrition app questionnaire?`;
             "medical_conditions_text",
             "allergies_text",
             "additional_activity_info",
+            // These are also String[] in the schema
+            "medications",
+            "health_goals",
+            "functional_issues",
+            "food_related_medical_issues",
+            "disliked_foods",
+            "liked_foods",
+            "dietary_restrictions",
+            "upcoming_events",
+            "family_medical_history",
           ];
 
+          // All open text fields are arrays - set to empty array
           if (arrayFields.includes(fieldName)) {
             updateData[fieldName] = [];
           } else {
-            updateData[fieldName] = null;
+            // For any non-array string fields (if any exist), use empty string
+            updateData[fieldName] = "";
           }
 
           await prisma.userQuestionnaire.update({

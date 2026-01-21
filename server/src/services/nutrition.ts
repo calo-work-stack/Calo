@@ -4,13 +4,19 @@ import { prisma } from "../lib/database";
 import { MealAnalysisInput, MealUpdateInput } from "../types/nutrition";
 import { AuthService } from "./auth";
 import { asJsonObject, mapExistingMealToPrismaInput } from "../utils/nutrition";
+import { CalendarService } from "./calendar";
+import { clearStatisticsCache } from "./statistics";
 
 // Cache for frequently accessed data
 const userStatsCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for stats (longer now with smart updates)
 
-// Cache for meals data
+// Cache for meals data - longer duration since we do smart updates
 const mealsCache = new Map<string, { data: any[]; timestamp: number }>();
+const MEALS_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes (smart updates keep it fresh)
+
+// Helper to get cache key for user meals
+const getMealsCacheKey = (user_id: string) => `user_meals_${user_id}_0_100`;
 
 function transformMealForClient(meal: any) {
   const additives = meal.additives_json || {};
@@ -379,18 +385,19 @@ export class NutritionService {
 
   static async saveMeal(user_id: string, mealData: any, imageBase64?: string) {
     try {
-      // Use transaction for better performance and consistency
-      const meal = await prisma.$transaction(async (tx) => {
-        return await tx.meal.create({
-          data: mapMealDataToPrismaFields(
-            mealData,
-            user_id,
-            imageBase64,
-            mealData.mealType,
-            mealData.mealPeriod
-          ),
-        });
+      // Direct create - faster than transaction for single operation
+      const meal = await prisma.meal.create({
+        data: mapMealDataToPrismaFields(
+          mealData,
+          user_id,
+          imageBase64,
+          mealData.mealType,
+          mealData.mealPeriod
+        ),
       });
+
+      // Smart cache update - add meal directly without refetching
+      this.addMealToCache(user_id, meal);
 
       return transformMealForClient(meal);
     } catch (error) {
@@ -410,7 +417,7 @@ export class NutritionService {
       const cacheKey = `user_meals_${user_id}_${offset}_${limit}`;
       const cached = mealsCache.get(cacheKey);
 
-      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      if (cached && Date.now() - cached.timestamp < MEALS_CACHE_DURATION) {
         console.log("🎯 Returning cached meals");
         return cached.data;
       }
@@ -974,5 +981,129 @@ export class NutritionService {
     userStatsCache.clear();
     mealsCache.clear();
     console.log("🧹 All nutrition service caches cleared");
+  }
+
+  // Public method to clear caches for a specific user
+  static clearCachesForUser(user_id: string) {
+    this.clearUserMealsCaches(user_id);
+    this.clearUserCaches(user_id);
+  }
+
+  // ============ SMART CACHE UPDATE METHODS ============
+  // These update the cache directly without refetching from DB
+
+  /**
+   * Add a new meal to the cache (called after meal creation)
+   * Much faster than invalidating and refetching everything
+   */
+  static addMealToCache(user_id: string, meal: any) {
+    const cacheKey = getMealsCacheKey(user_id);
+    const cached = mealsCache.get(cacheKey);
+
+    const processedMeal = this.processMealForCache(meal);
+
+    if (cached) {
+      // Add to beginning of array (newest first)
+      cached.data.unshift(processedMeal);
+      cached.timestamp = Date.now(); // Refresh timestamp
+      console.log(`⚡ Added meal ${meal.meal_id} to cache for user ${user_id}`);
+    } else {
+      // Initialize cache with this meal
+      mealsCache.set(cacheKey, {
+        data: [processedMeal],
+        timestamp: Date.now(),
+      });
+      console.log(`⚡ Initialized cache with meal ${meal.meal_id} for user ${user_id}`);
+    }
+
+    // Clear related caches since totals changed
+    this.clearUserCaches(user_id);
+    CalendarService.clearUserCache(user_id);
+    clearStatisticsCache(user_id);
+  }
+
+  /**
+   * Update a specific meal in the cache (called after meal update)
+   */
+  static updateMealInCache(user_id: string, meal: any) {
+    const cacheKey = getMealsCacheKey(user_id);
+    const cached = mealsCache.get(cacheKey);
+
+    if (cached) {
+      const index = cached.data.findIndex((m: any) => m.meal_id === meal.meal_id);
+      if (index !== -1) {
+        cached.data[index] = this.processMealForCache(meal);
+        cached.timestamp = Date.now();
+        console.log(`⚡ Updated meal ${meal.meal_id} in cache for user ${user_id}`);
+      }
+    }
+
+    // Clear related caches since values might have changed
+    this.clearUserCaches(user_id);
+    CalendarService.clearUserCache(user_id);
+    clearStatisticsCache(user_id);
+  }
+
+  /**
+   * Remove a meal from the cache (called after meal deletion)
+   */
+  static removeMealFromCache(user_id: string, meal_id: number) {
+    const cacheKey = getMealsCacheKey(user_id);
+    const cached = mealsCache.get(cacheKey);
+
+    if (cached) {
+      const index = cached.data.findIndex((m: any) => m.meal_id === meal_id);
+      if (index !== -1) {
+        cached.data.splice(index, 1);
+        cached.timestamp = Date.now();
+        console.log(`⚡ Removed meal ${meal_id} from cache for user ${user_id}`);
+      }
+    }
+
+    // Clear related caches since totals changed
+    this.clearUserCaches(user_id);
+    CalendarService.clearUserCache(user_id);
+    clearStatisticsCache(user_id);
+  }
+
+  /**
+   * Process a raw meal into the cached format
+   */
+  private static processMealForCache(meal: any) {
+    return {
+      ...meal,
+      id: meal.meal_id?.toString(),
+      name: meal.meal_name,
+      imageUrl: meal.image_url,
+      userId: meal.user_id,
+      uploadTime: meal.upload_time,
+      createdAt: meal.created_at,
+      meal_period: meal.meal_period || "other",
+      mealPeriod: meal.meal_period || "other",
+      protein: meal.protein_g,
+      carbs: meal.carbs_g,
+      fat: meal.fats_g,
+      fats: meal.fats_g,
+      fiber: meal.fiber_g,
+      sugar: meal.sugar_g,
+      sodium: meal.sodium_mg,
+      ingredients:
+        typeof meal.ingredients === "string"
+          ? JSON.parse(meal.ingredients || "[]")
+          : meal.ingredients || [],
+      taste_rating: meal.taste_rating || 0,
+      satiety_rating: meal.satiety_rating || 0,
+      energy_rating: meal.energy_rating || 0,
+      heaviness_rating: meal.heaviness_rating || 0,
+      is_favorite: meal.is_favorite || false,
+      tasteRating: meal.taste_rating || 0,
+      satietyRating: meal.satiety_rating || 0,
+      energyRating: meal.energy_rating || 0,
+      heavinessRating: meal.heaviness_rating || 0,
+      isFavorite: meal.is_favorite || false,
+      description: meal.description,
+      confidence: meal.confidence,
+      analysisStatus: meal.analysis_status,
+    };
   }
 }

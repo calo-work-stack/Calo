@@ -3,6 +3,13 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { prisma } from "../lib/database";
 import { SignUpInput, SignInInput } from "../types/auth";
+import {
+  encrypt,
+  decrypt,
+  hashEmail,
+  isEncrypted,
+  decryptUserData,
+} from "./encryption";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const JWT_EXPIRES_IN = "7d";
@@ -26,7 +33,9 @@ setInterval(() => {
 const userSelectFields = {
   user_id: true,
   email: true,
+  email_hash: true,
   name: true,
+  phone_number: true,
   avatar_url: true,
   subscription_type: true,
   birth_date: true,
@@ -50,6 +59,12 @@ const userSelectFields = {
   subscription_start: true,
   subscription_end: true,
 };
+
+// Helper to process user data - decrypt sensitive fields before returning
+function processUserForResponse(user: any): any {
+  if (!user) return user;
+  return decryptUserData(user);
+}
 
 function generatePasswordResetToken(email: string) {
   return jwt.sign(
@@ -95,14 +110,30 @@ export class AuthService {
   static async signUp(data: SignUpInput) {
     const { email, name, password, birth_date } = data;
 
-    const existingUser = await prisma.user.findFirst({
-      where: { email },
+    // Check for existing user by email_hash first (for encrypted emails)
+    const emailHashValue = hashEmail(email);
+    let existingUser = await prisma.user.findFirst({
+      where: { email_hash: emailHashValue },
       select: {
+        user_id: true,
         email_verified: true,
         email: true,
         name: true,
       },
     });
+
+    // Fallback: check by plain email (backwards compatibility)
+    if (!existingUser) {
+      existingUser = await prisma.user.findFirst({
+        where: { email },
+        select: {
+          user_id: true,
+          email_verified: true,
+          email: true,
+          name: true,
+        },
+      });
+    }
 
     if (existingUser) {
       if (existingUser.email_verified) {
@@ -116,21 +147,24 @@ export class AuthService {
           .toString();
 
         await prisma.user.update({
-          where: { email },
+          where: { user_id: existingUser.user_id }, // Use user_id for update
           data: {
             email_verification_code: emailVerificationCode,
             email_verification_expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
           },
         });
 
-        await this.sendVerificationEmail(
-          email,
-          emailVerificationCode,
-          existingUser.name || name
-        );
+        // Decrypt name for display if it's encrypted
+        const displayName = existingUser.name
+          ? isEncrypted(existingUser.name)
+            ? decrypt(existingUser.name)
+            : existingUser.name
+          : name;
+
+        await this.sendVerificationEmail(email, emailVerificationCode, displayName);
 
         return {
-          user: { email, name: existingUser.name || name },
+          user: { email, name: displayName }, // Return original email for verification
           needsEmailVerification: true,
         };
       }
@@ -139,10 +173,15 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, 12);
     const emailVerificationCode = crypto.randomInt(100000, 999999).toString();
 
+    // Encrypt sensitive data
+    const encryptedEmail = encrypt(email);
+    const encryptedName = name ? encrypt(name) : null;
+
     const user = await prisma.user.create({
       data: {
-        email,
-        name,
+        email: encryptedEmail,
+        email_hash: emailHashValue,
+        name: encryptedName,
         password_hash: hashedPassword,
         subscription_type: "FREE",
         birth_date: new Date(),
@@ -159,16 +198,17 @@ export class AuthService {
       },
     });
 
-    // Send verification email
-    await this.sendVerificationEmail(email, emailVerificationCode, name);
-
     if (process.env.NODE_ENV !== "production") {
-      console.log("✅ Created user:", user);
+      console.log("✅ Created user:", user.user_id);
     }
 
     // Don't include sensitive data in response
     const { email_verification_code, ...userResponse } = user;
-    return { user: userResponse, needsEmailVerification: true };
+
+    // Decrypt user data and return original email for verification flow
+    const decryptedUser = processUserForResponse(userResponse);
+
+    return { user: decryptedUser, needsEmailVerification: true };
   }
 
   static async sendVerificationEmail(
@@ -378,8 +418,10 @@ export class AuthService {
   static async verifyEmail(email: string, code: string) {
     console.log(`🔒 Verifying email ${email} with code ${code}`);
 
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // Try to find user by email_hash first (for encrypted emails)
+    const emailHashValue = hashEmail(email);
+    let user = await prisma.user.findFirst({
+      where: { email_hash: emailHashValue },
       select: {
         ...userSelectFields,
         email_verified: true,
@@ -387,6 +429,19 @@ export class AuthService {
         email_verification_expires: true,
       },
     });
+
+    // Fallback: try to find by plain email (backwards compatibility)
+    if (!user) {
+      user = await prisma.user.findUnique({
+        where: { email },
+        select: {
+          ...userSelectFields,
+          email_verified: true,
+          email_verification_code: true,
+          email_verification_expires: true,
+        },
+      });
+    }
 
     if (!user) {
       console.log(`❌ User not found: ${email}`);
@@ -423,7 +478,7 @@ export class AuthService {
     console.log(`✅ Code verified, updating user: ${email}`);
 
     const updatedUser = await prisma.user.update({
-      where: { email },
+      where: { user_id: user.user_id }, // Use user_id for update (works with encrypted email)
       data: {
         email_verified: true,
         email_verification_code: null,
@@ -441,9 +496,10 @@ export class AuthService {
 
     console.log("✅ User updated with gamification defaults:", updatedUser);
 
+    // Use the original email for the token (not encrypted)
     const token = generateToken({
       user_id: updatedUser.user_id,
-      email: updatedUser.email,
+      email: email, // Use original email passed in, not encrypted version
     });
 
     await prisma.session.create({
@@ -456,19 +512,33 @@ export class AuthService {
 
     console.log(`✅ Session created for user: ${email}`);
 
-    return { user: updatedUser, token };
+    // Decrypt sensitive fields before returning
+    const decryptedUser = processUserForResponse(updatedUser);
+
+    return { user: decryptedUser, token };
   }
 
   static async signIn(data: SignInInput) {
     const { email, password } = data;
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    // Try to find user by email_hash first (for encrypted emails)
+    const emailHashValue = hashEmail(email);
+    let user = await prisma.user.findFirst({
+      where: { email_hash: emailHashValue },
+    });
+
+    // Fallback: try to find by plain email (backwards compatibility)
+    if (!user) {
+      user = await prisma.user.findUnique({ where: { email } });
+    }
+
     if (!user) throw new Error("Invalid email or password");
 
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) throw new Error("Invalid email or password");
 
-    const token = generateToken({ user_id: user.user_id, email: user.email });
+    // Use the original email for the token (not encrypted)
+    const token = generateToken({ user_id: user.user_id, email });
 
     await prisma.session.create({
       data: {
@@ -479,7 +549,11 @@ export class AuthService {
     });
 
     const { password_hash: _, ...userWithoutPassword } = user;
-    return { user: userWithoutPassword, token };
+
+    // Decrypt sensitive fields before returning
+    const decryptedUser = processUserForResponse(userWithoutPassword);
+
+    return { user: decryptedUser, token };
   }
 
   static async verifyToken(token: string) {
@@ -517,13 +591,16 @@ export class AuthService {
         throw new Error("Session expired");
       }
 
+      // Decrypt sensitive fields
+      const decryptedUser = processUserForResponse(session.user);
+
       // Cache the result for 60 seconds
       tokenCache.set(token, {
-        user: session.user,
+        user: decryptedUser,
         expiresAt: Date.now() + TOKEN_CACHE_TTL_MS,
       });
 
-      return session.user;
+      return decryptedUser;
     } catch {
       tokenCache.delete(token);
       throw new Error("Invalid token");

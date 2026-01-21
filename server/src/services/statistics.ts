@@ -1,6 +1,22 @@
 import { prisma } from "../lib/database";
 import { AchievementService } from "./achievements";
 
+// ============ CACHING FOR LIGHTNING FAST RESPONSES ============
+const statisticsCache = new Map<string, { data: any; timestamp: number }>();
+const STATS_CACHE_DURATION = 60 * 1000; // 1 minute cache (shorter for real-time feel)
+
+const getStatsCacheKey = (userId: string, period: string) =>
+  `stats_${userId}_${period}`;
+
+// Clear cache for a user (call after meal/water updates)
+export function clearStatisticsCache(userId: string) {
+  for (const [key] of statisticsCache) {
+    if (key.includes(userId)) {
+      statisticsCache.delete(key);
+    }
+  }
+}
+
 export interface Achievement {
   id: string;
   key: string;
@@ -125,9 +141,17 @@ export class StatisticsService {
     endDate?: Date
   ): Promise<{ success: boolean; data: StatisticsData | PeriodStatistics }> {
     try {
-      console.log(
-        `📊 Getting ENHANCED statistics for user: ${userId}, period: ${period}`
-      );
+      // Check cache first (skip for custom date ranges)
+      if (period !== "custom") {
+        const cacheKey = getStatsCacheKey(userId, period);
+        const cached = statisticsCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < STATS_CACHE_DURATION) {
+          console.log(`⚡ Returning cached statistics for ${period}`);
+          return cached.data;
+        }
+      }
+
+      console.log(`📊 Computing statistics for user: ${userId}, period: ${period}`);
 
       const now = new Date();
       let definedStartDate: Date;
@@ -318,11 +342,9 @@ export class StatisticsService {
 
       // Get user's daily goals
       const userGoals = await this.getUserDailyGoals(userId);
-      const periodConsumption = await this.getPeriodConsumption(
-        userId,
-        definedStartDate,
-        definedEndDate
-      );
+
+      // Use pre-fetched data instead of querying again
+      const periodConsumption = this.getPeriodConsumptionFromData(meals, waterIntakes);
 
       const totalDays = Math.max(
         1,
@@ -409,7 +431,17 @@ export class StatisticsService {
           averageSodium: averages.sodium,
         };
 
-        console.log(`✅ Period statistics calculated for user: ${userId}`);
+        console.log(`⚡ Period statistics calculated for user: ${userId}`);
+
+        // Cache the result
+        if (period !== "custom") {
+          const cacheKey = getStatsCacheKey(userId, period);
+          statisticsCache.set(cacheKey, {
+            data: { success: true, data: periodStats },
+            timestamp: Date.now(),
+          });
+        }
+
         return { success: true, data: periodStats };
       }
 
@@ -444,8 +476,17 @@ export class StatisticsService {
         averageMealQuality: wellbeingMetrics.averageMealQuality,
       };
 
-      console.log(`✅ Statistics calculated successfully for user: ${userId}`);
-      return { success: true, data: statisticsData };
+      console.log(`⚡ Statistics calculated successfully for user: ${userId}`);
+
+      // Cache the result
+      const cacheKey = getStatsCacheKey(userId, period);
+      const result = { success: true, data: statisticsData };
+      statisticsCache.set(cacheKey, {
+        data: result,
+        timestamp: Date.now(),
+      });
+
+      return result;
     } catch (error) {
       console.error("❌ Error getting statistics:", error);
       throw error;
@@ -1015,7 +1056,46 @@ export class StatisticsService {
   }
 
   /**
-   * Get period consumption
+   * Get period consumption - optimized to accept pre-fetched data
+   */
+  static getPeriodConsumptionFromData(
+    meals: any[],
+    waterIntakes: any[]
+  ): NutritionGoals {
+    const totals = meals.reduce(
+      (acc, meal) => ({
+        calories: acc.calories + (meal.calories || 0),
+        protein_g: acc.protein_g + (meal.protein_g || 0),
+        carbs_g: acc.carbs_g + (meal.carbs_g || 0),
+        fats_g: acc.fats_g + (meal.fats_g || 0),
+        fiber_g: acc.fiber_g + (meal.fiber_g || 0),
+        sugar_g: acc.sugar_g + (meal.sugar_g || 0),
+        sodium_mg: acc.sodium_mg + (meal.sodium_mg || 0),
+        water_ml: acc.water_ml + (meal.liquids_ml || 0),
+      }),
+      {
+        calories: 0,
+        protein_g: 0,
+        carbs_g: 0,
+        fats_g: 0,
+        fiber_g: 0,
+        sugar_g: 0,
+        sodium_mg: 0,
+        water_ml: 0,
+      }
+    );
+
+    // Add water consumption
+    totals.water_ml += waterIntakes.reduce(
+      (total, intake) => total + (intake.milliliters_consumed || 0),
+      0
+    );
+
+    return totals;
+  }
+
+  /**
+   * Get period consumption - DB fetch version (kept for compatibility)
    */
   static async getPeriodConsumption(
     userId: string,
@@ -1023,64 +1103,34 @@ export class StatisticsService {
     endDate: Date
   ): Promise<NutritionGoals> {
     try {
-      const meals = await prisma.meal.findMany({
-        where: {
-          user_id: userId,
-          created_at: {
-            gte: startDate,
-            lte: endDate,
+      // Parallel fetch for better performance
+      const [meals, waterIntakes] = await Promise.all([
+        prisma.meal.findMany({
+          where: {
+            user_id: userId,
+            created_at: { gte: startDate, lte: endDate },
           },
-        },
-        select: {
-          calories: true,
-          protein_g: true,
-          carbs_g: true,
-          fats_g: true,
-          fiber_g: true,
-          sugar_g: true,
-          sodium_mg: true,
-          liquids_ml: true,
-        },
-      });
-
-      const totals = meals.reduce(
-        (acc, meal) => ({
-          calories: acc.calories + (meal.calories || 0),
-          protein_g: acc.protein_g + (meal.protein_g || 0),
-          carbs_g: acc.carbs_g + (meal.carbs_g || 0),
-          fats_g: acc.fats_g + (meal.fats_g || 0),
-          fiber_g: acc.fiber_g + (meal.fiber_g || 0),
-          sugar_g: acc.sugar_g + (meal.sugar_g || 0),
-          sodium_mg: acc.sodium_mg + (meal.sodium_mg || 0),
-          water_ml: acc.water_ml + (meal.liquids_ml || 0),
+          select: {
+            calories: true,
+            protein_g: true,
+            carbs_g: true,
+            fats_g: true,
+            fiber_g: true,
+            sugar_g: true,
+            sodium_mg: true,
+            liquids_ml: true,
+          },
         }),
-        {
-          calories: 0,
-          protein_g: 0,
-          carbs_g: 0,
-          fats_g: 0,
-          fiber_g: 0,
-          sugar_g: 0,
-          sodium_mg: 0,
-          water_ml: 0,
-        }
-      );
+        prisma.waterIntake.findMany({
+          where: {
+            user_id: userId,
+            date: { gte: startDate, lte: endDate },
+          },
+          select: { milliliters_consumed: true },
+        }),
+      ]);
 
-      // Add water consumption
-      const waterIntakes = await prisma.waterIntake.findMany({
-        where: {
-          user_id: userId,
-          date: { gte: startDate, lte: endDate },
-        },
-        select: { milliliters_consumed: true },
-      });
-
-      totals.water_ml += waterIntakes.reduce(
-        (total, intake) => total + (intake.milliliters_consumed || 0),
-        0
-      );
-
-      return totals;
+      return this.getPeriodConsumptionFromData(meals, waterIntakes);
     } catch (error) {
       console.error("Error getting period consumption:", error);
       return {

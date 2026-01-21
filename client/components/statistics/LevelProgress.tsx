@@ -102,7 +102,7 @@ export default function LevelProgress({
           </View>
           <Text style={[styles.streakValue, { color: colors.text }]}>{weeklyStreak}</Text>
           <Text style={[styles.streakLabel, { color: colors.muted }]}>
-            {t("statistics.week_streak") || "Week Streak"}
+            {t("statistics.weekly_streak") || "Week Streak"}
           </Text>
         </View>
 

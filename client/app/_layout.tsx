@@ -1,7 +1,7 @@
 import { SplashScreen, Stack } from "expo-router";
-import { Provider } from "react-redux";
+import { Provider, useDispatch } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
-import { store, persistor } from "@/src/store";
+import { store, persistor, AppDispatch } from "@/src/store";
 import { StatusBar } from "expo-status-bar";
 import {
   Text,
@@ -44,7 +44,7 @@ const initializeStorageCleanup = async () => {
     const isDatabaseFull = await StorageCleanupService.isDatabaseFull();
     if (isDatabaseFull) {
       console.log(
-        "🚨 Database is full - running emergency cleanup immediately"
+        "🚨 Database is full - running emergency cleanup immediately",
       );
       await StorageCleanupService.emergencyCleanup();
     }
@@ -55,7 +55,7 @@ const initializeStorageCleanup = async () => {
       console.log("✅ Storage cleanup initialized successfully");
     } else {
       console.warn(
-        "⚠️ Storage cleanup completed with warnings - running emergency cleanup"
+        "⚠️ Storage cleanup completed with warnings - running emergency cleanup",
       );
       await StorageCleanupService.emergencyCleanup();
     }
@@ -126,98 +126,98 @@ function useHelpContent(): { title: string; description: string } | undefined {
         title: safeT("questionnaire.title", "Health Questionnaire"),
         description: safeT(
           "tabs.questionnaire_description",
-          "Complete your health profile to receive personalized nutrition recommendations. This questionnaire helps us understand your goals, lifestyle, and dietary needs."
+          "Complete your health profile to receive personalized nutrition recommendations. This questionnaire helps us understand your goals, lifestyle, and dietary needs.",
         ),
       },
       "/(tabs)": {
         title: safeT("tabs.home", "Home"),
         description: safeT(
           "tabs.home_description",
-          "Welcome to your nutrition dashboard! Here you can view your daily progress, recent meals, and quick access to all features."
+          "Welcome to your nutrition dashboard! Here you can view your daily progress, recent meals, and quick access to all features.",
         ),
       },
       "/(tabs)/index": {
         title: safeT("tabs.home", "Home"),
         description: safeT(
           "tabs.home_description",
-          "Welcome to your nutrition dashboard! Here you can view your daily progress, recent meals, and quick access to all features."
+          "Welcome to your nutrition dashboard! Here you can view your daily progress, recent meals, and quick access to all features.",
         ),
       },
       "/(tabs)/calendar": {
         title: safeT("tabs.calendar", "Calendar"),
         description: safeT(
           "tabs.calendar_description",
-          "Plan your meals for the week ahead. View scheduled meals, track your nutrition goals, and see your eating patterns over time."
+          "Plan your meals for the week ahead. View scheduled meals, track your nutrition goals, and see your eating patterns over time.",
         ),
       },
       "/(tabs)/statistics": {
         title: safeT("tabs.statistics", "Statistics"),
         description: safeT(
           "tabs.statistics_description",
-          "Track your nutritional progress with detailed charts and metrics. Monitor your intake and view trends."
+          "Track your nutritional progress with detailed charts and metrics. Monitor your intake and view trends.",
         ),
       },
       "/(tabs)/camera": {
         title: safeT("tabs.camera", "Camera"),
         description: safeT(
           "tabs.camera_description",
-          "Take photos of your meals to automatically log nutrition information. The AI will analyze your food and provide detailed nutritional breakdown."
+          "Take photos of your meals to automatically log nutrition information. The AI will analyze your food and provide detailed nutritional breakdown.",
         ),
       },
       "/(tabs)/food-scanner": {
         title: safeT("tabs.food_scanner", "Food Scanner"),
         description: safeT(
           "tabs.food_scanner_description",
-          "Scan barcodes or upload food images to get instant nutrition information. Perfect for packaged foods and restaurant meals."
+          "Scan barcodes or upload food images to get instant nutrition information. Perfect for packaged foods and restaurant meals.",
         ),
       },
       "/(tabs)/ai-chat": {
         title: safeT("tabs.ai_chat", "AI Chat"),
         description: safeT(
           "tabs.ai_chat_description",
-          "Chat with your personal AI nutrition assistant. Ask questions about food, get meal recommendations, and receive personalized advice."
+          "Chat with your personal AI nutrition assistant. Ask questions about food, get meal recommendations, and receive personalized advice.",
         ),
       },
       "/(tabs)/recommended-menus": {
         title: safeT("tabs.recommended_menus", "Recommended Menus"),
         description: safeT(
           "tabs.recommended_menus_description",
-          "Discover personalized meal plans created just for you. Based on your dietary preferences, goals, and restrictions."
+          "Discover personalized meal plans created just for you. Based on your dietary preferences, goals, and restrictions.",
         ),
       },
       "/(tabs)/history": {
         title: safeT("tabs.history", "History"),
         description: safeT(
           "tabs.history_description",
-          "Review your past meals and track your eating patterns. Rate your meals, add notes, and learn from your nutrition journey."
+          "Review your past meals and track your eating patterns. Rate your meals, add notes, and learn from your nutrition journey.",
         ),
       },
       "/(tabs)/profile": {
         title: safeT("tabs.profile", "Profile"),
         description: safeT(
           "tabs.profile_description",
-          "Manage your personal information, dietary preferences, and app settings. Update your goals and notification preferences."
+          "Manage your personal information, dietary preferences, and app settings. Update your goals and notification preferences.",
         ),
       },
       "/(tabs)/devices": {
         title: safeT("tabs.devices", "Devices"),
         description: safeT(
           "tabs.devices_description",
-          "Connect your fitness trackers and health apps to get a complete picture of your wellness. Sync data from various devices."
+          "Connect your fitness trackers and health apps to get a complete picture of your wellness. Sync data from various devices.",
         ),
       },
       "/(tabs)/questionnaire": {
         title: safeT("questionnaire.title", "Health Questionnaire"),
         description: safeT(
           "tabs.questionnaire_description",
-          "Complete your health profile to receive personalized nutrition recommendations."
+          "Complete your health profile to receive personalized nutrition recommendations.",
         ),
       },
       "/welcome": {
         title: safeT("tabs.welcome", "Welcome"),
         description: safeT(
           "tabs.welcome_description",
-          "Welcome to Calo Health! Your personal nutrition companion that helps you track meals, monitor your health goals, and get personalized nutrition recommendations. Start your journey to a healthier lifestyle today."
+          "Welcome to Calo Health! Your personal nutrition companion that helps you track meals, monitor your health goals, and get personalized nutrition recommendations. Start your journey to a healthier lifestyle today.",
         ),
       },
     };
@@ -227,7 +227,7 @@ function useHelpContent(): { title: string; description: string } | undefined {
         title: safeT("common.help", "Help"),
         description: safeT(
           "tabs.home_description",
-          "Welcome to your nutrition tracking app! Use the features to monitor your health and nutrition goals."
+          "Welcome to your nutrition tracking app! Use the features to monitor your health and nutrition goals.",
         ),
       }
     );
@@ -241,7 +241,7 @@ const AppContent = React.memo(() => {
   const router = useRouter();
 
   const authInitialized = true;
-  
+
   // ✅ CRITICAL: Add bypass flag for questionnaire loop
   const [questionnaireBypass, setQuestionnaireBypass] = useState(false);
   const bypassCheckRef = useRef(false);
@@ -250,9 +250,9 @@ const AppContent = React.memo(() => {
   useEffect(() => {
     if (!bypassCheckRef.current) {
       bypassCheckRef.current = true;
-      AsyncStorage.getItem('questionnaire_completed_bypass')
+      AsyncStorage.getItem("questionnaire_completed_bypass")
         .then((value) => {
-          if (value === 'true') {
+          if (value === "true") {
             console.log("🔓 [Layout] Bypass flag found - allowing navigation");
             setQuestionnaireBypass(true);
           }
@@ -260,27 +260,27 @@ const AppContent = React.memo(() => {
         .catch(console.error);
     }
   }, []);
-
+  const dispatch = useDispatch<AppDispatch>();
   useEffect(() => {
     const handleRouting = () => {
       if (!authInitialized) return;
 
       const currentPath = segments?.join("/") || "";
-      
+
       console.log("🚦 ==========================================");
       console.log("🚦 ROUTING CHECK");
       console.log("🚦 Current Path:", currentPath);
-      console.log("🚦 Bypass Active:", questionnaireBypass);
       console.log("🚦 Auth State:", {
         isAuthenticated,
         hasUser: !!user,
+        email: user?.email,
         email_verified: user?.email_verified,
         is_questionnaire_completed: user?.is_questionnaire_completed,
         subscription_type: user?.subscription_type,
       });
       console.log("🚦 ==========================================");
 
-      // PUBLIC ROUTES
+      // PUBLIC ROUTES - Always allow
       const publicRoutes = [
         "privacy-policy",
         "terms-of-service",
@@ -289,11 +289,13 @@ const AppContent = React.memo(() => {
       ];
 
       if (publicRoutes.some((route) => currentPath.includes(route))) {
+        console.log("🚦 ✅ Public route - allowing");
         return;
       }
 
-      // NOT AUTHENTICATED
+      // NOT AUTHENTICATED - Redirect to auth
       if (!isAuthenticated) {
+        console.log("🚦 ❌ Not authenticated");
         const authRoutes = [
           "welcome",
           "signin",
@@ -305,25 +307,50 @@ const AppContent = React.memo(() => {
         ];
 
         if (!authRoutes.some((route) => currentPath.includes(route))) {
+          console.log("🚦 → Redirecting to welcome");
           router.replace("/(auth)/welcome");
         }
         return;
       }
 
-      // WAIT FOR USER DATA
+      // ✅ CRITICAL FIX: Authenticated but NO USER DATA
+      // This catches the case where user was deleted or session is stale
       if (!user) {
+        console.log("🚦 ⚠️ CRITICAL: Authenticated but no user object");
+        console.log("🚦 → This usually means deleted user or stale session");
+
+        const authRoutes = [
+          "welcome",
+          "signin",
+          "signup",
+          "email-verification",
+          "forgotPassword",
+          "resetPassword",
+          "reset-password-verify",
+        ];
+
+        // If not already in auth flow, redirect to sign in
+        if (!authRoutes.some((route) => currentPath.includes(route))) {
+          console.log("🚦 → Forcing sign out and redirect to sign in");
+
+          // Clear auth state and redirect
+          dispatch({ type: "auth/forceSignOut" });
+          router.replace("/(auth)/signin");
+        }
         return;
       }
 
-      // EMAIL VERIFICATION
+      // EMAIL VERIFICATION CHECK
       if (!user.email_verified) {
+        console.log("🚦 ⚠️ Email not verified");
         if (!currentPath.includes("email-verification")) {
+          console.log("🚦 → Redirecting to email verification");
           router.replace("/(auth)/email-verification");
         }
         return;
       }
 
-      // ✅ CRITICAL: Questionnaire check with BYPASS
+      // QUESTIONNAIRE CHECK
       const allowedRoutes = [
         "questionnaire",
         "payment-plan",
@@ -334,68 +361,79 @@ const AppContent = React.memo(() => {
       ];
 
       const isInAllowedRoute = allowedRoutes.some((route) =>
-        currentPath.includes(route)
+        currentPath.includes(route),
       );
 
-      // ✅ KEY: If bypass is active OR questionnaire is completed, skip questionnaire check
-      if (questionnaireBypass || user.is_questionnaire_completed) {
-        console.log("🚦 ✅ Questionnaire check BYPASSED or COMPLETED");
+      // If questionnaire not completed
+      if (!user.is_questionnaire_completed) {
+        console.log("🚦 ⚠️ Questionnaire not completed");
 
-        // If somehow in questionnaire, redirect away
-        if (currentPath.includes("questionnaire") && !currentPath.includes("tabs")) {
-          if (user.subscription_type && user.subscription_type !== null) {
-            console.log("🚦 → Redirecting to tabs");
-            router.replace("/(tabs)");
-            return;
-          } else {
-            console.log("🚦 → Redirecting to payment");
-            router.replace("/payment-plan");
-            return;
-          }
-        }
+        // Allow staying in questionnaire or navigating to auth to sign out
+        const canStay =
+          isInAllowedRoute ||
+          currentPath.includes("signin") ||
+          currentPath.includes("signup") ||
+          currentPath.includes("welcome");
 
-        // Subscription check
-        if (!user.subscription_type || user.subscription_type === null) {
-          if (!currentPath.includes("payment")) {
-            router.replace("/payment-plan");
-          }
-          return;
-        }
-
-        // Fully authenticated - allow navigation
-        const authRoutes = ["welcome", "signin", "signup", "email-verification"];
-        if (authRoutes.some((route) => currentPath.includes(route))) {
-          router.replace("/(tabs)");
-          return;
-        }
-
-        if (currentPath === "" || currentPath === "/") {
-          router.replace("/(tabs)");
-          return;
-        }
-
-        return;
-      }
-
-      // If questionnaire not complete and no bypass, redirect to questionnaire
-      if (!user.is_questionnaire_completed && !questionnaireBypass) {
-        if (!isInAllowedRoute) {
+        if (!canStay) {
+          console.log("🚦 → Redirecting to questionnaire");
           router.replace("/questionnaire");
         }
         return;
       }
+
+      // SUBSCRIPTION CHECK
+      const hasValidSubscription =
+        user.subscription_type &&
+        user.subscription_type !== null &&
+        user.subscription_type !== "null";
+
+      if (!hasValidSubscription) {
+        console.log("🚦 ⚠️ No valid subscription");
+        if (!currentPath.includes("payment")) {
+          console.log("🚦 → Redirecting to payment");
+          router.replace("/payment-plan");
+        }
+        return;
+      }
+
+      // FULLY AUTHENTICATED - Remove auth routes
+      const authRoutes = [
+        "welcome",
+        "signin",
+        "signup",
+        "email-verification",
+        "forgotPassword",
+        "resetPassword",
+      ];
+
+      if (authRoutes.some((route) => currentPath.includes(route))) {
+        console.log("🚦 → Fully authenticated, redirecting to tabs");
+        router.replace("/(tabs)");
+        return;
+      }
+
+      // Empty path - go to tabs
+      if (currentPath === "" || currentPath === "/") {
+        console.log("🚦 → Empty path, redirecting to tabs");
+        router.replace("/(tabs)");
+        return;
+      }
+
+      console.log("🚦 ✅ All checks passed - allowing navigation");
     };
 
     handleRouting();
   }, [
     authInitialized,
     isAuthenticated,
+    user?.email,
     user?.email_verified,
     user?.is_questionnaire_completed,
     user?.subscription_type,
-    questionnaireBypass,
-    segments?.join("/") || "",
+    segments?.join("/"),
     router,
+    dispatch,
   ]);
 
   const [loaded] = useFonts({
@@ -409,16 +447,15 @@ const AppContent = React.memo(() => {
 
         // STEP 1: Critical storage check and cleanup
         try {
-          const { StorageCleanupService } = await import(
-            "@/src/utils/storageCleanup"
-          );
+          const { StorageCleanupService } =
+            await import("@/src/utils/storageCleanup");
 
           // Check if storage is working at all
           const storageWorking =
             await StorageCleanupService.checkStorageBeforeOperation();
           if (!storageWorking) {
             console.log(
-              "🚨 Storage is not working - running emergency cleanup"
+              "🚨 Storage is not working - running emergency cleanup",
             );
             await StorageCleanupService.emergencyCleanup();
           }
@@ -444,7 +481,7 @@ const AppContent = React.memo(() => {
               try {
                 await NotificationService.sendWelcomeNotification(
                   userName,
-                  userEmail
+                  userEmail,
                 );
               } catch (welcomeError) {
                 console.warn("⚠️ Welcome notification failed:", welcomeError);
@@ -454,7 +491,7 @@ const AppContent = React.memo(() => {
         } catch (notificationError) {
           console.warn(
             "⚠️ REAL notification initialization failed:",
-            notificationError
+            notificationError,
           );
         }
 
@@ -464,12 +501,11 @@ const AppContent = React.memo(() => {
 
         // Last resort emergency cleanup
         try {
-          const { StorageCleanupService } = await import(
-            "@/src/utils/storageCleanup"
-          );
+          const { StorageCleanupService } =
+            await import("@/src/utils/storageCleanup");
           await StorageCleanupService.emergencyCleanup();
           console.log(
-            "✅ Emergency cleanup completed after initialization failure"
+            "✅ Emergency cleanup completed after initialization failure",
           );
         } catch (cleanupError) {
           console.error("💥 Emergency cleanup also failed:", cleanupError);
@@ -490,11 +526,14 @@ const AppContent = React.memo(() => {
       });
 
       // Set up periodic storage monitoring (every 30 minutes)
-      const storageMonitorInterval = setInterval(() => {
-        StorageCleanupService.monitorStorageUsage().catch((error) => {
-          console.warn("Storage monitoring failed:", error);
-        });
-      }, 30 * 60 * 1000); // 30 minutes
+      const storageMonitorInterval = setInterval(
+        () => {
+          StorageCleanupService.monitorStorageUsage().catch((error) => {
+            console.warn("Storage monitoring failed:", error);
+          });
+        },
+        30 * 60 * 1000,
+      ); // 30 minutes
 
       // Only initialize notifications in production builds to avoid Expo Go warnings
       if (!__DEV__) {

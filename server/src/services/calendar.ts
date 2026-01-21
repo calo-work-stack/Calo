@@ -7,6 +7,13 @@ import {
   GamificationBadge,
 } from "../types/calendar";
 
+// ============ CACHING FOR LIGHTNING FAST RESPONSES ============
+const calendarCache = new Map<string, { data: any; timestamp: number }>();
+const CALENDAR_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes cache
+
+const getCacheKey = (user_id: string, year: number, month: number) =>
+  `calendar_${user_id}_${year}_${month}`;
+
 export class CalendarService {
   // Default nutritional goals (can be customized per user later)
   private static getDefaultGoals() {
@@ -19,71 +26,102 @@ export class CalendarService {
     };
   }
 
+  // Clear cache for a user (call after meal/water updates)
+  static clearUserCache(user_id: string) {
+    for (const [key] of calendarCache) {
+      if (key.includes(user_id)) {
+        calendarCache.delete(key);
+      }
+    }
+  }
+
   static async getCalendarData(
     user_id: string,
     year: number,
     month: number
   ): Promise<Record<string, DayData>> {
     try {
+      // Check cache first
+      const cacheKey = getCacheKey(user_id, year, month);
+      const cached = calendarCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CALENDAR_CACHE_DURATION) {
+        console.log("⚡ Returning cached calendar data");
+        return cached.data;
+      }
+
       console.log("📅 Fetching calendar data for user:", user_id, year, month);
 
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
-      console.log("📊 Date range:", startDate, "to", endDate);
-
-      // Fetch meals for the month (using upload_time instead of created_at)
-      const meals = await prisma.meal.findMany({
-        where: {
-          user_id: user_id,
-          upload_time: {
-            gte: startDate,
-            lte: endDate,
+      // ⚡ PARALLEL QUERIES - fetch all data at once instead of sequentially
+      const [meals, dailyGoals, waterIntakes, events] = await Promise.all([
+        // Fetch meals - only select needed fields for performance
+        prisma.meal.findMany({
+          where: {
+            user_id: user_id,
+            upload_time: { gte: startDate, lte: endDate },
           },
-        },
-        orderBy: {
-          upload_time: "asc",
-        },
-      });
-
-      // Fetch daily goals for the month
-      const dailyGoals = await prisma.dailyGoal.findMany({
-        where: {
-          user_id: user_id,
-          date: {
-            gte: startDate,
-            lte: endDate,
+          select: {
+            meal_id: true,
+            upload_time: true,
+            calories: true,
+            protein_g: true,
+            carbs_g: true,
+            fats_g: true,
+            meal_period: true,
           },
-        },
-      });
+          orderBy: { upload_time: "asc" },
+        }),
 
-      // Fetch water intake for the month
-      const waterIntakes = await prisma.waterIntake.findMany({
-        where: {
-          user_id: user_id,
-          date: {
-            gte: startDate,
-            lte: endDate,
+        // Fetch daily goals
+        prisma.dailyGoal.findMany({
+          where: {
+            user_id: user_id,
+            date: { gte: startDate, lte: endDate },
           },
-        },
-      });
-
-      // Fetch calendar events for the month
-      const events = await prisma.calendarEvent.findMany({
-        where: {
-          user_id: user_id,
-          date: {
-            gte: startDate,
-            lte: endDate,
+          select: {
+            date: true,
+            calories: true,
+            protein_g: true,
+            carbs_g: true,
+            fats_g: true,
+            water_ml: true,
           },
-        },
-        orderBy: {
-          date: "asc",
-        },
-      });
+        }),
 
-      console.log("🍽️ Found", meals.length, "meals for the month");
-      console.log("📅 Found", events.length, "events for the month");
+        // Fetch water intake
+        prisma.waterIntake.findMany({
+          where: {
+            user_id: user_id,
+            date: { gte: startDate, lte: endDate },
+          },
+          select: {
+            date: true,
+            cups_consumed: true,
+            milliliters_consumed: true,
+          },
+        }),
+
+        // Fetch calendar events
+        prisma.calendarEvent.findMany({
+          where: {
+            user_id: user_id,
+            date: { gte: startDate, lte: endDate },
+          },
+          select: {
+            event_id: true,
+            date: true,
+            title: true,
+            type: true,
+            description: true,
+            created_at: true,
+          },
+          orderBy: { date: "asc" },
+        }),
+      ]);
+
+      console.log("⚡ Parallel fetch complete:", meals.length, "meals");
 
       // Get default goals for fallback
       const defaultGoals = this.getDefaultGoals();
@@ -200,11 +238,13 @@ export class CalendarService {
         };
       }
 
-      console.log(
-        "✅ Generated calendar data for",
-        Object.keys(calendarData).length,
-        "days"
-      );
+      // Cache the result
+      calendarCache.set(cacheKey, {
+        data: calendarData,
+        timestamp: Date.now(),
+      });
+
+      console.log("⚡ Calendar data cached for", Object.keys(calendarData).length, "days");
       return calendarData;
     } catch (error) {
       console.error("💥 Error fetching calendar data:", error);
@@ -220,17 +260,15 @@ export class CalendarService {
     try {
       console.log("📊 Calculating statistics for user:", user_id, year, month);
 
-      // Get calendar data for current month
-      const currentMonthData = await this.getCalendarData(user_id, year, month);
-
-      // Get previous month data for comparison
+      // Calculate previous month values
       const prevMonth = month === 1 ? 12 : month - 1;
       const prevYear = month === 1 ? year - 1 : year;
-      const prevMonthData = await this.getCalendarData(
-        user_id,
-        prevYear,
-        prevMonth
-      );
+
+      // ⚡ PARALLEL FETCH - get both months at once
+      const [currentMonthData, prevMonthData] = await Promise.all([
+        this.getCalendarData(user_id, year, month),
+        this.getCalendarData(user_id, prevYear, prevMonth),
+      ]);
 
       const currentDays = Object.values(currentMonthData);
       const prevDays = Object.values(prevMonthData);

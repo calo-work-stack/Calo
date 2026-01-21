@@ -41,6 +41,7 @@ import Animated, {
   withSequence,
 } from "react-native-reanimated";
 import { useTheme } from "@/src/context/ThemeContext";
+import { t } from "i18next";
 
 const { width } = Dimensions.get("window");
 const isTablet = width >= 768;
@@ -66,7 +67,7 @@ interface Achievement {
 
 const getLocalizedText = (
   text: string | LocalizedString,
-  locale: string = "en"
+  locale: string = "en",
 ): string => {
   if (typeof text === "string") return text;
   return text[locale as keyof LocalizedString] || text.en;
@@ -81,7 +82,7 @@ interface AchievementsSectionProps {
 const getAchievementIcon = (
   iconName: string,
   size: number = 24,
-  color: string = "#10B981"
+  color: string = "#10B981",
 ) => {
   const iconProps = { size, color, strokeWidth: 2.5 };
 
@@ -414,7 +415,7 @@ const AchievementFullCard: React.FC<{
                         month: "short",
                         day: "numeric",
                         year: "numeric",
-                      }
+                      },
                     )}
                   </Text>
                 </View>
@@ -478,27 +479,27 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
   const filteredAchievements = useMemo(() => {
     if (selectedCategory === "all") return achievements;
     return achievements.filter(
-      (achievement) => achievement.category === selectedCategory
+      (achievement) => achievement.category === selectedCategory,
     );
   }, [achievements, selectedCategory]);
 
   const unlockedAchievements = useMemo(
     () => filteredAchievements.filter((a) => a.unlocked),
-    [filteredAchievements]
+    [filteredAchievements],
   );
 
   const lockedAchievements = useMemo(
     () => filteredAchievements.filter((a) => !a.unlocked),
-    [filteredAchievements]
+    [filteredAchievements],
   );
 
   const totalUnlocked = achievements.filter((a) => a.unlocked).length;
   const totalXP = achievements.reduce(
     (sum, a) => sum + (a.unlocked ? a.xpReward : 0),
-    0
+    0,
   );
   const completionPercentage = Math.round(
-    (totalUnlocked / achievements.length) * 100
+    (totalUnlocked / achievements.length) * 100,
   );
 
   return (
@@ -511,12 +512,14 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
         {/* Header */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionHeaderLeft}>
-            <LinearGradient
-              colors={["#FFD700", "#FFA500"]}
-              style={styles.sectionIcon}
+            <View
+              style={[
+                styles.sectionIcon,
+                { backgroundColor: colors.emerald100 },
+              ]}
             >
               <Trophy size={24} color="white" strokeWidth={2.5} />
-            </LinearGradient>
+            </View>
             <View>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Achievements
@@ -527,17 +530,19 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
                   { color: colors.textSecondary },
                 ]}
               >
-                {totalUnlocked} of {achievements.length} unlocked
+                {totalUnlocked} {t("common.of")} {achievements.length} {t("common.unlocked")}
               </Text>
             </View>
           </View>
 
           <TouchableOpacity
-            style={styles.viewAllButton}
+            style={[
+              styles.viewAllButton,
+              { backgroundColor: colors.emerald100 },
+            ]}
             onPress={() => setShowModal(true)}
             activeOpacity={0.7}
           >
-            <Text style={styles.viewAllText}>View All</Text>
             <ChevronRight size={16} color="white" strokeWidth={3} />
           </TouchableOpacity>
         </View>
@@ -546,7 +551,7 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
         <View style={styles.overallProgress}>
           <View style={styles.progressBarContainer}>
             <LinearGradient
-              colors={["#10B981", "#059669"]}
+              colors={[colors.emerald100,colors.emerald500]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[
@@ -561,7 +566,7 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
               { color: colors.textSecondary },
             ]}
           >
-            {completionPercentage}% Complete
+            {completionPercentage}% {t("common.complete")}
           </Text>
         </View>
 
@@ -837,8 +842,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#10B981",
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingVertical: 10,
     borderRadius: 20,
   },
@@ -1182,7 +1186,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   progressBarContainer: {
-    height: 8,  
+    height: 8,
     backgroundColor: "rgba(0, 0, 0, 0.08)",
     borderRadius: 4,
     overflow: "hidden",

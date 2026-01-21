@@ -28,6 +28,8 @@
     "saveFailed": "Failed to save questionnaire. Please try again.",
     "step": "Step",
     "sectionUnavailable": "This section is temporarily unavailable.",
+    "exitQuestionnaire": "Exit Questionnaire?",
+    "exitQuestionnaireDesc": "You haven't completed the questionnaire yet. If you exit now, you'll need to sign in again. Do you want to sign out?",
     "steps": {
       "personal": {
         "title": "Personal Information",
@@ -1463,6 +1465,7 @@
   "common": {
     "all": "All",
     "of": "of",
+    "unlocked":"Unlocked",
     "next": "Next",
     "save": "Save",
     "ok": "OK",

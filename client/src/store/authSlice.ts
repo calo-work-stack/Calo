@@ -49,7 +49,7 @@ export const signUp = createAsyncThunk(
 
       return rejectWithValue(errorMessage);
     }
-  }
+  },
 );
 
 export const signIn = createAsyncThunk(
@@ -77,7 +77,7 @@ export const signIn = createAsyncThunk(
 
       return rejectWithValue(errorMessage);
     }
-  }
+  },
 );
 
 export const verifyEmail = createAsyncThunk(
@@ -105,7 +105,7 @@ export const verifyEmail = createAsyncThunk(
 
       return rejectWithValue(errorMessage);
     }
-  }
+  },
 );
 
 export const signOut = createAsyncThunk(
@@ -186,21 +186,33 @@ export const signOut = createAsyncThunk(
       }
 
       return rejectWithValue(
-        error instanceof Error ? error.message : "SignOut failed"
+        error instanceof Error ? error.message : "SignOut failed",
       );
     }
-  }
+  },
 );
 
 export const loadStoredAuth = createAsyncThunk(
   "auth/loadStoredAuth",
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, dispatch }) => {
     try {
       console.log("🔄 Loading stored auth...");
       const token = await authAPI.getStoredToken();
       if (token) {
-        console.log("✅ Found stored token");
-        return token;
+        console.log("✅ Found stored token, fetching user data...");
+        try {
+          // Fetch current user data to restore session completely
+          const userData = await authAPI.getCurrentUser();
+          if (userData.success && userData.user) {
+            console.log("✅ User data restored:", userData.user.email);
+            // Return both token and user for complete session restoration
+            return { token, user: userData.user };
+          }
+        } catch (userError) {
+          console.warn("⚠️ Could not fetch user data, token may be expired");
+          // Token exists but is invalid/expired - clear it
+          return null;
+        }
       }
       console.log("ℹ️ No stored token found");
       return null;
@@ -208,7 +220,7 @@ export const loadStoredAuth = createAsyncThunk(
       console.error("💥 Load stored auth error:", error);
       return rejectWithValue("Failed to load stored auth");
     }
-  }
+  },
 );
 
 const authSlice = createSlice({
@@ -227,13 +239,13 @@ const authSlice = createSlice({
     },
     updateUserSubscription: (
       state,
-      action: PayloadAction<{ subscription_type: string }>
+      action: PayloadAction<{ subscription_type: string }>,
     ) => {
       if (state.user) {
         state.user.subscription_type = action.payload.subscription_type as any;
         console.log(
           "✅ [AuthSlice] Subscription updated:",
-          action.payload.subscription_type
+          action.payload.subscription_type,
         );
       }
     },
@@ -251,7 +263,7 @@ const authSlice = createSlice({
         state.user.subscription_type = action.payload.subscription_type;
         console.log(
           "✅ [AuthSlice] Subscription updated:",
-          action.payload.subscription_type
+          action.payload.subscription_type,
         );
       }
     },
@@ -259,13 +271,13 @@ const authSlice = createSlice({
     // ✅ NEW REDUCER: Update a specific field in user object
     updateUserField: (
       state,
-      action: PayloadAction<{ field: string; value: any }>
+      action: PayloadAction<{ field: string; value: any }>,
     ) => {
       if (state.user) {
         (state.user as any)[action.payload.field] = action.payload.value;
         console.log(
           `✅ [AuthSlice] Updated ${action.payload.field} to:`,
-          action.payload.value
+          action.payload.value,
         );
       }
     },
@@ -383,7 +395,7 @@ const authSlice = createSlice({
         console.log("✅ Sign in state updated");
         console.log(
           "👤 User data stored in Redux:",
-          JSON.stringify(action.payload.user, null, 2)
+          JSON.stringify(action.payload.user, null, 2),
         );
         console.log("🔑 Admin fields:", {
           is_admin: action.payload.user?.is_admin,
@@ -420,16 +432,29 @@ const authSlice = createSlice({
       })
       .addCase(loadStoredAuth.fulfilled, (state, action) => {
         state.isLoading = false;
-        if (action.payload) {
-          state.token = action.payload;
+        if (action.payload && typeof action.payload === "object") {
+          // New format: { token, user }
+          state.token = action.payload.token;
+          state.user = action.payload.user;
           state.isAuthenticated = true;
-          console.log("✅ Stored auth loaded");
+          console.log("✅ Session fully restored:", {
+            email: action.payload.user?.email,
+            questionnaire: action.payload.user?.is_questionnaire_completed,
+          });
+        } else if (action.payload) {
+          // Legacy format: just token (shouldn't happen now)
+          state.token = action.payload as string;
+          state.isAuthenticated = true;
+          console.log("✅ Token loaded (legacy format)");
         } else {
+          // No auth found
+          state.isAuthenticated = false;
           console.log("ℹ️ No stored auth found");
         }
       })
       .addCase(loadStoredAuth.rejected, (state, action) => {
         state.isLoading = false;
+        state.isAuthenticated = false;
         state.error = action.payload as string;
         console.log("❌ Load stored auth failed:", action.payload);
       })
@@ -452,13 +477,13 @@ const authSlice = createSlice({
             SecureStore.setItemAsync("auth_token_secure", action.payload.token)
               .then(() => {
                 console.log(
-                  "✅ Token stored in SecureStore after verification"
+                  "✅ Token stored in SecureStore after verification",
                 );
               })
               .catch((error: any) => {
                 console.error(
                   "❌ Failed to store token in SecureStore:",
-                  error
+                  error,
                 );
               });
           }
@@ -478,14 +503,13 @@ const authSlice = createSlice({
   },
 });
 
-// ✅ EXPORT ALL ACTIONS INCLUDING NEW ONES
 export const {
   clearError,
-  forceSignOut,
+  forceSignOut, // ✅ Must be exported
   updateUserSubscription,
   setQuestionnaireCompleted,
   updateSubscription,
-  updateUserField, // ✅ NEW - Required by questionnaireSlice
+  updateUserField,
   loginSuccess,
   setUser,
   setToken,

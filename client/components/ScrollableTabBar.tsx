@@ -72,6 +72,7 @@ import Animated, {
 import { useLanguage } from "../src/i18n/context/LanguageContext";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/context/ThemeContext";
+import { useOptimizedAuthSelector } from "@/hooks/useOptimizedAuthSelector";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -114,61 +115,21 @@ const triggerHaptic = () => {
 // Option 1: Modern/Clean icons
 const getIconComponent = (routeName: string) => {
   const iconMap: { [key: string]: React.ComponentType<any> } = {
-    index: House, // Changed from Home to House
-    history: SquareMenuIcon, // Changed from History to Clock
-    camera: Camera, // Changed from Camera to Video
-    statistics: BarChart3, // Changed from TrendingUp to BarChart3
-    calendar: CalendarDays, // Changed from Calendar to CalendarDays
-    devices: Smartphone, // Changed from Watch to Smartphone
-    "recommended-menus": ChefHat, // Changed from UtensilsCrossed to ChefHat
-    "ai-chat": MessageCircle, // Changed from Bot to MessageCircle
-    "food-scanner": QrCode, // Changed from ScanLine to QrCode
-    questionnaire: FileText, // Changed from ClipboardList to FileText
-    profile: UserCircle, // Changed from User to UserCircle
-    dashboard: ChartAreaIcon
+    index: House,
+    history: SquareMenuIcon,
+    camera: Camera,
+    statistics: BarChart3,
+    calendar: CalendarDays,
+    devices: Smartphone,
+    "recommended-menus": ChefHat,
+    "ai-chat": MessageCircle,
+    "food-scanner": QrCode,
+    questionnaire: FileText,
+    profile: UserCircle,
+    dashboard: ChartAreaIcon,
   };
   return iconMap[routeName] || House;
 };
-
-// Option 2: Activity/Dynamic icons (uncomment to use this instead)
-/*
-const getIconComponent = (routeName: string) => {
-  const iconMap: { [key: string]: React.ComponentType<any> } = {
-    index: Sparkles,        // Fun home icon
-    history: Clock,         // Time-based
-    camera: Camera,         // Keep original camera
-    statistics: Activity,   // Dynamic stats
-    calendar: Calendar,     // Keep original
-    devices: Watch,         // Keep original
-    "recommended-menus": UtensilsCrossed, // Keep original
-    "ai-chat": Bot,         // Keep original
-    "food-scanner": ScanLine, // Keep original
-    questionnaire: ClipboardList, // Keep original
-    profile: Settings,      // Settings instead of user
-  };
-  return iconMap[routeName] || Sparkles;
-};
-*/
-
-// Option 3: Minimal/Simple icons (uncomment to use this instead)
-/*
-const getIconComponent = (routeName: string) => {
-  const iconMap: { [key: string]: React.ComponentType<any> } = {
-    index: Home,            // Keep simple home
-    history: History,       // Keep original
-    camera: Camera,         // Keep original
-    statistics: TrendingUp, // Keep original
-    calendar: Calendar,     // Keep original
-    devices: Watch,         // Keep original
-    "recommended-menus": UtensilsCrossed, // Keep original
-    "ai-chat": MessageCircle, // Change to message
-    "food-scanner": QrCode, // Change to QR code
-    questionnaire: FileText, // Change to file
-    profile: User,          // Keep original
-  };
-  return iconMap[routeName] || Home;
-};
-*/
 
 // Label mapping
 const getTabLabel = (routeName: string, t: (key: string) => string): string => {
@@ -184,6 +145,7 @@ const getTabLabel = (routeName: string, t: (key: string) => string): string => {
     "food-scanner": t("tabs.food_scanner"),
     questionnaire: t("tabs.questionnaire"),
     profile: t("tabs.profile"),
+    dashboard: t("tabs.dashboard"),
   };
   return labelMap[routeName] || routeName;
 };
@@ -203,6 +165,36 @@ interface CustomTabBarProps {
   descriptors: { [key: string]: any };
   navigation: any;
 }
+
+// Helper function to check if a route should be shown based on user permissions
+const shouldShowRoute = (routeName: string, user: any): boolean => {
+  // Define permission requirements for each route
+  const permissionMap: { [key: string]: () => boolean } = {
+    "ai-chat": () => {
+      return (
+        user?.subscription_type === "GOLD" ||
+        user?.subscription_type === "PLATINUM"
+      );
+    },
+    devices: () => {
+      return (
+        user?.subscription_type === "GOLD" ||
+        user?.subscription_type === "PLATINUM"
+      );
+    },
+    dashboard: () => {
+      return user?.is_admin === true || user?.is_super_admin === true;
+    },
+  };
+
+  // If route has permission requirements, check them
+  if (permissionMap[routeName]) {
+    return permissionMap[routeName]();
+  }
+
+  // All other routes are visible by default
+  return true;
+};
 
 // Instagram-style camera tab
 const CameraTab = React.memo(
@@ -231,7 +223,7 @@ const CameraTab = React.memo(
       runOnJS(triggerHaptic)();
       scale.value = withSequence(
         withTiming(0.9, { duration: 100, easing: Easing.out(Easing.quad) }),
-        withSpring(isFocused ? 1.1 : 1, MICRO_SPRING)
+        withSpring(isFocused ? 1.1 : 1, MICRO_SPRING),
       );
       setTimeout(onPress, 80);
     };
@@ -245,7 +237,6 @@ const CameraTab = React.memo(
       opacity: isFocused ? 1 : 0,
     }));
 
-    // Get the camera icon component - you can change this to Video if using Option 1
     const CameraIcon = getIconComponent("camera");
 
     return (
@@ -279,12 +270,11 @@ const CameraTab = React.memo(
               color={isFocused ? "#ffffff" : colors.icon}
               strokeWidth={1.5}
             />
-            
           </TouchableOpacity>
         </Animated.View>
       </View>
     );
-  }
+  },
 );
 
 CameraTab.displayName = "CameraTab";
@@ -327,11 +317,11 @@ const RegularTab = React.memo(
       runOnJS(triggerHaptic)();
       scale.value = withSequence(
         withTiming(0.9, { duration: 80, easing: Easing.out(Easing.quad) }),
-        withSpring(1, MICRO_SPRING)
+        withSpring(1, MICRO_SPRING),
       );
       iconScale.value = withSequence(
         withTiming(0.85, { duration: 80 }),
-        withSpring(isFocused ? 1.1 : 1, MICRO_SPRING)
+        withSpring(isFocused ? 1.1 : 1, MICRO_SPRING),
       );
       setTimeout(onPress, 60);
     };
@@ -403,7 +393,7 @@ const RegularTab = React.memo(
         </TouchableOpacity>
       </Animated.View>
     );
-  }
+  },
 );
 
 RegularTab.displayName = "RegularTab";
@@ -419,6 +409,9 @@ export function ScrollableTabBar({
   const { isRTL } = useLanguage();
   const { t } = useTranslation();
   const [layoutKey, setLayoutKey] = useState(0);
+
+  // Get user from auth selector to check permissions
+  const { user } = useOptimizedAuthSelector();
 
   // Simple entrance animation
   const containerOpacity = useSharedValue(0);
@@ -442,25 +435,41 @@ export function ScrollableTabBar({
 
     const subscription = AppState.addEventListener(
       "change",
-      handleAppStateChange
+      handleAppStateChange,
     );
     return () => subscription?.remove();
   }, []);
 
-  // Separate tabs
+  // Separate tabs - FILTER BASED ON USER PERMISSIONS
   const { regularTabs, cameraTab } = useMemo(() => {
     if (!state?.routes) return { regularTabs: [], cameraTab: null };
 
-    const validRoutes = state.routes.filter(
-      (route): route is RouteInfo =>
-        route && typeof route.name === "string" && typeof route.key === "string"
-    );
+    // Filter routes based on user permissions
+    const validRoutes = state.routes.filter((route): route is RouteInfo => {
+      if (
+        !route ||
+        typeof route.name !== "string" ||
+        typeof route.key !== "string"
+      ) {
+        return false;
+      }
+
+      // Check if user has permission to see this route
+      const hasPermission = shouldShowRoute(route.name, user);
+
+      // Debug logging (optional - remove in production)
+      if (!hasPermission) {
+        console.log(`Hiding tab: ${route.name}`);
+      }
+
+      return hasPermission;
+    });
 
     const camera = validRoutes.find((route) => route.name === "camera") || null;
     const regular = validRoutes.filter((route) => route.name !== "camera");
 
     return { regularTabs: regular, cameraTab: camera };
-  }, [state?.routes]);
+  }, [state?.routes, user]); // Re-run when user changes
 
   // Navigation handlers
   const createTabPressHandler = useCallback(
@@ -471,7 +480,7 @@ export function ScrollableTabBar({
         console.warn("Navigation error:", error);
       }
     },
-    [navigation]
+    [navigation],
   );
 
   const createTabLongPressHandler = useCallback(
@@ -485,7 +494,7 @@ export function ScrollableTabBar({
         console.warn("Long press error:", error);
       }
     },
-    [navigation]
+    [navigation],
   );
 
   if (!state?.routes) {
@@ -533,7 +542,7 @@ export function ScrollableTabBar({
             if (!descriptors[route.key]) return null;
 
             const routeIndex = state.routes.findIndex(
-              (r) => r?.key === route.key
+              (r) => r?.key === route.key,
             );
             const isFocused = routeIndex !== -1 && state.index === routeIndex;
 

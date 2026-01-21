@@ -955,6 +955,9 @@ router.put("/meals/:id", authenticateToken, async (req: AuthRequest, res) => {
       },
     });
 
+    // Smart cache update - update meal directly without refetching
+    NutritionService.updateMealInCache(userId, updatedMeal);
+
     console.log("✅ Meal updated successfully:", mealId);
 
     res.json({
@@ -999,6 +1002,9 @@ router.delete(
       await prisma.meal.delete({
         where: { meal_id: mealId },
       });
+
+      // Smart cache update - remove meal directly without refetching
+      NutritionService.removeMealFromCache(userId, mealId);
 
       console.log("✅ Meal deleted successfully:", mealId);
 
@@ -1224,6 +1230,9 @@ router.post(
       const meal = await prisma.meal.create({
         data: mealData,
       });
+
+      // Smart cache update - add meal directly without refetching
+      NutritionService.addMealToCache(userId, meal);
 
       console.log("✅ Manual meal added successfully:", meal.meal_id);
 
