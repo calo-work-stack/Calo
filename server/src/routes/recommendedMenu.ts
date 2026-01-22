@@ -109,7 +109,112 @@ router.get(
         error: "Failed to get menu details",
       });
     }
-  }
+  },
+);
+
+router.delete(
+  "/:menuId",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) {
+        console.log("❌ DELETE: No user ID found");
+        return res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+        });
+      }
+
+      const { menuId } = req.params;
+      console.log("🗑️ DELETE request for menu:", menuId, "by user:", userId);
+
+      // Check if menu exists and belongs to user
+      const menu = await prisma.recommendedMenu.findFirst({
+        where: {
+          menu_id: menuId,
+          user_id: userId,
+        },
+        include: {
+          meals: {
+            include: {
+              ingredients: true,
+              ingredientChecks: true,
+            },
+          },
+        },
+      });
+
+      if (!menu) {
+        console.log("❌ Menu not found or doesn't belong to user");
+        return res.status(404).json({
+          success: false,
+          error: "Menu not found or unauthorized",
+        });
+      }
+
+      console.log(
+        `📋 Found menu: "${menu.title}" with ${menu.meals.length} meals`,
+      );
+
+      // Check if this menu is currently active
+      if (menu.is_active) {
+        console.log("⚠️ Menu is currently active, deactivating first");
+
+        // Update user's active_menu_id if it matches
+        const user = await prisma.user.findUnique({
+          where: { user_id: userId },
+          select: { active_menu_id: true },
+        });
+
+        if (user?.active_menu_id === menuId) {
+          await prisma.user.update({
+            where: { user_id: userId },
+            data: { active_menu_id: null },
+          });
+          console.log("✅ Cleared user's active_menu_id");
+        }
+      }
+
+      // Delete the menu (cascade will handle meals, ingredients, and checks)
+      await prisma.recommendedMenu.delete({
+        where: { menu_id: menuId },
+      });
+
+      console.log("✅ Menu deleted successfully");
+
+      res.json({
+        success: true,
+        message: "Menu deleted successfully",
+        deletedMenuId: menuId,
+        mealsDeleted: menu.meals.length,
+      });
+    } catch (error: any) {
+      console.error("💥 Error deleting menu:", error);
+
+      // Handle specific Prisma errors
+      if (error.code === "P2003") {
+        return res.status(400).json({
+          success: false,
+          error: "Cannot delete menu: it's referenced by other records",
+          details: error.meta,
+        });
+      }
+
+      if (error.code === "P2025") {
+        return res.status(404).json({
+          success: false,
+          error: "Menu not found",
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: "Failed to delete menu",
+        details: error.message,
+      });
+    }
+  },
 );
 
 // GET /api/recommended-menus/debug - Debug endpoint to check menu data
@@ -155,7 +260,7 @@ router.get(
             meals_count: menu.meals.length,
             total_ingredients: menu.meals.reduce(
               (total, meal) => total + meal.ingredients.length,
-              0
+              0,
             ),
             sample_meals: menu.meals.slice(0, 2).map((meal) => ({
               meal_id: meal.meal_id,
@@ -163,7 +268,7 @@ router.get(
               meal_type: meal.meal_type,
               ingredients_count: meal.ingredients.length,
             })),
-          })
+          }),
         ),
       };
 
@@ -179,7 +284,7 @@ router.get(
         details: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 // POST /api/recommended-menus/generate-custom - Generate custom menu based on user description
@@ -256,7 +361,7 @@ router.post(
       console.log(
         "📤 Sending custom menu response with",
         responseData.meals.length,
-        "meals"
+        "meals",
       );
 
       res.json({
@@ -284,7 +389,7 @@ router.post(
         details: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 // POST /api/recommended-menus/generate - Generate new menu with preferences
@@ -319,7 +424,7 @@ router.post(
 
       if (
         !["3_main", "3_plus_2_snacks", "2_plus_1_intermediate"].includes(
-          mealsPerDay
+          mealsPerDay,
         )
       ) {
         return res.status(400).json({
@@ -371,7 +476,7 @@ router.post(
       console.log(
         "📤 Sending response with",
         responseData.meals.length,
-        "meals"
+        "meals",
       );
 
       res.json({
@@ -403,7 +508,7 @@ router.post(
         details: getErrorMessage(error),
       });
     }
-  }
+  },
 );
 
 // POST /api/recommended-menus/:menuId/replace-meal - Replace a specific meal
@@ -420,7 +525,7 @@ router.post(
         userId,
         menuId,
         mealId,
-        preferences
+        preferences,
       );
 
       res.json({
@@ -435,7 +540,7 @@ router.post(
         details: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 // POST /api/recommended-menus/:menuId/favorite-meal - Mark meal as favorite
@@ -452,7 +557,7 @@ router.post(
         userId,
         menuId,
         mealId,
-        isFavorite
+        isFavorite,
       );
 
       res.json({
@@ -469,7 +574,7 @@ router.post(
         details: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 // POST /api/recommended-menus/:menuId/meal-feedback - Give feedback on meal
@@ -486,7 +591,7 @@ router.post(
         userId,
         menuId,
         mealId,
-        liked
+        liked,
       );
 
       res.json({
@@ -501,7 +606,7 @@ router.post(
         details: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 // GET /api/recommended-menus/:menuId/shopping-list - Get shopping list for menu
@@ -515,7 +620,7 @@ router.get(
 
       const shoppingList = await RecommendedMenuService.generateShoppingList(
         userId,
-        menuId
+        menuId,
       );
 
       res.json({
@@ -530,7 +635,7 @@ router.get(
         details: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 // GET /api/recommended-menus/:menuId/completion - Check if menu is completed and get summary
@@ -553,7 +658,7 @@ router.get(
 
       const summary = await RecommendedMenuService.checkMenuCompletion(
         userId,
-        menuId
+        menuId,
       );
 
       if (!summary) {
@@ -577,7 +682,7 @@ router.get(
         details: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 // POST /api/recommended-menus/:menuId/start-today - Start a recommended menu as today's plan
@@ -594,7 +699,7 @@ router.post(
         "🚀 Starting recommended menu today:",
         menuId,
         "for user:",
-        userId
+        userId,
       );
 
       // Get the recommended menu
@@ -645,7 +750,7 @@ router.post(
         details: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 // POST /api/recommended-menus/:menuId/review - Submit menu review
@@ -684,7 +789,7 @@ router.post(
         error: "Failed to save review",
       });
     }
-  }
+  },
 );
 
 // POST /api/recommended-menus/:menuId/regenerate-with-feedback - Regenerate menu with user feedback
@@ -758,7 +863,7 @@ router.post(
         error: "Failed to generate enhanced menu",
       });
     }
-  }
+  },
 );
 
 // POST /api/recommended-menus/generate-comprehensive - Generate comprehensive menu with detailed parameters
@@ -799,7 +904,7 @@ router.post(
       }
 
       console.log(
-        "✅ Input validation passed, generating comprehensive menu..."
+        "✅ Input validation passed, generating comprehensive menu...",
       );
 
       // Sanitize user inputs to prevent injection
@@ -834,9 +939,8 @@ router.post(
           .trim(),
       };
 
-      const menu = await RecommendedMenuService.generateCustomMenu(
-        comprehensiveRequest
-      );
+      const menu =
+        await RecommendedMenuService.generateCustomMenu(comprehensiveRequest);
 
       if (!menu) {
         throw new Error("Comprehensive menu generation returned null");
@@ -864,7 +968,7 @@ router.post(
       console.log(
         "📤 Sending comprehensive menu response with",
         responseData.meals.length,
-        "meals"
+        "meals",
       );
 
       res.json({
@@ -892,7 +996,7 @@ router.post(
         details: getErrorMessage(error),
       });
     }
-  }
+  },
 );
 
 // POST /api/recommended-menus/:menuId/start-today - Create meal plan from menu and activate it
@@ -946,20 +1050,20 @@ router.post(
           include_leftovers: false,
           fixed_meal_times: true,
           target_calories_daily: Math.round(
-            menu.total_calories / menu.days_count
+            menu.total_calories / menu.days_count,
           ),
           target_protein_daily: Math.round(
-            (menu.total_protein || 0) / menu.days_count
+            (menu.total_protein || 0) / menu.days_count,
           ),
           target_carbs_daily: Math.round(
-            (menu.total_carbs || 0) / menu.days_count
+            (menu.total_carbs || 0) / menu.days_count,
           ),
           target_fats_daily: Math.round(
-            (menu.total_fat || 0) / menu.days_count
+            (menu.total_fat || 0) / menu.days_count,
           ),
           start_date: new Date(),
           end_date: new Date(
-            Date.now() + menu.days_count * 24 * 60 * 60 * 1000
+            Date.now() + menu.days_count * 24 * 60 * 60 * 1000,
           ),
           is_active: true,
         },
@@ -986,7 +1090,7 @@ router.post(
 
       // Create meal templates and schedules from recommended menu meals
       console.log(
-        "🔄 Converting recommended meals to meal templates and schedules..."
+        "🔄 Converting recommended meals to meal templates and schedules...",
       );
 
       const createdTemplates: {
@@ -1061,7 +1165,7 @@ router.post(
           console.error(
             "❌ Error creating template for meal:",
             meal.name,
-            error
+            error,
           );
         }
       }
@@ -1099,7 +1203,7 @@ router.post(
 
         // Find the corresponding template
         const template = createdTemplates.find(
-          (t) => t.name === meal.name && t.meal_timing === meal.meal_type
+          (t) => t.name === meal.name && t.meal_timing === meal.meal_type,
         );
 
         weeklyPlan[dayName][timing].push({
@@ -1156,7 +1260,7 @@ router.post(
         details: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 // Generate menu with user ingredients
@@ -1176,7 +1280,8 @@ router.post(
       const { preferences, ingredients = [], user_ingredients } = req.body;
 
       // Ingredients are now optional - AI will suggest ingredients if none provided
-      const hasIngredients = Array.isArray(ingredients) && ingredients.length > 0;
+      const hasIngredients =
+        Array.isArray(ingredients) && ingredients.length > 0;
 
       console.log("🍽️ Generating menu:", {
         userId,
@@ -1192,51 +1297,57 @@ router.post(
       });
 
       // Detect language based on ingredients or preferences
-      const hasHebrew = hasIngredients && ingredients.some((ing: any) =>
-        /[\u0590-\u05FF]/.test(ing.name)
-      );
+      const hasHebrew =
+        hasIngredients &&
+        ingredients.some((ing: any) => /[\u0590-\u05FF]/.test(ing.name));
       const menuLanguage = hasHebrew ? "Hebrew" : "English";
 
       // Create ingredients list if provided, otherwise AI will suggest
       const ingredientsList = hasIngredients
-        ? ingredients.map((ing: any) => `${ing.name} (${ing.quantity} ${ing.unit})`).join(", ")
+        ? ingredients
+            .map((ing: any) => `${ing.name} (${ing.quantity} ${ing.unit})`)
+            .join(", ")
         : "None provided - AI will suggest appropriate ingredients based on preferences";
 
       const sanitizedDuration = Math.max(
         1,
-        Math.min(30, parseInt(preferences.duration_days?.toString() || "7"))
+        Math.min(30, parseInt(preferences.duration_days?.toString() || "7")),
       );
 
       const customName = preferences.custom_name?.trim() || null;
 
       const prompt = `You are a world-class chef and nutritionist. Create an exceptional ${sanitizedDuration}-day meal plan that showcases creative, delicious, and nutritious recipes.
 
-🍽️ ${hasIngredients ? 'AVAILABLE INGREDIENTS:' : 'INGREDIENT GUIDANCE:'}
-${hasIngredients ? ingredientsList : 'No specific ingredients provided. Please suggest appropriate, commonly available ingredients that match the cuisine style and dietary preferences. Focus on fresh, affordable, and accessible ingredients.'}
+🍽️ ${hasIngredients ? "AVAILABLE INGREDIENTS:" : "INGREDIENT GUIDANCE:"}
+${hasIngredients ? ingredientsList : "No specific ingredients provided. Please suggest appropriate, commonly available ingredients that match the cuisine style and dietary preferences. Focus on fresh, affordable, and accessible ingredients."}
 
 📋 USER PREFERENCES:
 - Cuisine Style: ${preferences.cuisine} (embrace authentic flavors and traditional cooking methods)
 - Dietary Requirements: ${preferences.dietary_restrictions.join(", ") || "None - No restrictions"}
 - Meals per Day: ${preferences.meal_count} (balanced throughout the day)
-- Cooking Difficulty: ${preferences.cooking_difficulty} (${preferences.cooking_difficulty === 'easy' ? 'simple, quick recipes' : preferences.cooking_difficulty === 'medium' ? 'moderately challenging' : 'complex, gourmet techniques'})
-- Budget: ${preferences.budget_range} (${preferences.budget_range === 'budget' ? 'cost-effective ingredients' : preferences.budget_range === 'moderate' ? 'balanced quality and cost' : 'premium ingredients welcome'})
-- Custom Name Request: ${customName || 'Create an appealing name'}
+- Cooking Difficulty: ${preferences.cooking_difficulty} (${preferences.cooking_difficulty === "easy" ? "simple, quick recipes" : preferences.cooking_difficulty === "medium" ? "moderately challenging" : "complex, gourmet techniques"})
+- Budget: ${preferences.budget_range} (${preferences.budget_range === "budget" ? "cost-effective ingredients" : preferences.budget_range === "moderate" ? "balanced quality and cost" : "premium ingredients welcome"})
+- Custom Name Request: ${customName || "Create an appealing name"}
 
 👤 USER PROFILE:
-${userQuestionnaire ? `- Age: ${userQuestionnaire.age} years
+${
+  userQuestionnaire
+    ? `- Age: ${userQuestionnaire.age} years
 - Primary Goal: ${userQuestionnaire.main_goal} (optimize nutrition for this goal)
 - Activity Level: ${userQuestionnaire.physical_activity_level}
-- Daily Cooking Time: ${userQuestionnaire.daily_cooking_time || '30 minutes'}
-- Preferences: ${userQuestionnaire.liked_foods?.join(', ') || 'No specific preferences'}
-- Dislikes: ${userQuestionnaire.disliked_foods?.join(', ') || 'None'}
-- Allergies: ${userQuestionnaire.allergies?.join(', ') || 'None'}` : '- Standard nutrition requirements'}
+- Daily Cooking Time: ${userQuestionnaire.daily_cooking_time || "30 minutes"}
+- Preferences: ${userQuestionnaire.liked_foods?.join(", ") || "No specific preferences"}
+- Dislikes: ${userQuestionnaire.disliked_foods?.join(", ") || "None"}
+- Allergies: ${userQuestionnaire.allergies?.join(", ") || "None"}`
+    : "- Standard nutrition requirements"
+}
 
 🎯 LANGUAGE RULE:
 Respond in ${menuLanguage} for ALL text (menu name, descriptions, instructions, ingredient names).
 
 ✨ RECIPE QUALITY STANDARDS:
 1. CREATE RESTAURANT-QUALITY DISHES: Each meal should be exciting, flavorful, and memorable
-2. ${hasIngredients ? 'MAXIMIZE INGREDIENT USE: Creatively incorporate the provided ingredients across multiple meals' : 'SMART INGREDIENT SELECTION: Choose fresh, affordable, and accessible ingredients that complement the cuisine style'}
+2. ${hasIngredients ? "MAXIMIZE INGREDIENT USE: Creatively incorporate the provided ingredients across multiple meals" : "SMART INGREDIENT SELECTION: Choose fresh, affordable, and accessible ingredients that complement the cuisine style"}
 3. BALANCE NUTRITION: Hit macro targets while ensuring variety and satisfaction
 4. DETAILED INSTRUCTIONS: Step-by-step cooking guidance that anyone can follow
 5. SMART MEAL PLANNING: Prep ingredients once, use in multiple meals when possible
@@ -1261,7 +1372,7 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
 
 📊 REQUIRED JSON FORMAT:
 {
-  "menu_name": "${customName || 'Creative 2-3 word name'}",
+  "menu_name": "${customName || "Creative 2-3 word name"}",
   "description": "Compelling 1-2 sentence description highlighting key benefits and flavors",
   "total_calories": <sum of all meals>,
   "total_protein": <sum in grams>,
@@ -1325,7 +1436,8 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
       };
 
       // Generate quick menu name
-      const quickMenuName = preferences.custom_name?.trim() ||
+      const quickMenuName =
+        preferences.custom_name?.trim() ||
         `${cuisineEmojis[preferences.cuisine] || "🍽️"} ${cuisineNames[preferences.cuisine] || "Custom"} ${sanitizedDuration}-Day Plan`;
 
       // Create placeholder meals based on preferences
@@ -1333,18 +1445,25 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
       const placeholderMeals: any[] = [];
 
       for (let day = 1; day <= sanitizedDuration; day++) {
-        for (const mealType of mealTypes.slice(0, preferences.meal_count || 3)) {
+        for (const mealType of mealTypes.slice(
+          0,
+          preferences.meal_count || 3,
+        )) {
           placeholderMeals.push({
             name: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} - Day ${day}`,
             meal_type: mealType,
             day_number: day,
-            calories: mealType === "BREAKFAST" ? 400 : mealType === "LUNCH" ? 600 : 700,
-            protein: mealType === "BREAKFAST" ? 20 : mealType === "LUNCH" ? 35 : 40,
-            carbs: mealType === "BREAKFAST" ? 50 : mealType === "LUNCH" ? 60 : 70,
+            calories:
+              mealType === "BREAKFAST" ? 400 : mealType === "LUNCH" ? 600 : 700,
+            protein:
+              mealType === "BREAKFAST" ? 20 : mealType === "LUNCH" ? 35 : 40,
+            carbs:
+              mealType === "BREAKFAST" ? 50 : mealType === "LUNCH" ? 60 : 70,
             fat: mealType === "BREAKFAST" ? 15 : mealType === "LUNCH" ? 20 : 25,
             prep_time_minutes: 30,
             cooking_method: "Preparing...",
-            instructions: "AI is generating detailed recipe... Check back in a moment!",
+            instructions:
+              "AI is generating detailed recipe... Check back in a moment!",
             dietary_tags: preferences.dietary_restrictions || [],
             ingredients: [],
             is_generating: true,
@@ -1353,8 +1472,14 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
       }
 
       // Calculate totals
-      const totalCalories = placeholderMeals.reduce((sum, m) => sum + m.calories, 0);
-      const totalProtein = placeholderMeals.reduce((sum, m) => sum + m.protein, 0);
+      const totalCalories = placeholderMeals.reduce(
+        (sum, m) => sum + m.calories,
+        0,
+      );
+      const totalProtein = placeholderMeals.reduce(
+        (sum, m) => sum + m.protein,
+        0,
+      );
       const totalCarbs = placeholderMeals.reduce((sum, m) => sum + m.carbs, 0);
       const totalFat = placeholderMeals.reduce((sum, m) => sum + m.fat, 0);
 
@@ -1371,13 +1496,22 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
           days_count: sanitizedDuration,
           estimated_cost: 0,
           prep_time_minutes: 30,
-          difficulty_level: preferences.cooking_difficulty === "easy" ? 1 : preferences.cooking_difficulty === "hard" ? 3 : 2,
+          difficulty_level:
+            preferences.cooking_difficulty === "easy"
+              ? 1
+              : preferences.cooking_difficulty === "hard"
+                ? 3
+                : 2,
           // AI enhancement will happen in background
         },
       });
 
       // Save placeholder meals
-      const savedMealIds: { mealId: string; dayNumber: number; mealType: string }[] = [];
+      const savedMealIds: {
+        mealId: string;
+        dayNumber: number;
+        mealType: string;
+      }[] = [];
 
       for (const meal of placeholderMeals) {
         const savedMeal = await prisma.recommendedMeal.create({
@@ -1406,7 +1540,9 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
         });
       }
 
-      console.log(`✅ Menu created instantly: ${savedMenu.menu_id} with ${savedMealIds.length} placeholder meals`);
+      console.log(
+        `✅ Menu created instantly: ${savedMenu.menu_id} with ${savedMealIds.length} placeholder meals`,
+      );
 
       // Send response IMMEDIATELY - user can start using the menu
       res.json({
@@ -1424,7 +1560,8 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
           meals: placeholderMeals,
           is_generating: true, // Hint to client that AI is enhancing recipes
         },
-        message: "Menu created! AI is now personalizing your recipes in the background.",
+        message:
+          "Menu created! AI is now personalizing your recipes in the background.",
       });
 
       // ========== BACKGROUND AI ENHANCEMENT ==========
@@ -1432,14 +1569,17 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
       if (openai) {
         setImmediate(async () => {
           try {
-            console.log(`🤖 Starting background AI enhancement for menu: ${savedMenu.menu_id}`);
+            console.log(
+              `🤖 Starting background AI enhancement for menu: ${savedMenu.menu_id}`,
+            );
 
             const response = await openai.chat.completions.create({
               model: "gpt-4o-mini",
               messages: [
                 {
                   role: "system",
-                  content: "You are an award-winning chef. Create restaurant-quality recipes. Return ONLY valid JSON.",
+                  content:
+                    "You are an award-winning chef. Create restaurant-quality recipes. Return ONLY valid JSON.",
                 },
                 { role: "user", content: prompt },
               ],
@@ -1476,18 +1616,28 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
               data: {
                 title: String(parsedMenu.menu_name || quickMenuName),
                 description: String(parsedMenu.description || ""),
-                total_calories: parseInt(parsedMenu.total_calories?.toString() || "0"),
-                total_protein: parseInt(parsedMenu.total_protein?.toString() || "0"),
-                total_carbs: parseInt(parsedMenu.total_carbs?.toString() || "0"),
+                total_calories: parseInt(
+                  parsedMenu.total_calories?.toString() || "0",
+                ),
+                total_protein: parseInt(
+                  parsedMenu.total_protein?.toString() || "0",
+                ),
+                total_carbs: parseInt(
+                  parsedMenu.total_carbs?.toString() || "0",
+                ),
                 total_fat: parseInt(parsedMenu.total_fat?.toString() || "0"),
-                estimated_cost: parseFloat(parsedMenu.estimated_cost?.toString() || "0"),
+                estimated_cost: parseFloat(
+                  parsedMenu.estimated_cost?.toString() || "0",
+                ),
               },
             });
 
             // Update each meal with AI-generated content
             for (const aiMeal of parsedMenu.meals) {
               const matchingMeal = savedMealIds.find(
-                (m) => m.dayNumber === aiMeal.day_number && m.mealType === aiMeal.meal_type
+                (m) =>
+                  m.dayNumber === aiMeal.day_number &&
+                  m.mealType === aiMeal.meal_type,
               );
 
               if (matchingMeal) {
@@ -1524,12 +1674,16 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
               }
             }
 
-            console.log(`✅ AI enhancement complete for menu: ${savedMenu.menu_id}`);
+            console.log(
+              `✅ AI enhancement complete for menu: ${savedMenu.menu_id}`,
+            );
 
             // Generate images in background (optional, non-blocking)
             for (const aiMeal of parsedMenu.meals) {
               const matchingMeal = savedMealIds.find(
-                (m) => m.dayNumber === aiMeal.day_number && m.mealType === aiMeal.meal_type
+                (m) =>
+                  m.dayNumber === aiMeal.day_number &&
+                  m.mealType === aiMeal.meal_type,
               );
 
               if (matchingMeal && aiMeal.name) {
@@ -1557,7 +1711,9 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
               }
             }
 
-            console.log(`✅ Background processing complete for menu: ${savedMenu.menu_id}`);
+            console.log(
+              `✅ Background processing complete for menu: ${savedMenu.menu_id}`,
+            );
           } catch (bgError) {
             console.error("❌ Background AI enhancement failed:", bgError);
             // Background failed but menu still exists with placeholder data
@@ -1594,7 +1750,7 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
             : undefined,
       });
     }
-  }
+  },
 );
 
 // Get meal plan with progress (ingredient checks)
@@ -1701,7 +1857,7 @@ router.get(
         error: "Failed to fetch menu",
       });
     }
-  }
+  },
 );
 
 // Toggle ingredient check
@@ -1754,7 +1910,7 @@ router.post(
         error: "Failed to update ingredient check",
       });
     }
-  }
+  },
 );
 
 // Submit menu review
@@ -1814,7 +1970,7 @@ router.post(
         error: "Failed to submit review",
       });
     }
-  }
+  },
 );
 
 export default router;

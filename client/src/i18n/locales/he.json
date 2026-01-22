@@ -1126,7 +1126,14 @@
     "goal": "יעד",
     "qualityScore": "ציון איכות",
     "mealsPerDay": "ארוחות ביום בממוצע",
-    "ofDailyGoal": "מהיעד היומי"
+    "ofDailyGoal": "מהיעד היומי",
+    "streak": {
+      "legendary": "אגדי",
+      "centuryClub": "מועדון המאה",
+      "onFire": "בוער",
+      "hotStreak": "רצף חם",
+      "gettingStarted": "רק מתחילים"
+    }
   },
   "devices": {
     "title": "מכשירים חכמים",

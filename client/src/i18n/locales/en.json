@@ -918,7 +918,14 @@
     "goal": "Goal",
     "qualityScore": "Quality Score",
     "mealsPerDay": "meals per day average",
-    "ofDailyGoal": "of daily goal"
+    "ofDailyGoal": "of daily goal",
+    "streak": {
+      "legendary": "Legendary",
+      "centuryClub": "Century Club",
+      "onFire": "On Fire",
+      "hotStreak": "Hot Streak",
+      "gettingStarted": "Getting Started"
+    }
   },
   "devices": {
     "title": "Smart Devices",

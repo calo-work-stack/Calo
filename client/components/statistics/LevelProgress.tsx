@@ -50,7 +50,9 @@ export default function LevelProgress({
           <Text style={[styles.levelLabel, { color: colors.muted }]}>
             {t("statistics.level") || "Level"}
           </Text>
-          <Text style={[styles.levelValue, { color: colors.text }]}>{level}</Text>
+          <Text style={[styles.levelValue, { color: colors.text }]}>
+            {level}
+          </Text>
         </View>
 
         <View style={styles.xpBadge}>
@@ -70,51 +72,26 @@ export default function LevelProgress({
           </Text>
         </View>
 
-        <View style={[styles.progressBg, { backgroundColor: isDark ? "#374151" : "#F1F5F9" }]}>
+        <View
+          style={[
+            styles.progressBg,
+            { backgroundColor: isDark ? "#374151" : "#F1F5F9" },
+          ]}
+        >
           <LinearGradient
             colors={["#F59E0B", "#FBBF24"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={[styles.progressFill, { width: `${Math.min(xpProgress, 100)}%` }]}
+            style={[
+              styles.progressFill,
+              { width: `${Math.min(xpProgress, 100)}%` },
+            ]}
           />
         </View>
 
         <Text style={[styles.xpToNext, { color: colors.muted }]}>
           {xpToNext} XP {t("statistics.to_next_level") || "to next level"}
         </Text>
-      </View>
-
-      {/* Streak Stats */}
-      <View style={styles.streakGrid}>
-        <View style={[styles.streakCard, { backgroundColor: isDark ? "#EF444420" : "#FEE2E2" }]}>
-          <View style={styles.streakIconBg}>
-            <Flame size={18} color="#EF4444" />
-          </View>
-          <Text style={[styles.streakValue, { color: colors.text }]}>{dailyStreak}</Text>
-          <Text style={[styles.streakLabel, { color: colors.muted }]}>
-            {t("statistics.daily_streak") || "Day Streak"}
-          </Text>
-        </View>
-
-        <View style={[styles.streakCard, { backgroundColor: isDark ? "#3B82F620" : "#DBEAFE" }]}>
-          <View style={styles.streakIconBg}>
-            <Calendar size={18} color="#3B82F6" />
-          </View>
-          <Text style={[styles.streakValue, { color: colors.text }]}>{weeklyStreak}</Text>
-          <Text style={[styles.streakLabel, { color: colors.muted }]}>
-            {t("statistics.weekly_streak") || "Week Streak"}
-          </Text>
-        </View>
-
-        <View style={[styles.streakCard, { backgroundColor: isDark ? "#22C55E20" : "#D1FAE5" }]}>
-          <View style={styles.streakIconBg}>
-            <Star size={18} color="#22C55E" />
-          </View>
-          <Text style={[styles.streakValue, { color: colors.text }]}>{perfectDays}</Text>
-          <Text style={[styles.streakLabel, { color: colors.muted }]}>
-            {t("statistics.perfect_days") || "Perfect Days"}
-          </Text>
-        </View>
       </View>
     </View>
   );
@@ -124,7 +101,6 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: 24,
     padding: 20,
-    marginBottom: 16,
   },
   levelHeader: {
     flexDirection: "row",
@@ -167,7 +143,6 @@ const styles = StyleSheet.create({
     color: "#F59E0B",
   },
   progressSection: {
-    marginBottom: 20,
   },
   progressHeader: {
     flexDirection: "row",

@@ -18,24 +18,17 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 
 // Components
 import PeriodSelector from "@/components/statistics/PeriodSelector";
-import LevelProgress from "@/components/statistics/LevelProgress";
-import NutritionMetricCard from "@/components/statistics/NutritionMetricCard";
+import DuolingoStreak from "@/components/statistics/StreakProgress";
+import NutritionCarousel from "@/components/statistics/NutritionCarousel";
 import WeeklyChart from "@/components/statistics/charts/WeeklyChart";
 import MacrosChart from "@/components/statistics/charts/MacrosChart";
 import { AchievementsSection } from "@/components/statistics/AchievementsSection";
 import { AIRecommendationsSection } from "@/components/statistics/AIRecommendationsSection";
 import LoadingScreen from "@/components/LoadingScreen";
 // Icons
-import {
-  TrendingUp,
-  Award,
-  Flame,
-  Droplets,
-  Target,
-  Zap,
-  Sparkles,
-} from "lucide-react-native";
+import { Award, Droplets, Sparkles } from "lucide-react-native";
 import useOptimizedAuthSelector from "@/hooks/useOptimizedAuthSelector";
+import { LevelProgress } from "@/components/statistics";
 
 const { width } = Dimensions.get("window");
 
@@ -94,40 +87,22 @@ export default function StatisticsScreen() {
   if (isLoading)
     return <LoadingScreen text={t("loading.loading", "loading.statistics")} />;
 
-  // Render nutrition metrics grid
+  // Render nutrition metrics carousel
   const renderNutritionMetrics = () => {
     if (!metrics.length) return null;
-
-    const macroMetrics = categorizedMetrics.macros.slice(0, 4);
 
     return (
       <Animated.View
         entering={FadeInDown.delay(200).duration(400)}
         style={styles.metricsSection}
       >
-        <View style={styles.sectionHeader}>
-          <View
-            style={[
-              styles.sectionIconBg,
-              { backgroundColor: isDark ? "#3B82F620" : "#EFF6FF" },
-            ]}
-          >
-            <Target size={18} color="#3B82F6" />
-          </View>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {t("statistics.nutrition_metrics") || "Nutrition Metrics"}
-          </Text>
-        </View>
-
-        <View style={styles.metricsGrid}>
-          {macroMetrics.map((metric) => (
-            <NutritionMetricCard
-              key={metric.id}
-              metric={metric}
-              compact={true}
-            />
-          ))}
-        </View>
+        <NutritionCarousel
+          metrics={metrics}
+          extraMetrics={{
+            sugar: statisticsData?.averageSugar,
+            sodium: statisticsData?.averageSodium,
+          }}
+        />
       </Animated.View>
     );
   };
@@ -172,7 +147,6 @@ export default function StatisticsScreen() {
               </Text>
             </View>
           </View>
-
           <View style={styles.hydrationProgress}>
             <View style={styles.hydrationValues}>
               <Text style={[styles.hydrationCurrent, { color: "#3B82F6" }]}>
@@ -217,23 +191,7 @@ export default function StatisticsScreen() {
         entering={FadeInDown.delay(400).duration(400)}
         style={styles.chartSection}
       >
-        <View style={styles.sectionHeader}>
-          <View
-            style={[
-              styles.sectionIconBg,
-              { backgroundColor: isDark ? "#8B5CF620" : "#F3E8FF" },
-            ]}
-          >
-            <TrendingUp size={18} color="#8B5CF6" />
-          </View>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {t("statistics.this_week") || "This Week"}
-          </Text>
-        </View>
-
-        <View style={[styles.chartContainer, { backgroundColor: colors.card }]}>
-          <WeeklyChart data={weeklyData} />
-        </View>
+        <WeeklyChart data={weeklyData} />
       </Animated.View>
     );
   };
@@ -254,23 +212,7 @@ export default function StatisticsScreen() {
         entering={FadeInDown.delay(500).duration(400)}
         style={styles.macrosSection}
       >
-        <View style={styles.sectionHeader}>
-          <View
-            style={[
-              styles.sectionIconBg,
-              { backgroundColor: isDark ? "#10B98120" : "#D1FAE5" },
-            ]}
-          >
-            <Zap size={18} color="#10B981" />
-          </View>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {t("statistics.macros") || "Macros Distribution"}
-          </Text>
-        </View>
-
-        <View style={[styles.chartContainer, { backgroundColor: colors.card }]}>
-          <MacrosChart metrics={macrosMetrics} />
-        </View>
+        <MacrosChart metrics={macrosMetrics} />
       </Animated.View>
     );
   };
@@ -309,6 +251,26 @@ export default function StatisticsScreen() {
     );
   };
 
+  const renderLevelProgress = () => {
+    return (
+      <Animated.View
+        entering={FadeInDown.delay(100).duration(400)}
+        style={styles.levelSection}
+      >
+        <LevelProgress
+          level={gamificationStats.level}
+          currentXP={gamificationStats.currentXP}
+          nextLevelXP={gamificationStats.nextLevelXP}
+          xpProgress={gamificationStats.xpProgress}
+          xpToNext={gamificationStats.xpToNext}
+          dailyStreak={gamificationStats.dailyStreak}
+          weeklyStreak={gamificationStats.weeklyStreak}
+          perfectDays={gamificationStats.perfectDays}
+          totalPoints={gamificationStats.totalPoints}
+        />
+      </Animated.View>
+    );
+  };
   // Render achievements section
   const renderAchievements = () => {
     return (
@@ -380,24 +342,20 @@ export default function StatisticsScreen() {
           />
         </Animated.View>
 
-        {/* Level Progress Card */}
+        {/* Duolingo-style Streak Display */}
         <Animated.View
           entering={FadeInDown.delay(100).duration(400)}
           style={styles.levelSection}
         >
-          <LevelProgress
-            level={gamificationStats.level}
-            currentXP={gamificationStats.currentXP}
-            nextLevelXP={gamificationStats.nextLevelXP}
-            xpProgress={gamificationStats.xpProgress}
-            xpToNext={gamificationStats.xpToNext}
+          <DuolingoStreak
             dailyStreak={gamificationStats.dailyStreak}
             weeklyStreak={gamificationStats.weeklyStreak}
             perfectDays={gamificationStats.perfectDays}
             totalPoints={gamificationStats.totalPoints}
+            bestStreak={progressStats.bestStreak}
           />
         </Animated.View>
-
+        {renderLevelProgress()}
         {/* Nutrition Metrics Grid */}
         {renderNutritionMetrics()}
 

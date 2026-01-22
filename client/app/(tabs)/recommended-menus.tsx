@@ -39,6 +39,7 @@ import {
   Target,
   Activity,
   DollarSign,
+  Trash2,
 } from "lucide-react-native";
 import { api } from "@/src/services/api";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -134,7 +135,7 @@ const FilterModal = React.memo(
         </View>
       </Modal>
     );
-  }
+  },
 );
 
 // Optimized Menu Card with gradient and better visuals
@@ -147,12 +148,13 @@ const MenuCard = React.memo(
     isRTL,
     onStart,
     onView,
+    onDelete,
   }: any) => {
     const avgCaloriesPerDay = Math.round(
-      menu.total_calories / (menu.days_count || 1)
+      menu.total_calories / (menu.days_count || 1),
     );
     const avgProteinPerDay = Math.round(
-      (menu.total_protein || 0) / (menu.days_count || 1)
+      (menu.total_protein || 0) / (menu.days_count || 1),
     );
 
     const getDifficultyColor = (level: number) => {
@@ -177,11 +179,18 @@ const MenuCard = React.memo(
           style={styles.menuImageHeader}
         >
           <View style={styles.menuImageContent}>
-            <View style={[styles.iconContainer, { backgroundColor: colors.emerald500 }]}>
+            <View
+              style={[
+                styles.iconContainer,
+                { backgroundColor: colors.emerald500 },
+              ]}
+            >
               <ChefHat size={28} color="#ffffff" />
             </View>
             <View style={styles.menuBadges}>
-              <View style={[styles.badge, { backgroundColor: colors.emerald500 }]}>
+              <View
+                style={[styles.badge, { backgroundColor: colors.emerald500 }]}
+              >
                 <Calendar size={12} color="#ffffff" />
                 <Text style={styles.badgeText}>{menu.days_count}d</Text>
               </View>
@@ -298,7 +307,10 @@ const MenuCard = React.memo(
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.startButton, { backgroundColor: colors.emerald500 }]}
+              style={[
+                styles.startButton,
+                { backgroundColor: colors.emerald500 },
+              ]}
               onPress={() => onStart(menu.menu_id)}
             >
               <Play size={16} color="#ffffff" />
@@ -306,11 +318,21 @@ const MenuCard = React.memo(
                 {language === "he" ? "התחל" : "Start"}
               </Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.viewButton, { backgroundColor: colors.error }]}
+              onPress={() => onDelete(menu.menu_id)}
+            >
+              <Trash2 size={16} color={colors.text} />
+              <Text style={[styles.viewButtonText, { color: colors.text }]}>
+                {language === "he" ? "מחק" : "Delete"}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
     );
-  }
+  },
 );
 
 // Active Plan Card with gradient
@@ -330,7 +352,10 @@ const ActivePlanCard = React.memo(
               {language === "he" ? "פעיל" : "Active"}
             </Text>
           </View>
-          <TouchableOpacity onPress={onContinue} style={styles.activePlanAction}>
+          <TouchableOpacity
+            onPress={onContinue}
+            style={styles.activePlanAction}
+          >
             <ArrowRight size={16} color="#ffffff" />
           </TouchableOpacity>
         </View>
@@ -357,7 +382,7 @@ const ActivePlanCard = React.memo(
         </TouchableOpacity>
       </LinearGradient>
     );
-  }
+  },
 );
 
 // Quick Stats Component
@@ -367,18 +392,18 @@ const QuickStats = React.memo(({ menus, colors, language }: any) => {
 
     const totalCalories = menus.reduce(
       (sum: number, menu: any) => sum + (menu.total_calories || 0),
-      0
+      0,
     );
     const avgCalories = Math.round(totalCalories / menus.length);
     const totalMeals = menus.reduce(
       (sum: number, menu: any) => sum + (menu.meals?.length || 0),
-      0
+      0,
     );
     const avgCost = Math.round(
       menus.reduce(
         (sum: number, menu: any) => sum + (menu.estimated_cost || 0),
-        0
-      ) / menus.length
+        0,
+      ) / menus.length,
     );
 
     return {
@@ -477,7 +502,9 @@ const CategoryPills = React.memo(
               style={[
                 styles.categoryPill,
                 {
-                  backgroundColor: isActive ? colors.emerald500 : colors.surface,
+                  backgroundColor: isActive
+                    ? colors.emerald500
+                    : colors.surface,
                 },
               ]}
               onPress={() => onCategorySelect(category.key)}
@@ -499,7 +526,7 @@ const CategoryPills = React.memo(
         })}
       </ScrollView>
     );
-  }
+  },
 );
 
 // ==================== MAIN COMPONENT ====================
@@ -533,8 +560,12 @@ export default function RecommendedMenusScreen() {
     try {
       // Use Promise.all to fetch data in parallel
       const [menusResponse, activePlanResponse] = await Promise.all([
-        api.get("/recommended-menus").catch(() => ({ data: { success: false, data: [] } })),
-        api.get("/meal-plans/current").catch(() => ({ data: { success: false } })),
+        api
+          .get("/recommended-menus")
+          .catch(() => ({ data: { success: false, data: [] } })),
+        api
+          .get("/meal-plans/current")
+          .catch(() => ({ data: { success: false } })),
       ]);
 
       // Process menus
@@ -587,31 +618,34 @@ export default function RecommendedMenusScreen() {
   useFocusEffect(
     useCallback(() => {
       // Only check for active plan, not reload all menus
-      api.get("/meal-plans/current").then((response) => {
-        if (
-          response.data.success &&
-          response.data.hasActivePlan &&
-          response.data.data
-        ) {
-          const planData = {
-            plan_id: response.data.planId,
-            name: response.data.planName || "Active Plan",
-            data: response.data.data,
-          };
-          setCurrentActivePlan(planData);
-          setActivePlanData(planData);
-          setHasActivePlan(true);
-        } else {
+      api
+        .get("/meal-plans/current")
+        .then((response) => {
+          if (
+            response.data.success &&
+            response.data.hasActivePlan &&
+            response.data.data
+          ) {
+            const planData = {
+              plan_id: response.data.planId,
+              name: response.data.planName || "Active Plan",
+              data: response.data.data,
+            };
+            setCurrentActivePlan(planData);
+            setActivePlanData(planData);
+            setHasActivePlan(true);
+          } else {
+            setCurrentActivePlan(null);
+            setActivePlanData(null);
+            setHasActivePlan(false);
+          }
+        })
+        .catch(() => {
           setCurrentActivePlan(null);
           setActivePlanData(null);
           setHasActivePlan(false);
-        }
-      }).catch(() => {
-        setCurrentActivePlan(null);
-        setActivePlanData(null);
-        setHasActivePlan(false);
-      });
-    }, [])
+        });
+    }, []),
   );
 
   const onRefresh = useCallback(async () => {
@@ -620,45 +654,120 @@ export default function RecommendedMenusScreen() {
     setRefreshing(false);
   }, [loadAllData]);
 
-  const handleStartMenu = useCallback(async (menuId: string) => {
-    try {
-      const response = await api.post(
-        `/recommended-menus/${menuId}/start-today`,
-        {}
-      );
+  const handleStartMenu = useCallback(
+    async (menuId: string) => {
+      try {
+        const response = await api.post(
+          `/recommended-menus/${menuId}/start-today`,
+          {},
+        );
 
-      if (response.data.success && response.data.data) {
-        const newPlan = response.data.data;
-        setCurrentActivePlan(newPlan);
-        setHasActivePlan(true);
+        if (response.data.success && response.data.data) {
+          const newPlan = response.data.data;
+          setCurrentActivePlan(newPlan);
+          setHasActivePlan(true);
 
-        Alert.alert(
-          language === "he" ? "הצלחה!" : "Success!",
-          language === "he"
-            ? "התפריט הופעל בהצלחה!"
-            : "Menu started successfully!",
-          [
-            {
-              text: language === "he" ? "אישור" : "OK",
-              onPress: () => {
-                router.push(`/menu/activeMenu?planId=${newPlan.plan_id}`);
+          Alert.alert(
+            language === "he" ? "הצלחה!" : "Success!",
+            language === "he"
+              ? "התפריט הופעל בהצלחה!"
+              : "Menu started successfully!",
+            [
+              {
+                text: language === "he" ? "אישור" : "OK",
+                onPress: () => {
+                  router.push(`/menu/activeMenu?planId=${newPlan.plan_id}`);
+                },
               },
-            },
-          ]
+            ],
+          );
+        }
+      } catch (error: any) {
+        Alert.alert(
+          language === "he" ? "שגיאה" : "Error",
+          error.message ||
+            (language === "he" ? "נכשל בהפעלת התפריט" : "Failed to start menu"),
         );
       }
-    } catch (error: any) {
-      Alert.alert(
-        language === "he" ? "שגיאה" : "Error",
-        error.message ||
-          (language === "he" ? "נכשל בהפעלת התפריט" : "Failed to start menu")
-      );
-    }
-  }, [language]);
+    },
+    [language],
+  );
 
   const handleViewMenu = useCallback((menuId: string) => {
     router.push(`/menu/${menuId}`);
   }, []);
+
+  const handleDeleteMenu = useCallback(
+    async (menuId: string) => {
+      // Show confirmation dialog
+      Alert.alert(
+        language === "he" ? "אישור מחיקה" : "Confirm Delete",
+        language === "he"
+          ? "האם אתה בטוח שברצונך למחוק את התפריט? פעולה זו אינה הפיכה."
+          : "Are you sure you want to delete this menu? This action cannot be undone.",
+        [
+          {
+            text: language === "he" ? "ביטול" : "Cancel",
+            style: "cancel",
+          },
+          {
+            text: language === "he" ? "מחק" : "Delete",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                console.log("🗑️ Attempting to delete menu:", menuId);
+
+                // Make the DELETE request
+                const response = await api.delete(
+                  `/recommended-menus/${menuId}`,
+                );
+
+                console.log("✅ Delete response:", response.data);
+
+                if (response.data.success) {
+                  // Optimistically remove from UI
+                  setMenus((prev) => prev.filter((m) => m.menu_id !== menuId));
+
+                  // Also check if this was the active menu
+                  if (activePlanData?.plan_id === menuId) {
+                    setCurrentActivePlan(null);
+                    setActivePlanData(null);
+                    setHasActivePlan(false);
+                  }
+
+                  // Show success message
+                  Alert.alert(
+                    language === "he" ? "הצלחה" : "Success",
+                    language === "he"
+                      ? `התפריט נמחק בהצלחה. ${response.data.mealsDeleted || 0} ארוחות הוסרו.`
+                      : `Menu deleted successfully. ${response.data.mealsDeleted || 0} meals removed.`,
+                  );
+                } else {
+                  throw new Error(response.data.error || "Failed to delete");
+                }
+              } catch (error: any) {
+                console.error("💥 Failed to delete menu:", error);
+
+                // Parse error message
+                const errorMessage =
+                  error.response?.data?.error ||
+                  error.message ||
+                  (language === "he"
+                    ? "נכשל במחיקת התפריט"
+                    : "Failed to delete menu");
+
+                Alert.alert(
+                  language === "he" ? "שגיאה" : "Error",
+                  errorMessage,
+                );
+              }
+            },
+          },
+        ],
+      );
+    },
+    [language, activePlanData],
+  );
 
   // ==================== OPTIMIZED FILTERING ====================
 
@@ -682,7 +791,7 @@ export default function RecommendedMenusScreen() {
         (menu) =>
           menu.title.toLowerCase().includes(query) ||
           menu.description?.toLowerCase().includes(query) ||
-          menu.dietary_category?.toLowerCase().includes(query)
+          menu.dietary_category?.toLowerCase().includes(query),
       );
     }
 
@@ -729,7 +838,14 @@ export default function RecommendedMenusScreen() {
     }
 
     return filtered;
-  }, [menus, searchQuery, selectedFilter, selectedCategory, hasActivePlan, activePlanData]);
+  }, [
+    menus,
+    searchQuery,
+    selectedFilter,
+    selectedCategory,
+    hasActivePlan,
+    activePlanData,
+  ]);
 
   // Enhanced creation modal
   const renderEnhancedCreationModal = () => {
@@ -745,7 +861,7 @@ export default function RecommendedMenusScreen() {
               language === "he" ? "הצלחה!" : "Success!",
               language === "he"
                 ? "התפריט נוצר בהצלחה"
-                : "Menu created successfully"
+                : "Menu created successfully",
             );
           } catch (error) {
             console.error("Error handling menu creation:", error);
@@ -758,7 +874,7 @@ export default function RecommendedMenusScreen() {
 
   if (isLoading) {
     return (
-      <LoadingScreen text={t("loading.loading","loading.recommended_menus")} />
+      <LoadingScreen text={t("loading.loading", "loading.recommended_menus")} />
     );
   }
 
@@ -820,7 +936,7 @@ export default function RecommendedMenusScreen() {
               language={language}
               onContinue={() => {
                 router.push(
-                  `/menu/activeMenu?planId=${activePlanData.plan_id}`
+                  `/menu/activeMenu?planId=${activePlanData.plan_id}`,
                 );
               }}
             />
@@ -871,6 +987,7 @@ export default function RecommendedMenusScreen() {
                   isRTL={isRTL}
                   onStart={handleStartMenu}
                   onView={handleViewMenu}
+                  onDelete={handleDeleteMenu}
                 />
               )}
               scrollEnabled={false}
@@ -893,8 +1010,8 @@ export default function RecommendedMenusScreen() {
                     ? "לא נמצאו תוצאות"
                     : "No results found"
                   : language === "he"
-                  ? "אין תפריטים זמינים"
-                  : "No menus available"}
+                    ? "אין תפריטים זמינים"
+                    : "No menus available"}
               </Text>
               <Text style={[styles.emptyText, { color: colors.icon }]}>
                 {searchQuery.trim()
@@ -902,8 +1019,8 @@ export default function RecommendedMenusScreen() {
                     ? "נסה מילות חיפוש אחרות"
                     : "Try different search terms"
                   : language === "he"
-                  ? "צור תפריט מותאם אישית כדי להתחיל"
-                  : "Create a personalized menu to get started"}
+                    ? "צור תפריט מותאם אישית כדי להתחיל"
+                    : "Create a personalized menu to get started"}
               </Text>
 
               {!searchQuery.trim() && (
