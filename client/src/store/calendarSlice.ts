@@ -166,7 +166,7 @@ export const fetchCalendarData = createAsyncThunk(
   "calendar/fetchCalendarData",
   async (
     { year, month }: { year: number; month: number },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       console.log("📅 Fetching calendar data for:", year, month);
@@ -174,22 +174,24 @@ export const fetchCalendarData = createAsyncThunk(
       console.log(
         "✅ Calendar data received:",
         Object.keys(data || {}).length,
-        "days"
+        "days",
       );
       return data || {};
     } catch (error: any) {
-      console.error("💥 Calendar data fetch error:", error);
-      const message = error?.message || "Failed to fetch calendar data";
-      return rejectWithValue(message);
+      return rejectWithValue({
+        message: error?.message || "Failed to fetch calendar data",
+        code: error?.code,
+        details: error?.response?.data,
+      });
     }
-  }
+  },
 );
 
 export const getStatistics = createAsyncThunk(
   "calendar/getStatistics",
   async (
     { year, month }: { year: number; month: number },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       console.log("📊 Fetching statistics for:", year, month);
@@ -201,21 +203,21 @@ export const getStatistics = createAsyncThunk(
       const message = error?.message || "Failed to fetch statistics";
       return rejectWithValue(message);
     }
-  }
+  },
 );
 
 export const getEnhancedStatistics = createAsyncThunk(
   "calendar/getEnhancedStatistics",
   async (
     { year, month }: { year: any; month: number },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       console.log("📊 Fetching enhanced statistics for:", year, month);
       const stats = await calendarAPI.getEnhancedStatistics(year, month);
       console.log(
         "✅ Enhanced statistics received:",
-        stats ? "success" : "null"
+        stats ? "success" : "null",
       );
       return stats;
     } catch (error: any) {
@@ -223,7 +225,7 @@ export const getEnhancedStatistics = createAsyncThunk(
       const message = error?.message || "Failed to fetch enhanced statistics";
       return rejectWithValue(message);
     }
-  }
+  },
 );
 
 export const addEvent = createAsyncThunk(
@@ -240,7 +242,7 @@ export const addEvent = createAsyncThunk(
       type: string;
       description?: string;
     },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       console.log("📝 Adding event:", { date, title, type, description });
@@ -249,17 +251,17 @@ export const addEvent = createAsyncThunk(
     } catch (error) {
       console.error("💥 Add event error:", error);
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to add event"
+        error instanceof Error ? error.message : "Failed to add event",
       );
     }
-  }
+  },
 );
 
 export const deleteEvent = createAsyncThunk(
   "calendar/deleteEvent",
   async (
     { eventId, date }: { eventId: string; date: string },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       console.log("🗑️ Deleting event:", eventId);
@@ -268,10 +270,10 @@ export const deleteEvent = createAsyncThunk(
     } catch (error) {
       console.error("💥 Delete event error:", error);
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to delete event"
+        error instanceof Error ? error.message : "Failed to delete event",
       );
     }
-  }
+  },
 );
 
 export const getEventsForDate = createAsyncThunk(
@@ -284,10 +286,10 @@ export const getEventsForDate = createAsyncThunk(
     } catch (error) {
       console.error("💥 Get events error:", error);
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to fetch events"
+        error instanceof Error ? error.message : "Failed to fetch events",
       );
     }
-  }
+  },
 );
 
 const calendarSlice = createSlice({
@@ -299,7 +301,7 @@ const calendarSlice = createSlice({
     },
     updateDayData: (
       state,
-      action: PayloadAction<{ date: string; data: Partial<DayData> }>
+      action: PayloadAction<{ date: string; data: Partial<DayData> }>,
     ) => {
       const { date, data } = action.payload;
       if (state.calendarData[date]) {
@@ -341,14 +343,17 @@ const calendarSlice = createSlice({
           state.statistics = action.payload;
         } else {
           console.warn(
-            "⚠️ Calendar statistics returned null - keeping previous state"
+            "⚠️ Calendar statistics returned null - keeping previous state",
           );
         }
       })
       .addCase(getStatistics.rejected, (state, action) => {
-        console.warn("⚠️ Statistics fetch failed:", action.payload);
-        state.error =
-          (action.payload as string) || "Failed to fetch statistics";
+        // Statistics are non-critical - just log warning, don't set error state
+        console.warn(
+          "⚠️ Statistics fetch failed (non-critical):",
+          action.payload,
+        );
+        // Don't set state.error - statistics failure shouldn't show error alert
       })
 
       // Get enhanced statistics
@@ -365,9 +370,12 @@ const calendarSlice = createSlice({
       })
       .addCase(getEnhancedStatistics.rejected, (state, action) => {
         state.isLoadingEnhancedStats = false;
-        console.warn("⚠️ Enhanced statistics fetch failed:", action.payload);
-        state.error =
-          (action.payload as string) || "Failed to fetch enhanced statistics";
+        // Enhanced statistics are non-critical - just log warning, don't set error state
+        console.warn(
+          "⚠️ Enhanced statistics fetch failed (non-critical):",
+          action.payload,
+        );
+        // Don't set state.error - enhanced statistics failure shouldn't show error alert
       })
 
       // Add event

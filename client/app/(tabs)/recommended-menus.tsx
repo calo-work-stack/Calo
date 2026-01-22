@@ -62,7 +62,7 @@ const FilterModal = React.memo(
     selectedFilter,
     onFilterSelect,
     colors,
-    language,
+    t,
   }: any) => {
     return (
       <Modal
@@ -80,7 +80,7 @@ const FilterModal = React.memo(
           >
             <View style={styles.filterModalHeader}>
               <Text style={[styles.filterModalTitle, { color: colors.text }]}>
-                {language === "he" ? "סנן תפריטים" : "Filter Menus"}
+                {t("menus.filter_menus")}
               </Text>
               <TouchableOpacity
                 onPress={onClose}
@@ -144,7 +144,7 @@ const MenuCard = React.memo(
     menu,
     colors,
     isDark,
-    language,
+    t,
     isRTL,
     onStart,
     onView,
@@ -164,9 +164,9 @@ const MenuCard = React.memo(
     };
 
     const getDifficultyLabel = (level: number) => {
-      if (level <= 2) return language === "he" ? "קל" : "Easy";
-      if (level <= 3) return language === "he" ? "בינוני" : "Medium";
-      return language === "he" ? "קשה" : "Hard";
+      if (level <= 2) return t("menus.difficulty.easy");
+      if (level <= 3) return t("menus.difficulty.medium");
+      return t("menus.difficulty.hard");
     };
 
     return (
@@ -237,7 +237,7 @@ const MenuCard = React.memo(
                 {avgCaloriesPerDay}
               </Text>
               <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
-                {language === "he" ? "קלוריות" : "Calories"}
+                {t("menus.calories")}
               </Text>
             </View>
 
@@ -251,7 +251,7 @@ const MenuCard = React.memo(
                 {avgProteinPerDay}g
               </Text>
               <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
-                {language === "he" ? "חלבון" : "Protein"}
+                {t("menus.protein")}
               </Text>
             </View>
 
@@ -265,7 +265,7 @@ const MenuCard = React.memo(
                 {menu.prep_time_minutes || 30}m
               </Text>
               <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
-                {language === "he" ? "הכנה" : "Prep"}
+                {t("menus.prep")}
               </Text>
             </View>
           </View>
@@ -302,7 +302,7 @@ const MenuCard = React.memo(
             >
               <Eye size={16} color={colors.icon} />
               <Text style={[styles.viewButtonText, { color: colors.icon }]}>
-                {language === "he" ? "צפה" : "View"}
+                {t("menus.view")}
               </Text>
             </TouchableOpacity>
 
@@ -315,17 +315,17 @@ const MenuCard = React.memo(
             >
               <Play size={16} color="#ffffff" />
               <Text style={styles.startButtonText}>
-                {language === "he" ? "התחל" : "Start"}
+                {t("menus.start")}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.viewButton, { backgroundColor: colors.error }]}
+              style={[styles.viewButton, { backgroundColor: colors.error + "20" }]}
               onPress={() => onDelete(menu.menu_id)}
             >
-              <Trash2 size={16} color={colors.text} />
-              <Text style={[styles.viewButtonText, { color: colors.text }]}>
-                {language === "he" ? "מחק" : "Delete"}
+              <Trash2 size={16} color={colors.error} />
+              <Text style={[styles.viewButtonText, { color: colors.error }]}>
+                {t("menus.delete")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -337,7 +337,7 @@ const MenuCard = React.memo(
 
 // Active Plan Card with gradient
 const ActivePlanCard = React.memo(
-  ({ plan, colors, language, onContinue }: any) => {
+  ({ plan, colors, t, onContinue }: any) => {
     return (
       <LinearGradient
         colors={[colors.emerald500, colors.emerald500 + "dd"]}
@@ -349,7 +349,7 @@ const ActivePlanCard = React.memo(
           <View style={styles.activePlanBadge}>
             <CheckCircle size={16} color="#ffffff" />
             <Text style={styles.activePlanBadgeText}>
-              {language === "he" ? "פעיל" : "Active"}
+              {t("menus.active")}
             </Text>
           </View>
           <TouchableOpacity
@@ -361,14 +361,11 @@ const ActivePlanCard = React.memo(
         </View>
 
         <Text style={styles.activePlanTitle}>
-          {plan.name ||
-            (language === "he" ? "התוכנית הפעילה שלך" : "Your Active Plan")}
+          {plan.name || t("menus.your_active_plan")}
         </Text>
 
         <Text style={styles.activePlanSubtitle}>
-          {language === "he"
-            ? "המשך לעקוב אחר התקדמותך"
-            : "Continue tracking your progress"}
+          {t("menus.continue_tracking")}
         </Text>
 
         <TouchableOpacity
@@ -376,7 +373,7 @@ const ActivePlanCard = React.memo(
           onPress={onContinue}
         >
           <Text style={styles.activePlanContinueText}>
-            {language === "he" ? "המשך התוכנית" : "Continue Plan"}
+            {t("menus.continue_plan")}
           </Text>
           <ArrowRight size={14} color="#ffffff" />
         </TouchableOpacity>
@@ -386,7 +383,7 @@ const ActivePlanCard = React.memo(
 );
 
 // Quick Stats Component
-const QuickStats = React.memo(({ menus, colors, language }: any) => {
+const QuickStats = React.memo(({ menus, colors, t }: any) => {
   const stats = useMemo(() => {
     if (!menus.length) return null;
 
@@ -420,7 +417,7 @@ const QuickStats = React.memo(({ menus, colors, language }: any) => {
     <View style={[styles.statsCard, { backgroundColor: colors.card }]}>
       <View style={styles.statsHeader}>
         <Text style={[styles.statsTitle, { color: colors.text }]}>
-          {language === "he" ? "סיכום תפריטים" : "Menu Overview"}
+          {t("menus.menu_overview")}
         </Text>
         <Award size={20} color={colors.emerald500} />
       </View>
@@ -431,7 +428,7 @@ const QuickStats = React.memo(({ menus, colors, language }: any) => {
             {stats.totalMenus}
           </Text>
           <Text style={[styles.statLabel, { color: colors.icon }]}>
-            {language === "he" ? "תפריטים" : "Menus"}
+            {t("menus.menus")}
           </Text>
         </View>
 
@@ -440,7 +437,7 @@ const QuickStats = React.memo(({ menus, colors, language }: any) => {
             {stats.avgCalories}
           </Text>
           <Text style={[styles.statLabel, { color: colors.icon }]}>
-            {language === "he" ? 'ק"ק ממוצע' : "Avg Cal"}
+            {t("menus.avg_cal")}
           </Text>
         </View>
 
@@ -449,7 +446,7 @@ const QuickStats = React.memo(({ menus, colors, language }: any) => {
             {stats.totalMeals}
           </Text>
           <Text style={[styles.statLabel, { color: colors.icon }]}>
-            {language === "he" ? "ארוחות" : "Meals"}
+            {t("menus.meals")}
           </Text>
         </View>
 
@@ -458,7 +455,7 @@ const QuickStats = React.memo(({ menus, colors, language }: any) => {
             ₪{stats.avgCost}
           </Text>
           <Text style={[styles.statLabel, { color: colors.icon }]}>
-            {language === "he" ? "עלות ממוצעת" : "Avg Cost"}
+            {t("menus.avg_cost")}
           </Text>
         </View>
       </View>
@@ -468,21 +465,13 @@ const QuickStats = React.memo(({ menus, colors, language }: any) => {
 
 // Category Pills Component
 const CategoryPills = React.memo(
-  ({ colors, language, onCategorySelect, selectedCategory }: any) => {
+  ({ colors, t, onCategorySelect, selectedCategory }: any) => {
     const categories = [
-      { key: "all", label: language === "he" ? "הכל" : "All", icon: ChefHat },
-      {
-        key: "healthy",
-        label: language === "he" ? "בריא" : "Healthy",
-        icon: Heart,
-      },
-      { key: "keto", label: language === "he" ? "קטו" : "Keto", icon: Target },
-      {
-        key: "protein",
-        label: language === "he" ? "חלבון" : "Protein",
-        icon: Activity,
-      },
-      { key: "quick", label: language === "he" ? "מהיר" : "Quick", icon: Zap },
+      { key: "all", label: t("menus.categories.all"), icon: ChefHat },
+      { key: "healthy", label: t("menus.categories.healthy"), icon: Heart },
+      { key: "keto", label: t("menus.categories.keto"), icon: Target },
+      { key: "protein", label: t("menus.categories.protein"), icon: Activity },
+      { key: "quick", label: t("menus.categories.quick"), icon: Zap },
     ];
 
     return (
@@ -668,13 +657,11 @@ export default function RecommendedMenusScreen() {
           setHasActivePlan(true);
 
           Alert.alert(
-            language === "he" ? "הצלחה!" : "Success!",
-            language === "he"
-              ? "התפריט הופעל בהצלחה!"
-              : "Menu started successfully!",
+            t("common.success"),
+            t("menus.menu_started_success"),
             [
               {
-                text: language === "he" ? "אישור" : "OK",
+                text: t("common.ok"),
                 onPress: () => {
                   router.push(`/menu/activeMenu?planId=${newPlan.plan_id}`);
                 },
@@ -684,13 +671,12 @@ export default function RecommendedMenusScreen() {
         }
       } catch (error: any) {
         Alert.alert(
-          language === "he" ? "שגיאה" : "Error",
-          error.message ||
-            (language === "he" ? "נכשל בהפעלת התפריט" : "Failed to start menu"),
+          t("common.error"),
+          error.message || t("menus.failed_to_start"),
         );
       }
     },
-    [language],
+    [t],
   );
 
   const handleViewMenu = useCallback((menuId: string) => {
@@ -701,17 +687,15 @@ export default function RecommendedMenusScreen() {
     async (menuId: string) => {
       // Show confirmation dialog
       Alert.alert(
-        language === "he" ? "אישור מחיקה" : "Confirm Delete",
-        language === "he"
-          ? "האם אתה בטוח שברצונך למחוק את התפריט? פעולה זו אינה הפיכה."
-          : "Are you sure you want to delete this menu? This action cannot be undone.",
+        t("menus.confirm_delete"),
+        t("menus.delete_confirmation"),
         [
           {
-            text: language === "he" ? "ביטול" : "Cancel",
+            text: t("common.cancel"),
             style: "cancel",
           },
           {
-            text: language === "he" ? "מחק" : "Delete",
+            text: t("menus.delete"),
             style: "destructive",
             onPress: async () => {
               try {
@@ -737,36 +721,29 @@ export default function RecommendedMenusScreen() {
 
                   // Show success message
                   Alert.alert(
-                    language === "he" ? "הצלחה" : "Success",
-                    language === "he"
-                      ? `התפריט נמחק בהצלחה. ${response.data.mealsDeleted || 0} ארוחות הוסרו.`
-                      : `Menu deleted successfully. ${response.data.mealsDeleted || 0} meals removed.`,
+                    t("common.success"),
+                    t("menus.menu_deleted_success", { mealsDeleted: response.data.mealsDeleted || 0 }),
                   );
                 } else {
                   throw new Error(response.data.error || "Failed to delete");
                 }
               } catch (error: any) {
-                console.error("💥 Failed to delete menu:", error);
+                console.error("Failed to delete menu:", error);
 
                 // Parse error message
                 const errorMessage =
                   error.response?.data?.error ||
                   error.message ||
-                  (language === "he"
-                    ? "נכשל במחיקת התפריט"
-                    : "Failed to delete menu");
+                  t("menus.failed_to_delete");
 
-                Alert.alert(
-                  language === "he" ? "שגיאה" : "Error",
-                  errorMessage,
-                );
+                Alert.alert(t("common.error"), errorMessage);
               }
             },
           },
         ],
       );
     },
-    [language, activePlanData],
+    [t, activePlanData],
   );
 
   // ==================== OPTIMIZED FILTERING ====================
@@ -858,10 +835,8 @@ export default function RecommendedMenusScreen() {
             setShowEnhancedCreation(false);
             await loadAllData();
             Alert.alert(
-              language === "he" ? "הצלחה!" : "Success!",
-              language === "he"
-                ? "התפריט נוצר בהצלחה"
-                : "Menu created successfully",
+              t("common.success"),
+              t("menus.menu_created_success"),
             );
           } catch (error) {
             console.error("Error handling menu creation:", error);
@@ -891,9 +866,7 @@ export default function RecommendedMenusScreen() {
             <Search size={20} color={colors.icon} />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
-              placeholder={
-                language === "he" ? "חיפוש תפריטים..." : "Search menus..."
-              }
+              placeholder={t("menus.search_menus")}
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor={colors.icon}
@@ -925,7 +898,7 @@ export default function RecommendedMenusScreen() {
         <View style={styles.contentContainer}>
           {/* Page Title */}
           <Text style={[styles.pageTitle, { color: colors.text }]}>
-            {language === "he" ? "תפריטים מומלצים" : "Recommended Menus"}
+            {t("menus.recommended_menus")}
           </Text>
 
           {/* Active Plan Card */}
@@ -933,7 +906,7 @@ export default function RecommendedMenusScreen() {
             <ActivePlanCard
               plan={activePlanData}
               colors={colors}
-              language={language}
+              t={t}
               onContinue={() => {
                 router.push(
                   `/menu/activeMenu?planId=${activePlanData.plan_id}`,
@@ -945,7 +918,7 @@ export default function RecommendedMenusScreen() {
           {/* Category Pills */}
           <CategoryPills
             colors={colors}
-            language={language}
+            t={t}
             selectedCategory={selectedCategory}
             onCategorySelect={setSelectedCategory}
           />
@@ -960,7 +933,7 @@ export default function RecommendedMenusScreen() {
           >
             <Plus size={20} color="#ffffff" />
             <Text style={styles.createMenuButtonText}>
-              {language === "he" ? "צור תפריט חדש" : "Create New Menu"}
+              {t("menus.create_new_menu")}
             </Text>
           </TouchableOpacity>
 
@@ -969,7 +942,7 @@ export default function RecommendedMenusScreen() {
             <QuickStats
               menus={filteredMenus}
               colors={colors}
-              language={language}
+              t={t}
             />
           )}
 
@@ -983,7 +956,7 @@ export default function RecommendedMenusScreen() {
                   menu={item}
                   colors={colors}
                   isDark={isDark}
-                  language={language}
+                  t={t}
                   isRTL={isRTL}
                   onStart={handleStartMenu}
                   onView={handleViewMenu}
@@ -1006,21 +979,13 @@ export default function RecommendedMenusScreen() {
               </View>
               <Text style={[styles.emptyTitle, { color: colors.text }]}>
                 {searchQuery.trim()
-                  ? language === "he"
-                    ? "לא נמצאו תוצאות"
-                    : "No results found"
-                  : language === "he"
-                    ? "אין תפריטים זמינים"
-                    : "No menus available"}
+                  ? t("menus.no_results_found")
+                  : t("menus.no_menus_available")}
               </Text>
               <Text style={[styles.emptyText, { color: colors.icon }]}>
                 {searchQuery.trim()
-                  ? language === "he"
-                    ? "נסה מילות חיפוש אחרות"
-                    : "Try different search terms"
-                  : language === "he"
-                    ? "צור תפריט מותאם אישית כדי להתחיל"
-                    : "Create a personalized menu to get started"}
+                  ? t("menus.try_different_search")
+                  : t("menus.create_personalized_menu")}
               </Text>
 
               {!searchQuery.trim() && (
@@ -1033,9 +998,7 @@ export default function RecommendedMenusScreen() {
                 >
                   <Plus size={18} color="#ffffff" />
                   <Text style={styles.emptyButtonText}>
-                    {language === "he"
-                      ? "צור תפריט ראשון"
-                      : "Create First Menu"}
+                    {t("menus.create_first_menu")}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -1058,7 +1021,7 @@ export default function RecommendedMenusScreen() {
         selectedFilter={selectedFilter}
         onFilterSelect={setSelectedFilter}
         colors={colors}
-        language={language}
+        t={t}
       />
 
       {renderEnhancedCreationModal()}
