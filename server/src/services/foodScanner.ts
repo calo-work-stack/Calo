@@ -176,7 +176,29 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
         throw new Error("No response from AI");
       }
 
-      const productData = JSON.parse(content) as ProductData;
+      // Try to extract JSON from the response (handle markdown code blocks)
+      let jsonContent = content;
+      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        jsonContent = jsonMatch[1].trim();
+      }
+
+      let productData: ProductData;
+      try {
+        productData = JSON.parse(jsonContent) as ProductData;
+      } catch (parseError) {
+        console.error("💥 Failed to parse AI response as JSON:", content);
+        throw new Error(
+          "Could not analyze the product label. Please try a clearer image."
+        );
+      }
+
+      // Validate required fields
+      if (!productData.name || !productData.nutrition_per_100g) {
+        throw new Error(
+          "Could not extract product information. Please try a clearer image of the nutrition label."
+        );
+      }
 
       // Save to database if barcode was detected, or create a unique identifier for image scans
       const productId =

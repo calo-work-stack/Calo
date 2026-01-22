@@ -60,7 +60,7 @@ export default function FoodScannerScreen() {
   // Product and analysis states
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [priceEstimate, setPriceEstimate] = useState<PriceEstimate | null>(
-    null
+    null,
   );
   const [showResults, setShowResults] = useState(false);
 
@@ -118,7 +118,7 @@ export default function FoodScannerScreen() {
           duration: 1500,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     ).start();
 
     // Scan line animation
@@ -134,7 +134,7 @@ export default function FoodScannerScreen() {
           duration: 100,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     ).start();
   };
 
@@ -144,7 +144,7 @@ export default function FoodScannerScreen() {
     if (status !== "granted") {
       ToastService.error(
         t("common.permissionRequired"),
-        t("foodScanner.cameraPermissionNeeded")
+        t("foodScanner.cameraPermissionNeeded"),
       );
     }
   };
@@ -165,7 +165,7 @@ export default function FoodScannerScreen() {
   };
 
   const estimatePrice = async (
-    productData: ProductData
+    productData: ProductData,
   ): Promise<PriceEstimate | null> => {
     try {
       setLoadingText(t("foodScanner.estimatingPrice"));
@@ -176,7 +176,7 @@ export default function FoodScannerScreen() {
       return {
         estimated_price: estimatedPrice,
         price_range: `${estimatedPrice - 2}-${estimatedPrice + 5} ${t(
-          "common.shekels"
+          "common.shekels",
         )}`,
         currency: "ILS",
         confidence: "medium",
@@ -210,7 +210,7 @@ export default function FoodScannerScreen() {
     if (!barcodeInput.trim()) {
       ToastService.error(
         t("foodScanner.scanError"),
-        t("foodScanner.pleaseEnterBarcode")
+        t("foodScanner.pleaseEnterBarcode"),
       );
       return;
     }
@@ -233,7 +233,7 @@ export default function FoodScannerScreen() {
       } else {
         ToastService.handleError(
           response.data.error || t("foodScanner.noResults"),
-          "Barcode Search"
+          "Barcode Search",
         );
       }
     } catch (error) {
@@ -267,7 +267,7 @@ export default function FoodScannerScreen() {
       } else {
         ToastService.error(
           t("foodScanner.scanError"),
-          t("foodScanner.productNotFound")
+          t("foodScanner.productNotFound"),
         );
       }
     } catch (error) {
@@ -285,7 +285,7 @@ export default function FoodScannerScreen() {
       if (status !== "granted") {
         ToastService.error(
           t("common.permissionRequired"),
-          t("foodScanner.cameraPermissionNeeded")
+          t("foodScanner.cameraPermissionNeeded"),
         );
         return;
       }
@@ -316,12 +316,12 @@ export default function FoodScannerScreen() {
             await loadScanHistory();
             ToastService.success(
               t("foodScanner.scanSuccess"),
-              t("foodScanner.productIdentifiedSuccessfully")
+              t("foodScanner.productIdentifiedSuccessfully"),
             );
           } else {
             ToastService.error(
               t("foodScanner.scanError"),
-              t("foodScanner.couldNotIdentifyProduct")
+              t("foodScanner.couldNotIdentifyProduct"),
             );
           }
         } catch (error) {
@@ -336,7 +336,7 @@ export default function FoodScannerScreen() {
       console.error("Camera error:", error);
       ToastService.error(
         t("foodScanner.scanError"),
-        t("foodScanner.couldNotOpenCamera")
+        t("foodScanner.couldNotOpenCamera"),
       );
     }
   };
@@ -376,7 +376,7 @@ export default function FoodScannerScreen() {
           t("foodScanner.shoppingListUpdated"),
           t("foodScanner.addedToShoppingList", {
             product: scanResult.product.name,
-          })
+          }),
         );
       } else {
         ToastService.handleError(response.data.error, "Add to Shopping List");
@@ -515,69 +515,6 @@ export default function FoodScannerScreen() {
           {/* Camera Scanner */}
           <View style={styles.scannerContainer}>
             {/* Mode Switcher */}
-            <View
-              style={[styles.modeSwitcher, { backgroundColor: colors.card }]}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.modeButton,
-                  scanMode === "image" && { backgroundColor: colors.primary },
-                ]}
-                onPress={() => setScanMode("image")}
-              >
-                <CameraIcon
-                  size={20}
-                  color={
-                    scanMode === "image"
-                      ? colors.onPrimary
-                      : colors.textSecondary
-                  }
-                />
-                <Text
-                  style={[
-                    styles.modeButtonText,
-                    {
-                      color:
-                        scanMode === "image"
-                          ? colors.onPrimary
-                          : colors.textSecondary,
-                    },
-                  ]}
-                >
-                  {t("foodScanner.takePicture")}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.modeButton,
-                  scanMode === "barcode" && { backgroundColor: colors.primary },
-                ]}
-                onPress={() => setScanMode("barcode")}
-              >
-                <QrCode
-                  size={20}
-                  color={
-                    scanMode === "barcode"
-                      ? colors.onPrimary
-                      : colors.textSecondary
-                  }
-                />
-                <Text
-                  style={[
-                    styles.modeButtonText,
-                    {
-                      color:
-                        scanMode === "barcode"
-                          ? colors.onPrimary
-                          : colors.textSecondary,
-                    },
-                  ]}
-                >
-                  {t("foodScanner.scanFood")}
-                </Text>
-              </TouchableOpacity>
-            </View>
             <View style={styles.cameraWrapper}>
               {scanMode === "image" ? (
                 <TouchableOpacity
@@ -771,7 +708,7 @@ export default function FoodScannerScreen() {
                   {Math.round(
                     (scanResult.product.nutrition_per_100g.calories *
                       quantity) /
-                      100
+                      100,
                   )}{" "}
                   {t("foodScanner.kcal")}
                 </Text>
@@ -860,7 +797,7 @@ export default function FoodScannerScreen() {
                   <Text style={[styles.nutritionValue, { color: colors.text }]}>
                     {Math.round(
                       (scanResult.product.nutrition_per_100g.fat * quantity) /
-                        100
+                        100,
                     )}{" "}
                     {t("common.grams")}
                   </Text>
@@ -887,7 +824,7 @@ export default function FoodScannerScreen() {
                     {Math.round(
                       ((scanResult.product.nutrition_per_100g.fiber || 0) *
                         quantity) /
-                        100
+                        100,
                     )}{" "}
                     {t("common.grams")}
                   </Text>
@@ -914,7 +851,7 @@ export default function FoodScannerScreen() {
                     {Math.round(
                       ((scanResult.product.nutrition_per_100g.sugar || 0) *
                         quantity) /
-                        100
+                        100,
                     )}{" "}
                     {t("common.grams")}
                   </Text>

@@ -10,6 +10,7 @@ import { Platform } from "react-native";
 import { StorageCleanupService } from "@/src/utils/storageCleanup";
 import { optimizedStorage } from "@/src/utils/optimizedStorage";
 import { File } from "expo-file-system";
+import { getErrorMessage, errorMessageIncludes, errorMessageIncludesAny } from "@/src/utils/errorHandler";
 
 interface MealState {
   meals: Meal[];
@@ -298,44 +299,34 @@ export const analyzeMeal = createAsyncThunk(
       console.error("Analysis error details:", error);
 
       let errorMessage = "Analysis failed";
-      if (error instanceof Error) {
-        if (error.message.includes("Network")) {
-          errorMessage =
-            "Network error during meal analysis. Please check your connection and try again.";
-        } else if (error.message.includes("timeout")) {
-          errorMessage =
-            "Analysis timed out. Please try again with a clearer image.";
-        } else if (error.message.includes("_retry")) {
-          errorMessage =
-            "Connection issue. Please check your internet connection and try again.";
-        } else {
-          errorMessage = error.message;
-        }
-      } else if (typeof error === "string") {
-        errorMessage = error;
-      }
 
-      if (
-        errorMessage.includes("Network Error") ||
-        errorMessage.includes("ERR_NETWORK")
-      ) {
+      // Use safe error message extraction
+      if (errorMessageIncludes(error, "Network")) {
+        errorMessage =
+          "Network error during meal analysis. Please check your connection and try again.";
+      } else if (errorMessageIncludes(error, "timeout")) {
+        errorMessage =
+          "Analysis timed out. Please try again with a clearer image.";
+      } else if (errorMessageIncludes(error, "_retry")) {
+        errorMessage =
+          "Connection issue. Please check your internet connection and try again.";
+      } else if (errorMessageIncludesAny(error, ["Network Error", "ERR_NETWORK"])) {
         errorMessage = "Network error - please check your connection";
-      } else if (
-        errorMessage.includes("quota") ||
-        errorMessage.includes("billing")
-      ) {
+      } else if (errorMessageIncludesAny(error, ["quota", "billing"])) {
         errorMessage =
           "AI analysis temporarily unavailable - please try again later";
-      } else if (errorMessage.includes("Invalid image data")) {
+      } else if (errorMessageIncludes(error, "Invalid image data")) {
         errorMessage = "Invalid image - please try a different photo";
-      } else if (errorMessage.includes("OpenAI API key not configured")) {
+      } else if (errorMessageIncludes(error, "OpenAI API key not configured")) {
         errorMessage = "AI service not available - please contact support";
-      } else if (errorMessage.includes("400")) {
+      } else if (errorMessageIncludes(error, "400")) {
         errorMessage = "Invalid image data - please try a different image";
-      } else if (errorMessage.includes("401") || errorMessage.includes("403")) {
+      } else if (errorMessageIncludesAny(error, ["401", "403"])) {
         errorMessage = "Authentication error - please log in again";
-      } else if (errorMessage.includes("500")) {
+      } else if (errorMessageIncludes(error, "500")) {
         errorMessage = "Server error - please try again later";
+      } else {
+        errorMessage = getErrorMessage(error);
       }
 
       return rejectWithValue(errorMessage);
@@ -581,10 +572,7 @@ export const loadPendingMeal = createAsyncThunk(
           storageError
         );
 
-        if (
-          storageError.message &&
-          storageError.message.includes("CursorWindow")
-        ) {
+        if (errorMessageIncludes(storageError, "CursorWindow")) {
           console.log("🔥 CursorWindow detected, running emergency cleanup");
           await StorageCleanupService.emergencyCleanup();
         }

@@ -6,6 +6,7 @@ import {
   ReplacementMealRequest,
 } from "../types/openai";
 import { extractCleanJSON } from "../utils/openai";
+import { getErrorMessage, errorMessageIncludesAny } from "../utils/errorUtils";
 
 export const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({
@@ -160,15 +161,12 @@ export class OpenAIService {
         updateText,
         editedIngredients
       );
-    } catch (openaiError: any) {
-      console.log("⚠️ OpenAI analysis failed:", openaiError.message);
+    } catch (openaiError: unknown) {
+      const errorMsg = getErrorMessage(openaiError);
+      console.log("⚠️ OpenAI analysis failed:", errorMsg);
 
       // If it's a quota/billing issue, use fallback
-      if (
-        openaiError.message.includes("quota") ||
-        openaiError.message.includes("billing") ||
-        openaiError.message.includes("rate limit")
-      ) {
+      if (errorMessageIncludesAny(openaiError, ["quota", "billing", "rate limit"])) {
         console.log("🆘 Using fallback due to quota/billing limits");
         return this.getIntelligentFallbackAnalysis(
           language,
@@ -178,11 +176,7 @@ export class OpenAIService {
       }
 
       // If it's a network/API issue, use fallback
-      if (
-        openaiError.message.includes("network") ||
-        openaiError.message.includes("timeout") ||
-        openaiError.message.includes("connection")
-      ) {
+      if (errorMessageIncludesAny(openaiError, ["network", "timeout", "connection"])) {
         console.log("🆘 Using fallback due to network issues");
         return this.getIntelligentFallbackAnalysis(
           language,
@@ -192,11 +186,7 @@ export class OpenAIService {
       }
 
       // If AI couldn't analyze the image, use fallback
-      if (
-        openaiError.message.includes("couldn't analyze") ||
-        openaiError.message.includes("clearer photo") ||
-        openaiError.message.includes("invalid response")
-      ) {
+      if (errorMessageIncludesAny(openaiError, ["couldn't analyze", "clearer photo", "invalid response"])) {
         console.log("🆘 Using fallback due to image analysis failure");
         return this.getIntelligentFallbackAnalysis(
           language,

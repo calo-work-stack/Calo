@@ -6,6 +6,7 @@ import { Response } from "express";
 import { $Enums } from "@prisma/client";
 import { JsonValue } from "@prisma/client/runtime/library";
 import OpenAI from "openai";
+import { getErrorMessage, errorMessageIncludes } from "../utils/errorUtils";
 
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({
@@ -269,14 +270,12 @@ router.post(
       let errorMessage = "Failed to generate custom menu";
       let statusCode = 500;
 
-      if (error instanceof Error) {
-        if (error.message.includes("questionnaire not found")) {
-          errorMessage =
-            "Please complete your questionnaire first before generating a custom menu";
-          statusCode = 400;
-        } else {
-          errorMessage = error.message;
-        }
+      if (errorMessageIncludes(error, "questionnaire not found")) {
+        errorMessage =
+          "Please complete your questionnaire first before generating a custom menu";
+        statusCode = 400;
+      } else {
+        errorMessage = getErrorMessage(error);
       }
 
       res.status(statusCode).json({
@@ -387,23 +386,21 @@ router.post(
       let errorMessage = "Failed to generate menu";
       let statusCode = 500;
 
-      if (error instanceof Error) {
-        if (error.message.includes("questionnaire not found")) {
-          errorMessage =
-            "Please complete your questionnaire first before generating a menu";
-          statusCode = 400;
-        } else if (error.message.includes("budget")) {
-          errorMessage = "Please set a daily food budget in your questionnaire";
-          statusCode = 400;
-        } else {
-          errorMessage = error.message;
-        }
+      if (errorMessageIncludes(error, "questionnaire not found")) {
+        errorMessage =
+          "Please complete your questionnaire first before generating a menu";
+        statusCode = 400;
+      } else if (errorMessageIncludes(error, "budget")) {
+        errorMessage = "Please set a daily food budget in your questionnaire";
+        statusCode = 400;
+      } else {
+        errorMessage = getErrorMessage(error);
       }
 
       res.status(statusCode).json({
         success: false,
         error: errorMessage,
-        details: error instanceof Error ? error.message : "Unknown error",
+        details: getErrorMessage(error),
       });
     }
   }
@@ -881,20 +878,18 @@ router.post(
       let errorMessage = "Failed to generate comprehensive menu";
       let statusCode = 500;
 
-      if (error instanceof Error) {
-        if (error.message.includes("questionnaire not found")) {
-          errorMessage =
-            "Please complete your questionnaire first before generating a comprehensive menu";
-          statusCode = 400;
-        } else {
-          errorMessage = error.message;
-        }
+      if (errorMessageIncludes(error, "questionnaire not found")) {
+        errorMessage =
+          "Please complete your questionnaire first before generating a comprehensive menu";
+        statusCode = 400;
+      } else {
+        errorMessage = getErrorMessage(error);
       }
 
       res.status(statusCode).json({
         success: false,
         error: errorMessage,
-        details: error instanceof Error ? error.message : "Unknown error",
+        details: getErrorMessage(error),
       });
     }
   }
@@ -1178,22 +1173,15 @@ router.post(
         });
       }
 
-      const { preferences, ingredients, user_ingredients } = req.body;
+      const { preferences, ingredients = [], user_ingredients } = req.body;
 
-      if (
-        !ingredients ||
-        !Array.isArray(ingredients) ||
-        ingredients.length === 0
-      ) {
-        return res.status(400).json({
-          success: false,
-          error: "At least one ingredient is required",
-        });
-      }
+      // Ingredients are now optional - AI will suggest ingredients if none provided
+      const hasIngredients = Array.isArray(ingredients) && ingredients.length > 0;
 
-      console.log("🍽️ Generating menu with user ingredients:", {
+      console.log("🍽️ Generating menu:", {
         userId,
-        ingredientCount: ingredients.length,
+        ingredientCount: hasIngredients ? ingredients.length : 0,
+        hasUserIngredients: hasIngredients,
         preferences,
       });
 
@@ -1203,16 +1191,16 @@ router.post(
         orderBy: { date_completed: "desc" },
       });
 
-      // Detect language based on ingredients
-      const hasHebrew = ingredients.some((ing: any) =>
+      // Detect language based on ingredients or preferences
+      const hasHebrew = hasIngredients && ingredients.some((ing: any) =>
         /[\u0590-\u05FF]/.test(ing.name)
       );
       const menuLanguage = hasHebrew ? "Hebrew" : "English";
 
-      // Create enhanced prompt with user ingredients
-      const ingredientsList = ingredients
-        .map((ing: any) => `${ing.name} (${ing.quantity} ${ing.unit})`)
-        .join(", ");
+      // Create ingredients list if provided, otherwise AI will suggest
+      const ingredientsList = hasIngredients
+        ? ingredients.map((ing: any) => `${ing.name} (${ing.quantity} ${ing.unit})`).join(", ")
+        : "None provided - AI will suggest appropriate ingredients based on preferences";
 
       const sanitizedDuration = Math.max(
         1,
@@ -1223,8 +1211,8 @@ router.post(
 
       const prompt = `You are a world-class chef and nutritionist. Create an exceptional ${sanitizedDuration}-day meal plan that showcases creative, delicious, and nutritious recipes.
 
-🍽️ AVAILABLE INGREDIENTS:
-${ingredientsList}
+🍽️ ${hasIngredients ? 'AVAILABLE INGREDIENTS:' : 'INGREDIENT GUIDANCE:'}
+${hasIngredients ? ingredientsList : 'No specific ingredients provided. Please suggest appropriate, commonly available ingredients that match the cuisine style and dietary preferences. Focus on fresh, affordable, and accessible ingredients.'}
 
 📋 USER PREFERENCES:
 - Cuisine Style: ${preferences.cuisine} (embrace authentic flavors and traditional cooking methods)
@@ -1248,7 +1236,7 @@ Respond in ${menuLanguage} for ALL text (menu name, descriptions, instructions, 
 
 ✨ RECIPE QUALITY STANDARDS:
 1. CREATE RESTAURANT-QUALITY DISHES: Each meal should be exciting, flavorful, and memorable
-2. MAXIMIZE INGREDIENT USE: Creatively incorporate the provided ingredients across multiple meals
+2. ${hasIngredients ? 'MAXIMIZE INGREDIENT USE: Creatively incorporate the provided ingredients across multiple meals' : 'SMART INGREDIENT SELECTION: Choose fresh, affordable, and accessible ingredients that complement the cuisine style'}
 3. BALANCE NUTRITION: Hit macro targets while ensuring variety and satisfaction
 4. DETAILED INSTRUCTIONS: Step-by-step cooking guidance that anyone can follow
 5. SMART MEAL PLANNING: Prep ingredients once, use in multiple meals when possible
@@ -1309,250 +1297,300 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
 
 🚀 PERFORMANCE NOTE: Generate this menu efficiently with rich detail in under 10 seconds.`;
 
-      if (!openai) {
-        return res.status(503).json({
-          success: false,
-          error:
-            "AI service is currently unavailable. Please add OPENAI_API_KEY to enable AI features.",
-        });
-      }
+      // ========== INSTANT MENU CREATION ==========
+      // Create menu immediately with placeholder data, then enhance in background
 
-      // Optimize OpenAI call for speed and quality
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini", // Fast and cost-effective
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an award-winning chef and certified nutritionist specializing in personalized meal planning. You create restaurant-quality recipes with precise nutritional data and detailed cooking instructions. Always return valid JSON without any conversational text.",
-          },
-          { role: "user", content: prompt },
-        ],
-        max_completion_tokens: 16000,
-        temperature: 0.7, // Slightly lower for more consistent, focused output
-        response_format: { type: "json_object" }, // Force JSON output
-      });
+      const cuisineEmojis: Record<string, string> = {
+        mediterranean: "🌿",
+        asian: "🥢",
+        american: "🍔",
+        italian: "🍝",
+        mexican: "🌮",
+        indian: "🍛",
+        japanese: "🍣",
+        middle_eastern: "🥙",
+        french: "🥐",
+      };
 
-      const aiContent = response.choices[0]?.message?.content;
-      if (!aiContent) {
-        throw new Error("No response from AI");
-      }
+      const cuisineNames: Record<string, string> = {
+        mediterranean: "Mediterranean",
+        asian: "Asian Fusion",
+        american: "American Classic",
+        italian: "Italian",
+        mexican: "Mexican",
+        indian: "Indian",
+        japanese: "Japanese",
+        middle_eastern: "Middle Eastern",
+        french: "French",
+      };
 
-      console.log("🤖 Raw AI Response:", aiContent);
+      // Generate quick menu name
+      const quickMenuName = preferences.custom_name?.trim() ||
+        `${cuisineEmojis[preferences.cuisine] || "🍽️"} ${cuisineNames[preferences.cuisine] || "Custom"} ${sanitizedDuration}-Day Plan`;
 
-      // Check if AI returned a conversational error message (English and Hebrew)
-      const conversationalIndicators = [
-        "sorry",
-        "cannot",
-        "can't",
-        "unable",
-        "please provide",
-        "doesn't have",
-        "מצטער",
-        "לא יכול",
-        "לא מסוגל",
-        "אנא",
-        "בבקשה",
-      ];
+      // Create placeholder meals based on preferences
+      const mealTypes = ["BREAKFAST", "LUNCH", "DINNER"];
+      const placeholderMeals: any[] = [];
 
-      const isConversational =
-        conversationalIndicators.some((indicator) =>
-          aiContent.toLowerCase().includes(indicator.toLowerCase())
-        ) || !aiContent.includes("{");
-
-      if (isConversational) {
-        console.error("❌ AI returned conversational response:", aiContent);
-
-        // Detect language for error message
-        const hasHebrew = /[\u0590-\u05FF]/.test(aiContent);
-        const errorMessage = hasHebrew
-          ? "הבינה המלאכותית לא הצליחה ליצור תפריט עם הרכיבים שסופקו. אנא ודא שכל הרכיבים מתאימים להעדפות התזונה שלך ונסה שוב עם שמות רכיבים ברורים יותר."
-          : "The AI couldn't create a menu with the provided ingredients. Please ensure all ingredients are appropriate for your dietary preferences and try again with clearer ingredient names.";
-
-        throw new Error(errorMessage);
-      }
-
-      let parsedMenu;
-      try {
-        const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          parsedMenu = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error(
-            "Unable to generate menu. Please check your ingredient list and try again with common food items."
-          );
+      for (let day = 1; day <= sanitizedDuration; day++) {
+        for (const mealType of mealTypes.slice(0, preferences.meal_count || 3)) {
+          placeholderMeals.push({
+            name: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} - Day ${day}`,
+            meal_type: mealType,
+            day_number: day,
+            calories: mealType === "BREAKFAST" ? 400 : mealType === "LUNCH" ? 600 : 700,
+            protein: mealType === "BREAKFAST" ? 20 : mealType === "LUNCH" ? 35 : 40,
+            carbs: mealType === "BREAKFAST" ? 50 : mealType === "LUNCH" ? 60 : 70,
+            fat: mealType === "BREAKFAST" ? 15 : mealType === "LUNCH" ? 20 : 25,
+            prep_time_minutes: 30,
+            cooking_method: "Preparing...",
+            instructions: "AI is generating detailed recipe... Check back in a moment!",
+            dietary_tags: preferences.dietary_restrictions || [],
+            ingredients: [],
+            is_generating: true,
+          });
         }
-      } catch (parseError) {
-        console.error("JSON parsing error:", parseError);
-        throw new Error(
-          "Failed to create menu. Please try again with different ingredients or simpler descriptions."
-        );
       }
 
-      // Validate parsed menu
-      if (
-        !parsedMenu.menu_name ||
-        !parsedMenu.meals ||
-        !Array.isArray(parsedMenu.meals)
-      ) {
-        throw new Error("Invalid menu structure from AI");
-      }
+      // Calculate totals
+      const totalCalories = placeholderMeals.reduce((sum, m) => sum + m.calories, 0);
+      const totalProtein = placeholderMeals.reduce((sum, m) => sum + m.protein, 0);
+      const totalCarbs = placeholderMeals.reduce((sum, m) => sum + m.carbs, 0);
+      const totalFat = placeholderMeals.reduce((sum, m) => sum + m.fat, 0);
 
-      // Save menu to database - remove dietary_category field
+      // Save menu to database IMMEDIATELY
       const savedMenu = await prisma.recommendedMenu.create({
         data: {
           user_id: userId,
-          title: String(parsedMenu.menu_name || "Custom Menu"),
-          description: String(parsedMenu.description || ""),
-          total_calories: Math.max(
-            0,
-            parseInt(parsedMenu.total_calories?.toString() || "0")
-          ),
-          total_protein: Math.max(
-            0,
-            parseInt(parsedMenu.total_protein?.toString() || "0")
-          ),
-          total_carbs: Math.max(
-            0,
-            parseInt(parsedMenu.total_carbs?.toString() || "0")
-          ),
-          total_fat: Math.max(
-            0,
-            parseInt(parsedMenu.total_fat?.toString() || "0")
-          ),
-          days_count: Math.max(
-            1,
-            parseInt(
-              parsedMenu.days_count?.toString() ||
-                preferences.duration_days?.toString() ||
-                "7"
-            )
-          ),
-          estimated_cost: Math.max(
-            0,
-            parseFloat(parsedMenu.estimated_cost?.toString() || "0")
-          ),
-          prep_time_minutes: Math.max(
-            10,
-            Math.max(
-              ...parsedMenu.meals.map((m: any) =>
-                parseInt(m.prep_time_minutes?.toString() || "30")
-              )
-            )
-          ),
-          difficulty_level: Math.min(
-            3,
-            Math.max(
-              1,
-              preferences.cooking_difficulty === "easy"
-                ? 1
-                : preferences.cooking_difficulty === "hard"
-                ? 3
-                : 2
-            )
-          ),
+          title: quickMenuName,
+          description: `${cuisineNames[preferences.cuisine] || "Custom"} cuisine menu being personalized by AI...`,
+          total_calories: totalCalories,
+          total_protein: totalProtein,
+          total_carbs: totalCarbs,
+          total_fat: totalFat,
+          days_count: sanitizedDuration,
+          estimated_cost: 0,
+          prep_time_minutes: 30,
+          difficulty_level: preferences.cooking_difficulty === "easy" ? 1 : preferences.cooking_difficulty === "hard" ? 3 : 2,
+          // AI enhancement will happen in background
         },
       });
 
-      // Save meals with AI-generated images
-      for (const meal of parsedMenu.meals) {
-        // Generate meal image using DALL-E
-        let imageUrl = null;
-        try {
-          if (openai) {
-            console.log(`🎨 Generating image for meal: ${meal.name}`);
-            const imagePrompt = `A professional food photography shot of ${meal.name}, ${meal.cooking_method || 'beautifully plated'}, restaurant quality, appetizing, high resolution, clean background, natural lighting`;
+      // Save placeholder meals
+      const savedMealIds: { mealId: string; dayNumber: number; mealType: string }[] = [];
 
-            const imageResponse = await openai.images.generate({
-              model: "dall-e-3",
-              prompt: imagePrompt,
-              n: 1,
-              size: "1024x1024",
-              quality: "standard",
-              style: "natural",
-            });
-
-            imageUrl = imageResponse.data?.[0]?.url || null;
-            console.log(`✅ Image generated for ${meal.name}`);
-          }
-        } catch (imageError) {
-          console.error(`⚠️ Failed to generate image for ${meal.name}:`, imageError);
-          // Continue without image - not critical
-        }
-
+      for (const meal of placeholderMeals) {
         const savedMeal = await prisma.recommendedMeal.create({
           data: {
             menu_id: savedMenu.menu_id,
             name: meal.name,
             meal_type: meal.meal_type,
             day_number: meal.day_number,
-            calories: meal.calories || 0,
-            protein: meal.protein || 0,
-            carbs: meal.carbs || 0,
-            fat: meal.fat || 0,
-            prep_time_minutes: meal.prep_time_minutes || 30,
-            cooking_method: meal.cooking_method || "",
-            instructions: meal.instructions || "",
-            image_url: imageUrl,
+            calories: meal.calories,
+            protein: meal.protein,
+            carbs: meal.carbs,
+            fat: meal.fat,
+            prep_time_minutes: meal.prep_time_minutes,
+            cooking_method: meal.cooking_method,
+            instructions: meal.instructions,
+            image_url: null,
             language: menuLanguage,
-            dietary_tags: meal.dietary_tags || [],
+            dietary_tags: meal.dietary_tags,
           },
         });
 
-        // Save ingredients
-        if (meal.ingredients && Array.isArray(meal.ingredients)) {
-          for (const ingredient of meal.ingredients) {
-            await prisma.recommendedIngredient.create({
-              data: {
-                meal_id: savedMeal.meal_id,
-                name: ingredient.name,
-                quantity: ingredient.quantity || 1,
-                unit: ingredient.unit || "piece",
-                category: ingredient.category || "Other",
-                estimated_cost: ingredient.estimated_cost || 0,
-              },
-            });
-          }
-        }
+        savedMealIds.push({
+          mealId: savedMeal.meal_id,
+          dayNumber: meal.day_number,
+          mealType: meal.meal_type,
+        });
       }
 
+      console.log(`✅ Menu created instantly: ${savedMenu.menu_id} with ${savedMealIds.length} placeholder meals`);
+
+      // Send response IMMEDIATELY - user can start using the menu
       res.json({
         success: true,
         data: {
           menu_id: savedMenu.menu_id,
-          ...parsedMenu,
+          menu_name: quickMenuName,
+          description: `${cuisineNames[preferences.cuisine] || "Custom"} cuisine menu - AI is personalizing your recipes...`,
+          total_calories: totalCalories,
+          total_protein: totalProtein,
+          total_carbs: totalCarbs,
+          total_fat: totalFat,
+          days_count: sanitizedDuration,
+          estimated_cost: 0,
+          meals: placeholderMeals,
+          is_generating: true, // Hint to client that AI is enhancing recipes
         },
-        message: "Menu generated successfully with your ingredients!",
+        message: "Menu created! AI is now personalizing your recipes in the background.",
       });
+
+      // ========== BACKGROUND AI ENHANCEMENT ==========
+      // Generate actual AI content in the background
+      if (openai) {
+        setImmediate(async () => {
+          try {
+            console.log(`🤖 Starting background AI enhancement for menu: ${savedMenu.menu_id}`);
+
+            const response = await openai.chat.completions.create({
+              model: "gpt-4o-mini",
+              messages: [
+                {
+                  role: "system",
+                  content: "You are an award-winning chef. Create restaurant-quality recipes. Return ONLY valid JSON.",
+                },
+                { role: "user", content: prompt },
+              ],
+              max_completion_tokens: 16000,
+              temperature: 0.7,
+              response_format: { type: "json_object" },
+            });
+
+            const aiContent = response.choices[0]?.message?.content;
+            if (!aiContent) {
+              console.error("❌ No AI response");
+              return;
+            }
+
+            let parsedMenu;
+            try {
+              const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                parsedMenu = JSON.parse(jsonMatch[0]);
+              }
+            } catch (e) {
+              console.error("❌ Failed to parse AI response");
+              return;
+            }
+
+            if (!parsedMenu?.meals || !Array.isArray(parsedMenu.meals)) {
+              console.error("❌ Invalid menu structure");
+              return;
+            }
+
+            // Update menu with AI data
+            await prisma.recommendedMenu.update({
+              where: { menu_id: savedMenu.menu_id },
+              data: {
+                title: String(parsedMenu.menu_name || quickMenuName),
+                description: String(parsedMenu.description || ""),
+                total_calories: parseInt(parsedMenu.total_calories?.toString() || "0"),
+                total_protein: parseInt(parsedMenu.total_protein?.toString() || "0"),
+                total_carbs: parseInt(parsedMenu.total_carbs?.toString() || "0"),
+                total_fat: parseInt(parsedMenu.total_fat?.toString() || "0"),
+                estimated_cost: parseFloat(parsedMenu.estimated_cost?.toString() || "0"),
+              },
+            });
+
+            // Update each meal with AI-generated content
+            for (const aiMeal of parsedMenu.meals) {
+              const matchingMeal = savedMealIds.find(
+                (m) => m.dayNumber === aiMeal.day_number && m.mealType === aiMeal.meal_type
+              );
+
+              if (matchingMeal) {
+                await prisma.recommendedMeal.update({
+                  where: { meal_id: matchingMeal.mealId },
+                  data: {
+                    name: aiMeal.name || "Delicious Meal",
+                    calories: aiMeal.calories || 500,
+                    protein: aiMeal.protein || 25,
+                    carbs: aiMeal.carbs || 50,
+                    fat: aiMeal.fat || 20,
+                    prep_time_minutes: aiMeal.prep_time_minutes || 30,
+                    cooking_method: aiMeal.cooking_method || "",
+                    instructions: aiMeal.instructions || "",
+                    dietary_tags: aiMeal.dietary_tags || [],
+                  },
+                });
+
+                // Add ingredients
+                if (aiMeal.ingredients && Array.isArray(aiMeal.ingredients)) {
+                  for (const ingredient of aiMeal.ingredients) {
+                    await prisma.recommendedIngredient.create({
+                      data: {
+                        meal_id: matchingMeal.mealId,
+                        name: ingredient.name,
+                        quantity: ingredient.quantity || 1,
+                        unit: ingredient.unit || "piece",
+                        category: ingredient.category || "Other",
+                        estimated_cost: ingredient.estimated_cost || 0,
+                      },
+                    });
+                  }
+                }
+              }
+            }
+
+            console.log(`✅ AI enhancement complete for menu: ${savedMenu.menu_id}`);
+
+            // Generate images in background (optional, non-blocking)
+            for (const aiMeal of parsedMenu.meals) {
+              const matchingMeal = savedMealIds.find(
+                (m) => m.dayNumber === aiMeal.day_number && m.mealType === aiMeal.meal_type
+              );
+
+              if (matchingMeal && aiMeal.name) {
+                try {
+                  const imagePrompt = `Professional food photo of ${aiMeal.name}, ${aiMeal.cooking_method || "beautifully plated"}, restaurant quality, appetizing`;
+                  const imageResponse = await openai.images.generate({
+                    model: "dall-e-3",
+                    prompt: imagePrompt,
+                    n: 1,
+                    size: "1024x1024",
+                    quality: "standard",
+                    style: "natural",
+                  });
+
+                  const imageUrl = imageResponse.data?.[0]?.url;
+                  if (imageUrl) {
+                    await prisma.recommendedMeal.update({
+                      where: { meal_id: matchingMeal.mealId },
+                      data: { image_url: imageUrl },
+                    });
+                  }
+                } catch (imgErr) {
+                  // Image generation is optional - continue
+                }
+              }
+            }
+
+            console.log(`✅ Background processing complete for menu: ${savedMenu.menu_id}`);
+          } catch (bgError) {
+            console.error("❌ Background AI enhancement failed:", bgError);
+            // Background failed but menu still exists with placeholder data
+          }
+        });
+      }
     } catch (error) {
       console.error("💥 Error generating menu with ingredients:", error);
 
       // Extract user-friendly error message
       let userMessage = "Failed to generate menu. Please try again.";
 
-      if (error instanceof Error) {
-        if (error.message.includes("ingredients are appropriate")) {
-          userMessage = error.message;
-        } else if (
-          error.message.includes("No JSON") ||
-          error.message.includes("Failed to parse")
-        ) {
-          userMessage =
-            "Could not create menu with these ingredients. Please try using common food items with English or Hebrew names.";
-        } else if (error.message.includes("AI service")) {
-          userMessage =
-            "AI service is temporarily unavailable. Please try again later.";
-        } else {
-          userMessage = error.message;
-        }
+      if (errorMessageIncludes(error, "ingredients are appropriate")) {
+        userMessage = getErrorMessage(error);
+      } else if (
+        errorMessageIncludes(error, "No JSON") ||
+        errorMessageIncludes(error, "Failed to parse")
+      ) {
+        userMessage =
+          "Could not create menu with these ingredients. Please try using common food items with English or Hebrew names.";
+      } else if (errorMessageIncludes(error, "AI service")) {
+        userMessage =
+          "AI service is temporarily unavailable. Please try again later.";
+      } else {
+        userMessage = getErrorMessage(error);
       }
 
       res.status(500).json({
         success: false,
         error: userMessage,
         details:
-          process.env.NODE_ENV === "development" && error instanceof Error
-            ? error.stack
+          process.env.NODE_ENV === "development"
+            ? getErrorMessage(error)
             : undefined,
       });
     }

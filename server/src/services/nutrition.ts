@@ -6,6 +6,7 @@ import { AuthService } from "./auth";
 import { asJsonObject, mapExistingMealToPrismaInput } from "../utils/nutrition";
 import { CalendarService } from "./calendar";
 import { clearStatisticsCache } from "./statistics";
+import { errorMessageIncludes, getErrorMessage } from "../utils/errorUtils";
 
 // Cache for frequently accessed data
 const userStatsCache = new Map<string, { data: any; timestamp: number }>();
@@ -154,11 +155,12 @@ export class NutritionService {
           )
         ),
       ]);
-    } catch (error: any) {
-      console.error("💥 AI analysis failed:", error.message);
+    } catch (error: unknown) {
+      const errorMsg = getErrorMessage(error);
+      console.error("💥 AI analysis failed:", errorMsg);
 
       // If it's a timeout, throw a user-friendly message
-      if (error.message.includes("timeout")) {
+      if (errorMessageIncludes(error, "timeout")) {
         throw new Error(
           "Analysis is taking too long. Please try again with a clearer image."
         );

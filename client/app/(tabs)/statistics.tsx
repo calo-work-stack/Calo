@@ -181,7 +181,7 @@ export default function StatisticsScreen() {
               <Text
                 style={[styles.hydrationUnit, { color: colors.textSecondary }]}
               >
-                / {waterMetric.target} ml
+                / {waterMetric.target} {t("statistics.ml")}
               </Text>
             </View>
 

@@ -30,6 +30,7 @@ import {
   EnhancedCalendarStats,
   StatisticsCarouselProps,
 } from "@/src/types/calendar";
+import { useTranslation } from "react-i18next";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width * 0.7;
@@ -97,14 +98,20 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
 }) => {
   const scrollViewRef = useRef<ScrollView>(null);
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
 
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <View style={[styles.loadingCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB' }]}>
+        <View
+          style={[
+            styles.loadingCard,
+            { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#F9FAFB" },
+          ]}
+        >
           <View style={styles.loadingPulse} />
           <Text style={[styles.loadingText, { color: colors.text }]}>
-            {language === "he" ? "טוען סטטיסטיקות..." : "Loading statistics..."}
+            {t("statistics.loading")}
           </Text>
         </View>
       </View>
@@ -114,17 +121,28 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
   if (!statistics) {
     return (
       <View style={styles.container}>
-        <View style={[styles.emptyCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB' }]}>
-          <Sparkles size={32} color={isDark ? '#6B7280' : '#9CA3AF'} />
-          <Text style={[styles.emptyText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-            {language === "he"
-              ? "אין נתונים סטטיסטיים"
-              : "No statistics available"}
+        <View
+          style={[
+            styles.emptyCard,
+            { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#F9FAFB" },
+          ]}
+        >
+          <Sparkles size={32} color={isDark ? "#6B7280" : "#9CA3AF"} />
+          <Text
+            style={[
+              styles.emptyText,
+              { color: isDark ? "#9CA3AF" : "#6B7280" },
+            ]}
+          >
+            {t("statistics.noData")}
           </Text>
-          <Text style={[styles.emptySubtext, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>
-            {language === "he"
-              ? "התחל לעקוב אחר הארוחות שלך"
-              : "Start tracking your meals to see stats"}
+          <Text
+            style={[
+              styles.emptySubtext,
+              { color: isDark ? "#6B7280" : "#9CA3AF" },
+            ]}
+          >
+            {t("statistics.startTracking")}
           </Text>
         </View>
       </View>
@@ -150,30 +168,6 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
     return `${sign}${Math.round(value)}`;
   };
 
-  const t = {
-    monthlyProgress: language === "he" ? "התקדמות חודשית" : "Monthly Progress",
-    goalsMet: language === "he" ? "יעדים שהושגו" : "Goals Met",
-    perfectDays: language === "he" ? "ימים מושלמים" : "Perfect Days",
-    currentStreak: language === "he" ? "רצף נוכחי" : "Current Streak",
-    daysInRow: language === "he" ? "ימים ברצף" : "days in a row",
-    calories: language === "he" ? "קלוריות" : "Calories",
-    protein: language === "he" ? "חלבון" : "Protein",
-    hydration: language === "he" ? "שתייה" : "Hydration",
-    nutritionSummary: language === "he" ? "סיכום תזונה" : "Nutrition Summary",
-    vsLastMonth: language === "he" ? "מול חודש קודם" : "vs last month",
-    dailyAvg: language === "he" ? "ממוצע יומי" : "daily average",
-    kcalDay: language === "he" ? 'קק"ל/יום' : "kcal/day average",
-    min: language === "he" ? "מינ'" : "Min",
-    max: language === "he" ? "מקס'" : "Max",
-    adherence: language === "he" ? "עמידה" : "Adherence",
-    goal: language === "he" ? "יעד" : "Goal",
-    carbs: language === "he" ? "פחמימות" : "Carbs",
-    fat: language === "he" ? "שומן" : "Fat",
-    qualityScore: language === "he" ? "ציון איכות" : "Quality Score",
-    mealsPerDay: language === "he" ? "ארוחות ביום בממוצע" : "meals per day average",
-    ofDailyGoal: language === "he" ? "מהיעד היומי" : "of daily goal",
-  };
-
   return (
     <View style={styles.container}>
       <ScrollView
@@ -193,7 +187,9 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
             <View style={styles.iconCircle}>
               <Trophy size={14} color="#FFF" />
             </View>
-            <Text style={styles.cardTitle}>{t.monthlyProgress}</Text>
+            <Text style={styles.cardTitle}>
+              {t("statistics.monthlyProgress")}
+            </Text>
           </View>
           <View style={styles.mainValueContainer}>
             <Text style={styles.mainValue}>{statistics.monthlyProgress}</Text>
@@ -204,7 +200,7 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
               <View style={styles.statIconBg}>
                 <Target size={12} color="#10B981" />
               </View>
-              <Text style={styles.statLabel}>{t.goalsMet}</Text>
+              <Text style={styles.statLabel}>{t("statistics.goalsMet")}</Text>
               <Text style={styles.statValue}>
                 {statistics.totalGoalDays}/{statistics.totalDays}
               </Text>
@@ -214,7 +210,9 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
               <View style={styles.statIconBg}>
                 <Star size={12} color="#10B981" fill="#10B981" />
               </View>
-              <Text style={styles.statLabel}>{t.perfectDays}</Text>
+              <Text style={styles.statLabel}>
+                {t("statistics.perfectDays")}
+              </Text>
               <Text style={styles.statValue}>{statistics.perfectDays}</Text>
             </View>
           </View>
@@ -225,10 +223,11 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
                   ? "increasing"
                   : "decreasing",
                 "#FFF",
-                14
+                14,
               )}
               <Text style={styles.comparisonText}>
-                {formatDiff(statistics.comparison.progressDiff)}% {t.vsLastMonth}
+                {formatDiff(statistics.comparison.progressDiff)}%{" "}
+                {t("statistics.vsLastMonth")}
               </Text>
             </View>
           )}
@@ -241,13 +240,15 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
             <View style={styles.iconCircle}>
               <Flame size={14} color="#FFF" />
             </View>
-            <Text style={styles.cardTitle}>{t.currentStreak}</Text>
+            <Text style={styles.cardTitle}>
+              {t("statistics.currentStreak")}
+            </Text>
           </View>
           <View style={styles.mainValueContainer}>
             <Text style={styles.mainValue}>{statistics.streakDays}</Text>
             <Zap size={20} color="#FEE2E2" style={{ marginLeft: 6 }} />
           </View>
-          <Text style={styles.streakLabel}>{t.daysInRow}</Text>
+          <Text style={styles.streakLabel}>{t("statistics.daysInRow")}</Text>
           {statistics.comparison.streakDiff !== 0 && (
             <View style={styles.comparisonBadge}>
               {getTrendIcon(
@@ -255,10 +256,11 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
                   ? "increasing"
                   : "decreasing",
                 "#FFF",
-                14
+                14,
               )}
               <Text style={styles.comparisonText}>
-                {formatDiff(statistics.comparison.streakDiff)} {t.vsLastMonth}
+                {formatDiff(statistics.comparison.streakDiff)}{" "}
+                {t("statistics.vsLastMonth")}
               </Text>
             </View>
           )}
@@ -272,105 +274,304 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
         </AnimatedCard>
 
         {/* Calories Card - Enhanced */}
-        <AnimatedCard style={[styles.lightCard, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
+        <AnimatedCard
+          style={[
+            styles.lightCard,
+            { backgroundColor: isDark ? "#1F2937" : "#FFFFFF" },
+          ]}
+        >
           <View style={styles.cardHeader}>
-            <View style={[styles.iconBadge, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : "#FEF3C7" }]}>
+            <View
+              style={[
+                styles.iconBadge,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(245, 158, 11, 0.2)"
+                    : "#FEF3C7",
+                },
+              ]}
+            >
               <Activity size={16} color="#F59E0B" />
             </View>
-            <Text style={[styles.cardTitle, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>{t.calories}</Text>
+            <Text
+              style={[
+                styles.cardTitle,
+                { color: isDark ? "#F9FAFB" : "#1F2937" },
+              ]}
+            >
+              {t("statistics.calories")}
+            </Text>
           </View>
           <View style={styles.mainValueContainer}>
-            <Text style={[styles.mainValue, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>
+            <Text
+              style={[
+                styles.mainValue,
+                { color: isDark ? "#F9FAFB" : "#1F2937" },
+              ]}
+            >
               {statistics.averageCalories}
             </Text>
           </View>
-          <Text style={[styles.subLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{t.kcalDay}</Text>
+          <Text
+            style={[styles.subLabel, { color: isDark ? "#9CA3AF" : "#6B7280" }]}
+          >
+            {t("statistics.kcalDay")}
+          </Text>
 
           <View style={styles.breakdown}>
-            <View style={[styles.breakdownCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB' }]}>
-              <Text style={[styles.breakdownLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{t.min}</Text>
-              <Text style={[styles.breakdownValue, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>
+            <View
+              style={[
+                styles.breakdownCard,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.05)"
+                    : "#F9FAFB",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.breakdownLabel,
+                  { color: isDark ? "#9CA3AF" : "#6B7280" },
+                ]}
+              >
+                {t("statistics.min")}
+              </Text>
+              <Text
+                style={[
+                  styles.breakdownValue,
+                  { color: isDark ? "#F9FAFB" : "#1F2937" },
+                ]}
+              >
                 {statistics.nutritionBreakdown.calories.min}
               </Text>
             </View>
-            <View style={[styles.breakdownCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB' }]}>
-              <Text style={[styles.breakdownLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{t.max}</Text>
-              <Text style={[styles.breakdownValue, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>
+            <View
+              style={[
+                styles.breakdownCard,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.05)"
+                    : "#F9FAFB",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.breakdownLabel,
+                  { color: isDark ? "#9CA3AF" : "#6B7280" },
+                ]}
+              >
+                {t("statistics.max")}
+              </Text>
+              <Text
+                style={[
+                  styles.breakdownValue,
+                  { color: isDark ? "#F9FAFB" : "#1F2937" },
+                ]}
+              >
                 {statistics.nutritionBreakdown.calories.max}
               </Text>
             </View>
-            <View style={[styles.breakdownCard, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#D1FAE5' }]}>
-              <Text style={[styles.breakdownLabel, { color: '#10B981' }]}>{t.adherence}</Text>
-              <Text style={[styles.breakdownValue, { color: '#10B981' }]}>
+            <View
+              style={[
+                styles.breakdownCard,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(16, 185, 129, 0.15)"
+                    : "#D1FAE5",
+                },
+              ]}
+            >
+              <Text style={[styles.breakdownLabel, { color: "#10B981" }]}>
+                {t("statistics.adherence")}
+              </Text>
+              <Text style={[styles.breakdownValue, { color: "#10B981" }]}>
                 {statistics.nutritionBreakdown.calories.adherencePercent}%
               </Text>
             </View>
           </View>
 
           {statistics.comparison.caloriesDiff !== 0 && (
-            <View style={[styles.comparisonBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6' }]}>
+            <View
+              style={[
+                styles.comparisonBadge,
+                {
+                  backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "#F3F4F6",
+                },
+              ]}
+            >
               {getTrendIcon(
                 statistics.comparison.caloriesDiff > 0
                   ? "increasing"
                   : "decreasing",
-                isDark ? '#9CA3AF' : "#6B7280",
-                14
+                isDark ? "#9CA3AF" : "#6B7280",
+                14,
               )}
-              <Text style={[styles.comparisonText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                {formatDiff(statistics.comparison.caloriesDiff)} {t.vsLastMonth}
+              <Text
+                style={[
+                  styles.comparisonText,
+                  { color: isDark ? "#9CA3AF" : "#6B7280" },
+                ]}
+              >
+                {formatDiff(statistics.comparison.caloriesDiff)}{" "}
+                {t("statistics.vsLastMonth")}
               </Text>
             </View>
           )}
         </AnimatedCard>
 
         {/* Protein Card - Enhanced */}
-        <AnimatedCard style={[styles.lightCard, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
+        <AnimatedCard
+          style={[
+            styles.lightCard,
+            { backgroundColor: isDark ? "#1F2937" : "#FFFFFF" },
+          ]}
+        >
           <View style={styles.cardHeader}>
-            <View style={[styles.iconBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : "#DBEAFE" }]}>
+            <View
+              style={[
+                styles.iconBadge,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(59, 130, 246, 0.2)"
+                    : "#DBEAFE",
+                },
+              ]}
+            >
               <BarChart3 size={16} color="#3B82F6" />
             </View>
-            <Text style={[styles.cardTitle, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>{t.protein}</Text>
+            <Text
+              style={[
+                styles.cardTitle,
+                { color: isDark ? "#F9FAFB" : "#1F2937" },
+              ]}
+            >
+              {t("statistics.protein")}
+            </Text>
           </View>
           <View style={styles.mainValueContainer}>
-            <Text style={[styles.mainValue, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>
+            <Text
+              style={[
+                styles.mainValue,
+                { color: isDark ? "#F9FAFB" : "#1F2937" },
+              ]}
+            >
               {statistics.averageProtein}
             </Text>
-            <Text style={[styles.mainValueUnit, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>g</Text>
+            <Text
+              style={[
+                styles.mainValueUnit,
+                { color: isDark ? "#9CA3AF" : "#6B7280" },
+              ]}
+            >
+              g
+            </Text>
           </View>
-          <Text style={[styles.subLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{t.dailyAvg}</Text>
+          <Text
+            style={[styles.subLabel, { color: isDark ? "#9CA3AF" : "#6B7280" }]}
+          >
+            {t("statistics.dailyAvg")}
+          </Text>
 
           <View style={styles.breakdown}>
-            <View style={[styles.breakdownCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB' }]}>
-              <Text style={[styles.breakdownLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{t.min}</Text>
-              <Text style={[styles.breakdownValue, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>
+            <View
+              style={[
+                styles.breakdownCard,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.05)"
+                    : "#F9FAFB",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.breakdownLabel,
+                  { color: isDark ? "#9CA3AF" : "#6B7280" },
+                ]}
+              >
+                {t("statistics.min")}
+              </Text>
+              <Text
+                style={[
+                  styles.breakdownValue,
+                  { color: isDark ? "#F9FAFB" : "#1F2937" },
+                ]}
+              >
                 {statistics.nutritionBreakdown.protein.min}g
               </Text>
             </View>
-            <View style={[styles.breakdownCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB' }]}>
-              <Text style={[styles.breakdownLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{t.max}</Text>
-              <Text style={[styles.breakdownValue, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>
+            <View
+              style={[
+                styles.breakdownCard,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.05)"
+                    : "#F9FAFB",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.breakdownLabel,
+                  { color: isDark ? "#9CA3AF" : "#6B7280" },
+                ]}
+              >
+                {t("statistics.max")}
+              </Text>
+              <Text
+                style={[
+                  styles.breakdownValue,
+                  { color: isDark ? "#F9FAFB" : "#1F2937" },
+                ]}
+              >
                 {statistics.nutritionBreakdown.protein.max}g
               </Text>
             </View>
-            <View style={[styles.breakdownCard, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#DBEAFE' }]}>
-              <Text style={[styles.breakdownLabel, { color: '#3B82F6' }]}>{t.goal}</Text>
-              <Text style={[styles.breakdownValue, { color: '#3B82F6' }]}>
+            <View
+              style={[
+                styles.breakdownCard,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(59, 130, 246, 0.15)"
+                    : "#DBEAFE",
+                },
+              ]}
+            >
+              <Text style={[styles.breakdownLabel, { color: "#3B82F6" }]}>
+                {t("statistics.goal")}
+              </Text>
+              <Text style={[styles.breakdownValue, { color: "#3B82F6" }]}>
                 {statistics.nutritionBreakdown.protein.goalAverage}g
               </Text>
             </View>
           </View>
 
           {statistics.comparison.proteinDiff !== 0 && (
-            <View style={[styles.comparisonBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6' }]}>
+            <View
+              style={[
+                styles.comparisonBadge,
+                {
+                  backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "#F3F4F6",
+                },
+              ]}
+            >
               {getTrendIcon(
                 statistics.comparison.proteinDiff > 0
                   ? "increasing"
                   : "decreasing",
-                isDark ? '#9CA3AF' : "#6B7280",
-                14
+                isDark ? "#9CA3AF" : "#6B7280",
+                14,
               )}
-              <Text style={[styles.comparisonText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                {formatDiff(statistics.comparison.proteinDiff)}g {t.vsLastMonth}
+              <Text
+                style={[
+                  styles.comparisonText,
+                  { color: isDark ? "#9CA3AF" : "#6B7280" },
+                ]}
+              >
+                {formatDiff(statistics.comparison.proteinDiff)}g{" "}
+                {t("statistics.vsLastMonth")}
               </Text>
             </View>
           )}
@@ -383,24 +584,26 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
             <View style={styles.iconCircle}>
               <Droplet size={14} color="#FFF" />
             </View>
-            <Text style={styles.cardTitle}>{t.hydration}</Text>
+            <Text style={styles.cardTitle}>{t("statistics.hydration")}</Text>
           </View>
           <View style={styles.mainValueContainer}>
             <Text style={styles.mainValue}>{statistics.averageWater}</Text>
-            <Text style={styles.mainValueUnitWhite}>ml</Text>
+            <Text style={styles.mainValueUnitWhite}>{t("statistics.ml")}</Text>
           </View>
-          <Text style={[styles.subLabel, { color: '#BFDBFE' }]}>{t.dailyAvg}</Text>
+          <Text style={[styles.subLabel, { color: "#BFDBFE" }]}>
+            {t("statistics.dailyAvg")}
+          </Text>
 
           <View style={styles.progressBarContainer}>
             <View style={styles.progressBar}>
               <LinearGradient
-                colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)']}
+                colors={["rgba(255,255,255,0.9)", "rgba(255,255,255,0.7)"]}
                 style={[
                   styles.progressFill,
                   {
                     width: `${Math.min(
                       (statistics.averageWater / 2000) * 100,
-                      100
+                      100,
                     )}%`,
                   },
                 ]}
@@ -409,7 +612,8 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
               />
             </View>
             <Text style={styles.progressLabel}>
-              {Math.round((statistics.averageWater / 2000) * 100)}% {t.ofDailyGoal}
+              {Math.round((statistics.averageWater / 2000) * 100)}%{" "}
+              {t("statistics.ofDailyGoal")}
             </Text>
           </View>
 
@@ -420,57 +624,163 @@ const StatisticsCarousel: React.FC<StatisticsCarouselProps> = ({
                   ? "increasing"
                   : "decreasing",
                 "#FFF",
-                14
+                14,
               )}
               <Text style={styles.comparisonText}>
-                {formatDiff(statistics.comparison.waterDiff)}ml {t.vsLastMonth}
+                {formatDiff(statistics.comparison.waterDiff)}
+                {t("statistcs.ml")} {t("statistics.vsLastMonth")}
               </Text>
             </View>
           )}
         </AnimatedCard>
 
         {/* Nutrition Summary Card - Enhanced */}
-        <AnimatedCard style={[styles.lightCard, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
+        <AnimatedCard
+          style={[
+            styles.lightCard,
+            { backgroundColor: isDark ? "#1F2937" : "#FFFFFF" },
+          ]}
+        >
           <View style={styles.cardHeader}>
-            <View style={[styles.iconBadge, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.2)' : "#F3E8FF" }]}>
+            <View
+              style={[
+                styles.iconBadge,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(139, 92, 246, 0.2)"
+                    : "#F3E8FF",
+                },
+              ]}
+            >
               <Sparkles size={16} color="#8B5CF6" />
             </View>
-            <Text style={[styles.cardTitle, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>
-              {t.nutritionSummary}
+            <Text
+              style={[
+                styles.cardTitle,
+                { color: isDark ? "#F9FAFB" : "#1F2937" },
+              ]}
+            >
+              {t("statistics.nutritionSummary")}
             </Text>
           </View>
 
           <View style={styles.macroGrid}>
-            <View style={[styles.macroItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB' }]}>
-              <Text style={[styles.macroLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{t.carbs}</Text>
-              <Text style={[styles.macroValue, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>{statistics.averageCarbs}g</Text>
+            <View
+              style={[
+                styles.macroItem,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.05)"
+                    : "#F9FAFB",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.macroLabel,
+                  { color: isDark ? "#9CA3AF" : "#6B7280" },
+                ]}
+              >
+                {t("statistics.carbs")}
+              </Text>
+              <Text
+                style={[
+                  styles.macroValue,
+                  { color: isDark ? "#F9FAFB" : "#1F2937" },
+                ]}
+              >
+                {statistics.averageCarbs}g
+              </Text>
               <View style={styles.macroBadge}>
-                {getTrendIcon(statistics.macroTrends.carbsTrend, isDark ? '#9CA3AF' : "#6B7280", 14)}
+                {getTrendIcon(
+                  statistics.macroTrends.carbsTrend,
+                  isDark ? "#9CA3AF" : "#6B7280",
+                  14,
+                )}
               </View>
             </View>
-            <View style={[styles.macroItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB' }]}>
-              <Text style={[styles.macroLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{t.fat}</Text>
-              <Text style={[styles.macroValue, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>{statistics.averageFat}g</Text>
+            <View
+              style={[
+                styles.macroItem,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.05)"
+                    : "#F9FAFB",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.macroLabel,
+                  { color: isDark ? "#9CA3AF" : "#6B7280" },
+                ]}
+              >
+                {t("statistics.fat")}
+              </Text>
+              <Text
+                style={[
+                  styles.macroValue,
+                  { color: isDark ? "#F9FAFB" : "#1F2937" },
+                ]}
+              >
+                {statistics.averageFat}g
+              </Text>
               <View style={styles.macroBadge}>
-                {getTrendIcon(statistics.macroTrends.fatTrend, isDark ? '#9CA3AF' : "#6B7280", 14)}
+                {getTrendIcon(
+                  statistics.macroTrends.fatTrend,
+                  isDark ? "#9CA3AF" : "#6B7280",
+                  14,
+                )}
               </View>
             </View>
           </View>
 
-          <View style={[styles.qualitySection, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : '#F5F3FF' }]}>
-            <Text style={[styles.qualityLabel, { color: isDark ? '#A78BFA' : '#7C3AED' }]}>{t.qualityScore}</Text>
+          <View
+            style={[
+              styles.qualitySection,
+              {
+                backgroundColor: isDark ? "rgba(139, 92, 246, 0.1)" : "#F5F3FF",
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.qualityLabel,
+                { color: isDark ? "#A78BFA" : "#7C3AED" },
+              ]}
+            >
+              {t("statistics.qualityScore")}
+            </Text>
             <View style={styles.qualityScore}>
               <Text style={styles.qualityValue}>
                 {statistics.averageQualityScore}
               </Text>
-              <Text style={[styles.qualityMax, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>/10</Text>
+              <Text
+                style={[
+                  styles.qualityMax,
+                  { color: isDark ? "#6B7280" : "#9CA3AF" },
+                ]}
+              >
+                /10
+              </Text>
             </View>
           </View>
 
-          <View style={[styles.mealCountSection, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}>
-            <Calendar size={12} color={isDark ? '#9CA3AF' : "#6B7280"} />
-            <Text style={[styles.mealCountText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-              {statistics.averageMealCount.toFixed(1)} {t.mealsPerDay}
+          <View
+            style={[
+              styles.mealCountSection,
+              { borderTopColor: isDark ? "rgba(255,255,255,0.1)" : "#E5E7EB" },
+            ]}
+          >
+            <Calendar size={12} color={isDark ? "#9CA3AF" : "#6B7280"} />
+            <Text
+              style={[
+                styles.mealCountText,
+                { color: isDark ? "#9CA3AF" : "#6B7280" },
+              ]}
+            >
+              {statistics.averageMealCount.toFixed(1)}{" "}
+              {t("statistics.mealsPerDay")}
             </Text>
           </View>
         </AnimatedCard>

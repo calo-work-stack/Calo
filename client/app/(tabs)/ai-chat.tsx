@@ -28,6 +28,7 @@ import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { chatAPI, nutritionAPI, questionnaireAPI } from "@/src/services/api";
 import i18n from "@/src/i18n";
 import LoadingScreen from "@/components/LoadingScreen";
+import { errorMessageIncludes } from "@/src/utils/errorHandler";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { useSelector } from "react-redux";
@@ -352,12 +353,12 @@ export default function AIChatScreen({
         t("ai_chat.error.serverError") ||
         "Sorry, I couldn't process your message. Please try again.";
 
-      if (error?.name === "AbortError" || error?.message?.includes("timeout")) {
+      if (error?.name === "AbortError" || errorMessageIncludes(error, "timeout")) {
         errorMessage =
           t("ai_chat.error.timeout") ||
           "The request took too long. Please try again.";
       } else if (
-        error?.message?.includes("Network") ||
+        errorMessageIncludes(error, "Network") ||
         error?.code === "ERR_NETWORK" ||
         !error?.response
       ) {
@@ -372,7 +373,7 @@ export default function AIChatScreen({
         errorMessage =
           t("ai_chat.error.serverError") ||
           "Server error. Please try again later.";
-      } else if (error?.message?.includes("Empty response")) {
+      } else if (errorMessageIncludes(error, "Empty response")) {
         errorMessage =
           t("ai_chat.error.emptyResponse") ||
           "Received an empty response. Please try again.";

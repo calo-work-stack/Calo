@@ -7,6 +7,7 @@ import {
   MealAnalysisData,
   QuestionnaireData,
 } from "../types";
+import { errorMessageIncludes } from "../utils/errorHandler";
 
 // ==================== PERFORMANCE OPTIMIZATIONS ====================
 
@@ -450,7 +451,7 @@ export const nutritionAPI = {
   isRetryableError(error: any): boolean {
     return (
       error.code === "ERR_NETWORK" ||
-      error.message?.includes("Network Error") ||
+      errorMessageIncludes(error, "Network Error") ||
       error.response?.status >= 500 ||
       error.code === "ECONNABORTED"
     );

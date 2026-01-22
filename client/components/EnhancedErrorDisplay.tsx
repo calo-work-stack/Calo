@@ -11,6 +11,7 @@ import { AlertTriangle, X, RefreshCw, Info } from "lucide-react-native";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { LinearGradient } from "expo-linear-gradient";
+import { getErrorMessage, errorMessageIncludes, errorMessageIncludesAny } from "@/src/utils/errorHandler";
 
 interface EnhancedErrorDisplayProps {
   visible: boolean;
@@ -64,13 +65,13 @@ export const EnhancedErrorDisplay: React.FC<EnhancedErrorDisplayProps> = ({
       ? "אנא נסה שוב מאוחר יותר"
       : "Please try again later";
 
+    // Use safe error message extraction
+    const safeErrorMessage = getErrorMessage(error);
+
     // Network errors - check first for better error handling
     if (
-      error?.message?.includes("Network") ||
-      error?.message?.includes("network") ||
-      error?.code === "ERR_NETWORK" ||
-      error?.message?.includes("ECONNREFUSED") ||
-      error?.message?.includes("ETIMEDOUT")
+      errorMessageIncludesAny(error, ["Network", "network", "ECONNREFUSED", "ETIMEDOUT"]) ||
+      error?.code === "ERR_NETWORK"
     ) {
       title = isHebrew ? "שגיאת חיבור" : "Connection Error";
       message = isHebrew
@@ -83,7 +84,7 @@ export const EnhancedErrorDisplay: React.FC<EnhancedErrorDisplayProps> = ({
     }
 
     // Check for Hebrew error message in the error object
-    const errorMessage = error?.message || error?.response?.data?.error || "";
+    const errorMessage = safeErrorMessage || error?.response?.data?.error || "";
     const hasHebrewError = /[\u0590-\u05FF]/.test(errorMessage);
 
     // If error message contains Hebrew, use it directly
@@ -104,7 +105,7 @@ export const EnhancedErrorDisplay: React.FC<EnhancedErrorDisplayProps> = ({
     // Timeout errors
     else if (
       error?.code === "ECONNABORTED" ||
-      error?.message?.includes("timeout")
+      errorMessageIncludes(error, "timeout")
     ) {
       title = isHebrew ? "תם הזמן" : "Request Timeout";
       message = isHebrew
@@ -140,7 +141,7 @@ export const EnhancedErrorDisplay: React.FC<EnhancedErrorDisplayProps> = ({
     // Validation errors
     else if (error?.response?.status === 400) {
       title = isHebrew ? "שגיאת אימות נתונים" : "Validation Error";
-      message = error?.response?.data?.error || error?.message || message;
+      message = error?.response?.data?.error || safeErrorMessage || message;
       suggestion = isHebrew
         ? "בדוק את הנתונים שהזנת ונסה שוב"
         : "Check your input and try again";
@@ -148,13 +149,10 @@ export const EnhancedErrorDisplay: React.FC<EnhancedErrorDisplayProps> = ({
 
     // AI/Menu generation specific errors
     else if (
-      error?.message?.includes("ingredients") ||
-      error?.message?.includes("רכיבים") ||
-      error?.message?.includes("menu") ||
-      error?.message?.includes("תפריט")
+      errorMessageIncludesAny(error, ["ingredients", "רכיבים", "menu", "תפריט"])
     ) {
       title = isHebrew ? "שגיאה ביצירת תפריט" : "Menu Generation Failed";
-      message = error.message || message;
+      message = safeErrorMessage || message;
       suggestion = isHebrew
         ? "נסה עם רכיבים שונים או תיאור פשוט יותר. וודא שהרכיבים מתאימים להעדפות התזונה שלך (לדוגמה: טונה אינה צמחונית)."
         : "Try with different ingredients or simpler descriptions. Ensure ingredients match your dietary preferences (e.g., tuna is not vegetarian).";
@@ -162,13 +160,10 @@ export const EnhancedErrorDisplay: React.FC<EnhancedErrorDisplayProps> = ({
 
     // Dietary restriction conflicts
     else if (
-      error?.message?.toLowerCase().includes("vegetarian") ||
-      error?.message?.toLowerCase().includes("dietary") ||
-      error?.message?.includes("צמחוני") ||
-      error?.message?.includes("תזונתי")
+      errorMessageIncludesAny(error, ["vegetarian", "dietary", "צמחוני", "תזונתי"])
     ) {
       title = isHebrew ? "סתירה בהעדפות תזונה" : "Dietary Preference Conflict";
-      message = error.message || message;
+      message = safeErrorMessage || message;
       suggestion = isHebrew
         ? "בדוק שהרכיבים שבחרת מתאימים להעדפות התזונה שלך. לדוגמה: דגים וטונה אינם מתאימים לתזונה צמחונית."
         : "Check that your selected ingredients match your dietary preferences. For example: fish and tuna are not suitable for vegetarian diets.";

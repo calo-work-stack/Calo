@@ -614,7 +614,9 @@ const NutritionCardView: React.FC<{
                 <Text style={styles.centerNumber}>
                   {remainingCalories.toLocaleString()}
                 </Text>
-                <Text style={styles.centerLabel}>Remaining/Exceeded</Text>
+                <Text style={styles.centerLabel}>
+                  {t("home.nutrition.remaining")}
+                </Text>
               </View>
             </View>
 
@@ -631,7 +633,9 @@ const NutritionCardView: React.FC<{
                 <Text style={styles.statNumberBottom}>
                   {card.value.toLocaleString()}
                 </Text>
-                <Text style={styles.statLabelBottom}>Eaten</Text>
+                <Text style={styles.statLabelBottom}>
+                  {t("home.nutrition.eaten")}
+                </Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statColumnBottom}>
@@ -644,7 +648,9 @@ const NutritionCardView: React.FC<{
                   <Flame size={12} color="#FFFFFF" strokeWidth={2.5} />
                 </View>
                 <Text style={styles.statNumberBottom}>{burnedCalories}</Text>
-                <Text style={styles.statLabelBottom}>Burned</Text>
+                <Text style={styles.statLabelBottom}>
+                  {t("home.nutrition.burned")}
+                </Text>
               </View>
             </View>
           </View>
@@ -661,7 +667,9 @@ const NutritionCardView: React.FC<{
                   {t("home.nutrition.waterIntake")}
                 </Text>
                 <Text style={styles.waterSubtitle}>
-                  {currentMl}ml / {targetMl}ml
+                  {currentMl}
+                  {t("statistics.ml")} / {targetMl}
+                  {t("statistics.ml")}
                 </Text>
               </View>
             </View>

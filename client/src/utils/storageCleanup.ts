@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { errorMessageIncludesAny } from "./errorHandler";
 
 // Import optimizedStorage for safe operations, but keep AsyncStorage for getAllKeys
 // which doesn't benefit from optimization
@@ -62,10 +63,7 @@ export class StorageCleanupService {
       console.error(`❌ Failed to store ${key}:`, error);
 
       if (
-        error?.message?.includes("row too big") ||
-        error?.message?.includes("CursorWindow") ||
-        error?.message?.includes("database or disk is full") ||
-        error?.message?.includes("SQLITE_FULL")
+        errorMessageIncludesAny(error, ["row too big", "CursorWindow", "database or disk is full", "SQLITE_FULL"])
       ) {
         console.error("🚨 SQLite storage error detected");
         await this.emergencyCleanup();
@@ -228,13 +226,8 @@ export class StorageCleanupService {
       console.error("🚨 Storage availability check failed:", error);
 
       const isStorageFull =
-        error?.message?.includes("database or disk is full") ||
-        error?.message?.includes("SQLITE_FULL") ||
-        error?.message?.includes("row too big") ||
-        error?.message?.includes("CursorWindow") ||
-        error?.code === 13 ||
-        error?.message?.includes("No space left") ||
-        error?.message?.includes("disk full");
+        errorMessageIncludesAny(error, ["database or disk is full", "SQLITE_FULL", "row too big", "CursorWindow", "No space left", "disk full"]) ||
+        error?.code === 13;
 
       return !isStorageFull;
     }
@@ -249,13 +242,8 @@ export class StorageCleanupService {
     } catch (error: any) {
       console.error("🚨 Database storage test failed:", error);
       return (
-        error?.message?.includes("database or disk is full") ||
-        error?.message?.includes("row too big") ||
-        error?.message?.includes("CursorWindow") ||
-        error?.code === 13 ||
-        error?.message?.includes("SQLITE_FULL") ||
-        error?.message?.includes("disk full") ||
-        error?.message?.includes("No space left")
+        errorMessageIncludesAny(error, ["database or disk is full", "row too big", "CursorWindow", "SQLITE_FULL", "disk full", "No space left"]) ||
+        error?.code === 13
       );
     }
   }
@@ -505,7 +493,7 @@ export class StorageCleanupService {
           }
         } catch (error: any) {
           // If we hit CursorWindow error, mark this item as oversized and remove it
-          if (error?.message?.includes("CursorWindow") || error?.message?.includes("row too big")) {
+          if (errorMessageIncludesAny(error, ["CursorWindow", "row too big"])) {
             console.warn(`🚨 CursorWindow error for key ${key}, marking for removal`);
             largeItems.push({ key, size: this.MAX_ITEM_SIZE * 2 }); // Mark as oversized
 
@@ -656,13 +644,8 @@ export class StorageCleanupService {
       console.error("🚨 Minimal storage test failed:", error);
 
       const isSQLiteError =
-        error?.message?.includes("database or disk is full") ||
-        error?.message?.includes("SQLITE_FULL") ||
-        error?.message?.includes("row too big") ||
-        error?.message?.includes("CursorWindow") ||
-        error?.code === 13 ||
-        error?.message?.includes("No space left") ||
-        error?.message?.includes("disk full");
+        errorMessageIncludesAny(error, ["database or disk is full", "SQLITE_FULL", "row too big", "CursorWindow", "No space left", "disk full"]) ||
+        error?.code === 13;
 
       return !isSQLiteError;
     }

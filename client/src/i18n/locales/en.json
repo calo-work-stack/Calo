@@ -238,7 +238,8 @@
     "welcome": "Welcome",
     "welcome_description": "Welcome to Calo Health! Your personal nutrition companion that helps you track meals, monitor your health goals, and get personalized nutrition recommendations. Start your journey to a healthier lifestyle today.",
     "questionnaire": "Questionnaire",
-    "questionnaire_description": "Complete your health profile to receive personalized nutrition recommendations. This questionnaire helps us understand your goals, lifestyle, and dietary needs."
+    "questionnaire_description": "Complete your health profile to receive personalized nutrition recommendations. This questionnaire helps us understand your goals, lifestyle, and dietary needs.",
+    "dashboard": "Admin Dashboard"
   },
   "home": {
     "welcome": "Welcome",
@@ -344,6 +345,7 @@
     "loading": "Loading history...",
     "greeting": "Good Morning",
     "searchPlaceholder": "Search for meals...",
+    "clearFilters": "Clear Filters",
     "insights": {
       "title": "Your Journey",
       "subtitle": "Keep up the great work!",
@@ -836,6 +838,7 @@
     "g": "g",
     "mg": "mg",
     "ml": "ml",
+    "l": "l",
     "percent": "%",
     "increase_intake": "Increase intake",
     "decrease_intake": "Decrease intake",
@@ -897,7 +900,25 @@
     "keep_tracking": "Keep tracking to unlock achievements!",
     "progress_summary": "Progress Summary",
     "nutrition_averages": "Nutrition Averages",
-    "loading": "Loading statistics..."
+    "loading": "Loading statistics...",
+    "noData": "No statistics available",
+    "startTracking": "Start tracking your meals to see stats",
+    "monthlyProgress": "Monthly Progress",
+    "goalsMet": "Goals Met",
+    "perfectDays": "Perfect Days",
+    "currentStreak": "Current Streak",
+    "daysInRow": "days in a row",
+    "nutritionSummary": "Nutrition Summary",
+    "vsLastMonth": "vs last month",
+    "dailyAvg": "daily average",
+    "kcalDay": "kcal/day average",
+    "min": "Min",
+    "max": "Max",
+    "adherence": "Adherence",
+    "goal": "Goal",
+    "qualityScore": "Quality Score",
+    "mealsPerDay": "meals per day average",
+    "ofDailyGoal": "of daily goal"
   },
   "devices": {
     "title": "Smart Devices",
@@ -1465,7 +1486,7 @@
   "common": {
     "all": "All",
     "of": "of",
-    "unlocked":"Unlocked",
+    "unlocked": "Unlocked",
     "next": "Next",
     "save": "Save",
     "ok": "OK",

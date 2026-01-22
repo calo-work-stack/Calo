@@ -44,6 +44,7 @@ import { api } from "@/src/services/api";
 import { EnhancedErrorDisplay } from "../EnhancedErrorDisplay";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/src/store";
+import { errorMessageIncludesAny } from "@/src/utils/errorHandler";
 
 const { width } = Dimensions.get("window");
 
@@ -324,24 +325,26 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
 
       const response = await api.post(
         "/recommended-menus/generate-with-ingredients",
-        menuData
+        menuData,
+        {
+          timeout: 30000, // 30 second timeout - menu creation is now instant
+        }
       );
 
       if (response.data.success) {
-        Alert.alert(
-          "Success!",
-          "Your personalized menu has been generated successfully!",
-          [
-            {
-              text: "View Menu",
-              onPress: () => {
-                setIsGenerating(false);
-                onCreateMenu(response.data.data);
-                onClose();
-              },
-            },
-          ]
-        );
+        // Close immediately and show the menu
+        setIsGenerating(false);
+        onCreateMenu(response.data.data);
+        onClose();
+
+        // Show a subtle notification that AI is enhancing in background
+        if (response.data.data?.is_generating) {
+          Alert.alert(
+            "Menu Created!",
+            "Your menu is ready! AI is personalizing your recipes in the background - they'll update automatically.",
+            [{ text: "Got it" }]
+          );
+        }
       } else {
         throw new Error(response.data.error || "Failed to generate menu");
       }
@@ -350,15 +353,21 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
 
       // Enhanced error context with network detection
       const isNetworkError =
-        error?.message?.includes("Network") ||
-        error?.message?.includes("network") ||
+        errorMessageIncludesAny(error, ["Network", "network"]) ||
         error?.code === "ERR_NETWORK" ||
         !error?.response;
+
+      // Get proper error message
+      let errorMessage = error?.response?.data?.error || error?.message || "Failed to generate menu";
+      if (isNetworkError) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      }
 
       // Provide context-specific error information
       const contextualError = {
         ...error,
-        message: isNetworkError,
+        message: errorMessage,
+        isNetworkError,
         ingredients: selectedIngredients.map((i) => i.name),
         preferences: menuPreferences,
       };
@@ -1194,154 +1203,165 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 18,
     paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0, 0, 0, 0.05)",
+    borderBottomWidth: 0,
   },
   closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.05)",
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: -0.5,
   },
   stepIndicator: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 20,
-    gap: 8,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    gap: 4,
   },
   stepIndicatorContainer: {
     flexDirection: "row",
     alignItems: "center",
   },
   stepDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
   },
   stepLine: {
-    width: 30,
-    height: 2,
-    marginHorizontal: 8,
+    width: 40,
+    height: 3,
+    marginHorizontal: 6,
+    borderRadius: 2,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
   stepContent: {
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
   stepTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "800",
-    marginBottom: 8,
-    letterSpacing: -0.5,
+    marginBottom: 10,
+    letterSpacing: -0.8,
   },
   stepDescription: {
     fontSize: 16,
-    marginBottom: 24,
-    lineHeight: 24,
-    opacity: 0.8,
+    marginBottom: 28,
+    lineHeight: 26,
+    opacity: 0.7,
   },
   costDisplay: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    gap: 8,
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 20,
+    gap: 12,
   },
   costText: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginBottom: 20,
-    gap: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 16,
+    marginBottom: 24,
+    gap: 14,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
+    fontWeight: "500",
   },
   sectionLabel: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 12,
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 14,
+    letterSpacing: -0.3,
+    textTransform: "uppercase",
+    opacity: 0.6,
   },
   ingredientsList: {
-    maxHeight: 250,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
-    borderRadius: 8,
-    padding: 8,
+    maxHeight: 280,
+    marginBottom: 24,
+    borderWidth: 0,
+    borderRadius: 16,
+    padding: 4,
   },
   ingredientItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 8,
+    padding: 18,
+    borderRadius: 16,
+    borderWidth: 2,
+    marginBottom: 10,
   },
   ingredientInfo: {
     flex: 1,
   },
   ingredientName: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
+    fontSize: 17,
+    fontWeight: "700",
+    marginBottom: 6,
+    letterSpacing: -0.3,
   },
   ingredientDetails: {
     fontSize: 14,
+    fontWeight: "500",
+    opacity: 0.7,
   },
   customIngredientContainer: {
     flexDirection: "row",
-    gap: 12,
-    marginBottom: 20,
+    gap: 14,
+    marginBottom: 24,
   },
   customIngredientInput: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderWidth: 2,
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
     fontSize: 16,
+    fontWeight: "500",
   },
   addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
   },
   selectedIngredients: {
-    gap: 8,
-    marginBottom: 20,
+    gap: 10,
+    marginBottom: 24,
   },
   selectedChip: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
   },
   selectedChipContent: {
     flex: 1,
@@ -1390,46 +1410,49 @@ const styles = StyleSheet.create({
   optionsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
-    marginBottom: 24,
+    gap: 14,
+    marginBottom: 28,
   },
   optionCard: {
-    width: (width - 60) / 2,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
+    width: (width - 66) / 2,
+    padding: 20,
+    borderRadius: 20,
+    borderWidth: 2,
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
   optionEmoji: {
-    fontSize: 24,
+    fontSize: 32,
   },
   optionText: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
     textAlign: "center",
+    letterSpacing: -0.3,
   },
   optionDescription: {
-    fontSize: 11,
+    fontSize: 12,
     textAlign: "center",
-    lineHeight: 14,
+    lineHeight: 16,
+    opacity: 0.7,
   },
   durationContainer: {
     flexDirection: "row",
-    gap: 12,
-    marginBottom: 24,
+    gap: 14,
+    marginBottom: 28,
   },
   durationOption: {
     flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
+    padding: 20,
+    borderRadius: 20,
+    borderWidth: 2,
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
   durationText: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
   budgetInputContainer: {
     marginBottom: 24,
@@ -1468,79 +1491,81 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   summaryCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    padding: 20,
+    borderRadius: 20,
+    marginBottom: 14,
   },
   summaryTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    opacity: 0.6,
   },
   summaryValue: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: "600",
   },
   summaryDetail: {
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 13,
+    marginTop: 4,
+    opacity: 0.7,
   },
   generateButton: {
-    borderRadius: 16,
-    marginTop: 20,
+    borderRadius: 24,
+    marginTop: 28,
     overflow: "hidden",
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    elevation: 12,
   },
   generateButtonGradient: {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 20,
-    paddingHorizontal: 24,
-    gap: 8,
+    paddingVertical: 24,
+    paddingHorizontal: 32,
+    gap: 10,
   },
   generateButtonText: {
     color: "#ffffff",
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "800",
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   generateButtonSubtext: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 13,
-    fontWeight: "500",
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 14,
+    fontWeight: "600",
   },
   navigation: {
     flexDirection: "row",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0, 0, 0, 0.1)",
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderTopWidth: 0,
+    gap: 12,
   },
   navButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
+    paddingHorizontal: 28,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 0,
   },
   navButtonText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#ffffff",
+    letterSpacing: -0.3,
   },
   // Budget reminder styles
   budgetReminder: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 16,
+    padding: 18,
+    borderRadius: 18,
+    borderWidth: 2,
+    marginBottom: 20,
   },
   budgetReminderContent: {
     flexDirection: "row",
@@ -1619,49 +1644,57 @@ const styles = StyleSheet.create({
   summaryIndicator: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 8,
-    gap: 10,
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 10,
+    gap: 14,
   },
   summaryIndicatorIcon: {
-    fontSize: 20,
+    fontSize: 24,
   },
   summaryIndicatorContent: {
     flex: 1,
   },
   summaryIndicatorLabel: {
     fontSize: 12,
-    fontWeight: "500",
-    marginBottom: 2,
+    fontWeight: "600",
+    marginBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    opacity: 0.6,
   },
   summaryIndicatorValue: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
   summaryIndicatorCheck: {
     marginLeft: "auto",
   },
   // Preferences confirmation card
   preferencesConfirmCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 12,
-    marginBottom: 8,
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 16,
+    marginBottom: 12,
   },
   preferencesConfirmTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    marginBottom: 12,
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 16,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    opacity: 0.6,
   },
   preferencesConfirmItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
-    gap: 10,
+    marginBottom: 14,
+    gap: 14,
   },
   preferencesConfirmText: {
-    fontSize: 14,
+    fontSize: 15,
     flex: 1,
+    fontWeight: "500",
   },
 });

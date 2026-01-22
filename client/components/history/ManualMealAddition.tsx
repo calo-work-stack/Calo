@@ -142,7 +142,7 @@ export default function ManualMealAddition({
       if (status !== "granted") {
         Alert.alert(
           t("common.error"),
-          "Sorry, we need camera roll permissions to make this work!"
+          "Sorry, we need camera roll permissions to make this work!",
         );
         return false;
       }
@@ -210,7 +210,7 @@ export default function ManualMealAddition({
           { text: "Choose from Library", onPress: pickImage },
           { text: "Cancel", style: "cancel" },
         ],
-        { cancelable: true }
+        { cancelable: true },
       );
     }
   };
@@ -224,7 +224,7 @@ export default function ManualMealAddition({
     if (!mealData.mealName.trim() || !mealData.calories.trim()) {
       Alert.alert(
         t("common.error"),
-        t("history.manualMeal.error.nameAndCaloriesRequired")
+        t("history.manualMeal.error.nameAndCaloriesRequired"),
       );
       return;
     }
@@ -233,7 +233,7 @@ export default function ManualMealAddition({
     if (isNaN(caloriesNum) || caloriesNum < 0) {
       Alert.alert(
         t("common.error"),
-        t("history.manualMeal.error.invalidCalories")
+        t("history.manualMeal.error.invalidCalories"),
       );
       return;
     }
@@ -265,7 +265,7 @@ export default function ManualMealAddition({
       if (response.status === 200 && response.data.success) {
         Alert.alert(
           t("common.success"),
-          t("history.manualMeal.success.mealAdded")
+          t("history.manualMeal.success.mealAdded"),
         );
         setMealData({
           mealName: "",
@@ -300,7 +300,7 @@ export default function ManualMealAddition({
   };
 
   const selectedPeriod = MEAL_PERIODS.find(
-    (p) => p.value === mealData.mealPeriod
+    (p) => p.value === mealData.mealPeriod,
   );
 
   return (
@@ -457,10 +457,7 @@ export default function ManualMealAddition({
                         style={styles.periodChipWrapper}
                       >
                         {isSelected ? (
-                          <LinearGradient
-                            colors={period.gradient}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
+                          <View
                             style={styles.periodChipGradient}
                           >
                             <Text style={styles.periodEmoji}>
@@ -469,7 +466,7 @@ export default function ManualMealAddition({
                             <Text style={styles.periodTextSelected}>
                               {t(period.label)}
                             </Text>
-                          </LinearGradient>
+                          </View>
                         ) : (
                           <View
                             style={[
@@ -529,7 +526,7 @@ export default function ManualMealAddition({
                 <Text
                   style={[styles.caloriesUnit, { color: colors.textSecondary }]}
                 >
-                  kcal
+                  {t("history.kcal")}
                 </Text>
               </View>
             </View>

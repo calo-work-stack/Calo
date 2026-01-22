@@ -289,8 +289,65 @@ export class calendarStatsService {
       return stats;
     } catch (error) {
       console.error("💥 Error calculating enhanced statistics:", error);
-      throw new Error("Failed to calculate enhanced statistics");
+      // Return default stats instead of throwing to keep calendar functional
+      console.log("⚠️ Returning default statistics due to error");
+      return this.getDefaultStats();
     }
+  }
+
+  /**
+   * Returns default empty statistics when database is unavailable
+   */
+  private static getDefaultStats(): EnhancedCalendarStats {
+    return {
+      monthlyProgress: 0,
+      streakDays: 0,
+      totalGoalDays: 0,
+      totalDays: 0,
+      perfectDays: 0,
+      averageCalories: 0,
+      averageProtein: 0,
+      averageCarbs: 0,
+      averageFat: 0,
+      averageWater: 0,
+      averageQualityScore: 0,
+      averageMealCount: 0,
+      nutritionBreakdown: {
+        calories: { average: 0, min: 0, max: 0, total: 0, goalAverage: 2000, adherencePercent: 0 },
+        protein: { average: 0, min: 0, max: 0, total: 0, goalAverage: 150, adherencePercent: 0 },
+        carbs: { average: 0, min: 0, max: 0, total: 0, goalAverage: 250, adherencePercent: 0 },
+        fat: { average: 0, min: 0, max: 0, total: 0, goalAverage: 67, adherencePercent: 0 },
+        water: { average: 0, min: 0, max: 0, total: 0, dailyGoal: 2000, adherencePercent: 0 },
+      },
+      macroTrends: {
+        caloriesTrend: "stable",
+        proteinTrend: "stable",
+        carbsTrend: "stable",
+        fatTrend: "stable",
+        waterTrend: "stable",
+        overallTrend: "stable",
+      },
+      bestWeek: "No data available",
+      challengingWeek: "No data available",
+      weeklyInsights: {
+        bestWeekDetails: null as any,
+        challengingWeekDetails: null as any,
+        allWeeks: [],
+      },
+      improvementPercent: 0,
+      motivationalMessage: "Start tracking your meals to see progress!",
+      gamificationBadges: [],
+      totalPoints: 0,
+      comparison: {
+        caloriesDiff: 0,
+        proteinDiff: 0,
+        carbsDiff: 0,
+        fatDiff: 0,
+        waterDiff: 0,
+        progressDiff: 0,
+        streakDiff: 0,
+      },
+    };
   }
 
   private static processDailyData(

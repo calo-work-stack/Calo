@@ -1,6 +1,57 @@
 import { TFunction } from 'i18next';
 import { Alert, Platform } from 'react-native';
 
+/**
+ * Safely get error message from any error type
+ * Prevents "error?.message?.includes is not a function" errors
+ */
+export function getErrorMessage(error: unknown): string {
+  if (error === null || error === undefined) {
+    return "Unknown error";
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message || "Unknown error";
+  }
+
+  if (typeof error === "object") {
+    const errorObj = error as Record<string, unknown>;
+    if (typeof errorObj.message === "string") {
+      return errorObj.message;
+    }
+    if (typeof errorObj.error === "string") {
+      return errorObj.error;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return "Unknown error object";
+    }
+  }
+
+  return String(error);
+}
+
+/**
+ * Safely check if error message includes a substring
+ */
+export function errorMessageIncludes(error: unknown, substring: string): boolean {
+  const message = getErrorMessage(error);
+  return message.toLowerCase().includes(substring.toLowerCase());
+}
+
+/**
+ * Safely check if error message includes any of the substrings
+ */
+export function errorMessageIncludesAny(error: unknown, substrings: string[]): boolean {
+  const message = getErrorMessage(error).toLowerCase();
+  return substrings.some((s) => message.includes(s.toLowerCase()));
+}
+
 export interface AppError {
   code: string;
   message: string;

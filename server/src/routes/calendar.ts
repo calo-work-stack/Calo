@@ -119,6 +119,10 @@ router.get(
       });
     } catch (error) {
       console.error("💥 Get enhanced statistics error:", error);
+      // Log full error stack for debugging
+      if (error instanceof Error && error.stack) {
+        console.error("📋 Error stack:", error.stack);
+      }
       const message =
         error instanceof Error
           ? error.message
@@ -126,6 +130,10 @@ router.get(
       res.status(500).json({
         success: false,
         error: message,
+        // Include debug info in development
+        ...(process.env.NODE_ENV === "development" && {
+          debug: error instanceof Error ? error.stack : undefined,
+        }),
       });
     }
   }

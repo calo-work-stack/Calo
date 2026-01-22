@@ -542,22 +542,9 @@ router.post("/", authenticateToken, async (req: AuthRequest, res) => {
       });
     }
 
-    // IMPORTANT: Create/update daily goals on EVERY questionnaire save (new or edit)
-    // This ensures goals reflect the latest questionnaire answers
-    try {
-      console.log(
-        "📊 Creating/updating daily goals after questionnaire save..."
-      );
-      const goals = await DailyGoalsService.createOrUpdateDailyGoals(userId);
-      console.log("✅ Daily goals created/updated successfully:", goals);
-    } catch (goalError) {
-      console.error("⚠️  Failed to create/update daily goals:", goalError);
-      // Don't fail the questionnaire save if goal creation fails
-    }
-
     console.log("✅ Questionnaire saved successfully");
 
-    // Send response immediately
+    // Send response immediately - no blocking operations before this
     res.status(200).json({
       success: true,
       message: existingQuestionnaire
@@ -567,6 +554,25 @@ router.post("/", authenticateToken, async (req: AuthRequest, res) => {
         ...savedQuestionnaire,
         meals_per_day: savedQuestionnaire.meals_per_day || 3,
       },
+    });
+
+    // ============================================================
+    // ALL BACKGROUND TASKS BELOW - Response already sent to user
+    // ============================================================
+
+    // Create/update daily goals in background (non-blocking)
+    // This ensures goals reflect the latest questionnaire answers without blocking the user
+    setImmediate(async () => {
+      try {
+        console.log(
+          "📊 Creating/updating daily goals in background after questionnaire save..."
+        );
+        const goals = await DailyGoalsService.createOrUpdateDailyGoals(userId);
+        console.log("✅ Daily goals created/updated successfully:", goals);
+      } catch (goalError) {
+        console.error("⚠️  Failed to create/update daily goals:", goalError);
+        // Log but don't fail - this runs in background
+      }
     });
 
     // Generate initial recommended menu in background (non-blocking) - only for new questionnaires

@@ -37,16 +37,7 @@ interface WaterIntakeCardProps {
   onAddVolume?: (mlAmount: number) => void;
   disabled?: boolean;
 }
-
 // Bottle size options in ml
-const BOTTLE_OPTIONS = [
-  { ml: 250, label: "250ml", size: "xs" },
-  { ml: 500, label: "500ml", size: "sm" },
-  { ml: 750, label: "750ml", size: "md" },
-  { ml: 1000, label: "1L", size: "lg" },
-  { ml: 1500, label: "1.5L", size: "xl" },
-  { ml: 2000, label: "2L", size: "xxl" },
-];
 
 const ML_PER_CUP = 250;
 
@@ -61,6 +52,14 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
 }) => {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
+  const BOTTLE_OPTIONS = [
+    { ml: 250, label: `250${t("statistics.ml")}`, size: "xs" },
+    { ml: 500, label: `500${t("statistics.ml")}`, size: "sm" },
+    { ml: 750, label: `750${t("statistics.ml")}`, size: "md" },
+    { ml: 1000, label: `1${t("statistics.l")}`, size: "lg" },
+    { ml: 1500, label: `1.5${t("statistics.l")}`, size: "xl" },
+    { ml: 2000, label: `2${t("statistics.l")}`, size: "xxl" },
+  ];
   const [showBottleModal, setShowBottleModal] = useState(false);
   const [selectedBottle, setSelectedBottle] = useState<number | null>(null);
 
@@ -132,7 +131,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
     setSelectedBottle(mlAmount);
     addButtonScale.value = withSequence(
       withTiming(0.9, { duration: 100 }),
-      withSpring(1, { damping: 15 })
+      withSpring(1, { damping: 15 }),
     );
 
     const cupsToAdd = Math.ceil(mlAmount / ML_PER_CUP);
@@ -482,12 +481,12 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
       size === "xs"
         ? 32
         : size === "sm"
-        ? 36
-        : size === "md"
-        ? 40
-        : size === "lg"
-        ? 44
-        : 48;
+          ? 36
+          : size === "md"
+            ? 40
+            : size === "lg"
+              ? 44
+              : 48;
     return (
       <GlassWater size={iconSize} color={colors.primary} strokeWidth={2} />
     );
@@ -532,7 +531,9 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
                 <Text style={styles.cupsLabel}>{t("water.cups")}</Text>
               </View>
               <Text style={styles.mlText}>
-                {currentMl.toLocaleString()} ml / {targetMl.toLocaleString()} ml
+                {currentMl.toLocaleString()} {t("statistics.ml")} /{" "}
+                {targetMl.toLocaleString()}
+                {t("statistics.ml")}
               </Text>
             </View>
             <View style={styles.percentageContainer}>
@@ -568,7 +569,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
               activeOpacity={0.7}
             >
               <GlassWater size={26} color={colors.text} strokeWidth={2} />
-              <Text style={styles.quickAddText}>500ml</Text>
+              <Text style={styles.quickAddText}>500{t("statistics.ml")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickAddButton}
@@ -577,7 +578,7 @@ const WaterIntakeCard: React.FC<WaterIntakeCardProps> = ({
               activeOpacity={0.7}
             >
               <GlassWater size={30} color={colors.text} strokeWidth={2} />
-              <Text style={styles.quickAddText}>750ml</Text>
+              <Text style={styles.quickAddText}>750{t("statistics.ml")}</Text>
             </TouchableOpacity>
           </View>
         </View>

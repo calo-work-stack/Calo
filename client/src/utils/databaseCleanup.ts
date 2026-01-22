@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { errorMessageIncludesAny } from "./errorHandler";
 
 interface StorageInfo {
   totalSize: number;
@@ -76,8 +77,7 @@ export class DatabaseCleanupService {
       console.error("Error getting storage info:", error);
 
       // If even getting keys fails, try emergency cleanup
-      if (error?.message?.includes("CursorWindow") ||
-          error?.message?.includes("row too big")) {
+      if (errorMessageIncludesAny(error, ["CursorWindow", "row too big"])) {
         console.log("🚨 CursorWindow error detected, running emergency cleanup");
         await this.emergencyCleanup();
       }
@@ -368,8 +368,7 @@ export const initializeStorageCleanup = async (): Promise<void> => {
     console.error("Error initializing storage cleanup:", error);
 
     // If we hit CursorWindow error, try more aggressive cleanup
-    if (error?.message?.includes("CursorWindow") ||
-        error?.message?.includes("row too big")) {
+    if (errorMessageIncludesAny(error, ["CursorWindow", "row too big"])) {
       console.log("🚨 CursorWindow error at startup, running aggressive cleanup");
     }
 

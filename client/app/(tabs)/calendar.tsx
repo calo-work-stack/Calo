@@ -81,7 +81,7 @@ const AnimatedDayCell = React.memo(
 
       const prog = getProgressPercentage(
         dayData.calories_actual,
-        dayData.calories_goal
+        dayData.calories_goal,
       );
       const events = dayData.events.length > 0;
       const data = prog > 0;
@@ -152,12 +152,12 @@ const AnimatedDayCell = React.memo(
                 color: isToday
                   ? primaryColor
                   : hasData
-                  ? isDark
-                    ? "#F9FAFB"
-                    : "#1F2937"
-                  : isDark
-                  ? "#6B7280"
-                  : "#9CA3AF",
+                    ? isDark
+                      ? "#F9FAFB"
+                      : "#1F2937"
+                    : isDark
+                      ? "#6B7280"
+                      : "#9CA3AF",
                 fontWeight: isToday ? "700" : "600",
               },
             ]}
@@ -209,7 +209,7 @@ const AnimatedDayCell = React.memo(
       prevProps.isDark === nextProps.isDark &&
       prevProps.primaryColor === nextProps.primaryColor
     );
-  }
+  },
 );
 
 const { width } = Dimensions.get("window");
@@ -256,7 +256,10 @@ export default function CalendarScreen() {
   const { t } = useTranslation();
 
   // Create dynamic styles based on theme
-  const dynamicStyles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const dynamicStyles = useMemo(
+    () => createStyles(colors, isDark),
+    [colors, isDark],
+  );
 
   useEffect(() => {
     console.log("🔄 [Calendar] Date changed, loading data...");
@@ -303,7 +306,7 @@ export default function CalendarScreen() {
       if (calendarResult.status === "rejected") {
         console.error(
           "❌ [Calendar] Calendar data failed:",
-          calendarResult.reason
+          calendarResult.reason,
         );
       } else {
         console.log("✅ [Calendar] Calendar data loaded successfully");
@@ -312,7 +315,7 @@ export default function CalendarScreen() {
       if (statsResult.status === "rejected") {
         console.warn(
           "⚠️ [Calendar] Stats failed (non-critical):",
-          statsResult.reason
+          statsResult.reason,
         );
       } else {
         console.log("✅ [Calendar] Statistics loaded successfully");
@@ -321,7 +324,7 @@ export default function CalendarScreen() {
       if (enhancedResult.status === "rejected") {
         console.warn(
           "⚠️ [Calendar] Enhanced stats failed (non-critical):",
-          enhancedResult.reason
+          enhancedResult.reason,
         );
       } else {
         console.log("✅ [Calendar] Enhanced statistics loaded successfully");
@@ -351,7 +354,7 @@ export default function CalendarScreen() {
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(
-        day
+        day,
       ).padStart(2, "0")}`;
       const dayData = calendarData[dateStr] || {
         date: dateStr,
@@ -382,7 +385,7 @@ export default function CalendarScreen() {
   const getDayColor = (dayData: DayData) => {
     const caloriesProgress = getProgressPercentage(
       dayData.calories_actual,
-      dayData.calories_goal
+      dayData.calories_goal,
     );
 
     if (caloriesProgress >= 110) return colors.error;
@@ -394,7 +397,7 @@ export default function CalendarScreen() {
   const getDayStatus = (dayData: DayData) => {
     const caloriesProgress = getProgressPercentage(
       dayData.calories_actual,
-      dayData.calories_goal
+      dayData.calories_goal,
     );
 
     if (caloriesProgress >= 100) return t("calendar.excellent");
@@ -408,7 +411,7 @@ export default function CalendarScreen() {
       newDate.setMonth(newDate.getMonth() + direction);
       setCurrentDate(newDate);
     },
-    [currentDate]
+    [currentDate],
   );
 
   const handleMonthSelect = useCallback(
@@ -418,7 +421,7 @@ export default function CalendarScreen() {
       setCurrentDate(newDate);
       setShowMonthPicker(false);
     },
-    [currentDate]
+    [currentDate],
   );
 
   const handleYearSelect = useCallback(
@@ -428,7 +431,7 @@ export default function CalendarScreen() {
       setCurrentDate(newDate);
       setShowYearPicker(false);
     },
-    [currentDate]
+    [currentDate],
   );
 
   const generateYearRange = () => {
@@ -485,7 +488,7 @@ export default function CalendarScreen() {
     try {
       if (isEditingEvent && selectedEvent) {
         await dispatch(
-          deleteEvent({ eventId: selectedEvent.id, date: selectedEvent.date })
+          deleteEvent({ eventId: selectedEvent.id, date: selectedEvent.date }),
         ).unwrap();
       }
 
@@ -495,7 +498,7 @@ export default function CalendarScreen() {
           title: eventTitle.trim(),
           type: eventType,
           description: eventDescription.trim() || undefined,
-        })
+        }),
       ).unwrap();
 
       setShowEventModal(false);
@@ -504,12 +507,14 @@ export default function CalendarScreen() {
         t("common.success"),
         isEditingEvent
           ? t("calendar.events.success")
-          : t("calendar.events.success")
+          : t("calendar.events.success"),
       );
     } catch (error) {
       Alert.alert(
         t("common.error"),
-        isEditingEvent ? t("calendar.events.error") : t("calendar.events.error")
+        isEditingEvent
+          ? t("calendar.events.error")
+          : t("calendar.events.error"),
       );
     }
   };
@@ -529,14 +534,14 @@ export default function CalendarScreen() {
               setShowEventDetailsModal(false);
               Alert.alert(
                 t("common.success"),
-                t("calendar.events.deleteSuccess")
+                t("calendar.events.deleteSuccess"),
               );
             } catch (error) {
               Alert.alert(t("common.error"), t("calendar.events.deleteError"));
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -545,13 +550,13 @@ export default function CalendarScreen() {
     const totalDays = days.length;
     const successfulDays = days.filter(
       (day) =>
-        getProgressPercentage(day.calories_actual, day.calories_goal) >= 100
+        getProgressPercentage(day.calories_actual, day.calories_goal) >= 100,
     ).length;
     const averageCompletion =
       days.reduce(
         (sum, day) =>
           sum + getProgressPercentage(day.calories_actual, day.calories_goal),
-        0
+        0,
       ) / totalDays;
 
     let currentStreak = 0;
@@ -624,7 +629,7 @@ export default function CalendarScreen() {
 
     const elapsedDays =
       Math.floor(
-        (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+        (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
       ) + 1;
     const progress = Math.min((elapsedDays / menuDuration) * 100, 100);
     setMenuProgress(progress);
@@ -651,19 +656,19 @@ export default function CalendarScreen() {
     (dayData: DayData) => {
       handleDayPress(dayData);
     },
-    [handleDayPress]
+    [handleDayPress],
   );
 
   const handleDayCellLongPress = useCallback(
     (date: string) => {
       handleAddEvent(date);
     },
-    [handleAddEvent]
+    [handleAddEvent],
   );
 
   const selectedDayDate = useMemo(
     () => selectedDay?.date || null,
-    [selectedDay?.date]
+    [selectedDay?.date],
   );
 
   const todayString = useMemo(() => {
@@ -703,7 +708,7 @@ export default function CalendarScreen() {
       handleDayCellLongPress,
       colors.primary,
       isDark,
-    ]
+    ],
   );
 
   const renderWeekDays = () => {
@@ -714,7 +719,11 @@ export default function CalendarScreen() {
       <View
         style={[
           styles.sleekWeekDaysContainer,
-          { borderBottomColor: isDark ? "rgba(255,255,255,0.08)" : colors.border },
+          {
+            borderBottomColor: isDark
+              ? "rgba(255,255,255,0.08)"
+              : colors.border,
+          },
         ]}
       >
         {dayNames.map((day, index) => (
@@ -722,7 +731,11 @@ export default function CalendarScreen() {
             <Text
               style={[
                 styles.sleekDayHeaderText,
-                { color: isDark ? "rgba(255,255,255,0.5)" : colors.textSecondary },
+                {
+                  color: isDark
+                    ? "rgba(255,255,255,0.5)"
+                    : colors.textSecondary,
+                },
               ]}
             >
               {day}
@@ -745,14 +758,18 @@ export default function CalendarScreen() {
                 🏆 {t("calendar.recentAchievements")}
               </Text>
               <TouchableOpacity onPress={() => setShowBadgesModal(true)}>
-                <Text style={dynamicStyles.seeAllText}>{t("calendar.seeAll")}</Text>
+                <Text style={dynamicStyles.seeAllText}>
+                  {t("calendar.seeAll")}
+                </Text>
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {statistics.gamificationBadges.slice(0, 5).map((badge) => (
                 <View key={badge.id} style={dynamicStyles.badgeItem}>
                   <View style={dynamicStyles.badgeIcon}>
-                    <Text style={dynamicStyles.badgeIconText}>{badge.icon}</Text>
+                    <Text style={dynamicStyles.badgeIconText}>
+                      {badge.icon}
+                    </Text>
                   </View>
                   <Text style={dynamicStyles.badgeName}>{badge.name}</Text>
                 </View>
@@ -799,23 +816,16 @@ export default function CalendarScreen() {
     >
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Modern Gradient Header */}
-        <View
-          style={styles.modernHeader}
-        >
+        <View style={styles.modernHeader}>
           <View style={styles.headerTop}>
             <View style={styles.headerIconContainer}>
-              <CalendarIcon size={32} color="#FFFFFF" />
+              <CalendarIcon size={32} color={colors.text} />
             </View>
             <View style={styles.headerTextContainer}>
-              <Text style={[styles.headerTitle, { color: "#FFFFFF" }]}>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>
                 {t("calendar.title")}
               </Text>
-              <Text
-                style={[
-                  styles.headerSubtitle,
-                  { color: "rgba(255, 255, 255, 0.9)" },
-                ]}
-              >
+              <Text style={[styles.headerSubtitle, { color: colors.text }]}>
                 {t("calendar.subtitle")}
               </Text>
             </View>
@@ -855,10 +865,7 @@ export default function CalendarScreen() {
               {monthNames[currentDate.getMonth()]}
             </Text>
             <Text
-              style={[
-                styles.sleekYearText,
-                { color: colors.textSecondary },
-              ]}
+              style={[styles.sleekYearText, { color: colors.textSecondary }]}
             >
               {currentDate.getFullYear()}
             </Text>
@@ -909,33 +916,65 @@ export default function CalendarScreen() {
           <View style={styles.sleekLegendContainer}>
             <View style={styles.sleekLegendItem}>
               <View
-                style={[styles.sleekLegendDot, { backgroundColor: colors.success }]}
+                style={[
+                  styles.sleekLegendDot,
+                  { backgroundColor: colors.success },
+                ]}
               />
-              <Text style={[styles.sleekLegendText, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.sleekLegendText,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 {t("calendar.goalMet")}
               </Text>
             </View>
             <View style={styles.sleekLegendItem}>
               <View
-                style={[styles.sleekLegendDot, { backgroundColor: colors.warning }]}
+                style={[
+                  styles.sleekLegendDot,
+                  { backgroundColor: colors.warning },
+                ]}
               />
-              <Text style={[styles.sleekLegendText, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.sleekLegendText,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 70-99%
               </Text>
             </View>
             <View style={styles.sleekLegendItem}>
               <View
-                style={[styles.sleekLegendDot, { backgroundColor: colors.error }]}
+                style={[
+                  styles.sleekLegendDot,
+                  { backgroundColor: colors.error },
+                ]}
               />
-              <Text style={[styles.sleekLegendText, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.sleekLegendText,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 {"<70%"}
               </Text>
             </View>
             <View style={styles.sleekLegendItem}>
               <View
-                style={[styles.sleekLegendDot, { backgroundColor: colors.muted }]}
+                style={[
+                  styles.sleekLegendDot,
+                  { backgroundColor: colors.muted },
+                ]}
               />
-              <Text style={[styles.sleekLegendText, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.sleekLegendText,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 {t("common.no_data")}
               </Text>
             </View>
@@ -947,7 +986,11 @@ export default function CalendarScreen() {
           <View style={dynamicStyles.section}>
             <View style={dynamicStyles.dayDetailsContainer}>
               <LinearGradient
-                colors={isDark ? [colors.surface, colors.surfaceVariant] : [colors.card, colors.surfaceVariant]}
+                colors={
+                  isDark
+                    ? [colors.surface, colors.surfaceVariant]
+                    : [colors.card, colors.surfaceVariant]
+                }
                 style={styles.dayDetailsGradient}
               >
                 {/* Elegant Header */}
@@ -969,10 +1012,20 @@ export default function CalendarScreen() {
                       </Text>
                     </View>
                     <View style={styles.dayDetailsHeaderText}>
-                      <Text style={[styles.dayDetailsMonthText, { color: colors.text }]}>
+                      <Text
+                        style={[
+                          styles.dayDetailsMonthText,
+                          { color: colors.text },
+                        ]}
+                      >
                         {monthNames[new Date(selectedDay.date).getMonth()]}
                       </Text>
-                      <Text style={[styles.dayDetailsYearText, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          styles.dayDetailsYearText,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         {new Date(selectedDay.date).getFullYear()}
                       </Text>
                     </View>
@@ -985,7 +1038,7 @@ export default function CalendarScreen() {
                   >
                     {getProgressPercentage(
                       selectedDay.calories_actual,
-                      selectedDay.calories_goal
+                      selectedDay.calories_goal,
                     ) >= 100 ? (
                       <CheckCircle size={20} color={colors.success} />
                     ) : (
@@ -1005,7 +1058,9 @@ export default function CalendarScreen() {
                 {/* Metrics Grid */}
                 <View style={styles.dayDetailsMetrics}>
                   {/* Daily Goal Card */}
-                  <View style={[dynamicStyles.metricCard, styles.metricCardLarge]}>
+                  <View
+                    style={[dynamicStyles.metricCard, styles.metricCardLarge]}
+                  >
                     <LinearGradient
                       colors={[colors.primary, colors.emerald600]}
                       style={styles.metricGradient}
@@ -1031,7 +1086,7 @@ export default function CalendarScreen() {
                                 (selectedDay.calories_actual /
                                   selectedDay.calories_goal) *
                                   100,
-                                100
+                                100,
                               )}%`,
                             },
                           ]}
@@ -1041,7 +1096,9 @@ export default function CalendarScreen() {
                   </View>
 
                   {/* Meals Progress Card */}
-                  <View style={[dynamicStyles.metricCard, styles.metricCardLarge]}>
+                  <View
+                    style={[dynamicStyles.metricCard, styles.metricCardLarge]}
+                  >
                     <LinearGradient
                       colors={[colors.error, "#DC2626"]}
                       style={styles.metricGradient}
@@ -1064,7 +1121,7 @@ export default function CalendarScreen() {
                                 (selectedDay.meal_count /
                                   (user?.meals_per_day || 4)) *
                                   100,
-                                100
+                                100,
                               )}%`,
                             },
                           ]}
@@ -1084,14 +1141,24 @@ export default function CalendarScreen() {
                       >
                         <Flame size={16} color="#F59E0B" />
                       </View>
-                      <Text style={[styles.metricTitle, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          styles.metricTitle,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         {t("calendar.caloriesGoal")}
                       </Text>
                     </View>
                     <Text style={[styles.metricValue, { color: colors.text }]}>
                       {selectedDay.calories_actual}
                     </Text>
-                    <Text style={[styles.metricTarget, { color: colors.textTertiary }]}>
+                    <Text
+                      style={[
+                        styles.metricTarget,
+                        { color: colors.textTertiary },
+                      ]}
+                    >
                       {t("common.of")} {selectedDay.calories_goal}{" "}
                       {t("calendar.kcal")}
                     </Text>
@@ -1116,7 +1183,7 @@ export default function CalendarScreen() {
                       >
                         {Math.abs(
                           selectedDay.calories_actual -
-                            selectedDay.calories_goal
+                            selectedDay.calories_goal,
                         )}{" "}
                         {t("calendar.kcal")}
                       </Text>
@@ -1133,22 +1200,37 @@ export default function CalendarScreen() {
                       >
                         <Target size={16} color="#8B5CF6" />
                       </View>
-                      <Text style={[styles.metricTitle, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          styles.metricTitle,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         {t("calendar.proteinGoal")}
                       </Text>
                     </View>
                     <Text style={[styles.metricValue, { color: colors.text }]}>
                       {selectedDay.protein_actual}
                     </Text>
-                    <Text style={[styles.metricTarget, { color: colors.textTertiary }]}>
+                    <Text
+                      style={[
+                        styles.metricTarget,
+                        { color: colors.textTertiary },
+                      ]}
+                    >
                       {t("common.of")} {selectedDay.protein_goal}{" "}
                       {t("calendar.g")}
                     </Text>
-                    <Text style={[styles.metricPercentage, { color: colors.success }]}>
+                    <Text
+                      style={[
+                        styles.metricPercentage,
+                        { color: colors.success },
+                      ]}
+                    >
                       {Math.round(
                         (selectedDay.protein_actual /
                           selectedDay.protein_goal) *
-                          100
+                          100,
                       )}
                       %
                     </Text>
@@ -1164,14 +1246,26 @@ export default function CalendarScreen() {
                       >
                         <Target size={16} color="#3B82F6" />
                       </View>
-                      <Text style={[styles.metricTitle, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          styles.metricTitle,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         {t("calendar.waterGoal")}
                       </Text>
                     </View>
                     <Text style={[styles.metricValue, { color: colors.text }]}>
                       {selectedDay.water_intake_ml}
                     </Text>
-                    <Text style={[styles.metricTarget, { color: colors.textTertiary }]}>{t("calendar.ml")}</Text>
+                    <Text
+                      style={[
+                        styles.metricTarget,
+                        { color: colors.textTertiary },
+                      ]}
+                    >
+                      {t("calendar.ml")}
+                    </Text>
                   </View>
                 </View>
 
@@ -1183,9 +1277,16 @@ export default function CalendarScreen() {
                         isRTL && dynamicStyles.eventsSectionHeaderRTL,
                       ]}
                     >
-                      <Ionicons name="calendar" size={20} color={colors.primary} />
+                      <Ionicons
+                        name="calendar"
+                        size={20}
+                        color={colors.primary}
+                      />
                       <Text
-                        style={[dynamicStyles.eventsTitle, isRTL && dynamicStyles.textRTL]}
+                        style={[
+                          dynamicStyles.eventsTitle,
+                          isRTL && dynamicStyles.textRTL,
+                        ]}
                       >
                         {t("calendar.events.title")}
                       </Text>
@@ -1193,7 +1294,11 @@ export default function CalendarScreen() {
                     {selectedDay.events.map((event, index) => (
                       <View key={event.id} style={dynamicStyles.eventItem}>
                         <LinearGradient
-                          colors={isDark ? [colors.surface, colors.surfaceVariant] : [colors.card, colors.surfaceVariant]}
+                          colors={
+                            isDark
+                              ? [colors.surface, colors.surfaceVariant]
+                              : [colors.card, colors.surfaceVariant]
+                          }
                           style={styles.eventGradient}
                         >
                           <TouchableOpacity
@@ -1249,12 +1354,25 @@ export default function CalendarScreen() {
                                   {
                                     hour: "2-digit",
                                     minute: "2-digit",
-                                  }
+                                  },
                                 )}
                               </Text>
                             </View>
-                            <View style={[dynamicStyles.eventNumberBadge, { backgroundColor: colors.surfaceVariant, borderColor: colors.border }]}>
-                              <Text style={[dynamicStyles.eventNumberText, { color: colors.textSecondary }]}>
+                            <View
+                              style={[
+                                dynamicStyles.eventNumberBadge,
+                                {
+                                  backgroundColor: colors.surfaceVariant,
+                                  borderColor: colors.border,
+                                },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  dynamicStyles.eventNumberText,
+                                  { color: colors.textSecondary },
+                                ]}
+                              >
                                 {index + 1}
                               </Text>
                             </View>
@@ -1317,7 +1435,10 @@ export default function CalendarScreen() {
 
                 <View style={styles.modalButtons}>
                   <TouchableOpacity
-                    style={[dynamicStyles.modalButton, dynamicStyles.addEventButton]}
+                    style={[
+                      dynamicStyles.modalButton,
+                      dynamicStyles.addEventButton,
+                    ]}
                     onPress={() => {
                       setSelectedDay(null);
                       handleAddEvent(selectedDay.date);
@@ -1349,38 +1470,84 @@ export default function CalendarScreen() {
           transparent={true}
           onRequestClose={() => setShowEventDetailsModal(false)}
         >
-          <View style={[dynamicStyles.modalOverlay, { backgroundColor: colors.backdrop }]}>
-            <View style={[dynamicStyles.modalContent, { backgroundColor: colors.card }]}>
+          <View
+            style={[
+              dynamicStyles.modalOverlay,
+              { backgroundColor: colors.backdrop },
+            ]}
+          >
+            <View
+              style={[
+                dynamicStyles.modalContent,
+                { backgroundColor: colors.card },
+              ]}
+            >
               <View style={dynamicStyles.eventDetailsHeader}>
-                <Text style={[dynamicStyles.modalTitle, { color: colors.text }]}>
+                <Text
+                  style={[dynamicStyles.modalTitle, { color: colors.text }]}
+                >
                   {t("history.event_details")}
                 </Text>
                 <TouchableOpacity
                   onPress={() => setShowEventDetailsModal(false)}
                 >
-                  <Ionicons name="close" size={24} color={colors.textSecondary} />
+                  <Ionicons
+                    name="close"
+                    size={24}
+                    color={colors.textSecondary}
+                  />
                 </TouchableOpacity>
               </View>
 
               {selectedEvent && (
                 <ScrollView>
-                  <View style={[dynamicStyles.eventDetailCard, { backgroundColor: colors.surfaceVariant }]}>
-                    <Text style={[dynamicStyles.eventDetailTitle, { color: colors.text }]}>
+                  <View
+                    style={[
+                      dynamicStyles.eventDetailCard,
+                      { backgroundColor: colors.surfaceVariant },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        dynamicStyles.eventDetailTitle,
+                        { color: colors.text },
+                      ]}
+                    >
                       {selectedEvent.title}
                     </Text>
-                    <Text style={[dynamicStyles.eventDetailType, { color: colors.textSecondary }]}>
+                    <Text
+                      style={[
+                        dynamicStyles.eventDetailType,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
                       {t("history.type")}: {selectedEvent.type}
                     </Text>
                     {selectedEvent.description && (
-                      <Text style={[dynamicStyles.eventDetailDescription, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          dynamicStyles.eventDetailDescription,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         {selectedEvent.description}
                       </Text>
                     )}
-                    <Text style={[dynamicStyles.eventDetailDate, { color: colors.textSecondary }]}>
+                    <Text
+                      style={[
+                        dynamicStyles.eventDetailDate,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
                       {t("history.date")}:{" "}
                       {new Date(selectedEvent.date).toLocaleDateString()}
                     </Text>
-                    <Text style={[dynamicStyles.eventDetailCreated, { color: colors.textTertiary }]}>
+                    <Text
+                      style={[
+                        dynamicStyles.eventDetailCreated,
+                        { color: colors.textTertiary },
+                      ]}
+                    >
                       {t("history.created")}:{" "}
                       {new Date(selectedEvent.created_at).toLocaleString()}
                     </Text>
@@ -1388,7 +1555,10 @@ export default function CalendarScreen() {
 
                   <View style={dynamicStyles.eventDetailActions}>
                     <TouchableOpacity
-                      style={[dynamicStyles.modalButton, dynamicStyles.editButton]}
+                      style={[
+                        dynamicStyles.modalButton,
+                        dynamicStyles.editButton,
+                      ]}
                       onPress={handleEditEvent}
                     >
                       <Edit size={16} color="#fff" />
@@ -1398,7 +1568,10 @@ export default function CalendarScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[dynamicStyles.modalButton, dynamicStyles.deleteButton]}
+                      style={[
+                        dynamicStyles.modalButton,
+                        dynamicStyles.deleteButton,
+                      ]}
                       onPress={() =>
                         handleDeleteEvent(selectedEvent.id, selectedEvent.date)
                       }
@@ -1429,17 +1602,36 @@ export default function CalendarScreen() {
           transparent={true}
           onRequestClose={() => setShowEventModal(false)}
         >
-          <View style={[dynamicStyles.modalOverlay, { backgroundColor: colors.backdrop }]}>
-            <View style={[dynamicStyles.modalContent, { backgroundColor: colors.card }]}>
+          <View
+            style={[
+              dynamicStyles.modalOverlay,
+              { backgroundColor: colors.backdrop },
+            ]}
+          >
+            <View
+              style={[
+                dynamicStyles.modalContent,
+                { backgroundColor: colors.card },
+              ]}
+            >
               <ScrollView>
-                <Text style={[dynamicStyles.modalTitle, { color: colors.text }]}>
+                <Text
+                  style={[dynamicStyles.modalTitle, { color: colors.text }]}
+                >
                   {isEditingEvent
                     ? t("calendar.events.editEvent")
                     : t("calendar.events.addEventTitle")}
                 </Text>
 
                 <TextInput
-                  style={[dynamicStyles.eventInput, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
+                  style={[
+                    dynamicStyles.eventInput,
+                    {
+                      backgroundColor: colors.surface,
+                      color: colors.text,
+                      borderColor: colors.border,
+                    },
+                  ]}
                   placeholder={t("calendar.events.eventTitle")}
                   placeholderTextColor={colors.textTertiary}
                   value={eventTitle}
@@ -1448,7 +1640,15 @@ export default function CalendarScreen() {
                 />
 
                 <TextInput
-                  style={[dynamicStyles.eventInput, dynamicStyles.eventDescriptionInput, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
+                  style={[
+                    dynamicStyles.eventInput,
+                    dynamicStyles.eventDescriptionInput,
+                    {
+                      backgroundColor: colors.surface,
+                      color: colors.text,
+                      borderColor: colors.border,
+                    },
+                  ]}
                   placeholder={t("calendar.events.eventDescription")}
                   placeholderTextColor={colors.textTertiary}
                   value={eventDescription}
@@ -1458,7 +1658,12 @@ export default function CalendarScreen() {
                 />
 
                 <View style={dynamicStyles.eventTypeContainer}>
-                  <Text style={[dynamicStyles.eventTypeLabel, { color: colors.text }]}>
+                  <Text
+                    style={[
+                      dynamicStyles.eventTypeLabel,
+                      { color: colors.text },
+                    ]}
+                  >
                     {t("calendar.events.eventType")}
                   </Text>
                   <View style={dynamicStyles.eventTypeButtons}>
@@ -1506,7 +1711,9 @@ export default function CalendarScreen() {
                         <Ionicons
                           name={type.icon as any}
                           size={16}
-                          color={eventType === type.key ? "#fff" : colors.primary}
+                          color={
+                            eventType === type.key ? "#fff" : colors.primary
+                          }
                         />
                         <Text
                           style={[
@@ -1524,7 +1731,10 @@ export default function CalendarScreen() {
 
                 <View style={styles.modalButtons}>
                   <TouchableOpacity
-                    style={[dynamicStyles.modalButton, dynamicStyles.cancelButton]}
+                    style={[
+                      dynamicStyles.modalButton,
+                      dynamicStyles.cancelButton,
+                    ]}
                     onPress={() => {
                       setShowEventModal(false);
                       setIsEditingEvent(false);
@@ -1537,7 +1747,10 @@ export default function CalendarScreen() {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[dynamicStyles.modalButton, dynamicStyles.submitButton]}
+                    style={[
+                      dynamicStyles.modalButton,
+                      dynamicStyles.submitButton,
+                    ]}
                     onPress={submitEvent}
                     disabled={!eventTitle.trim() || isAddingEvent}
                   >
@@ -1564,27 +1777,68 @@ export default function CalendarScreen() {
           transparent={true}
           onRequestClose={() => setShowBadgesModal(false)}
         >
-          <View style={[dynamicStyles.modalOverlay, { backgroundColor: colors.backdrop }]}>
-            <View style={[dynamicStyles.modalContent, { backgroundColor: colors.card }]}>
+          <View
+            style={[
+              dynamicStyles.modalOverlay,
+              { backgroundColor: colors.backdrop },
+            ]}
+          >
+            <View
+              style={[
+                dynamicStyles.modalContent,
+                { backgroundColor: colors.card },
+              ]}
+            >
               <View style={dynamicStyles.badgesHeader}>
-                <Text style={[dynamicStyles.modalTitle, { color: colors.text }]}>
+                <Text
+                  style={[dynamicStyles.modalTitle, { color: colors.text }]}
+                >
                   🏆 {t("achievements.title")}
                 </Text>
                 <TouchableOpacity onPress={() => setShowBadgesModal(false)}>
-                  <Ionicons name="close" size={24} color={colors.textSecondary} />
+                  <Ionicons
+                    name="close"
+                    size={24}
+                    color={colors.textSecondary}
+                  />
                 </TouchableOpacity>
               </View>
 
               <ScrollView style={dynamicStyles.badgesScrollView}>
                 {statistics?.gamificationBadges?.map((badge) => (
-                  <View key={badge.id} style={[dynamicStyles.badgeDetailItem, { backgroundColor: colors.surfaceVariant }]}>
-                    <Text style={dynamicStyles.badgeDetailIcon}>{badge.icon}</Text>
+                  <View
+                    key={badge.id}
+                    style={[
+                      dynamicStyles.badgeDetailItem,
+                      { backgroundColor: colors.surfaceVariant },
+                    ]}
+                  >
+                    <Text style={dynamicStyles.badgeDetailIcon}>
+                      {badge.icon}
+                    </Text>
                     <View style={dynamicStyles.badgeDetailContent}>
-                      <Text style={[dynamicStyles.badgeDetailName, { color: colors.text }]}>{badge.name}</Text>
-                      <Text style={[dynamicStyles.badgeDetailDescription, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          dynamicStyles.badgeDetailName,
+                          { color: colors.text },
+                        ]}
+                      >
+                        {badge.name}
+                      </Text>
+                      <Text
+                        style={[
+                          dynamicStyles.badgeDetailDescription,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         {badge.description}
                       </Text>
-                      <Text style={[dynamicStyles.badgeDetailDate, { color: colors.textTertiary }]}>
+                      <Text
+                        style={[
+                          dynamicStyles.badgeDetailDate,
+                          { color: colors.textTertiary },
+                        ]}
+                      >
                         {t("achievements.unlockedOn")}:{" "}
                         {new Date(badge.achieved_at).toLocaleDateString()}
                       </Text>
@@ -1592,10 +1846,20 @@ export default function CalendarScreen() {
                   </View>
                 )) || (
                   <View style={dynamicStyles.noBadgesContainer}>
-                    <Text style={[dynamicStyles.noBadgesText, { color: colors.textSecondary }]}>
+                    <Text
+                      style={[
+                        dynamicStyles.noBadgesText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
                       {t("calendar.badges.noBadgesYet")}
                     </Text>
-                    <Text style={[dynamicStyles.noBadgesSubtext, { color: colors.textTertiary }]}>
+                    <Text
+                      style={[
+                        dynamicStyles.noBadgesSubtext,
+                        { color: colors.textTertiary },
+                      ]}
+                    >
                       {t("calendar.badges.keepWorking")}
                     </Text>
                   </View>
@@ -1612,53 +1876,110 @@ export default function CalendarScreen() {
           transparent={true}
           onRequestClose={() => setShowInsightsModal(false)}
         >
-          <View style={[dynamicStyles.modalOverlay, { backgroundColor: colors.backdrop }]}>
-            <View style={[dynamicStyles.modalContent, { backgroundColor: colors.card }]}>
+          <View
+            style={[
+              dynamicStyles.modalOverlay,
+              { backgroundColor: colors.backdrop },
+            ]}
+          >
+            <View
+              style={[
+                dynamicStyles.modalContent,
+                { backgroundColor: colors.card },
+              ]}
+            >
               <View style={dynamicStyles.insightsHeader}>
-                <Text style={[dynamicStyles.modalTitle, { color: colors.text }]}>
+                <Text
+                  style={[dynamicStyles.modalTitle, { color: colors.text }]}
+                >
                   📊 {t("calendar.insights.title")}
                 </Text>
                 <TouchableOpacity onPress={() => setShowInsightsModal(false)}>
-                  <Ionicons name="close" size={24} color={colors.textSecondary} />
+                  <Ionicons
+                    name="close"
+                    size={24}
+                    color={colors.textSecondary}
+                  />
                 </TouchableOpacity>
               </View>
 
               <ScrollView style={dynamicStyles.insightsScrollView}>
                 {statistics?.weeklyInsights?.bestWeekDetails && (
-                  <View style={[dynamicStyles.insightCard, { backgroundColor: colors.surfaceVariant }]}>
-                    <Text style={[dynamicStyles.insightCardTitle, { color: colors.text }]}>
+                  <View
+                    style={[
+                      dynamicStyles.insightCard,
+                      { backgroundColor: colors.surfaceVariant },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        dynamicStyles.insightCardTitle,
+                        { color: colors.text },
+                      ]}
+                    >
                       🎯 {t("calendar.insights.bestWeek")}
                     </Text>
-                    <Text style={[dynamicStyles.insightCardSubtitle, { color: colors.textSecondary }]}>
+                    <Text
+                      style={[
+                        dynamicStyles.insightCardSubtitle,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
                       {statistics.weeklyInsights.bestWeekDetails.weekStart}{" "}
                       {t("common.to")}{" "}
                       {statistics.weeklyInsights.bestWeekDetails.weekEnd}
                     </Text>
-                    <Text style={[dynamicStyles.insightCardValue, { color: colors.primary }]}>
+                    <Text
+                      style={[
+                        dynamicStyles.insightCardValue,
+                        { color: colors.primary },
+                      ]}
+                    >
                       {Math.round(
                         statistics.weeklyInsights.bestWeekDetails
-                          .averageProgress
+                          .averageProgress,
                       )}
                       % {t("calendar.insights.averageProgress")}
                     </Text>
                     <View style={dynamicStyles.insightHighlights}>
                       {statistics.weeklyInsights.bestWeekDetails.highlights.map(
                         (highlight, index) => (
-                          <Text key={index} style={[dynamicStyles.insightHighlight, { color: colors.success }]}>
+                          <Text
+                            key={index}
+                            style={[
+                              dynamicStyles.insightHighlight,
+                              { color: colors.success },
+                            ]}
+                          >
                             ✅ {highlight}
                           </Text>
-                        )
+                        ),
                       )}
                     </View>
                   </View>
                 )}
 
                 {statistics?.weeklyInsights?.challengingWeekDetails && (
-                  <View style={[dynamicStyles.insightCard, { backgroundColor: colors.surfaceVariant }]}>
-                    <Text style={[dynamicStyles.insightCardTitle, { color: colors.text }]}>
+                  <View
+                    style={[
+                      dynamicStyles.insightCard,
+                      { backgroundColor: colors.surfaceVariant },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        dynamicStyles.insightCardTitle,
+                        { color: colors.text },
+                      ]}
+                    >
                       💪 {t("calendar.insights.challengingWeek")}
                     </Text>
-                    <Text style={[dynamicStyles.insightCardSubtitle, { color: colors.textSecondary }]}>
+                    <Text
+                      style={[
+                        dynamicStyles.insightCardSubtitle,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
                       {
                         statistics.weeklyInsights.challengingWeekDetails
                           .weekStart
@@ -1666,20 +1987,31 @@ export default function CalendarScreen() {
                       {t("common.to")}{" "}
                       {statistics.weeklyInsights.challengingWeekDetails.weekEnd}
                     </Text>
-                    <Text style={[dynamicStyles.insightCardValue, { color: colors.primary }]}>
+                    <Text
+                      style={[
+                        dynamicStyles.insightCardValue,
+                        { color: colors.primary },
+                      ]}
+                    >
                       {Math.round(
                         statistics.weeklyInsights.challengingWeekDetails
-                          .averageProgress
+                          .averageProgress,
                       )}
                       % {t("calendar.insights.averageProgress")}
                     </Text>
                     <View style={dynamicStyles.insightChallenges}>
                       {statistics.weeklyInsights.challengingWeekDetails.challenges.map(
                         (challenge, index) => (
-                          <Text key={index} style={[dynamicStyles.insightChallenge, { color: colors.warning }]}>
+                          <Text
+                            key={index}
+                            style={[
+                              dynamicStyles.insightChallenge,
+                              { color: colors.warning },
+                            ]}
+                          >
                             🔍 {challenge}
                           </Text>
-                        )
+                        ),
                       )}
                     </View>
                   </View>
@@ -1694,502 +2026,503 @@ export default function CalendarScreen() {
 }
 
 // Create dynamic styles function that uses theme colors
-const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  statisticsSection: {
-    marginBottom: 24,
-    alignItems: "center",
-  },
-  statisticsSectionTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    textAlign: "center",
-    marginBottom: 12,
-    paddingHorizontal: 20,
-    letterSpacing: 0.3,
-    color: colors.text,
-  },
-  gamificationContainer: {
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  statsGradient: {
-    backgroundColor: `${colors.primary}15`,
-    padding: 16,
-    borderRadius: 16,
-  },
-  gamificationHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  gamificationTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  seeAllText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  badgeItem: {
-    alignItems: "center",
-    marginRight: 20,
-    minWidth: 60,
-  },
-  badgeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceVariant,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 5,
-  },
-  badgeIconText: {
-    fontSize: 20,
-  },
-  badgeName: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: "center",
-  },
-  emptyStateContainer: {
-    alignItems: "center",
-    paddingVertical: 40,
-    marginTop: 20,
-  },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.textSecondary,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: colors.textTertiary,
-    textAlign: "center",
-    paddingHorizontal: 40,
-    lineHeight: 20,
-  },
-  dayDetailsContainer: {
-    borderRadius: 20,
-    overflow: "hidden",
-    backgroundColor: colors.card,
-  },
-  metricCard: {
-    backgroundColor: colors.card,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  selectDayContainer: {
-    alignItems: "center",
-    paddingVertical: 40,
-  },
-  selectDayText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    marginTop: 16,
-    textAlign: "center",
-  },
-  eventsSection: {
-    marginTop: 20,
-  },
-  eventsSectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  eventsSectionHeaderRTL: {
-    flexDirection: "row-reverse",
-  },
-  eventsTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.text,
-    marginLeft: 8,
-    letterSpacing: 0.3,
-  },
-  textRTL: {
-    textAlign: "right",
-  },
-  eventItem: {
-    borderRadius: 16,
-    marginBottom: 12,
-    overflow: "hidden",
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    backgroundColor: "transparent",
-  },
-  eventMainContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    flex: 1,
-  },
-  eventMainContentRTL: {
-    flexDirection: "row-reverse",
-  },
-  eventIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  eventTextContainer: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  eventTextContainerRTL: {
-    marginLeft: 0,
-    marginRight: 12,
-    alignItems: "flex-end",
-  },
-  eventText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.text,
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-  eventTypeText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textTransform: "capitalize",
-    fontWeight: "500",
-    letterSpacing: 0.3,
-  },
-  eventTimeText: {
-    fontSize: 11,
-    color: colors.textTertiary,
-    fontWeight: "500",
-    marginTop: 2,
-    letterSpacing: 0.2,
-  },
-  eventNumberBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceVariant,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  eventNumberText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.textSecondary,
-  },
-  eventActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 10,
-  },
-  eventActionsRTL: {
-    flexDirection: "row-reverse",
-  },
-  eventActionButton: {
-    padding: 10,
-    borderRadius: 12,
-    backgroundColor: "rgba(59, 130, 246, 0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(59, 130, 246, 0.2)",
-    minWidth: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  deleteEventButton: {
-    padding: 10,
-    borderRadius: 12,
-    backgroundColor: `${colors.error}15`,
-    borderWidth: 1,
-    borderColor: `${colors.error}20`,
-    minWidth: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: colors.backdrop,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    backgroundColor: colors.card,
-    margin: 20,
-    padding: 20,
-    borderRadius: 12,
-    width: "90%",
-    maxHeight: "80%",
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-    color: colors.text,
-  },
-  eventDetailsHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  eventDetailCard: {
-    backgroundColor: colors.surfaceVariant,
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  eventDetailTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.text,
-    marginBottom: 10,
-  },
-  eventDetailType: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 5,
-    textTransform: "capitalize",
-  },
-  eventDetailDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 10,
-    fontStyle: "italic",
-  },
-  eventDetailDate: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 5,
-  },
-  eventDetailCreated: {
-    fontSize: 12,
-    color: colors.textTertiary,
-  },
-  eventDetailActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  modalButton: {
-    flex: 1,
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-    marginHorizontal: 5,
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  addEventButton: {
-    backgroundColor: colors.primary,
-  },
-  addEventButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  editButton: {
-    backgroundColor: "#3498DB",
-  },
-  editButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: 5,
-  },
-  deleteButton: {
-    backgroundColor: colors.error,
-  },
-  deleteButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: 5,
-  },
-  cancelButton: {
-    backgroundColor: colors.surfaceVariant,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cancelButtonText: {
-    color: colors.textSecondary,
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  submitButton: {
-    backgroundColor: colors.primary,
-  },
-  submitButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  eventInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 15,
-    fontSize: 16,
-    marginBottom: 15,
-    backgroundColor: colors.surface,
-    color: colors.text,
-  },
-  eventDescriptionInput: {
-    height: 80,
-    textAlignVertical: "top",
-  },
-  eventTypeContainer: {
-    marginBottom: 20,
-  },
-  eventTypeLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 10,
-  },
-  eventTypeButtons: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  eventTypeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 10,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    minWidth: 100,
-  },
-  eventTypeButtonActive: {
-    backgroundColor: colors.primary,
-  },
-  eventTypeButtonText: {
-    marginLeft: 5,
-    fontSize: 12,
-    color: colors.primary,
-  },
-  eventTypeButtonTextActive: {
-    color: "white",
-  },
-  badgesHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  badgesScrollView: {
-    maxHeight: 400,
-  },
-  badgeDetailItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 15,
-    backgroundColor: colors.surfaceVariant,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  badgeDetailIcon: {
-    fontSize: 32,
-    marginRight: 15,
-  },
-  badgeDetailContent: {
-    flex: 1,
-  },
-  badgeDetailName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 5,
-  },
-  badgeDetailDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 5,
-  },
-  badgeDetailDate: {
-    fontSize: 12,
-    color: colors.textTertiary,
-  },
-  noBadgesContainer: {
-    alignItems: "center",
-    paddingVertical: 40,
-  },
-  noBadgesText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    marginBottom: 10,
-  },
-  noBadgesSubtext: {
-    fontSize: 14,
-    color: colors.textTertiary,
-    textAlign: "center",
-  },
-  insightsHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  insightsScrollView: {
-    maxHeight: 400,
-  },
-  insightCard: {
-    backgroundColor: colors.surfaceVariant,
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 15,
-  },
-  insightCardTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 5,
-  },
-  insightCardSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 5,
-  },
-  insightCardValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.primary,
-    marginBottom: 10,
-  },
-  insightHighlights: {
-    marginTop: 10,
-  },
-  insightHighlight: {
-    fontSize: 14,
-    color: colors.success,
-    marginBottom: 5,
-  },
-  insightChallenges: {
-    marginTop: 10,
-  },
-  insightChallenge: {
-    fontSize: 14,
-    color: colors.warning,
-    marginBottom: 5,
-  },
-});
+const createStyles = (colors: any, isDark: boolean) =>
+  StyleSheet.create({
+    section: {
+      paddingHorizontal: 20,
+      marginBottom: 24,
+    },
+    statisticsSection: {
+      marginBottom: 24,
+      alignItems: "center",
+    },
+    statisticsSectionTitle: {
+      fontSize: 22,
+      fontWeight: "700",
+      textAlign: "center",
+      marginBottom: 12,
+      paddingHorizontal: 20,
+      letterSpacing: 0.3,
+      color: colors.text,
+    },
+    gamificationContainer: {
+      borderRadius: 20,
+      overflow: "hidden",
+    },
+    statsGradient: {
+      backgroundColor: `${colors.primary}15`,
+      padding: 16,
+      borderRadius: 16,
+    },
+    gamificationHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 15,
+    },
+    gamificationTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.text,
+    },
+    seeAllText: {
+      color: colors.primary,
+      fontSize: 14,
+      fontWeight: "500",
+    },
+    badgeItem: {
+      alignItems: "center",
+      marginRight: 20,
+      minWidth: 60,
+    },
+    badgeIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.surfaceVariant,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 5,
+    },
+    badgeIconText: {
+      fontSize: 20,
+    },
+    badgeName: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+    emptyStateContainer: {
+      alignItems: "center",
+      paddingVertical: 40,
+      marginTop: 20,
+    },
+    emptyStateTitle: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptyStateText: {
+      fontSize: 14,
+      color: colors.textTertiary,
+      textAlign: "center",
+      paddingHorizontal: 40,
+      lineHeight: 20,
+    },
+    dayDetailsContainer: {
+      borderRadius: 20,
+      overflow: "hidden",
+      backgroundColor: colors.card,
+    },
+    metricCard: {
+      backgroundColor: colors.card,
+      padding: 16,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    selectDayContainer: {
+      alignItems: "center",
+      paddingVertical: 40,
+    },
+    selectDayText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginTop: 16,
+      textAlign: "center",
+    },
+    eventsSection: {
+      marginTop: 20,
+    },
+    eventsSectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    eventsSectionHeaderRTL: {
+      flexDirection: "row-reverse",
+    },
+    eventsTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.text,
+      marginLeft: 8,
+      letterSpacing: 0.3,
+    },
+    textRTL: {
+      textAlign: "right",
+    },
+    eventItem: {
+      borderRadius: 16,
+      marginBottom: 12,
+      overflow: "hidden",
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      backgroundColor: "transparent",
+    },
+    eventMainContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 16,
+      flex: 1,
+    },
+    eventMainContentRTL: {
+      flexDirection: "row-reverse",
+    },
+    eventIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      overflow: "hidden",
+    },
+    eventTextContainer: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    eventTextContainerRTL: {
+      marginLeft: 0,
+      marginRight: 12,
+      alignItems: "flex-end",
+    },
+    eventText: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.text,
+      marginBottom: 4,
+      lineHeight: 20,
+    },
+    eventTypeText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      textTransform: "capitalize",
+      fontWeight: "500",
+      letterSpacing: 0.3,
+    },
+    eventTimeText: {
+      fontSize: 11,
+      color: colors.textTertiary,
+      fontWeight: "500",
+      marginTop: 2,
+      letterSpacing: 0.2,
+    },
+    eventNumberBadge: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceVariant,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    eventNumberText: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: colors.textSecondary,
+    },
+    eventActions: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      gap: 10,
+    },
+    eventActionsRTL: {
+      flexDirection: "row-reverse",
+    },
+    eventActionButton: {
+      padding: 10,
+      borderRadius: 12,
+      backgroundColor: "rgba(59, 130, 246, 0.15)",
+      borderWidth: 1,
+      borderColor: "rgba(59, 130, 246, 0.2)",
+      minWidth: 40,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    deleteEventButton: {
+      padding: 10,
+      borderRadius: 12,
+      backgroundColor: `${colors.error}15`,
+      borderWidth: 1,
+      borderColor: `${colors.error}20`,
+      minWidth: 40,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: colors.backdrop,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalContent: {
+      backgroundColor: colors.card,
+      margin: 20,
+      padding: 20,
+      borderRadius: 12,
+      width: "90%",
+      maxHeight: "80%",
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: "bold",
+      marginBottom: 20,
+      textAlign: "center",
+      color: colors.text,
+    },
+    eventDetailsHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 20,
+    },
+    eventDetailCard: {
+      backgroundColor: colors.surfaceVariant,
+      padding: 15,
+      borderRadius: 8,
+      marginBottom: 20,
+    },
+    eventDetailTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: colors.text,
+      marginBottom: 10,
+    },
+    eventDetailType: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 5,
+      textTransform: "capitalize",
+    },
+    eventDetailDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 10,
+      fontStyle: "italic",
+    },
+    eventDetailDate: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 5,
+    },
+    eventDetailCreated: {
+      fontSize: 12,
+      color: colors.textTertiary,
+    },
+    eventDetailActions: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 10,
+    },
+    modalButton: {
+      flex: 1,
+      padding: 15,
+      borderRadius: 8,
+      alignItems: "center",
+      marginHorizontal: 5,
+      flexDirection: "row",
+      justifyContent: "center",
+    },
+    addEventButton: {
+      backgroundColor: colors.primary,
+    },
+    addEventButtonText: {
+      color: "white",
+      fontSize: 16,
+      fontWeight: "bold",
+    },
+    editButton: {
+      backgroundColor: "#3498DB",
+    },
+    editButtonText: {
+      color: "white",
+      fontSize: 16,
+      fontWeight: "bold",
+      marginLeft: 5,
+    },
+    deleteButton: {
+      backgroundColor: colors.error,
+    },
+    deleteButtonText: {
+      color: "white",
+      fontSize: 16,
+      fontWeight: "bold",
+      marginLeft: 5,
+    },
+    cancelButton: {
+      backgroundColor: colors.surfaceVariant,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    cancelButtonText: {
+      color: colors.textSecondary,
+      fontSize: 16,
+      fontWeight: "bold",
+    },
+    submitButton: {
+      backgroundColor: colors.primary,
+    },
+    submitButtonText: {
+      color: "white",
+      fontSize: 16,
+      fontWeight: "bold",
+    },
+    eventInput: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      padding: 15,
+      fontSize: 16,
+      marginBottom: 15,
+      backgroundColor: colors.surface,
+      color: colors.text,
+    },
+    eventDescriptionInput: {
+      height: 80,
+      textAlignVertical: "top",
+    },
+    eventTypeContainer: {
+      marginBottom: 20,
+    },
+    eventTypeLabel: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.text,
+      marginBottom: 10,
+    },
+    eventTypeButtons: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    eventTypeButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 10,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      borderRadius: 8,
+      backgroundColor: colors.surface,
+      minWidth: 100,
+    },
+    eventTypeButtonActive: {
+      backgroundColor: colors.primary,
+    },
+    eventTypeButtonText: {
+      marginLeft: 5,
+      fontSize: 12,
+      color: colors.primary,
+    },
+    eventTypeButtonTextActive: {
+      color: "white",
+    },
+    badgesHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 20,
+    },
+    badgesScrollView: {
+      maxHeight: 400,
+    },
+    badgeDetailItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 15,
+      backgroundColor: colors.surfaceVariant,
+      borderRadius: 8,
+      marginBottom: 10,
+    },
+    badgeDetailIcon: {
+      fontSize: 32,
+      marginRight: 15,
+    },
+    badgeDetailContent: {
+      flex: 1,
+    },
+    badgeDetailName: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.text,
+      marginBottom: 5,
+    },
+    badgeDetailDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 5,
+    },
+    badgeDetailDate: {
+      fontSize: 12,
+      color: colors.textTertiary,
+    },
+    noBadgesContainer: {
+      alignItems: "center",
+      paddingVertical: 40,
+    },
+    noBadgesText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginBottom: 10,
+    },
+    noBadgesSubtext: {
+      fontSize: 14,
+      color: colors.textTertiary,
+      textAlign: "center",
+    },
+    insightsHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 20,
+    },
+    insightsScrollView: {
+      maxHeight: 400,
+    },
+    insightCard: {
+      backgroundColor: colors.surfaceVariant,
+      padding: 15,
+      borderRadius: 8,
+      marginBottom: 15,
+    },
+    insightCardTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.text,
+      marginBottom: 5,
+    },
+    insightCardSubtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 5,
+    },
+    insightCardValue: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: colors.primary,
+      marginBottom: 10,
+    },
+    insightHighlights: {
+      marginTop: 10,
+    },
+    insightHighlight: {
+      fontSize: 14,
+      color: colors.success,
+      marginBottom: 5,
+    },
+    insightChallenges: {
+      marginTop: 10,
+    },
+    insightChallenge: {
+      fontSize: 14,
+      color: colors.warning,
+      marginBottom: 5,
+    },
+  });
 
 // Static styles that don't need theme colors
 const styles = StyleSheet.create({

@@ -2,6 +2,7 @@ import React, { Component, ErrorInfo, ReactNode } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react-native";
 import { router } from "expo-router";
+import { errorMessageIncludesAny, errorMessageIncludes } from "@/src/utils/errorHandler";
 
 interface Props {
   children: ReactNode;
@@ -39,9 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     // Check if this is a storage-related error
     if (
-      error.message?.includes("database or disk is full") ||
-      error.message?.includes("SQLITE_FULL") ||
-      error.message?.includes("No space left")
+      errorMessageIncludesAny(error, ["database or disk is full", "SQLITE_FULL", "No space left"])
     ) {
       console.log("🚨 Storage error detected, triggering emergency cleanup");
 
@@ -106,8 +105,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <Text style={styles.message}>
               We encountered an unexpected error. Don't worry, your data is
               safe.
-              {this.state.error?.message?.includes("storage") ||
-              this.state.error?.message?.includes("disk")
+              {errorMessageIncludesAny(this.state.error, ["storage", "disk"])
                 ? " We're clearing some cached data to free up space."
                 : ""}
             </Text>
