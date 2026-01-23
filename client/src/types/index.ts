@@ -10,6 +10,7 @@ export const SignUpSchema = z.object({
   birth_date: z.preprocess((arg) => {
     if (typeof arg === "string" || arg instanceof Date) return new Date(arg);
   }, z.date()),
+  preferred_lang: z.string(),
 });
 
 export const SignInSchema = z.object({

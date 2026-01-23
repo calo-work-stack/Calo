@@ -15,6 +15,7 @@ model User {
   password_hash              String
   name                       String? //Encrypted
   phone_number               String? // Encrypted
+  preferred_lang             LangType
   avatar_url                 String?
   signup_date                DateTime               @default(now())
   subscription_type          SubscriptionType
@@ -55,7 +56,7 @@ model User {
   badges                     UserBadge[]
   mealPreferences            UserMealPreference[]
   questionnaires             UserQuestionnaire[]
-  WaterIntake                WaterIntake[]
+  // WaterIntake                WaterIntake[]
   aiRecommendations          AiRecommendation[]
   calendarEvents             CalendarEvent[]
   connectedDevices           ConnectedDevice[]
@@ -611,19 +612,19 @@ model UserAchievement {
   @@unique([user_id, achievement_id])
 }
 
-model WaterIntake {
-  id                   String   @id @default(cuid())
-  user_id              String
-  date                 DateTime
-  cups_consumed        Int      @default(0)
-  milliliters_consumed Int      @default(0)
-  created_at           DateTime @default(now())
-  updated_at           DateTime @updatedAt
-  user                 User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+// model WaterIntake {
+//   id                   String   @id @default(cuid())
+//   user_id              String
+//   date                 DateTime
+//   cups_consumed        Int      @default(0)
+//   milliliters_consumed Int      @default(0)
+//   created_at           DateTime @default(now())
+//   updated_at           DateTime @updatedAt
+//   user                 User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
-  @@unique([user_id, date])
-  @@index([user_id, date])
-}
+//   @@unique([user_id, date])
+//   @@index([user_id, date])
+// }
 
 model DailyGoal {
   id         String   @id @default(cuid())
@@ -715,6 +716,11 @@ enum SubscriptionType {
   GOLD
   PREMIUM
   ADMIN
+}
+
+enum LangType {
+  EN
+  HE
 }
 
 enum SmokingStatus {

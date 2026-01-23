@@ -23,8 +23,14 @@ import { RootState, AppDispatch } from "@/src/store";
 import { ToastService } from "@/src/services/totastService";
 import Toast from "react-native-toast-message";
 import { useTheme } from "@/src/context/ThemeContext";
+import OptionGroup from "@/components/questionnaire/OptionGroup";
 
 const { width, height } = Dimensions.get("window");
+
+const langOptions = [
+  { key: "he", label: "עברית" },
+  { key: "en", label: "English" },
+];
 
 export default function SignUpScreen() {
   const { t } = useTranslation();
@@ -37,6 +43,7 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [lang, setLang] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptedPrivacyPolicy, setAcceptedPrivacyPolicy] = useState(false);
@@ -60,7 +67,7 @@ export default function SignUpScreen() {
     if (password !== confirmPassword) {
       ToastService.error(
         t("common.error"),
-        t("auth.errors.passwords_dont_match")
+        t("auth.errors.passwords_dont_match"),
       );
       return;
     }
@@ -77,15 +84,15 @@ export default function SignUpScreen() {
           password,
           name,
           birth_date: new Date(),
-        })
+          preferred_lang: lang, 
+        }),
       ).unwrap();
 
       if (result.success) {
         ToastService.success(
           t("auth.account_created"),
-          result.message || t("auth.email_verification.check_email")
+          result.message || t("auth.email_verification.check_email"),
         );
-
         setTimeout(() => {
           router.push({
             pathname: "/(auth)/email-verification",
@@ -98,13 +105,16 @@ export default function SignUpScreen() {
     } catch (error: any) {
       ToastService.error(
         t("common.error"),
-        error.message || error || t("auth.failed_create_account")
+        error.message || error || t("auth.failed_create_account"),
       );
     }
   };
 
   const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
     header: {
       paddingTop: Platform.OS === "ios" ? 50 : 30,
       paddingHorizontal: 24,
@@ -132,7 +142,11 @@ export default function SignUpScreen() {
       paddingHorizontal: 24,
       paddingBottom: 32,
     },
-    logoSection: { alignItems: "center", marginBottom: 40, marginTop: 20 },
+    logoSection: {
+      alignItems: "center",
+      marginBottom: 40,
+      marginTop: 20,
+    },
     logoContainer: {
       width: 80,
       height: 80,
@@ -149,8 +163,14 @@ export default function SignUpScreen() {
       textAlign: "center",
       marginBottom: 8,
     },
-    subtitle: { fontSize: 17, color: "#8E8E93", textAlign: "center" },
-    formContainer: { gap: 16 },
+    subtitle: {
+      fontSize: 17,
+      color: "#8E8E93",
+      textAlign: "center",
+    },
+    formContainer: {
+      gap: 16,
+    },
     inputContainer: {
       backgroundColor: "white",
       borderRadius: 12,
@@ -167,15 +187,24 @@ export default function SignUpScreen() {
       textTransform: "uppercase",
       letterSpacing: 0.5,
     },
-    input: { fontSize: 17, color: "#1C1C1E", paddingVertical: 0 },
-    passwordContainer: { flexDirection: "row", alignItems: "center" },
+    input: {
+      fontSize: 17,
+      color: "#1C1C1E",
+      paddingVertical: 0,
+    },
+    passwordContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
     passwordInput: {
       flex: 1,
       fontSize: 17,
       color: "#1C1C1E",
       paddingVertical: 0,
     },
-    eyeButton: { padding: 4 },
+    eyeButton: {
+      padding: 4,
+    },
     privacyContainer: {
       flexDirection: "row",
       alignItems: "flex-start",
@@ -197,8 +226,16 @@ export default function SignUpScreen() {
       justifyContent: "center",
       backgroundColor: acceptedPrivacyPolicy ? colors.primary : "transparent",
     },
-    privacyText: { fontSize: 15, color: "#8E8E93", flex: 1, lineHeight: 20 },
-    privacyLink: { color: colors.primary, fontWeight: "500" },
+    privacyText: {
+      fontSize: 15,
+      color: "#8E8E93",
+      flex: 1,
+      lineHeight: 20,
+    },
+    privacyLink: {
+      color: colors.primary,
+      fontWeight: "500",
+    },
     signUpButton: {
       backgroundColor: colors.primary,
       borderRadius: 12,
@@ -206,7 +243,9 @@ export default function SignUpScreen() {
       alignItems: "center",
       marginTop: 24,
     },
-    signUpButtonDisabled: { opacity: 0.6 },
+    signUpButtonDisabled: {
+      opacity: 0.6,
+    },
     signUpButtonText: {
       fontSize: 17,
       fontWeight: "600",
@@ -219,7 +258,10 @@ export default function SignUpScreen() {
       alignItems: "center",
       marginTop: 24,
     },
-    footerText: { fontSize: 15, color: "#8E8E93" },
+    footerText: {
+      fontSize: 15,
+      color: "#8E8E93",
+    },
     linkText: {
       fontSize: 15,
       color: colors.primary,
@@ -232,7 +274,11 @@ export default function SignUpScreen() {
       justifyContent: "center",
       gap: 8,
     },
-    loadingText: { color: "white", fontSize: 17, fontWeight: "600" },
+    loadingText: {
+      color: "white",
+      fontSize: 17,
+      fontWeight: "600",
+    },
   });
 
   const isFormValid = () => {
@@ -250,34 +296,34 @@ export default function SignUpScreen() {
   return (
     <>
       <SafeAreaView style={styles.container}>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor="transparent"
-          translucent
-        />
-
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={20} color="#1C1C1E" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t("auth.sign_up.title")}</Text>
-        </View>
-
+        <StatusBar barStyle="dark-content" />
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <Ionicons
+                name={isRTL ? "chevron-forward" : "chevron-back"}
+                size={24}
+                color="#1C1C1E"
+              />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{t("auth.sign_up.title")}</Text>
+          </View>
+
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
             <View style={styles.logoSection}>
               <View style={styles.logoContainer}>
-                <Ionicons name="nutrition" size={40} color="white" />
+                <Ionicons name="person-add" size={40} color="white" />
               </View>
               <Text style={styles.title}>
                 {t("auth.sign_up.create_account")}
@@ -286,92 +332,108 @@ export default function SignUpScreen() {
             </View>
 
             <View style={styles.formContainer}>
-              <View style={styles.inputContainer}>
+              <View>
                 <Text style={styles.label}>{t("auth.sign_up.name_label")}</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder={t("auth.sign_up.name_placeholder")}
-                  placeholderTextColor="#C7C7CC"
-                  value={name}
-                  onChangeText={setName}
-                  autoCapitalize="words"
-                  editable={!isLoading}
-                />
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.input}
+                    value={name}
+                    onChangeText={setName}
+                    placeholder={t("auth.sign_up.name_label")}
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                  />
+                </View>
               </View>
 
-              <View style={styles.inputContainer}>
+              <View>
                 <Text style={styles.label}>
                   {t("auth.sign_up.email_label")}
                 </Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder={t("auth.sign_up.email_placeholder")}
-                  placeholderTextColor="#C7C7CC"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!isLoading}
-                />
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.input}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder={t("auth.sign_up.email_label")}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
               </View>
 
-              <View style={styles.inputContainer}>
+              <View>
                 <Text style={styles.label}>
                   {t("auth.sign_up.password_label")}
                 </Text>
-                <View style={styles.passwordContainer}>
-                  <TextInput
-                    style={styles.passwordInput}
-                    placeholder={t("auth.sign_up.password_placeholder")}
-                    placeholderTextColor="#C7C7CC"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    editable={!isLoading}
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeButton}
-                    onPress={() => setShowPassword(!showPassword)}
-                  >
-                    <Ionicons
-                      name={showPassword ? "eye-off" : "eye"}
-                      size={20}
-                      color="#C7C7CC"
+                <View style={styles.inputContainer}>
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      value={password}
+                      onChangeText={setPassword}
+                      placeholder={t("auth.sign_up.password_label")}
+                      secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
                     />
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.eyeButton}
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      <Ionicons
+                        name={showPassword ? "eye-off" : "eye"}
+                        size={24}
+                        color="#8E8E93"
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
 
-              <View style={styles.inputContainer}>
+              <View>
                 <Text style={styles.label}>
                   {t("auth.sign_up.confirm_password_label")}
                 </Text>
-                <View style={styles.passwordContainer}>
-                  <TextInput
-                    style={styles.passwordInput}
-                    placeholder={t("auth.sign_up.confirm_password_placeholder")}
-                    placeholderTextColor="#C7C7CC"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry={!showConfirmPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    editable={!isLoading}
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeButton}
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    <Ionicons
-                      name={showConfirmPassword ? "eye-off" : "eye"}
-                      size={20}
-                      color="#C7C7CC"
+                <View style={styles.inputContainer}>
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      placeholder={t("auth.sign_up.confirm_password_label")}
+                      secureTextEntry={!showConfirmPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
                     />
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.eyeButton}
+                      onPress={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                    >
+                      <Ionicons
+                        name={showConfirmPassword ? "eye-off" : "eye"}
+                        size={24}
+                        color="#8E8E93"
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
+              </View>
+
+              <View>
+                <Text style={styles.label}>
+                  {t("auth.sign_up.lang_preferance")}
+                </Text>
+                <OptionGroup
+                  label={t("auth.sign_up.lang_preferance")}
+                  options={langOptions}
+                  selectedValue={lang}
+                  onSelect={setLang}
+                  required
+                />
               </View>
 
               <TouchableOpacity
@@ -380,7 +442,7 @@ export default function SignUpScreen() {
               >
                 <View style={styles.checkbox}>
                   {acceptedPrivacyPolicy && (
-                    <Ionicons name="checkmark" size={12} color="white" />
+                    <Ionicons name="checkmark" size={16} color="white" />
                   )}
                 </View>
                 <Text style={styles.privacyText}>
@@ -394,41 +456,41 @@ export default function SignUpScreen() {
                   </Text>
                 </Text>
               </TouchableOpacity>
+            </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.signUpButton,
-                  (!isFormValid() || isLoading) && styles.signUpButtonDisabled,
-                ]}
-                onPress={handleSignUp}
-                disabled={!isFormValid() || isLoading}
-              >
-                {isLoading ? (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="small" color="white" />
-                    <Text style={styles.loadingText}>
-                      {t("auth.sign_up.creating_account")}
-                    </Text>
-                  </View>
-                ) : (
-                  <Text style={styles.signUpButtonText}>
-                    {t("auth.sign_up.create_account")}
+            <TouchableOpacity
+              style={[
+                styles.signUpButton,
+                (!isFormValid() || isLoading) && styles.signUpButtonDisabled,
+              ]}
+              onPress={handleSignUp}
+              disabled={!isFormValid() || isLoading}
+            >
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator color="white" />
+                  <Text style={styles.loadingText}>
+                    {t("auth.sign_up.creating_account")}
                   </Text>
-                )}
-              </TouchableOpacity>
-
-              <View style={styles.footer}>
-                <Text style={styles.footerText}>
-                  {t("auth.sign_up.already_have_account")}
+                </View>
+              ) : (
+                <Text style={styles.signUpButtonText}>
+                  {t("auth.sign_up.create_account")}
                 </Text>
-                <Link href="/(auth)/signin" asChild>
-                  <TouchableOpacity>
-                    <Text style={styles.linkText}>
-                      {t("auth.sign_up.sign_in")}
-                    </Text>
-                  </TouchableOpacity>
-                </Link>
-              </View>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                {t("auth.sign_up.already_have_account")}
+              </Text>
+              <Link href="/(auth)/signin" asChild>
+                <TouchableOpacity>
+                  <Text style={styles.linkText}>
+                    {t("auth.sign_up.sign_in")}
+                  </Text>
+                </TouchableOpacity>
+              </Link>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
