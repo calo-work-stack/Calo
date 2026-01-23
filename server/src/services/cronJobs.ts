@@ -158,12 +158,21 @@ export class CronJobService {
 
       const today = new Date().toISOString().split("T")[0];
 
-      // Get all users who don't have recommendations for today
+      // Get all users who:
+      // 1. Have completed questionnaire
+      // 2. Have a subscription that allows AI recommendations (GOLD or PLATINUM)
+      // 3. Don't have recommendations for today
       const usersWithoutRecommendations = await prisma.user.findMany({
         where: {
           AND: [
             {
               is_questionnaire_completed: true,
+            },
+            {
+              // Only users with GOLD or PLATINUM subscription can receive AI recommendations
+              subscription_type: {
+                in: ["GOLD", "PLATINUM"],
+              },
             },
             {
               aiRecommendations: {
@@ -178,6 +187,8 @@ export class CronJobService {
           user_id: true,
           email: true,
           name: true,
+          subscription_type: true,
+          signup_date: true,
         },
       });
 
@@ -199,7 +210,7 @@ export class CronJobService {
           console.log(
             `🤖 Generating recommendations for user: ${
               user.name || user.email
-            } (${user.user_id})`
+            } (${user.user_id}) [${user.subscription_type}]`
           );
 
           // Generate new recommendations

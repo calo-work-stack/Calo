@@ -14,6 +14,7 @@ interface CustomTextInputProps extends TextInputProps {
   required?: boolean;
   suffix?: string;
   prefix?: string;
+  error?: string;
 }
 
 const CustomTextInput: React.FC<CustomTextInputProps> = ({
@@ -21,6 +22,7 @@ const CustomTextInput: React.FC<CustomTextInputProps> = ({
   required = false,
   suffix,
   prefix,
+  error,
   style,
   ...props
 }) => {
@@ -46,7 +48,7 @@ const CustomTextInput: React.FC<CustomTextInputProps> = ({
           styles.inputWrapper,
           {
             backgroundColor: colors.card,
-            borderColor: colors.border,
+            borderColor: error ? "#EF4444" : colors.border,
           },
           isRTL && styles.inputWrapperRTL,
         ]}
@@ -85,6 +87,12 @@ const CustomTextInput: React.FC<CustomTextInputProps> = ({
           </Text>
         )}
       </View>
+
+      {error && (
+        <Text style={[styles.errorText, isRTL && styles.errorTextRTL]}>
+          {error}
+        </Text>
+      )}
     </View>
   );
 };
@@ -143,6 +151,15 @@ const styles = StyleSheet.create({
   prefixRTL: {
     marginRight: 0,
     marginLeft: 8,
+  },
+  errorText: {
+    fontSize: 13,
+    color: "#EF4444",
+    marginTop: 6,
+    fontWeight: "500",
+  },
+  errorTextRTL: {
+    textAlign: "right",
   },
 });
 

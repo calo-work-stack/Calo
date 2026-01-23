@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import {
   Plus,
-  CreditCard as Edit3,
+  Edit3,
   Trash2,
   ShoppingCart,
   ChefHat,
@@ -10,7 +10,6 @@ import {
 import { useTheme } from "@/src/context/ThemeContext";
 import { useTranslation } from "react-i18next";
 import { useShoppingList } from "@/hooks/useShoppingList";
-import { LinearGradient } from "expo-linear-gradient";
 
 interface Ingredient {
   name: string;
@@ -75,7 +74,7 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
 
   const handleAddToShoppingList = async (
     ingredient: Ingredient,
-    index: number
+    index: number,
   ) => {
     setAddingToShoppingList(`${index}`);
     try {
@@ -84,14 +83,20 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
         quantity: ingredient.estimated_portion_g
           ? Math.round(ingredient.estimated_portion_g)
           : 1,
-        unit: ingredient.estimated_portion_g ? "grams" : "pieces",
-        category: "From Meal Analysis",
+        unit: ingredient.estimated_portion_g
+          ? t("units.grams")
+          : t("units.pieces"),
+        category: t("shopping.from_meal_analysis"),
         added_from: "meal",
         is_purchased: undefined,
       });
-      Alert.alert("Success", `${ingredient.name} added to shopping list!`);
+
+      Alert.alert(
+        t("common.success"),
+        t("shopping.item_added", { name: ingredient.name }),
+      );
     } catch (error) {
-      Alert.alert("Error", "Failed to add item to shopping list");
+      Alert.alert(t("common.error"), t("shopping.add_item_failed"));
     } finally {
       setAddingToShoppingList(null);
     }
@@ -105,17 +110,21 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
         quantity: ingredient.estimated_portion_g
           ? Math.round(ingredient.estimated_portion_g)
           : 1,
-        unit: ingredient.estimated_portion_g ? "grams" : "pieces",
-        category: "From Meal Analysis",
+        unit: ingredient.estimated_portion_g
+          ? t("units.grams")
+          : t("units.pieces"),
+        category: t("shopping.from_meal_analysis"),
         added_from: "meal",
       }));
+
       bulkAddItems(itemsToAdd);
+
       Alert.alert(
-        "Success",
-        `${ingredients.length} ingredients added to shopping list!`
+        t("common.success"),
+        t("shopping.items_added", { count: ingredients.length }),
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to add ingredients to shopping list");
+      Alert.alert(t("common.error"), t("shopping.add_items_failed"));
     } finally {
       setAddingToShoppingList(null);
     }
@@ -125,15 +134,16 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.iconContainer}>
-            <ChefHat size={20} color="#10B981" />
+          <View style={styles.iconWrapper}>
+            <ChefHat size={22} color="#FF6B35" strokeWidth={2.5} />
           </View>
           <View>
-            <Text style={styles.title}>Ingredients</Text>
+            <Text style={styles.title}>{t("history.ingredients")}</Text>
             <Text style={styles.subtitle}>
-              {ingredients.length} items detected
+              {ingredients.length} {t("statistics.items_detected")}
             </Text>
           </View>
         </View>
@@ -143,68 +153,77 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
               style={styles.addAllButton}
               onPress={handleAddAllToShoppingList}
               disabled={isBulkAdding || addingToShoppingList === "all"}
+              activeOpacity={0.7}
             >
-              <ShoppingCart size={16} color="#3B82F6" />
+              <ShoppingCart size={18} color="#FFFFFF" strokeWidth={2.5} />
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.addButton} onPress={onAddIngredient}>
-            <Plus size={18} color="#10B981" />
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={onAddIngredient}
+            activeOpacity={0.7}
+          >
+            <Plus size={20} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
       </View>
 
+      {/* Ingredients List */}
       <View style={styles.ingredientsList}>
         {ingredients.map((ingredient, index) => (
           <View key={index} style={styles.ingredientCard}>
-            <TouchableOpacity
-              style={styles.ingredientContent}
-              onPress={() => handleAddToShoppingList(ingredient, index)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.ingredientMain}>
-                <Text style={styles.ingredientName}>
+            <View style={styles.ingredientLeft}>
+              <View style={styles.ingredientDot} />
+              <View style={styles.ingredientInfo}>
+                <Text style={styles.ingredientName} numberOfLines={1}>
                   {typeof ingredient === "string"
                     ? ingredient
                     : ingredient.name}
                 </Text>
                 {typeof ingredient !== "string" && (
-                  <View style={styles.nutritionBadges}>
-                    <View style={[styles.nutritionBadge, styles.caloriesBadge]}>
-                      <Text style={styles.badgeText}>
-                        {getNutritionValue(ingredient, "calories")} cal
+                  <View style={styles.nutritionRow}>
+                    <View style={styles.nutritionChip}>
+                      <Text style={styles.nutritionText}>
+                        {getNutritionValue(ingredient, "calories")}{" "}
+                        {t("statistics.kcal")}
                       </Text>
                     </View>
-                    <View style={[styles.nutritionBadge, styles.proteinBadge]}>
-                      <Text style={styles.badgeText}>
-                        {getNutritionValue(ingredient, "protein")}g protein
+                    <View style={styles.nutritionDivider} />
+                    <View style={styles.nutritionChip}>
+                      <Text style={styles.nutritionText}>
+                        {getNutritionValue(ingredient, "protein")}
+                        {t("statistics.g")} {t("statistics.protein")}
                       </Text>
                     </View>
                   </View>
                 )}
               </View>
-            </TouchableOpacity>
+            </View>
 
             <View style={styles.ingredientActions}>
               <TouchableOpacity
-                style={[styles.actionButton, styles.shopButton]}
+                style={[styles.actionButton, styles.cartButton]}
                 onPress={() => handleAddToShoppingList(ingredient, index)}
                 disabled={isAddingItem || addingToShoppingList === `${index}`}
+                activeOpacity={0.7}
               >
-                <ShoppingCart size={16} color="#3B82F6" />
+                <ShoppingCart size={15} color="#3B82F6" strokeWidth={2.5} />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.editButton]}
                 onPress={() => onEditIngredient(ingredient, index)}
+                activeOpacity={0.7}
               >
-                <Edit3 size={16} color="#F59E0B" />
+                <Edit3 size={15} color="#F59E0B" strokeWidth={2.5} />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.deleteButton]}
                 onPress={() => onRemoveIngredient(index)}
+                activeOpacity={0.7}
               >
-                <Trash2 size={16} color="#EF4444" />
+                <Trash2 size={15} color="#EF4444" strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
           </View>
@@ -216,120 +235,143 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
+    paddingHorizontal: 4,
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 14,
     flex: 1,
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#ECFDF5",
+  iconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#FFF4ED",
     justifyContent: "center",
     alignItems: "center",
   },
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "800",
     color: "#1A2744",
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
   },
   subtitle: {
     fontSize: 13,
-    color: "#6B7E99",
-    fontWeight: "500",
-    marginTop: 2,
+    color: "#8B92A8",
+    fontWeight: "600",
+    marginTop: 3,
+    letterSpacing: -0.1,
   },
   headerActions: {
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
   },
   addAllButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#EFF6FF",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#3B82F6",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#ECFDF5",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#10B981",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   ingredientsList: {
-    gap: 10,
+    gap: 12,
   },
   ingredientCard: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 14,
-    gap: 12,
+    borderRadius: 20,
+    padding: 16,
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
-  ingredientContent: {
+  ingredientLeft: {
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
+    gap: 14,
   },
-  ingredientMain: {
+  ingredientDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#FF6B35",
+  },
+  ingredientInfo: {
+    flex: 1,
     gap: 8,
   },
   ingredientName: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#1A2744",
-    marginBottom: 4,
+    letterSpacing: -0.3,
   },
-  nutritionBadges: {
+  nutritionRow: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
-  nutritionBadge: {
+  nutritionChip: {
     paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    paddingHorizontal: 0,
   },
-  caloriesBadge: {
-    backgroundColor: "#FEF2F2",
+  nutritionDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: "#E5E7EB",
   },
-  proteinBadge: {
-    backgroundColor: "#EFF6FF",
-  },
-  badgeText: {
+  nutritionText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#6B7E99",
+    color: "#8B92A8",
+    letterSpacing: -0.1,
   },
   ingredientActions: {
     flexDirection: "row",
-    gap: 6,
+    gap: 8,
+    marginLeft: 12,
   },
   actionButton: {
     width: 36,
     height: 36,
-    borderRadius: 12,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
   },
-  shopButton: {
+  cartButton: {
     backgroundColor: "#EFF6FF",
   },
   editButton: {

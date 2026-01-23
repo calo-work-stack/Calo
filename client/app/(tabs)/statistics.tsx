@@ -224,17 +224,6 @@ export default function StatisticsScreen() {
         entering={FadeInDown.delay(550).duration(400)}
         style={styles.recommendationsSection}
       >
-        <View style={styles.sectionHeader}>
-          <View
-            style={[
-              styles.sectionIconBg,
-              { backgroundColor: isDark ? "#6366F120" : "#EEF2FF" },
-            ]}
-          >
-            <Sparkles size={18} color="#6366F1" />
-          </View>
-        </View>
-
         <AIRecommendationsSection
           recommendations={aiRecommendations}
           period={selectedPeriod}

@@ -14,12 +14,16 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   isAuthenticated: boolean;
+  isEmailVerified: boolean;
+  isQuestionnaireCompleted: boolean;
 }
 
 const initialState: AuthState = {
   user: null,
   token: null,
   isLoading: false,
+  isEmailVerified: false,
+  isQuestionnaireCompleted: false,
   error: null,
   isAuthenticated: false,
 };
@@ -235,7 +239,31 @@ const authSlice = createSlice({
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
+      state.isEmailVerified = false;
+      state.isQuestionnaireCompleted = false;
       state.error = null;
+    },
+    // ✅ NEW: Update email verified status
+    updateEmailVerified: (state, action: PayloadAction<boolean>) => {
+      state.isEmailVerified = action.payload;
+      if (state.user) {
+        state.user.email_verified = action.payload;
+      }
+      console.log(
+        "✅ [AuthSlice] Email verified status updated:",
+        action.payload,
+      );
+    },
+    // ✅ NEW: Update questionnaire completed status
+    updateQuestionnaireCompleted: (state, action: PayloadAction<boolean>) => {
+      state.isQuestionnaireCompleted = action.payload;
+      if (state.user) {
+        state.user.is_questionnaire_completed = action.payload;
+      }
+      console.log(
+        "✅ [AuthSlice] Questionnaire completed status updated:",
+        action.payload,
+      );
     },
     updateUserSubscription: (
       state,
@@ -252,6 +280,7 @@ const authSlice = createSlice({
     setQuestionnaireCompleted: (state) => {
       if (state.user) {
         state.user.is_questionnaire_completed = true;
+        state.isQuestionnaireCompleted = true;
         console.log("✅ [AuthSlice] Questionnaire marked as completed");
       }
     },
@@ -267,8 +296,6 @@ const authSlice = createSlice({
         );
       }
     },
-
-    // ✅ NEW REDUCER: Update a specific field in user object
     updateUserField: (
       state,
       action: PayloadAction<{ field: string; value: any }>,
@@ -281,16 +308,16 @@ const authSlice = createSlice({
         );
       }
     },
-
     loginSuccess: (state, action) => {
       state.isAuthenticated = true;
       state.user = action.payload.user;
       state.token = action.payload.token;
+      state.isEmailVerified = action.payload.user?.email_verified ?? false;
+      state.isQuestionnaireCompleted =
+        action.payload.user?.is_questionnaire_completed ?? false;
       state.isLoading = false;
       state.error = null;
     },
-
-    // ✅ ENHANCED: setUser with better logging
     setUser: (state, action) => {
       const newUserData = action.payload;
       const currentUserData = state.user;
@@ -319,36 +346,45 @@ const authSlice = createSlice({
       ) {
         state.user = newUserData;
         state.isAuthenticated = true;
+        state.isEmailVerified = newUserData?.email_verified ?? false;
+        state.isQuestionnaireCompleted =
+          newUserData?.is_questionnaire_completed ?? false;
         state.isLoading = false;
         state.error = null;
         console.log("✅ [AuthSlice] User object updated:", {
           email: newUserData?.email,
+          email_verified: newUserData?.email_verified,
           is_questionnaire_completed: newUserData?.is_questionnaire_completed,
           subscription_type: newUserData?.subscription_type,
         });
       }
     },
-
     setToken: (state, action) => {
       state.token = action.payload;
     },
-
     signOut: (state) => {
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
+      state.isEmailVerified = false;
+      state.isQuestionnaireCompleted = false;
       state.isLoading = false;
       state.error = null;
     },
-
-    // ✅ ENHANCED: updateUser with better logging
     updateUser: (state, action: PayloadAction<Partial<User>>) => {
       if (state.user) {
         state.user = { ...state.user, ...action.payload };
+        // Sync the flags if these fields are updated
+        if ("email_verified" in action.payload) {
+          state.isEmailVerified = action.payload.email_verified ?? false;
+        }
+        if ("is_questionnaire_completed" in action.payload) {
+          state.isQuestionnaireCompleted =
+            action.payload.is_questionnaire_completed ?? false;
+        }
         console.log("✅ [AuthSlice] User partially updated:", action.payload);
       }
     },
-
     setMealsPerDay: (state, action: PayloadAction<number>) => {
       if (state.user) {
         state.user.meals_per_day = action.payload;
@@ -367,11 +403,16 @@ const authSlice = createSlice({
           state.user = null;
           state.token = null;
           state.isAuthenticated = false;
+          state.isEmailVerified = false;
+          state.isQuestionnaireCompleted = false;
           console.log("✅ Sign up successful - awaiting email verification");
         } else {
           state.user = action.payload.user || null;
           state.token = action.payload.token || null;
           state.isAuthenticated = true;
+          state.isEmailVerified = action.payload.user?.email_verified ?? false;
+          state.isQuestionnaireCompleted =
+            action.payload.user?.is_questionnaire_completed ?? false;
           console.log("✅ Sign up state updated");
         }
         state.error = null;
@@ -380,6 +421,8 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload as string;
         state.isAuthenticated = false;
+        state.isEmailVerified = false;
+        state.isQuestionnaireCompleted = false;
         console.log("❌ Sign up failed:", action.payload);
       })
       .addCase(signIn.pending, (state) => {
@@ -391,6 +434,9 @@ const authSlice = createSlice({
         state.user = action.payload.user || null;
         state.token = action.payload.token || null;
         state.isAuthenticated = true;
+        state.isEmailVerified = action.payload.user?.email_verified ?? false;
+        state.isQuestionnaireCompleted =
+          action.payload.user?.is_questionnaire_completed ?? false;
         state.error = null;
         console.log("✅ Sign in state updated");
         console.log(
@@ -406,6 +452,8 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload as string;
         state.isAuthenticated = false;
+        state.isEmailVerified = false;
+        state.isQuestionnaireCompleted = false;
         console.log("❌ Sign in failed:", action.payload);
       })
       .addCase(signOut.pending, (state) => {
@@ -415,6 +463,8 @@ const authSlice = createSlice({
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
+        state.isEmailVerified = false;
+        state.isQuestionnaireCompleted = false;
         state.error = null;
         state.isLoading = false;
         console.log("✅ Sign out state updated");
@@ -423,6 +473,8 @@ const authSlice = createSlice({
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
+        state.isEmailVerified = false;
+        state.isQuestionnaireCompleted = false;
         state.isLoading = false;
         state.error = action.payload as string;
         console.log("⚠️ Sign out failed but state cleared:", action.payload);
@@ -437,24 +489,34 @@ const authSlice = createSlice({
           state.token = action.payload.token;
           state.user = action.payload.user;
           state.isAuthenticated = true;
+          state.isEmailVerified = action.payload.user?.email_verified ?? false;
+          state.isQuestionnaireCompleted =
+            action.payload.user?.is_questionnaire_completed ?? false;
           console.log("✅ Session fully restored:", {
             email: action.payload.user?.email,
+            email_verified: action.payload.user?.email_verified,
             questionnaire: action.payload.user?.is_questionnaire_completed,
           });
         } else if (action.payload) {
           // Legacy format: just token (shouldn't happen now)
           state.token = action.payload as string;
           state.isAuthenticated = true;
+          state.isEmailVerified = false;
+          state.isQuestionnaireCompleted = false;
           console.log("✅ Token loaded (legacy format)");
         } else {
           // No auth found
           state.isAuthenticated = false;
+          state.isEmailVerified = false;
+          state.isQuestionnaireCompleted = false;
           console.log("ℹ️ No stored auth found");
         }
       })
       .addCase(loadStoredAuth.rejected, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = false;
+        state.isEmailVerified = false;
+        state.isQuestionnaireCompleted = false;
         state.error = action.payload as string;
         console.log("❌ Load stored auth failed:", action.payload);
       })
@@ -467,6 +529,9 @@ const authSlice = createSlice({
         state.user = action.payload.user || null;
         state.token = action.payload.token || null;
         state.isAuthenticated = true;
+        state.isEmailVerified = true; // Email is now verified!
+        state.isQuestionnaireCompleted =
+          action.payload.user?.is_questionnaire_completed ?? false;
         state.error = null;
         console.log("✅ Email verification state updated");
 
@@ -493,11 +558,14 @@ const authSlice = createSlice({
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
+        state.isEmailVerified = false;
+        state.isQuestionnaireCompleted = false;
       })
       .addCase(verifyEmail.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
         state.isAuthenticated = false;
+        state.isEmailVerified = false;
         console.log("❌ Email verification failed:", action.payload);
       });
   },
@@ -505,7 +573,9 @@ const authSlice = createSlice({
 
 export const {
   clearError,
-  forceSignOut, // ✅ Must be exported
+  forceSignOut,
+  updateEmailVerified,
+  updateQuestionnaireCompleted,
   updateUserSubscription,
   setQuestionnaireCompleted,
   updateSubscription,

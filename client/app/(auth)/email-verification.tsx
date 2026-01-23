@@ -17,9 +17,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/context/ThemeContext";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { verifyEmail } from "@/src/store/authSlice";
-import { AppDispatch } from "@/src/store";
+import { AppDispatch, RootState } from "@/src/store";
 
 const { width, height } = Dimensions.get("window");
 
@@ -41,15 +41,28 @@ export default function EmailVerificationScreen() {
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
+  const [userEmail, setUserEmail] = useState<string>("");
 
   const inputRefs = useRef<Array<TextInput | null>>([]);
   const shakeAnimation = useRef(new Animated.Value(0)).current;
-
+  const { isEmailVerified, isQuestionnaireCompleted } = useSelector(
+    (state: RootState) => state.auth,
+  );
   const router = useRouter();
-  const { email } = useLocalSearchParams();
+  const params = useLocalSearchParams();
   const { t } = useTranslation();
   const { colors } = useTheme();
   const dispatch = useDispatch<AppDispatch>();
+
+  // Extract and store email on mount
+  useEffect(() => {
+    const emailParam = Array.isArray(params.email)
+      ? params.email[0]
+      : params.email;
+    if (emailParam) {
+      setUserEmail(emailParam);
+    }
+  }, [params.email]);
 
   useEffect(() => {
     // Auto-focus first input on mount
@@ -92,7 +105,13 @@ export default function EmailVerificationScreen() {
       }),
     ]).start();
   };
-
+  const handleBack = async () => {
+    if (!isEmailVerified && !isQuestionnaireCompleted) {
+      dispatch({ type: "auth/forceSignOut" });
+      router.replace("/(auth)/signin");
+      return;
+    }
+  };
   const handleVerifyCode = async () => {
     const code = verificationCode.join("");
 
@@ -108,20 +127,19 @@ export default function EmailVerificationScreen() {
       return;
     }
 
+    if (!userEmail) {
+      Alert.alert(t("common.error"), "Email parameter missing");
+      return;
+    }
+
     setLoading(true);
     try {
-      const userEmail = Array.isArray(email) ? email[0] : email || "";
-
-      if (!userEmail) {
-        throw new Error("Email parameter missing");
-      }
-
       console.log("🔄 Dispatching email verification...");
       const result = await dispatch(
         verifyEmail({
           email: userEmail,
           code: code,
-        })
+        }),
       ).unwrap();
 
       console.log("✅ Email verification successful:", result);
@@ -137,7 +155,7 @@ export default function EmailVerificationScreen() {
               router.replace("/");
             },
           },
-        ]
+        ],
       );
     } catch (error: any) {
       setLoading(false);
@@ -145,7 +163,7 @@ export default function EmailVerificationScreen() {
       shakeInputs();
       Alert.alert(
         t("common.error"),
-        error.message || t("auth.email_verification.verification_failed")
+        error.message || t("auth.email_verification.verification_failed"),
       );
     }
   };
@@ -153,14 +171,13 @@ export default function EmailVerificationScreen() {
   const handleResendCode = async () => {
     if (!canResend) return;
 
+    if (!userEmail) {
+      Alert.alert(t("common.error"), "Email parameter missing");
+      return;
+    }
+
     setResendLoading(true);
     try {
-      const userEmail = Array.isArray(email) ? email[0] : email || "";
-
-      if (!userEmail) {
-        throw new Error("Email parameter missing");
-      }
-
       const response = await fetch(
         `${process.env.EXPO_PUBLIC_API_URL}/api/auth/resend-verification`,
         {
@@ -171,7 +188,7 @@ export default function EmailVerificationScreen() {
           body: JSON.stringify({
             email: userEmail,
           }),
-        }
+        },
       );
 
       const result = await response.json();
@@ -184,7 +201,7 @@ export default function EmailVerificationScreen() {
         inputRefs.current[0]?.focus();
         Alert.alert(
           t("common.success"),
-          t("auth.email_verification.resend_successful")
+          t("auth.email_verification.resend_successful"),
         );
       } else {
         throw new Error(result.error || "Resend failed");
@@ -194,7 +211,7 @@ export default function EmailVerificationScreen() {
       console.error("Resend verification error:", error);
       Alert.alert(
         t("common.error"),
-        error.message || t("auth.email_verification.resend_failed")
+        error.message || t("auth.email_verification.resend_failed"),
       );
     }
   };
@@ -275,11 +292,6 @@ export default function EmailVerificationScreen() {
       alignItems: "center",
       justifyContent: "center",
       marginBottom: isTablet ? 28 : 20,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.3,
-      shadowRadius: 12,
-      elevation: 8,
     },
     title: {
       fontSize: isTablet ? 40 : isSmallPhone ? 28 : 32,
@@ -304,12 +316,6 @@ export default function EmailVerificationScreen() {
       backgroundColor: "white",
       borderRadius: isTablet ? 24 : 20,
       padding: isTablet ? 40 : 28,
-      marginTop: isTablet ? 40 : 32,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      elevation: 6,
     },
     codeLabel: {
       fontSize: isTablet ? 20 : 16,
@@ -341,11 +347,6 @@ export default function EmailVerificationScreen() {
     codeInputFocused: {
       borderColor: colors.primary,
       backgroundColor: "white",
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 4,
-      elevation: 3,
       transform: [{ scale: 1.05 }],
     },
     codeInputFilled: {
@@ -358,11 +359,6 @@ export default function EmailVerificationScreen() {
       paddingVertical: isTablet ? 20 : 18,
       alignItems: "center",
       marginBottom: isTablet ? 28 : 24,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.25,
-      shadowRadius: 10,
-      elevation: 6,
     },
     verifyButtonDisabled: {
       opacity: 0.5,
@@ -440,10 +436,7 @@ export default function EmailVerificationScreen() {
       />
 
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons
             name="chevron-back"
             size={isTablet ? 26 : 22}
@@ -470,7 +463,7 @@ export default function EmailVerificationScreen() {
             <Text style={styles.subtitle}>
               {t("auth.email_verification.subtitle")}
               {"\n"}
-              <Text style={styles.emailText}>{email}</Text>
+              <Text style={styles.emailText}>{userEmail || params.email}</Text>
             </Text>
           </View>
 
@@ -497,7 +490,9 @@ export default function EmailVerificationScreen() {
             </TouchableOpacity>
 
             <View style={styles.resendContainer}>
-              <Text style={styles.resendText}>Didn't receive the code?</Text>
+              <Text style={styles.resendText}>
+                {t("auth.sign_up.email.didnt_recive")}
+              </Text>
               {canResend ? (
                 <TouchableOpacity
                   style={styles.resendButton}
@@ -512,7 +507,8 @@ export default function EmailVerificationScreen() {
                 </TouchableOpacity>
               ) : (
                 <Text style={styles.resendDisabledText}>
-                  Resend in {countdown}s
+                  {t("auth.sign_up.email.resend_email")} {countdown}{" "}
+                  {t("auth.sign_up.email.seconds")}
                 </Text>
               )}
             </View>

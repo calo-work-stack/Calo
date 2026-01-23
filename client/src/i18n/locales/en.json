@@ -114,6 +114,14 @@
     "medicalConditions": "Medical Conditions",
     "medications": "Medications",
     "mealsPerDay": "Meals Per Day",
+    "twoMeals": "2 Meals",
+    "twoMealsDesc": "Breakfast and dinner, ideal for intermittent fasting",
+    "threeMeals": "3 Meals",
+    "threeMealsDesc": "Traditional breakfast, lunch, and dinner",
+    "fourMeals": "4 Meals",
+    "fourMealsDesc": "3 main meals plus one snack",
+    "fivePlusMeals": "5+ Meals",
+    "fivePlusMealsDesc": "Multiple smaller meals throughout the day",
     "cookingPreference": "Cooking Preference",
     "cooked": "Cooked Meals",
     "cookedDesc": "Enjoy preparing full meals from scratch",
@@ -209,7 +217,10 @@
     "allergenTooShort": "Allergy name must be at least 3 characters",
     "allergenInvalidChars": "Please enter a valid allergy name using letters only",
     "pleaseRemoveInvalid": "Please remove invalid allergies",
-    "requiredFields": "Please fill in all required fields"
+    "requiredFields": "Please fill in all required fields",
+    "secondaryGoalTooShort": "Secondary goal must be at least 3 characters",
+    "secondaryGoalTooLong": "Secondary goal must be less than 200 characters",
+    "secondaryGoalInvalid": "Please enter a valid secondary goal description"
   },
   "tabs": {
     "home": "Home",
@@ -320,6 +331,7 @@
         "kcal": "kcal",
         "cups": "cups",
         "grams": "g",
+        "pieces": "pieces",
         "mg": "mg"
       }
     }
@@ -591,6 +603,13 @@
       "carbs": "Carbs"
     }
   },
+  "shopping": {
+    "from_meal_analysis": "From Meal Analysis",
+    "item_added": "{{name}} added to shopping list!",
+    "items_added": "{{count}} ingredients added to shopping list!",
+    "add_item_failed": "Failed to add item to shopping list",
+    "add_items_failed": "Failed to add ingredients to shopping list"
+  },
   "foodScanner": {
     "title": "Food Scanner",
     "subtitle": "Scan and analyze your food",
@@ -834,6 +853,7 @@
     "sugar": "Sugar",
     "sodium": "Sodium",
     "hydration": "Hydration Level",
+    "items_detected": "Items Detected",
     "kcal": "kcal",
     "g": "g",
     "mg": "mg",
@@ -1118,6 +1138,57 @@
     "create_personalized_menu": "Create a personalized menu to get started",
     "create_first_menu": "Create First Menu"
   },
+  "menu_creator": {
+    "cuisines": {
+      "mediterranean": "Mediterranean",
+      "mediterranean_desc": "Fresh, healthy, olive oil-based",
+      "asian": "Asian",
+      "asian_desc": "Soy-based, rice, vegetables",
+      "american": "American",
+      "american_desc": "Comfort food, hearty meals",
+      "italian": "Italian",
+      "italian_desc": "Pasta, tomatoes, herbs",
+      "mexican": "Mexican",
+      "mexican_desc": "Spicy, beans, corn-based",
+      "indian": "Indian",
+      "indian_desc": "Rich spices, lentils, rice",
+      "japanese": "Japanese",
+      "japanese_desc": "Seafood, rice, umami flavors",
+      "middle_eastern": "Middle Eastern",
+      "middle_eastern_desc": "Hummus, pita, aromatic spices",
+      "french": "French",
+      "french_desc": "Elegant, butter, wine-based"
+    },
+    "dietary": {
+      "vegetarian": "Vegetarian",
+      "vegan": "Vegan",
+      "gluten_free": "Gluten Free",
+      "keto": "Keto",
+      "low_carb": "Low Carb",
+      "dairy_free": "Dairy Free",
+      "paleo": "Paleo",
+      "pescatarian": "Pescatarian",
+      "halal": "Halal",
+      "kosher": "Kosher"
+    },
+    "search_shopping_list": "Search shopping list...",
+    "from_shopping_list": "From Shopping List",
+    "add_custom_ingredient": "Add Custom Ingredient",
+    "enter_ingredient_name": "Enter ingredient name...",
+    "selected": "Selected",
+    "menu_preferences": "Menu Preferences",
+    "customize_menu_desc": "Customize your menu based on your preferences",
+    "custom_menu_name": "Custom Menu Name (Optional)",
+    "menu_name_placeholder": "e.g., 'Fresh Week', 'Comfort Classics'...",
+    "cuisine_type": "Cuisine Type",
+    "dietary_preferences": "Dietary Preferences",
+    "menu_duration": "Menu Duration",
+    "days": "Days",
+    "menu_created": "Menu Created!",
+    "menu_created_desc": "Your menu is ready! AI is personalizing your recipes in the background - they'll update automatically.",
+    "failed_to_generate": "Failed to generate menu",
+    "network_error": "Network error. Please check your connection and try again."
+  },
   "active_menu": {
     "loading_menu": "Loading your menu...",
     "menu_not_found": "Menu not found",
@@ -1266,6 +1337,11 @@
     "birth_date": "Birth Date",
     "language_preference": "Language of choice",
     "sign_up": {
+      "email": {
+        "didnt_recive":"Didn't receive the code?",
+        "resend_email":"Resend Email in",
+        "seconds":"seconds"
+      },
       "title": "Sign Up",
       "create_account": "Create Account",
       "subtitle": "Start your nutrition journey today",
@@ -1562,6 +1638,7 @@
     "warning": "Warning",
     "info": "Information",
     "confirm": "Confirm",
+    "got_it": "Got it",
     "delete": "Delete",
     "edit": "Edit",
     "update": "Update",

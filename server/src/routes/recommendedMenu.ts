@@ -1368,7 +1368,41 @@ ${customName ? `Use this exact name: "${customName}"` : `Create a catchy, 2-3 wo
 - Return ONLY valid JSON, no conversational text
 - If dietary conflicts exist, intelligently substitute (e.g., tofu for chicken in vegetarian)
 - Ensure all quantities are realistic and practical
-- Include estimated costs in local currency (₪)
+
+💰 ISRAELI MARKET PRICING GUIDE (₪ per unit):
+Use these REALISTIC Israeli supermarket prices for cost estimation:
+PROTEINS (per 100g):
+- Chicken breast: ₪12-15 | Chicken thighs: ₪8-10 | Ground chicken: ₪10-12
+- Beef (ground): ₪18-25 | Beef steak: ₪35-50 | Beef stew meat: ₪25-30
+- Salmon fillet: ₪35-45 | Tilapia/Sea bream: ₪20-25 | Tuna (canned): ₪8-12
+- Eggs (per egg): ₪1-1.5 | Tofu (per 100g): ₪5-8 | Cottage cheese: ₪4-6
+- Turkey breast: ₪15-18 | Lamb: ₪40-55
+
+DAIRY & ALTERNATIVES (per 100g/ml):
+- Milk (per liter): ₪6-8 | Greek yogurt: ₪3-5 | Regular yogurt: ₪2-3
+- Cheese (yellow): ₪8-12 | Feta cheese: ₪6-9 | Cream cheese: ₪5-7
+- Butter (per 100g): ₪5-7 | Tahini: ₪4-6 | Hummus: ₪3-5
+
+GRAINS & CARBS:
+- Rice (per 100g): ₪1-2 | Pasta (per 100g): ₪1-2 | Bread (loaf): ₪8-15
+- Quinoa (per 100g): ₪4-6 | Oats (per 100g): ₪1-2 | Couscous: ₪2-3
+- Pita bread (per 4): ₪5-8 | Tortillas (per 6): ₪12-15
+
+VEGETABLES (per 100g):
+- Tomatoes: ₪2-4 | Cucumbers: ₪1-2 | Peppers: ₪3-5 | Onions: ₪1-2
+- Carrots: ₪1-2 | Broccoli: ₪4-6 | Zucchini: ₪2-3 | Eggplant: ₪2-3
+- Leafy greens (lettuce, spinach): ₪3-5 | Avocado (per piece): ₪5-8
+
+FRUITS (per 100g):
+- Apples: ₪2-3 | Bananas: ₪2-3 | Oranges: ₪2-3 | Berries: ₪8-12
+- Dates: ₪4-6 | Grapes: ₪4-6
+
+PANTRY & SPICES:
+- Olive oil (per 100ml): ₪4-6 | Vegetable oil (per 100ml): ₪1-2
+- Spices (per 10g): ₪2-4 | Salt/Pepper: ₪0.5-1 | Garlic (per head): ₪2-3
+- Honey (per 100g): ₪5-8 | Sugar (per 100g): ₪1-2
+
+EXAMPLE: A meal with 150g chicken breast (₪18-22), 200g vegetables (₪6-8), 100g rice (₪1-2) = approximately ₪25-32 total
 
 📊 REQUIRED JSON FORMAT:
 {

@@ -364,7 +364,7 @@ export default function FoodScannerScreen() {
       const response = await api.post("/shopping-lists", {
         name: scanResult.product.name,
         quantity: quantity,
-        unit: isBeverage ? t("common.milliliters") : t("common.grams"),
+        unit: isBeverage ? t("common.milliliters") : t("home.nutrition."),
         category: scanResult.product.category,
         added_from: "scanner",
         product_barcode: scanResult.product.barcode,
@@ -715,7 +715,7 @@ export default function FoodScannerScreen() {
                 <Text
                   style={[styles.productWeight, { color: colors.textTertiary }]}
                 >
-                  {quantity} {t("foodScanner.grams")}
+                  {quantity} {t("foodScanner.")}
                 </Text>
               </View>
             </View>
@@ -799,7 +799,7 @@ export default function FoodScannerScreen() {
                       (scanResult.product.nutrition_per_100g.fat * quantity) /
                         100,
                     )}{" "}
-                    {t("common.grams")}
+                    {t("home.nutrition.")}
                   </Text>
                 </View>
 
@@ -826,7 +826,7 @@ export default function FoodScannerScreen() {
                         quantity) /
                         100,
                     )}{" "}
-                    {t("common.grams")}
+                    {t("home.nutrition.")}
                   </Text>
                 </View>
 
@@ -853,7 +853,7 @@ export default function FoodScannerScreen() {
                         quantity) /
                         100,
                     )}{" "}
-                    {t("common.grams")}
+                    {t("home.nutrition.")}
                   </Text>
                 </View>
 
@@ -875,7 +875,7 @@ export default function FoodScannerScreen() {
                     />
                   </View>
                   <Text style={[styles.nutritionValue, { color: colors.text }]}>
-                    4 {t("common.grams")}
+                    4 {t("home.nutrition.")}
                   </Text>
                 </View>
               </View>
@@ -1116,8 +1116,6 @@ const styles = StyleSheet.create({
     height: width - 48,
     borderRadius: 28,
     overflow: "hidden",
-    backgroundColor: "#000",
-    elevation: 10,
   },
   cameraView: {
     flex: 1,

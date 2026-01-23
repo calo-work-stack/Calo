@@ -10,10 +10,12 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/src/store";
+import { updateUser } from "@/src/store/authSlice";
 import {
   X,
   Lock,
@@ -23,6 +25,9 @@ import {
   User,
   Calendar,
   ChevronRight,
+  ChevronDown,
+  Save,
+  Check,
 } from "lucide-react-native";
 import { userAPI } from "@/src/services/api";
 import { signOut } from "@/src/store/authSlice";
@@ -76,7 +81,15 @@ export default function EditProfile({ onClose }: EditProfileProps) {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      await userAPI.updateProfile(profile);
+      const response = await userAPI.updateProfile(profile);
+
+      // Update Redux state with new profile data
+      dispatch(updateUser({
+        name: profile.name,
+        email: profile.email,
+        birth_date: profile.birth_date,
+      }));
+
       Alert.alert(t("common.success"), t("profile.profile_updated"), [
         { text: t("common.ok"), onPress: onClose },
       ]);
@@ -207,15 +220,46 @@ export default function EditProfile({ onClose }: EditProfileProps) {
   };
 
   return (
-    <View >
+    <View style={styles.container}>
+      {/* Header with Save Button */}
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={onClose}
+        >
+          <X size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          {t("profile.edit_profile")}
+        </Text>
+        <TouchableOpacity
+          style={[styles.saveButton, { backgroundColor: colors.primary }]}
+          onPress={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <ActivityIndicator size="small" color={colors.onPrimary} />
+          ) : (
+            <>
+              <Check size={16} color={colors.onPrimary} />
+              <Text style={[styles.saveButtonText, { color: colors.onPrimary }]}>
+                {t("common.save")}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Personal Information Section */}
-        <View
-          style={[
-          ]}
-        >
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.sectionHeader}>
-            <User size={20} color={colors.primary} />
+            <LinearGradient
+              colors={[colors.primary, colors.primaryContainer]}
+              style={styles.sectionIconBg}
+            >
+              <User size={18} color={colors.onPrimary} />
+            </LinearGradient>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               {t("profile.personal_info")}
             </Text>
@@ -277,7 +321,7 @@ export default function EditProfile({ onClose }: EditProfileProps) {
               ]}
               onPress={() => setShowPicker(true)}
             >
-              <Calendar size={20} color={colors.textSecondary} />
+              <Calendar size={20} color={colors.primary} />
               <Text style={[styles.dateText, { color: colors.text }]}>
                 {date.toLocaleDateString()}
               </Text>
@@ -307,15 +351,20 @@ export default function EditProfile({ onClose }: EditProfileProps) {
             style={styles.sectionHeader}
             onPress={() => setShowPasswordSection(!showPasswordSection)}
           >
-            <Lock size={20} color={colors.primary} />
+            <LinearGradient
+              colors={[colors.warning, colors.warning + "CC"]}
+              style={styles.sectionIconBg}
+            >
+              <Lock size={18} color="#FFF" />
+            </LinearGradient>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               {t("auth.reset_password.title")}
             </Text>
-            <ChevronRight
+            <ChevronDown
               size={20}
               color={colors.textSecondary}
               style={{
-                transform: [{ rotate: showPasswordSection ? "90deg" : "0deg" }],
+                transform: [{ rotate: showPasswordSection ? "180deg" : "0deg" }],
               }}
             />
           </TouchableOpacity>
@@ -518,12 +567,17 @@ export default function EditProfile({ onClose }: EditProfileProps) {
             styles.dangerSection,
             {
               backgroundColor: colors.error + "10",
-              borderColor: colors.error + "30",
+              borderColor: colors.error + "40",
             },
           ]}
         >
           <View style={styles.sectionHeader}>
-            <AlertCircle size={20} color={colors.error} />
+            <LinearGradient
+              colors={[colors.error, colors.error + "CC"]}
+              style={styles.sectionIconBg}
+            >
+              <AlertCircle size={18} color="#FFF" />
+            </LinearGradient>
             <Text style={[styles.sectionTitle, { color: colors.error }]}>
               {t("profile.dangerZone")}
             </Text>
@@ -622,30 +676,40 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingTop: Platform.OS === "ios" ? 50 : 20,
+    paddingVertical: 12,
     borderBottomWidth: 1,
   },
   closeButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
+    flex: 1,
+    textAlign: "center",
   },
   saveButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    minWidth: 80,
+    flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 6,
   },
   saveButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  sectionIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
   },
   content: {
     flex: 1,

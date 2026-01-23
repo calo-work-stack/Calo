@@ -245,8 +245,38 @@ router.get(
 
     try {
       console.log(`💡 Fetching AI recommendations for user: ${userId}`);
-      const recommendations =
+
+      // First, get existing recommendations
+      let recommendations =
         await AIRecommendationService.getUserRecommendations(userId);
+
+      // If no recommendations exist and user is eligible (GOLD/PLATINUM), generate them
+      if (recommendations.length === 0) {
+        const { prisma } = await import("../lib/database");
+        const user = await prisma.user.findUnique({
+          where: { user_id: userId },
+          select: { subscription_type: true, is_questionnaire_completed: true },
+        });
+
+        if (
+          user &&
+          user.is_questionnaire_completed &&
+          (user.subscription_type === "GOLD" || user.subscription_type === "PLATINUM")
+        ) {
+          console.log(`🚀 Generating first-time AI recommendations for GOLD/PLATINUM user: ${userId}`);
+          try {
+            const newRecommendation =
+              await AIRecommendationService.generateDailyRecommendations(userId);
+            if (newRecommendation) {
+              recommendations = [newRecommendation];
+              console.log(`✅ Generated first-time recommendations for user: ${userId}`);
+            }
+          } catch (genError) {
+            console.warn(`⚠️ Could not generate recommendations: ${genError}`);
+            // Continue with empty recommendations
+          }
+        }
+      }
 
       // ✅ Return in expected format
       res.json({

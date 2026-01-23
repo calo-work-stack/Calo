@@ -166,6 +166,7 @@ const QuestionnaireScreen: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [showTip, setShowTip] = useState("");
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [secondaryGoalError, setSecondaryGoalError] = useState<string | null>(null);
   const formInitialized = useRef(false);
   const totalSteps = 8;
 
@@ -205,6 +206,45 @@ const QuestionnaireScreen: React.FC = () => {
     personalized_tips: true,
     notifications_preference: null,
   });
+
+  // Validate secondary goal with detailed feedback
+  const validateSecondaryGoal = (goal: string): { valid: boolean; errorKey?: string } => {
+    if (!goal || goal.trim().length === 0) {
+      return { valid: true }; // Optional field, empty is OK
+    }
+
+    const trimmed = goal.trim();
+
+    // Check minimum length (at least 3 characters)
+    if (trimmed.length < 3) {
+      return { valid: false, errorKey: "secondaryGoalTooShort" };
+    }
+
+    // Check maximum length (reasonable limit)
+    if (trimmed.length > 200) {
+      return { valid: false, errorKey: "secondaryGoalTooLong" };
+    }
+
+    // Check for gibberish (no vowels in English text or invalid Hebrew)
+    const hasEnglish = /[a-zA-Z]/.test(trimmed);
+    const hasHebrew = /[\u0590-\u05FF]/.test(trimmed);
+
+    if (hasEnglish && !hasHebrew) {
+      // English text should have vowels
+      const hasVowels = /[aeiouAEIOU]/.test(trimmed);
+      if (!hasVowels && trimmed.length > 5) {
+        return { valid: false, errorKey: "secondaryGoalInvalid" };
+      }
+    }
+
+    // Check for random characters/keyboard mashing
+    const hasRepeatingChars = /(.)\1{4,}/.test(trimmed);
+    if (hasRepeatingChars) {
+      return { valid: false, errorKey: "secondaryGoalInvalid" };
+    }
+
+    return { valid: true };
+  };
 
   // Validate allergen with detailed feedback
   const validateAllergen = (
@@ -579,6 +619,7 @@ const QuestionnaireScreen: React.FC = () => {
         return true;
       case 5:
         return (
+          formData.meals_per_day &&
           formData.cooking_preference &&
           formData.available_cooking_methods.length > 0
         );
@@ -814,6 +855,33 @@ const QuestionnaireScreen: React.FC = () => {
       t("questionnaire.soy"),
     ];
 
+    const mealsPerDayOptions = [
+      {
+        key: "2",
+        label: t("questionnaire.twoMeals"),
+        description: t("questionnaire.twoMealsDesc"),
+        icon: <Text style={styles.emoji}>🍽️</Text>,
+      },
+      {
+        key: "3",
+        label: t("questionnaire.threeMeals"),
+        description: t("questionnaire.threeMealsDesc"),
+        icon: <Text style={styles.emoji}>🥗</Text>,
+      },
+      {
+        key: "4",
+        label: t("questionnaire.fourMeals"),
+        description: t("questionnaire.fourMealsDesc"),
+        icon: <Text style={styles.emoji}>🍲</Text>,
+      },
+      {
+        key: "5",
+        label: t("questionnaire.fivePlusMeals"),
+        description: t("questionnaire.fivePlusMealsDesc"),
+        icon: <Text style={styles.emoji}>🥘</Text>,
+      },
+    ];
+
     const dietaryStyles = [
       {
         key: "regular",
@@ -986,14 +1054,31 @@ const QuestionnaireScreen: React.FC = () => {
             <CustomTextInput
               label={t("questionnaire.secondaryGoal")}
               value={formData.secondary_goal || ""}
-              onChangeText={(text: any) =>
+              onChangeText={(text: any) => {
                 setFormData((prev) => ({
                   ...prev,
                   secondary_goal: text || null,
-                }))
-              }
+                }));
+                // Validate on change
+                const validation = validateSecondaryGoal(text || "");
+                if (!validation.valid && validation.errorKey) {
+                  setSecondaryGoalError(t(`validation.${validation.errorKey}`));
+                } else {
+                  setSecondaryGoalError(null);
+                }
+              }}
+              onBlur={() => {
+                // Validate on blur as well
+                const validation = validateSecondaryGoal(formData.secondary_goal || "");
+                if (!validation.valid && validation.errorKey) {
+                  setSecondaryGoalError(t(`validation.${validation.errorKey}`));
+                } else {
+                  setSecondaryGoalError(null);
+                }
+              }}
               placeholder={t("questionnaire.secondaryGoalPlaceholder")}
               multiline
+              error={secondaryGoalError || undefined}
             />
 
             <CustomTextInput
@@ -1089,6 +1174,16 @@ const QuestionnaireScreen: React.FC = () => {
             title={t("questionnaire.steps.means.title")}
             description={t("questionnaire.steps.means.subtitle")}
           >
+            <OptionGroup
+              label={t("questionnaire.mealsPerDay")}
+              options={mealsPerDayOptions}
+              selectedValue={formData.meals_per_day}
+              onSelect={(value) =>
+                setFormData((prev) => ({ ...prev, meals_per_day: value }))
+              }
+              required
+            />
+
             <OptionGroup
               label={t("questionnaire.cookingPreference")}
               options={cookingPrefs}

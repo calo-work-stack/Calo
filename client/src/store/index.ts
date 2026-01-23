@@ -188,10 +188,11 @@ const createCrossPlatformStorage = () => {
 const crossPlatformStorage = createCrossPlatformStorage();
 
 // Auth config uses cross-platform storage (SecureStore on mobile, localStorage on web)
+// ✅ Added isEmailVerified and isQuestionnaireCompleted to persist
 const authPersistConfig = {
   key: "auth",
   storage: crossPlatformStorage,
-  whitelist: ["user", "token", "isAuthenticated"],
+  whitelist: ["user", "token", "isAuthenticated", "isEmailVerified", "isQuestionnaireCompleted"],
 };
 
 // Meal and Calendar configs use safe AsyncStorage (handles SQLITE_FULL errors)

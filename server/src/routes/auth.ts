@@ -11,9 +11,6 @@ router.post("/signup", async (req, res, next) => {
   try {
     console.log("🔄 Processing signup request...");
     console.log("📱 Request body:", { ...req.body, password: "***" });
-    console.log("🌐 Origin:", req.headers.origin);
-    console.log("📍 IP:", req.ip);
-    console.log("🔍 User-Agent:", req.headers["user-agent"]);
 
     const validatedData = signUpSchema.parse(req.body);
     const result = await AuthService.signUp(validatedData);
@@ -35,7 +32,6 @@ router.post("/signup", async (req, res, next) => {
   } catch (error) {
     console.error("💥 Signup error:", error);
 
-    // Enhanced error logging
     if (error instanceof Error) {
       console.error("💥 Error details:", {
         name: error.name,
@@ -106,8 +102,11 @@ router.post("/verify-email", async (req, res, next) => {
   }
 });
 
+// FIXED: This endpoint should NOT require authentication
+// Users need to resend verification codes BEFORE they're logged in
 router.post("/resend-verification", async (req, res) => {
   try {
+    console.log("🔄 Processing resend verification request...");
     const { email } = req.body;
 
     if (!email) {
@@ -116,6 +115,8 @@ router.post("/resend-verification", async (req, res) => {
         error: "Email is required",
       });
     }
+
+    console.log("📧 Resending verification to:", email);
 
     const user = await prisma.user.findUnique({
       where: { email },
@@ -139,7 +140,7 @@ router.post("/resend-verification", async (req, res) => {
       });
     }
 
-    // Generate new verification code
+    // Generate new 6-digit verification code
     const emailVerificationCode = crypto.randomInt(100000, 999999).toString();
 
     await prisma.user.update({
@@ -154,15 +155,17 @@ router.post("/resend-verification", async (req, res) => {
     await AuthService.sendVerificationEmail(
       email,
       emailVerificationCode,
-      user.name || "User"
+      user.name || "User",
     );
+
+    console.log("✅ Verification code resent successfully to:", email);
 
     res.json({
       success: true,
       message: "Verification code resent successfully",
     });
   } catch (error) {
-    console.error("Resend verification error:", error);
+    console.error("💥 Resend verification error:", error);
     res.status(500).json({
       success: false,
       error:
@@ -176,10 +179,6 @@ router.post("/resend-verification", async (req, res) => {
 router.post("/signin", async (req, res, next) => {
   try {
     console.log("🔄 Processing signin request...");
-    console.log("📱 Request body:", req.body);
-    console.log("🌐 Origin:", req.headers.origin);
-    console.log("📍 IP:", req.ip);
-    console.log("🔍 User-Agent:", req.headers["user-agent"]);
 
     const validatedData = signInSchema.parse(req.body);
     const result = await AuthService.signIn(validatedData);
@@ -194,10 +193,6 @@ router.post("/signin", async (req, res, next) => {
       const cookieOptions = AuthService.getCookieOptions();
       res.cookie("auth_token", result.token, cookieOptions);
       console.log("🍪 Cookie set for web client");
-    } else {
-      console.log(
-        "📱 Mobile client detected - token will be stored in secure-store"
-      );
     }
 
     console.log("✅ Signin successful");
@@ -240,7 +235,7 @@ router.post("/signin", async (req, res, next) => {
     res.json({
       success: true,
       user: userData,
-      token: result.token, // Always send token for mobile compatibility
+      token: result.token,
     });
   } catch (error) {
     console.error("💥 Signin error:", error);
@@ -257,7 +252,6 @@ router.post("/signin", async (req, res, next) => {
 
 router.get("/me", authenticateToken, async (req: AuthRequest, res) => {
   try {
-    // Get questionnaire data for meals_per_day
     const questionnaire = await prisma.userQuestionnaire.findFirst({
       where: { user_id: req.user.user_id },
       select: { meals_per_day: true },
@@ -310,7 +304,6 @@ router.post(
   authenticateToken,
   async (req: AuthRequest, res, next) => {
     try {
-      // Get token from cookie or header
       const token =
         req.cookies.auth_token || req.headers.authorization?.substring(7);
 
@@ -318,7 +311,6 @@ router.post(
         await AuthService.signOut(token);
       }
 
-      // Clear the cookie
       res.clearCookie("auth_token", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -335,10 +327,9 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
-// Forgot password endpoint
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
@@ -352,7 +343,7 @@ router.post("/forgot-password", async (req, res) => {
 
     console.log("🔄 Processing forgot password request for:", email);
 
-    const result = await AuthService.sendPasswordResetEmail(email);
+    await AuthService.sendPasswordResetEmail(email);
 
     res.json({
       success: true,
@@ -374,7 +365,6 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
-// Verify reset code endpoint
 router.post("/verify-reset-code", async (req, res) => {
   try {
     const { email, code } = req.body;
@@ -411,7 +401,6 @@ router.post("/verify-reset-code", async (req, res) => {
   }
 });
 
-// Reset password endpoint
 router.post("/reset-password", async (req, res) => {
   try {
     const { token, newPassword } = req.body;
@@ -446,7 +435,5 @@ router.post("/reset-password", async (req, res) => {
     }
   }
 });
+
 export { router as authRoutes };
-function next(error: unknown) {
-  throw new Error("Function not implemented.");
-}

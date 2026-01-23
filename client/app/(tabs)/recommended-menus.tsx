@@ -279,7 +279,6 @@ const MenuCard = React.memo(
                   { backgroundColor: colors.success + "20" },
                 ]}
               >
-                <DollarSign size={14} color={colors.success} />
                 <Text style={[styles.costText, { color: colors.success }]}>
                   ₪{menu.estimated_cost.toFixed(0)}
                 </Text>

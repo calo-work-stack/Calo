@@ -143,85 +143,85 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
     setTotalEstimatedCost(total);
   }, [selectedIngredients]);
 
-  // Expanded cuisine options with enhanced styling
+  // Expanded cuisine options with enhanced styling - using i18n
   const cuisineOptions = [
     {
       id: "mediterranean",
-      name: "Mediterranean",
+      name: t("menu_creator.cuisines.mediterranean"),
       icon: "🌿",
       color: "#059669",
-      description: "Fresh, healthy, olive oil-based",
+      description: t("menu_creator.cuisines.mediterranean_desc"),
     },
     {
       id: "asian",
-      name: "Asian",
+      name: t("menu_creator.cuisines.asian"),
       icon: "🥢",
       color: "#dc2626",
-      description: "Soy-based, rice, vegetables",
+      description: t("menu_creator.cuisines.asian_desc"),
     },
     {
       id: "american",
-      name: "American",
+      name: t("menu_creator.cuisines.american"),
       icon: "🍔",
       color: "#1f2937",
-      description: "Comfort food, hearty meals",
+      description: t("menu_creator.cuisines.american_desc"),
     },
     {
       id: "italian",
-      name: "Italian",
+      name: t("menu_creator.cuisines.italian"),
       icon: "🍝",
       color: "#65a30d",
-      description: "Pasta, tomatoes, herbs",
+      description: t("menu_creator.cuisines.italian_desc"),
     },
     {
       id: "mexican",
-      name: "Mexican",
+      name: t("menu_creator.cuisines.mexican"),
       icon: "🌮",
       color: "#ea580c",
-      description: "Spicy, beans, corn-based",
+      description: t("menu_creator.cuisines.mexican_desc"),
     },
     {
       id: "indian",
-      name: "Indian",
+      name: t("menu_creator.cuisines.indian"),
       icon: "🍛",
       color: "#7c2d12",
-      description: "Rich spices, lentils, rice",
+      description: t("menu_creator.cuisines.indian_desc"),
     },
     {
       id: "japanese",
-      name: "Japanese",
+      name: t("menu_creator.cuisines.japanese"),
       icon: "🍣",
       color: "#b91c1c",
-      description: "Seafood, rice, umami flavors",
+      description: t("menu_creator.cuisines.japanese_desc"),
     },
     {
       id: "middle_eastern",
-      name: "Middle Eastern",
+      name: t("menu_creator.cuisines.middle_eastern"),
       icon: "🥙",
       color: "#92400e",
-      description: "Hummus, pita, aromatic spices",
+      description: t("menu_creator.cuisines.middle_eastern_desc"),
     },
     {
       id: "french",
-      name: "French",
+      name: t("menu_creator.cuisines.french"),
       icon: "🥐",
       color: "#1e40af",
-      description: "Elegant, butter, wine-based",
+      description: t("menu_creator.cuisines.french_desc"),
     },
   ];
 
-  // Expanded dietary restrictions
+  // Expanded dietary restrictions - using i18n
   const dietaryOptions = [
-    { id: "vegetarian", name: "Vegetarian", icon: Leaf, color: "#16a34a" },
-    { id: "vegan", name: "Vegan", icon: Leaf, color: "#15803d" },
-    { id: "gluten_free", name: "Gluten Free", icon: Wheat, color: "#ca8a04" },
-    { id: "keto", name: "Keto", icon: Flame, color: "#dc2626" },
-    { id: "low_carb", name: "Low Carb", icon: Flame, color: "#ea580c" },
-    { id: "dairy_free", name: "Dairy Free", icon: X, color: "#7c3aed" },
-    { id: "paleo", name: "Paleo", icon: Flame, color: "#92400e" },
-    { id: "pescatarian", name: "Pescatarian", icon: Utensils, color: "#0891b2" },
-    { id: "halal", name: "Halal", icon: Check, color: "#047857" },
-    { id: "kosher", name: "Kosher", icon: Check, color: "#1d4ed8" },
+    { id: "vegetarian", name: t("menu_creator.dietary.vegetarian"), icon: Leaf, color: "#16a34a" },
+    { id: "vegan", name: t("menu_creator.dietary.vegan"), icon: Leaf, color: "#15803d" },
+    { id: "gluten_free", name: t("menu_creator.dietary.gluten_free"), icon: Wheat, color: "#ca8a04" },
+    { id: "keto", name: t("menu_creator.dietary.keto"), icon: Flame, color: "#dc2626" },
+    { id: "low_carb", name: t("menu_creator.dietary.low_carb"), icon: Flame, color: "#ea580c" },
+    { id: "dairy_free", name: t("menu_creator.dietary.dairy_free"), icon: X, color: "#7c3aed" },
+    { id: "paleo", name: t("menu_creator.dietary.paleo"), icon: Flame, color: "#92400e" },
+    { id: "pescatarian", name: t("menu_creator.dietary.pescatarian"), icon: Utensils, color: "#0891b2" },
+    { id: "halal", name: t("menu_creator.dietary.halal"), icon: Check, color: "#047857" },
+    { id: "kosher", name: t("menu_creator.dietary.kosher"), icon: Check, color: "#1d4ed8" },
   ];
 
   // Filter shopping list based on search
@@ -340,13 +340,13 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
         // Show a subtle notification that AI is enhancing in background
         if (response.data.data?.is_generating) {
           Alert.alert(
-            "Menu Created!",
-            "Your menu is ready! AI is personalizing your recipes in the background - they'll update automatically.",
-            [{ text: "Got it" }]
+            t("menu_creator.menu_created"),
+            t("menu_creator.menu_created_desc"),
+            [{ text: t("common.got_it") }]
           );
         }
       } else {
-        throw new Error(response.data.error || "Failed to generate menu");
+        throw new Error(response.data.error || t("menu_creator.failed_to_generate"));
       }
     } catch (error: any) {
       console.error("Error generating menu:", error);
@@ -358,9 +358,9 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
         !error?.response;
 
       // Get proper error message
-      let errorMessage = error?.response?.data?.error || error?.message || "Failed to generate menu";
+      let errorMessage = error?.response?.data?.error || error?.message || t("menu_creator.failed_to_generate");
       if (isNetworkError) {
-        errorMessage = "Network error. Please check your connection and try again.";
+        errorMessage = t("menu_creator.network_error");
       }
 
       // Provide context-specific error information
@@ -487,7 +487,7 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
         <Search size={20} color={colors.icon} />
         <TextInput
           style={[styles.searchInput, { color: colors.text }]}
-          placeholder="Search shopping list..."
+          placeholder={t("menu_creator.search_shopping_list")}
           placeholderTextColor={colors.icon}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -496,7 +496,7 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
 
       {/* Shopping List Items */}
       <Text style={[styles.sectionLabel, { color: colors.text }]}>
-        From Shopping List ({filteredShoppingList.length})
+        {t("menu_creator.from_shopping_list")} ({filteredShoppingList.length})
       </Text>
       <ScrollView
         style={styles.ingredientsList}
@@ -545,7 +545,7 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
 
       {/* Custom Ingredient Input */}
       <Text style={[styles.sectionLabel, { color: colors.text }]}>
-        Add Custom Ingredient
+        {t("menu_creator.add_custom_ingredient")}
       </Text>
       <View style={styles.customIngredientContainer}>
         <TextInput
@@ -557,7 +557,7 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
               borderColor: colors.border,
             },
           ]}
-          placeholder="Enter ingredient name..."
+          placeholder={t("menu_creator.enter_ingredient_name")}
           placeholderTextColor={colors.icon}
           value={customIngredient}
           onChangeText={setCustomIngredient}
@@ -574,7 +574,7 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
       {selectedIngredients.length > 0 && (
         <>
           <Text style={[styles.sectionLabel, { color: colors.text }]}>
-            Selected ({selectedIngredients.length})
+            {t("menu_creator.selected")} ({selectedIngredients.length})
           </Text>
           <View style={styles.selectedIngredients}>
             {selectedIngredients.map((ingredient) => (
@@ -661,15 +661,15 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
   const renderPreferences = () => (
     <View style={styles.stepContent}>
       <Text style={[styles.stepTitle, { color: colors.text }]}>
-        Menu Preferences
+        {t("menu_creator.menu_preferences")}
       </Text>
       <Text style={[styles.stepDescription, { color: colors.icon }]}>
-        Customize your menu based on your preferences
+        {t("menu_creator.customize_menu_desc")}
       </Text>
 
       {/* Custom Menu Name */}
       <Text style={[styles.sectionLabel, { color: colors.text }]}>
-        Custom Menu Name (Optional)
+        {t("menu_creator.custom_menu_name")}
       </Text>
       <View style={styles.customNameContainer}>
         <TextInput
@@ -681,7 +681,7 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
               borderColor: colors.border,
             },
           ]}
-          placeholder="e.g., 'Fresh Week', 'Comfort Classics'..."
+          placeholder={t("menu_creator.menu_name_placeholder")}
           placeholderTextColor={colors.icon}
           value={customMenuName}
           onChangeText={setCustomMenuName}
@@ -691,7 +691,7 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
 
       {/* Cuisine Selection */}
       <Text style={[styles.sectionLabel, { color: colors.text }]}>
-        Cuisine Type
+        {t("menu_creator.cuisine_type")}
       </Text>
       <View style={styles.optionsGrid}>
         {cuisineOptions.map((cuisine) => (
@@ -737,7 +737,7 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
 
       {/* Dietary Restrictions */}
       <Text style={[styles.sectionLabel, { color: colors.text }]}>
-        Dietary Preferences
+        {t("menu_creator.dietary_preferences")}
       </Text>
       <View style={styles.optionsGrid}>
         {dietaryOptions.map((option) => {
@@ -780,7 +780,7 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
 
       {/* Menu Duration */}
       <Text style={[styles.sectionLabel, { color: colors.text }]}>
-        Menu Duration
+        {t("menu_creator.menu_duration")}
       </Text>
       <View style={styles.durationContainer}>
         {[3, 7, 14].map((days) => (
@@ -822,7 +822,7 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
                 },
               ]}
             >
-              {days} Days
+              {days} {t("menu_creator.days")}
             </Text>
           </TouchableOpacity>
         ))}
