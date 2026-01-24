@@ -1,6 +1,8 @@
 import { prisma } from "../lib/database";
 import { openai } from "./openai";
 import axios from "axios";
+import { MealTrackingService } from "./mealTracking";
+import { isMealMandatory } from "../utils/nutrition";
 
 interface ProductData {
   barcode?: string;
@@ -49,7 +51,7 @@ interface UserAnalysis {
 export class FoodScannerService {
   static async scanBarcode(
     barcode: string,
-    userId: string
+    userId: string,
   ): Promise<{
     product: ProductData;
     user_analysis: UserAnalysis;
@@ -81,7 +83,7 @@ export class FoodScannerService {
       // Get user-specific analysis
       const userAnalysis = await this.analyzeProductForUser(
         productData,
-        userId
+        userId,
       );
 
       return {
@@ -96,7 +98,7 @@ export class FoodScannerService {
 
   static async scanProductImage(
     imageBase64: string,
-    userId: string
+    userId: string,
   ): Promise<{
     product: ProductData;
     user_analysis: UserAnalysis;
@@ -189,14 +191,14 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
       } catch (parseError) {
         console.error("💥 Failed to parse AI response as JSON:", content);
         throw new Error(
-          "Could not analyze the product label. Please try a clearer image."
+          "Could not analyze the product label. Please try a clearer image.",
         );
       }
 
       // Validate required fields
       if (!productData.name || !productData.nutrition_per_100g) {
         throw new Error(
-          "Could not extract product information. Please try a clearer image of the nutrition label."
+          "Could not extract product information. Please try a clearer image of the nutrition label.",
         );
       }
 
@@ -209,7 +211,7 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
       // Get user-specific analysis
       const userAnalysis = await this.analyzeProductForUser(
         productData,
-        userId
+        userId,
       );
 
       return {
@@ -226,10 +228,21 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
     userId: string,
     productData: ProductData,
     quantity: number,
-    mealTiming: string = "SNACK"
+    mealTiming: string = "SNACK",
+    is_mandatory?: boolean,
   ): Promise<any> {
     try {
       console.log("📝 Adding product to meal log...");
+
+      // Determine if meal is mandatory based on mealTiming or explicit is_mandatory
+      const mealPeriod = mealTiming.toLowerCase();
+      const resolvedIsMandatory =
+        is_mandatory !== undefined ? is_mandatory : isMealMandatory(mealPeriod);
+
+      // Validate mandatory meal creation if this is a mandatory meal
+      if (resolvedIsMandatory) {
+        await MealTrackingService.validateMandatoryMealCreation(userId);
+      }
 
       // Calculate nutrition for the specified quantity
       const nutritionPer100g = productData.nutrition_per_100g;
@@ -296,6 +309,8 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
           user_id: userId,
           analysis_status: "COMPLETED",
           ...mealData,
+          meal_period: mealPeriod,
+          is_mandatory: resolvedIsMandatory,
           upload_time: new Date(),
           created_at: new Date(),
         },
@@ -311,108 +326,125 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
     }
   }
 
-static async getScanHistory(userId: string): Promise<any[]> {
-  try {
-    console.log("📋 [SCAN_HISTORY] Getting scan history for user:", userId);
-    
-    // Get both scanned food products and meals created from scanned items
-    const [products, meals] = await Promise.all([
-      prisma.foodProduct.findMany({
-        where: { user_id: userId },
-        orderBy: { created_at: "desc" },
-        take: 50,
-      }).catch(() => []),
-      prisma.meal.findMany({
-        where: {
-          user_id: userId,
-          meal_name: { contains: "g)" }, // Meals created from scanner have format "Product (XXXg)"
-        },
-        orderBy: { created_at: "desc" },
-        take: 50,
-      }).catch(() => []),
-    ]);
+  static async getScanHistory(userId: string): Promise<any[]> {
+    try {
+      console.log("📋 [SCAN_HISTORY] Getting scan history for user:", userId);
 
-    console.log("📊 [SCAN_HISTORY] Found products:", products.length);
-    console.log("📊 [SCAN_HISTORY] Found meals:", meals.length);
+      // Get both scanned food products and meals created from scanned items
+      const [products, meals] = await Promise.all([
+        prisma.foodProduct
+          .findMany({
+            where: { user_id: userId },
+            orderBy: { created_at: "desc" },
+            take: 50,
+          })
+          .catch(() => []),
+        prisma.meal
+          .findMany({
+            where: {
+              user_id: userId,
+              meal_name: { contains: "g)" }, // Meals created from scanner have format "Product (XXXg)"
+            },
+            orderBy: { created_at: "desc" },
+            take: 50,
+          })
+          .catch(() => []),
+      ]);
 
-    // Combine and format the results - RETURN ALL FIELDS
-    const history = [
-      ...products.map((product) => ({
-        // Original product fields
-        ...product,
-        
-        // Standardized fields for consistency
-        id: product.product_id,
-        name: product.product_name,
-        type: "product",
-        scan_type: "product",
-        
-        // Ensure nutrition data is properly formatted
-        nutrition_per_100g: product.nutrition_per_100g as any,
-        ingredients: product.ingredients as string[],
-        allergens: product.allergens as string[],
-        labels: product.labels as string[],
-      })),
-      ...meals.map((meal) => ({
-        // Original meal fields
-        ...meal,
-        
-        // Standardized fields for consistency
-        id: meal.meal_id,
-        name: meal.meal_name,
-        product_name: meal.meal_name,
-        category: meal.food_category,
-        type: "meal",
-        scan_type: "meal",
-        
-        // Create nutrition_per_100g from meal data (reverse calculation)
-        nutrition_per_100g: {
-          calories: meal.calories || 0,
-          protein: meal.protein_g || 0,
-          carbs: meal.carbs_g || 0,
-          fat: meal.fats_g || 0,
-          fiber: meal.fiber_g || undefined,
-          sugar: meal.sugar_g || undefined,
-          sodium: meal.sodium_mg || undefined,
-          saturated_fat: meal.saturated_fats_g || undefined,
-          cholesterol: meal.cholesterol_mg || undefined,
-        },
-        
-        // Parse JSON fields if they exist
-        ingredients: meal.ingredients ? 
-          (typeof meal.ingredients === 'string' ? JSON.parse(meal.ingredients) : meal.ingredients) : 
-          [],
-        allergens: meal.allergens_json ? 
-          (typeof meal.allergens_json === 'object' && 'allergens' in meal.allergens_json ? 
-            meal.allergens_json.allergens : []) : 
-          [],
-        labels: [],
-        health_score: meal.additives_json && typeof meal.additives_json === 'object' && 'health_score' in meal.additives_json ?
-          meal.additives_json.health_score :
-          undefined,
-        image_url: meal.image_url,
-      })),
-    ].sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+      console.log("📊 [SCAN_HISTORY] Found products:", products.length);
+      console.log("📊 [SCAN_HISTORY] Found meals:", meals.length);
 
-    console.log("✅ [SCAN_HISTORY] Total history items:", history.length);
-    
-    if (history.length > 0) {
-      console.log("📋 [SCAN_HISTORY] First item sample:", JSON.stringify(history[0], null, 2));
-      console.log("📋 [SCAN_HISTORY] First item keys:", Object.keys(history[0]));
+      // Combine and format the results - RETURN ALL FIELDS
+      const history = [
+        ...products.map((product) => ({
+          // Original product fields
+          ...product,
+
+          // Standardized fields for consistency
+          id: product.product_id,
+          name: product.product_name,
+          type: "product",
+          scan_type: "product",
+
+          // Ensure nutrition data is properly formatted
+          nutrition_per_100g: product.nutrition_per_100g as any,
+          ingredients: product.ingredients as string[],
+          allergens: product.allergens as string[],
+          labels: product.labels as string[],
+        })),
+        ...meals.map((meal) => ({
+          // Original meal fields
+          ...meal,
+
+          // Standardized fields for consistency
+          id: meal.meal_id,
+          name: meal.meal_name,
+          product_name: meal.meal_name,
+          category: meal.food_category,
+          type: "meal",
+          scan_type: "meal",
+
+          // Create nutrition_per_100g from meal data (reverse calculation)
+          nutrition_per_100g: {
+            calories: meal.calories || 0,
+            protein: meal.protein_g || 0,
+            carbs: meal.carbs_g || 0,
+            fat: meal.fats_g || 0,
+            fiber: meal.fiber_g || undefined,
+            sugar: meal.sugar_g || undefined,
+            sodium: meal.sodium_mg || undefined,
+            saturated_fat: meal.saturated_fats_g || undefined,
+            cholesterol: meal.cholesterol_mg || undefined,
+          },
+
+          // Parse JSON fields if they exist
+          ingredients: meal.ingredients
+            ? typeof meal.ingredients === "string"
+              ? JSON.parse(meal.ingredients)
+              : meal.ingredients
+            : [],
+          allergens: meal.allergens_json
+            ? typeof meal.allergens_json === "object" &&
+              "allergens" in meal.allergens_json
+              ? meal.allergens_json.allergens
+              : []
+            : [],
+          labels: [],
+          health_score:
+            meal.additives_json &&
+            typeof meal.additives_json === "object" &&
+            "health_score" in meal.additives_json
+              ? meal.additives_json.health_score
+              : undefined,
+          image_url: meal.image_url,
+        })),
+      ].sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+
+      console.log("✅ [SCAN_HISTORY] Total history items:", history.length);
+
+      if (history.length > 0) {
+        console.log(
+          "📋 [SCAN_HISTORY] First item sample:",
+          JSON.stringify(history[0], null, 2),
+        );
+        console.log(
+          "📋 [SCAN_HISTORY] First item keys:",
+          Object.keys(history[0]),
+        );
+      }
+
+      return history.slice(0, 100); // Increased limit to 100
+    } catch (error) {
+      console.error("❌ [SCAN_HISTORY] Error getting scan history:", error);
+      return [];
     }
-
-    return history.slice(0, 100); // Increased limit to 100
-  } catch (error) {
-    console.error("❌ [SCAN_HISTORY] Error getting scan history:", error);
-    return [];
   }
-}
 
   private static async getProductFromDatabase(
-    barcode: string
+    barcode: string,
   ): Promise<ProductData | null> {
     try {
       const product = await prisma.foodProduct.findUnique({
@@ -439,14 +471,126 @@ static async getScanHistory(userId: string): Promise<any[]> {
     }
   }
 
+  // Search products by name using OpenFoodFacts
+  static async searchProductsByName(
+    query: string,
+    page: number = 1,
+    retries: number = 2,
+  ): Promise<ProductData[]> {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        console.log(
+          `🔍 Searching products (attempt ${attempt + 1}/${retries + 1}):`,
+          query,
+        );
+
+        const response = await axios.get(
+          `https://world.openfoodfacts.org/cgi/search.pl`,
+          {
+            params: {
+              search_terms: query,
+              search_simple: 1,
+              action: "process",
+              json: 1,
+              page_size: 20,
+              page: page,
+            },
+            timeout: 15000, // Increased to 15 seconds
+          },
+        );
+
+        if (response.data.products && response.data.products.length > 0) {
+          const products: ProductData[] = response.data.products
+            .filter((p: any) => p.product_name)
+            .map((product: any) => {
+              const nutriments = product.nutriments || {};
+              return {
+                barcode: product.code || undefined,
+                name: product.product_name || "Unknown Product",
+                brand: product.brands || undefined,
+                category:
+                  product.categories?.split(",")[0]?.trim() || "Unknown",
+                nutrition_per_100g: {
+                  calories:
+                    nutriments.energy_kcal_100g ||
+                    nutriments["energy-kcal_100g"] ||
+                    nutriments.energy_100g ||
+                    0,
+                  protein: nutriments.proteins_100g || 0,
+                  carbs: nutriments.carbohydrates_100g || 0,
+                  fat: nutriments.fat_100g || 0,
+                  fiber: nutriments.fiber_100g || undefined,
+                  sugar: nutriments.sugars_100g || undefined,
+                  sodium: nutriments.sodium_100g
+                    ? nutriments.sodium_100g * 1000
+                    : undefined,
+                  saturated_fat: nutriments.saturated_fat_100g || undefined,
+                },
+                ingredients:
+                  product.ingredients_text
+                    ?.split(",")
+                    .map((i: string) => i.trim()) || [],
+                allergens:
+                  product.allergens_tags?.map((a: string) =>
+                    a.replace("en:", ""),
+                  ) || [],
+                labels:
+                  product.labels_tags?.map((l: string) =>
+                    l.replace("en:", ""),
+                  ) || [],
+                health_score: product.nutriscore_score || undefined,
+                image_url:
+                  product.image_url || product.image_front_url || undefined,
+                serving_size: product.serving_size || undefined,
+              };
+            });
+
+          console.log(
+            `✅ Found ${products.length} products for query: ${query}`,
+          );
+          return products;
+        }
+
+        return [];
+      } catch (error: any) {
+        const isLastAttempt = attempt === retries;
+
+        if (
+          error.code === "ECONNABORTED" ||
+          error.message?.includes("timeout")
+        ) {
+          console.warn(
+            `⏱️ Timeout on attempt ${attempt + 1} for query: ${query}`,
+          );
+
+          if (!isLastAttempt) {
+            // Wait before retrying (exponential backoff)
+            await new Promise((resolve) =>
+              setTimeout(resolve, 1000 * (attempt + 1)),
+            );
+            continue;
+          }
+        }
+
+        console.error("❌ Product search error:", error.message || error);
+
+        if (isLastAttempt) {
+          return [];
+        }
+      }
+    }
+
+    return [];
+  }
+
   private static async getProductFromExternalAPI(
-    barcode: string
+    barcode: string,
   ): Promise<ProductData | null> {
     try {
       // Try OpenFoodFacts
       const response = await axios.get(
         `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
-        { timeout: 5000 }
+        { timeout: 5000 },
       );
 
       if (response.data.status === 1 && response.data.product) {
@@ -504,10 +648,34 @@ static async getScanHistory(userId: string): Promise<any[]> {
     }
   }
 
+  // Add this method to your FoodScannerService class in the food-scanner.service.ts file
+
+  static async saveSearchedProductToHistory(
+    productData: ProductData,
+    userId: string,
+  ): Promise<void> {
+    try {
+      console.log("💾 Saving searched product to history:", productData.name);
+
+      // Generate a unique identifier for products without barcodes
+      const productId =
+        productData.barcode ||
+        `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Save to database using the existing saveProductToDatabase method
+      await this.saveProductToDatabase(productData, productId, userId);
+
+      console.log("✅ Product saved to scan history");
+    } catch (error) {
+      console.error("❌ Error saving product to history:", error);
+      throw error;
+    }
+  }
+
   private static async saveProductToDatabase(
     productData: ProductData,
     barcode: string,
-    user_id: string
+    user_id: string,
   ): Promise<void> {
     try {
       await prisma.foodProduct.upsert({
@@ -546,7 +714,7 @@ static async getScanHistory(userId: string): Promise<any[]> {
 
   private static async analyzeProductForUser(
     productData: ProductData,
-    userId: string
+    userId: string,
   ): Promise<UserAnalysis> {
     try {
       // Get user's nutrition goals and preferences
@@ -594,13 +762,13 @@ static async getScanHistory(userId: string): Promise<any[]> {
         const productAllergens = productData.allergens || [];
         const allergenMatches = userAllergies.filter((allergy: string) =>
           productAllergens.some((allergen) =>
-            allergen.toLowerCase().includes(allergy.toLowerCase())
-          )
+            allergen.toLowerCase().includes(allergy.toLowerCase()),
+          ),
         );
 
         if (allergenMatches.length > 0) {
           analysis.alerts.push(
-            `⚠️ אלרגן: המוצר מכיל ${allergenMatches.join(", ")}`
+            `⚠️ אלרגן: המוצר מכיל ${allergenMatches.join(", ")}`,
           );
           analysis.compatibility_score -= 30;
         }
@@ -640,14 +808,14 @@ static async getScanHistory(userId: string): Promise<any[]> {
 
       if (nutrition.protein > 10) {
         analysis.recommendations.push(
-          "💪 מוצר עשיר בחלבון - מצוין למטרות בניית שריר"
+          "💪 מוצר עשיר בחלבון - מצוין למטרות בניית שריר",
         );
         analysis.compatibility_score += 10;
       }
 
       if (nutrition.fiber && nutrition.fiber > 5) {
         analysis.recommendations.push(
-          "🌾 מוצר עשיר בסיבים תזונתיים - תורם לבריאות המעיים"
+          "🌾 מוצר עשיר בסיבים תזונתיים - תורם לבריאות המעיים",
         );
         analysis.compatibility_score += 5;
       }
@@ -683,7 +851,7 @@ static async getScanHistory(userId: string): Promise<any[]> {
   }
 
   private static async checkAndAwardAchievements(
-    userId: string
+    userId: string,
   ): Promise<void> {
     try {
       // Check for first scan achievement

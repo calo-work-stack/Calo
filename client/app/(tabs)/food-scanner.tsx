@@ -29,6 +29,8 @@ import {
   Package,
   ArrowLeft,
   ScanLine,
+  Search,
+  Flame,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
@@ -75,12 +77,94 @@ export default function FoodScannerScreen() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [showProductsGallery, setShowProductsGallery] = useState(false);
 
+  // Meal type state for mandatory/snack selection
+  const [isMandatoryMeal, setIsMandatoryMeal] = useState(false); // false = snack, true = mandatory meal
+
+  // Manual product search states
+  const [showManualSearch, setShowManualSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   // Animation values
   const slideAnimation = useRef(new Animated.Value(0)).current;
   const fadeAnimation = useRef(new Animated.Value(0)).current;
   const scaleAnimation = useRef(new Animated.Value(1)).current;
   const scanLineAnimation = useRef(new Animated.Value(0)).current;
   const pulseAnimation = useRef(new Animated.Value(1)).current;
+
+  // Add this helper function before the component
+  const analyzeNutrition = (nutrition: any) => {
+    const protein = nutrition.protein || 0;
+    const fiber = nutrition.fiber || 0;
+    const sugar = nutrition.sugar || 0;
+    const sodium = nutrition.sodium || 0;
+    const vitaminC = nutrition.vitamin_c || 0;
+    const vitaminD = nutrition.vitamin_d || 0;
+    const calcium = nutrition.calcium || 0;
+    const iron = nutrition.iron || 0;
+
+    const indicators = [];
+
+    // High Protein: >= 10g per 100g
+    if (protein >= 10) {
+      indicators.push({
+        type: "protein",
+        color: "success",
+        label: "richInProteins",
+      });
+    }
+
+    // High Fiber: >= 5g per 100g
+    if (fiber >= 5) {
+      indicators.push({
+        type: "fiber",
+        color: "success",
+        label: "richInFiber",
+      });
+    }
+
+    // Rich in Vitamins/Minerals: Has significant amounts
+    const hasVitamins =
+      vitaminC > 0 || vitaminD > 0 || calcium > 100 || iron > 2;
+    if (hasVitamins) {
+      indicators.push({
+        type: "vitamins",
+        color: "success",
+        label: "richInVitaminsMinerals",
+      });
+    }
+
+    // Antioxidants: High vitamin C or presence of certain nutrients
+    if (vitaminC >= 10 || fiber >= 3) {
+      indicators.push({
+        type: "antioxidants",
+        color: "success",
+        label: "richInAntiOxidants",
+      });
+    }
+
+    // Warnings
+    // High Sugar: >= 15g per 100g
+    if (sugar >= 15) {
+      indicators.push({
+        type: "sugar",
+        color: "warning",
+        label: "highInSugar",
+      });
+    }
+
+    // High Sodium: >= 500mg per 100g
+    if (sodium >= 500) {
+      indicators.push({
+        type: "sodium",
+        color: "warning",
+        label: "highInSodium",
+      });
+    }
+
+    return indicators;
+  };
 
   useEffect(() => {
     getCameraPermissions();
@@ -161,6 +245,32 @@ export default function FoodScannerScreen() {
       ToastService.handleError(error, "Load Scan History");
     } finally {
       setIsLoadingHistory(false);
+    }
+  };
+
+  const saveProductToHistory = async (product: ProductData) => {
+    try {
+      console.log("💾 Attempting to save product:", product.name);
+
+      const response = await api.post("/food-scanner/search/save", {
+        product: product,
+      });
+
+      console.log("📡 Save response:", response.data);
+
+      if (response.data.success) {
+        console.log("✅ Product saved to scan history!");
+        await loadScanHistory();
+        ToastService.success(
+          t("foodScanner.productSaved"),
+          `${product.name} ${t("foodScanner.addedToHistory")}`,
+        );
+      } else {
+        console.error("❌ Failed to save:", response.data);
+      }
+    } catch (error) {
+      console.error("❌ Error saving product to history:", error);
+      ToastService.handleError(error, "Save Product to History");
     }
   };
 
@@ -364,7 +474,9 @@ export default function FoodScannerScreen() {
       const response = await api.post("/shopping-lists", {
         name: scanResult.product.name,
         quantity: quantity,
-        unit: isBeverage ? t("common.milliliters") : t("home.nutrition."),
+        unit: isBeverage
+          ? t("common.milliliters")
+          : t("home.nutrition.units.grams"),
         category: scanResult.product.category,
         added_from: "scanner",
         product_barcode: scanResult.product.barcode,
@@ -420,6 +532,90 @@ export default function FoodScannerScreen() {
     setBarcodeInput("");
     setQuantity(100);
     setIsBeverage(false);
+  };
+
+  // Manual product search handler
+  const handleProductSearch = async () => {
+    if (!searchQuery.trim() || searchQuery.length < 2) {
+      ToastService.error(
+        t("foodScanner.searchError"),
+        t("foodScanner.searchQueryTooShort"),
+      );
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await api.get("/food-scanner/search", {
+        params: { q: searchQuery.trim() },
+      });
+
+      if (response.data.success && response.data.data) {
+        setSearchResults(response.data.data);
+        if (response.data.data.length === 0) {
+          ToastService.info(
+            t("foodScanner.noResults"),
+            t("foodScanner.tryDifferentSearch"),
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Product search error:", error);
+      ToastService.handleError(error, "Product Search");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectSearchResult = async (product: any) => {
+    setIsLoading(true);
+    setLoadingText(t("foodScanner.loadingProduct"));
+    try {
+      console.log("🔍 Selected product:", product); // Debug log
+
+      // Save the selected product to scan history
+      await saveProductToHistory(product);
+
+      // Create a scan result from the search result
+      const scanData = {
+        product: {
+          ...product,
+          nutrition_per_100g: product.nutrition_per_100g || {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+          },
+        },
+        user_analysis: {
+          compatibility_score: 70,
+          daily_contribution: {
+            calories_percent: 0,
+            protein_percent: 0,
+            carbs_percent: 0,
+            fat_percent: 0,
+          },
+          alerts: [],
+          recommendations: [],
+          health_assessment: t("foodScanner.productSelected"),
+        },
+      };
+
+      setScanResult(scanData);
+      const price = await estimatePrice(scanData.product);
+      setPriceEstimate(price);
+      setShowManualSearch(false);
+      setSearchQuery("");
+      setSearchResults([]);
+      animateResultAppearance();
+      setShowResults(true);
+    } catch (error) {
+      console.error("Error selecting product:", error);
+      ToastService.handleError(error, "Select Product");
+    } finally {
+      setIsLoading(false);
+      setLoadingText("");
+    }
   };
 
   const getScoreColor = (score: number) => {
@@ -499,6 +695,17 @@ export default function FoodScannerScreen() {
               {t("foodScanner.subtitle")}
             </Text>
           </View>
+
+          <TouchableOpacity
+            style={[
+              styles.galleryButton,
+              { backgroundColor: colors.glass, marginRight: 8 },
+            ]}
+            onPress={() => setShowManualSearch(true)}
+            activeOpacity={0.7}
+          >
+            <Search size={24} color={colors.text} strokeWidth={2.5} />
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.galleryButton, { backgroundColor: colors.glass }]}
@@ -729,39 +936,46 @@ export default function FoodScannerScreen() {
                 { backgroundColor: colors.surface },
               ]}
             >
-              <View style={styles.healthIndicator}>
-                <View
-                  style={[
-                    styles.healthDot,
-                    { backgroundColor: colors.success },
-                  ]}
-                />
-                <Text style={[styles.healthText, { color: colors.text }]}>
-                  {t("foodScanner.richInProteins")}
-                </Text>
-              </View>
-              <View style={styles.healthIndicator}>
-                <View
-                  style={[
-                    styles.healthDot,
-                    { backgroundColor: colors.success },
-                  ]}
-                />
-                <Text style={[styles.healthText, { color: colors.text }]}>
-                  {t("foodScanner.richInVitaminsMinerals")}
-                </Text>
-              </View>
-              <View style={styles.healthIndicator}>
-                <View
-                  style={[
-                    styles.healthDot,
-                    { backgroundColor: colors.warning },
-                  ]}
-                />
-                <Text style={[styles.healthText, { color: colors.text }]}>
-                  {t("foodScanner.richInAntiOxidants")}
-                </Text>
-              </View>
+              {(() => {
+                const nutritionIndicators = analyzeNutrition(
+                  scanResult.product.nutrition_per_100g,
+                );
+
+                if (nutritionIndicators.length === 0) {
+                  return (
+                    <View style={styles.healthIndicator}>
+                      <View
+                        style={[
+                          styles.healthDot,
+                          { backgroundColor: colors.textTertiary },
+                        ]}
+                      />
+                      <Text style={[styles.healthText, { color: colors.text }]}>
+                        {t("foodScanner.standardProduct")}
+                      </Text>
+                    </View>
+                  );
+                }
+
+                return nutritionIndicators.map((indicator, index) => (
+                  <View key={index} style={styles.healthIndicator}>
+                    <View
+                      style={[
+                        styles.healthDot,
+                        {
+                          backgroundColor:
+                            indicator.color === "success"
+                              ? colors.success
+                              : colors.warning,
+                        },
+                      ]}
+                    />
+                    <Text style={[styles.healthText, { color: colors.text }]}>
+                      {t(`foodScanner.${indicator.label}`)}
+                    </Text>
+                  </View>
+                ));
+              })()}
             </View>
           )}
 
@@ -777,112 +991,306 @@ export default function FoodScannerScreen() {
                 {t("foodScanner.nutritionValues")}
               </Text>
               <View style={styles.nutritionValues}>
-                <View style={styles.nutritionRow}>
-                  <Text style={[styles.nutritionLabel, { color: colors.text }]}>
-                    {t("foodScanner.protein")}
-                  </Text>
-                  <View
-                    style={[
-                      styles.nutritionBarContainer,
-                      { backgroundColor: colors.border },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.nutritionBar,
-                        { width: "70%", backgroundColor: colors.success },
-                      ]}
-                    />
-                  </View>
-                  <Text style={[styles.nutritionValue, { color: colors.text }]}>
-                    {Math.round(
-                      (scanResult.product.nutrition_per_100g.fat * quantity) /
-                        100,
-                    )}{" "}
-                    {t("home.nutrition.")}
-                  </Text>
-                </View>
+                {/* Protein */}
+                {(() => {
+                  const proteinValue = Math.round(
+                    (scanResult.product.nutrition_per_100g.protein * quantity) /
+                      100,
+                  );
+                  const proteinPercent = Math.min(
+                    (scanResult.product.nutrition_per_100g.protein / 30) * 100, // 30g is considered high protein
+                    100,
+                  );
+                  const proteinColor =
+                    scanResult.product.nutrition_per_100g.protein >= 10
+                      ? colors.success
+                      : scanResult.product.nutrition_per_100g.protein >= 5
+                        ? colors.warning
+                        : colors.textTertiary;
 
-                <View style={styles.nutritionRow}>
-                  <Text style={[styles.nutritionLabel, { color: colors.text }]}>
-                    {t("foodScanner.fibers")}
-                  </Text>
-                  <View
-                    style={[
-                      styles.nutritionBarContainer,
-                      { backgroundColor: colors.border },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.nutritionBar,
-                        { width: "30%", backgroundColor: colors.success },
-                      ]}
-                    />
-                  </View>
-                  <Text style={[styles.nutritionValue, { color: colors.text }]}>
-                    {Math.round(
-                      ((scanResult.product.nutrition_per_100g.fiber || 0) *
-                        quantity) /
-                        100,
-                    )}{" "}
-                    {t("home.nutrition.")}
-                  </Text>
-                </View>
+                  return (
+                    <View style={styles.nutritionRow}>
+                      <Text
+                        style={[styles.nutritionLabel, { color: colors.text }]}
+                      >
+                        {t("foodScanner.protein")}
+                      </Text>
+                      <View
+                        style={[
+                          styles.nutritionBarContainer,
+                          { backgroundColor: colors.border },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.nutritionBar,
+                            {
+                              width: `${proteinPercent}%`,
+                              backgroundColor: proteinColor,
+                            },
+                          ]}
+                        />
+                      </View>
+                      <Text
+                        style={[styles.nutritionValue, { color: colors.text }]}
+                      >
+                        {proteinValue} {t("home.nutrition.units.grams")}
+                      </Text>
+                    </View>
+                  );
+                })()}
 
-                <View style={styles.nutritionRow}>
-                  <Text style={[styles.nutritionLabel, { color: colors.text }]}>
-                    {t("foodScanner.sugar")}
-                  </Text>
-                  <View
-                    style={[
-                      styles.nutritionBarContainer,
-                      { backgroundColor: colors.border },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.nutritionBar,
-                        { width: "50%", backgroundColor: colors.warning },
-                      ]}
-                    />
-                  </View>
-                  <Text style={[styles.nutritionValue, { color: colors.text }]}>
-                    {Math.round(
-                      ((scanResult.product.nutrition_per_100g.sugar || 0) *
-                        quantity) /
-                        100,
-                    )}{" "}
-                    {t("home.nutrition.")}
-                  </Text>
-                </View>
+                {/* Carbs */}
+                {(() => {
+                  const carbsValue = Math.round(
+                    (scanResult.product.nutrition_per_100g.carbs * quantity) /
+                      100,
+                  );
+                  const carbsPercent = Math.min(
+                    (scanResult.product.nutrition_per_100g.carbs / 50) * 100, // 50g reference
+                    100,
+                  );
+                  const carbsColor =
+                    scanResult.product.nutrition_per_100g.carbs >= 30
+                      ? colors.warning
+                      : colors.primary;
 
-                <View style={styles.nutritionRow}>
-                  <Text style={[styles.nutritionLabel, { color: colors.text }]}>
-                    {t("foodScanner.vitamins")}
-                  </Text>
-                  <View
-                    style={[
-                      styles.nutritionBarContainer,
-                      { backgroundColor: colors.border },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.nutritionBar,
-                        { width: "35%", backgroundColor: colors.success },
-                      ]}
-                    />
-                  </View>
-                  <Text style={[styles.nutritionValue, { color: colors.text }]}>
-                    4 {t("home.nutrition.")}
-                  </Text>
-                </View>
+                  return (
+                    <View style={styles.nutritionRow}>
+                      <Text
+                        style={[styles.nutritionLabel, { color: colors.text }]}
+                      >
+                        {t("foodScanner.carbs")}
+                      </Text>
+                      <View
+                        style={[
+                          styles.nutritionBarContainer,
+                          { backgroundColor: colors.border },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.nutritionBar,
+                            {
+                              width: `${carbsPercent}%`,
+                              backgroundColor: carbsColor,
+                            },
+                          ]}
+                        />
+                      </View>
+                      <Text
+                        style={[styles.nutritionValue, { color: colors.text }]}
+                      >
+                        {carbsValue} {t("home.nutrition.units.grams")}
+                      </Text>
+                    </View>
+                  );
+                })()}
+
+                {/* Fat */}
+                {(() => {
+                  const fatValue = Math.round(
+                    (scanResult.product.nutrition_per_100g.fat * quantity) /
+                      100,
+                  );
+                  const fatPercent = Math.min(
+                    (scanResult.product.nutrition_per_100g.fat / 30) * 100, // 30g reference
+                    100,
+                  );
+                  const fatColor =
+                    scanResult.product.nutrition_per_100g.fat >= 20
+                      ? colors.warning
+                      : colors.primary;
+
+                  return (
+                    <View style={styles.nutritionRow}>
+                      <Text
+                        style={[styles.nutritionLabel, { color: colors.text }]}
+                      >
+                        {t("foodScanner.fat")}
+                      </Text>
+                      <View
+                        style={[
+                          styles.nutritionBarContainer,
+                          { backgroundColor: colors.border },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.nutritionBar,
+                            {
+                              width: `${fatPercent}%`,
+                              backgroundColor: fatColor,
+                            },
+                          ]}
+                        />
+                      </View>
+                      <Text
+                        style={[styles.nutritionValue, { color: colors.text }]}
+                      >
+                        {fatValue} {t("home.nutrition.units.grams")}
+                      </Text>
+                    </View>
+                  );
+                })()}
+
+                {/* Fiber */}
+                {(() => {
+                  const fiberValue = Math.round(
+                    ((scanResult.product.nutrition_per_100g.fiber || 0) *
+                      quantity) /
+                      100,
+                  );
+                  const fiberPercent = Math.min(
+                    ((scanResult.product.nutrition_per_100g.fiber || 0) / 10) *
+                      100, // 10g is high fiber
+                    100,
+                  );
+                  const fiberColor =
+                    (scanResult.product.nutrition_per_100g.fiber || 0) >= 5
+                      ? colors.success
+                      : (scanResult.product.nutrition_per_100g.fiber || 0) >= 2
+                        ? colors.primary
+                        : colors.textTertiary;
+
+                  return (
+                    <View style={styles.nutritionRow}>
+                      <Text
+                        style={[styles.nutritionLabel, { color: colors.text }]}
+                      >
+                        {t("foodScanner.fibers")}
+                      </Text>
+                      <View
+                        style={[
+                          styles.nutritionBarContainer,
+                          { backgroundColor: colors.border },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.nutritionBar,
+                            {
+                              width: `${fiberPercent}%`,
+                              backgroundColor: fiberColor,
+                            },
+                          ]}
+                        />
+                      </View>
+                      <Text
+                        style={[styles.nutritionValue, { color: colors.text }]}
+                      >
+                        {fiberValue} {t("home.nutrition.units.grams")}
+                      </Text>
+                    </View>
+                  );
+                })()}
+
+                {/* Sugar */}
+                {(() => {
+                  const sugarValue = Math.round(
+                    ((scanResult.product.nutrition_per_100g.sugar || 0) *
+                      quantity) /
+                      100,
+                  );
+                  const sugarPercent = Math.min(
+                    ((scanResult.product.nutrition_per_100g.sugar || 0) / 25) *
+                      100, // 25g reference (WHO daily limit ~50g)
+                    100,
+                  );
+                  const sugarColor =
+                    (scanResult.product.nutrition_per_100g.sugar || 0) >= 15
+                      ? colors.error
+                      : (scanResult.product.nutrition_per_100g.sugar || 0) >= 10
+                        ? colors.warning
+                        : colors.success;
+
+                  return (
+                    <View style={styles.nutritionRow}>
+                      <Text
+                        style={[styles.nutritionLabel, { color: colors.text }]}
+                      >
+                        {t("foodScanner.sugar")}
+                      </Text>
+                      <View
+                        style={[
+                          styles.nutritionBarContainer,
+                          { backgroundColor: colors.border },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.nutritionBar,
+                            {
+                              width: `${sugarPercent}%`,
+                              backgroundColor: sugarColor,
+                            },
+                          ]}
+                        />
+                      </View>
+                      <Text
+                        style={[styles.nutritionValue, { color: colors.text }]}
+                      >
+                        {sugarValue} {t("home.nutrition.units.grams")}
+                      </Text>
+                    </View>
+                  );
+                })()}
+
+                {/* Sodium */}
+                {(() => {
+                  const sodiumValue = Math.round(
+                    ((scanResult.product.nutrition_per_100g.sodium || 0) *
+                      quantity) /
+                      100,
+                  );
+                  const sodiumPercent = Math.min(
+                    ((scanResult.product.nutrition_per_100g.sodium || 0) /
+                      1000) *
+                      100, // 1000mg reference
+                    100,
+                  );
+                  const sodiumColor =
+                    (scanResult.product.nutrition_per_100g.sodium || 0) >= 500
+                      ? colors.error
+                      : (scanResult.product.nutrition_per_100g.sodium || 0) >=
+                          300
+                        ? colors.warning
+                        : colors.success;
+
+                  return (
+                    <View style={styles.nutritionRow}>
+                      <Text
+                        style={[styles.nutritionLabel, { color: colors.text }]}
+                      >
+                        {t("foodScanner.sodium")}
+                      </Text>
+                      <View
+                        style={[
+                          styles.nutritionBarContainer,
+                          { backgroundColor: colors.border },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.nutritionBar,
+                            {
+                              width: `${sodiumPercent}%`,
+                              backgroundColor: sodiumColor,
+                            },
+                          ]}
+                        />
+                      </View>
+                      <Text
+                        style={[styles.nutritionValue, { color: colors.text }]}
+                      >
+                        {sodiumValue} mg
+                      </Text>
+                    </View>
+                  );
+                })()}
               </View>
             </View>
           )}
-
-          {/* Ingredients */}
           {scanResult && scanResult.product.ingredients.length > 0 && (
             <View
               style={[
@@ -1056,6 +1464,186 @@ export default function FoodScannerScreen() {
         visible={showProductsGallery}
         onClose={() => setShowProductsGallery(false)}
       />
+
+      {/* Manual Product Search Modal */}
+      <Modal
+        visible={showManualSearch}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowManualSearch(false)}
+      >
+        <SafeAreaView
+          style={[
+            styles.modalContainer,
+            { backgroundColor: colors.background },
+          ]}
+        >
+          <View
+            style={[styles.modalHeader, { borderBottomColor: colors.border }]}
+          >
+            <TouchableOpacity onPress={() => setShowManualSearch(false)}>
+              <X size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {t("foodScanner.searchProducts")}
+            </Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          {/* Search Input */}
+          <View style={styles.searchContainer}>
+            <View
+              style={[
+                styles.searchInputContainer,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <Search size={20} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.text }]}
+                placeholder={t("foodScanner.searchPlaceholder")}
+                placeholderTextColor={colors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onSubmitEditing={handleProductSearch}
+                returnKeyType="search"
+                autoFocus
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery("")}>
+                  <X size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+            <TouchableOpacity
+              style={[styles.searchButton, { backgroundColor: colors.primary }]}
+              onPress={handleProductSearch}
+              disabled={isSearching}
+            >
+              {isSearching ? (
+                <ActivityIndicator size="small" color={colors.onPrimary} />
+              ) : (
+                <Text
+                  style={[styles.searchButtonText, { color: colors.onPrimary }]}
+                >
+                  {t("foodScanner.search")}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Search Results */}
+          <ScrollView style={styles.searchResultsContainer}>
+            {isSearching ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text
+                  style={[styles.loadingText, { color: colors.textSecondary }]}
+                >
+                  {t("foodScanner.searching")}
+                </Text>
+              </View>
+            ) : searchResults.length > 0 ? (
+              searchResults.map((product, index) => (
+                <TouchableOpacity
+                  key={`${product.barcode || index}`}
+                  style={[
+                    styles.searchResultItem,
+                    { backgroundColor: colors.surface },
+                  ]}
+                  onPress={() => handleSelectSearchResult(product)}
+                  activeOpacity={0.7}
+                >
+                  {product.image_url ? (
+                    <Image
+                      source={{ uri: product.image_url }}
+                      style={styles.searchResultImage}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.searchResultImagePlaceholder,
+                        { backgroundColor: colors.border },
+                      ]}
+                    >
+                      <Package size={24} color={colors.textTertiary} />
+                    </View>
+                  )}
+                  <View style={styles.searchResultInfo}>
+                    <Text
+                      style={[styles.searchResultName, { color: colors.text }]}
+                      numberOfLines={2}
+                    >
+                      {product.name}
+                    </Text>
+                    {product.brand && (
+                      <Text
+                        style={[
+                          styles.searchResultBrand,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {product.brand}
+                      </Text>
+                    )}
+                    <View style={styles.searchResultNutrition}>
+                      <View style={styles.nutritionItem}>
+                        <Flame size={12} color={colors.warning} />
+                        <Text
+                          style={[
+                            styles.nutritionItemText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {product.nutrition_per_100g?.calories || 0}{" "}
+                          {t("foodScanner.kcal")}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <ArrowLeft
+                    size={20}
+                    color={colors.textTertiary}
+                    style={{ transform: [{ rotate: "180deg" }] }}
+                  />
+                </TouchableOpacity>
+              ))
+            ) : searchQuery.length > 0 && !isSearching ? (
+              <View style={styles.emptySearchResults}>
+                <Package size={48} color={colors.muted} />
+                <Text
+                  style={[
+                    styles.emptySearchText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {t("foodScanner.noResultsFound")}
+                </Text>
+                <Text
+                  style={[
+                    styles.emptySearchHint,
+                    { color: colors.textTertiary },
+                  ]}
+                >
+                  {t("foodScanner.tryDifferentKeywords")}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.searchHint}>
+                <Search size={48} color={colors.muted} />
+                <Text
+                  style={[
+                    styles.searchHintText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {t("foodScanner.searchHint")}
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1457,5 +2045,110 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     textAlign: "center",
+  },
+
+  /* ================= MANUAL SEARCH ================= */
+  searchContainer: {
+    flexDirection: "row",
+    padding: 16,
+    gap: 10,
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+  },
+  searchButton: {
+    borderRadius: 14,
+    paddingHorizontal: 20,
+    justifyContent: "center",
+  },
+  searchButtonText: {
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  searchResultsContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  searchResultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+    gap: 12,
+  },
+  searchResultImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+  },
+  searchResultImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  searchResultInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  searchResultName: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  searchResultBrand: {
+    fontSize: 13,
+  },
+  searchResultNutrition: {
+    flexDirection: "row",
+    marginTop: 4,
+  },
+  nutritionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  nutritionItemText: {
+    fontSize: 12,
+  },
+  emptySearchResults: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 60,
+    gap: 12,
+  },
+  emptySearchText: {
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  emptySearchHint: {
+    fontSize: 14,
+    textAlign: "center",
+  },
+  searchHint: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 60,
+    gap: 16,
+  },
+  searchHintText: {
+    fontSize: 15,
+    textAlign: "center",
+    paddingHorizontal: 40,
   },
 });

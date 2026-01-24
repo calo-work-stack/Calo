@@ -208,6 +208,7 @@ model Meal {
   upload_time            DateTime       @default(now())
   analysis_status        AnalysisStatus
   meal_name              String?
+  is_mandatory           Boolean        @default(true)
   meal_period            String?
   description            String?
   calories               Float?

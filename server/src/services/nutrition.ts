@@ -1,4 +1,4 @@
-import { mapMealDataToPrismaFields } from "../utils/nutrition";
+import { mapMealDataToPrismaFields, isMealMandatory } from "../utils/nutrition";
 import { OpenAIService } from "./openai";
 import { prisma } from "../lib/database";
 import { MealAnalysisInput, MealUpdateInput } from "../types/nutrition";
@@ -7,6 +7,7 @@ import { asJsonObject, mapExistingMealToPrismaInput } from "../utils/nutrition";
 import { CalendarService } from "./calendar";
 import { clearStatisticsCache } from "./statistics";
 import { errorMessageIncludes, getErrorMessage } from "../utils/errorUtils";
+import { MealTrackingService } from "./mealTracking";
 
 // Cache for frequently accessed data
 const userStatsCache = new Map<string, { data: any; timestamp: number }>();
@@ -76,6 +77,8 @@ function transformMealForClient(meal: any) {
     heaviness_rating: feedback.heavinessRating || 0,
     meal_period: meal.meal_period || "other", // Ensure meal_period is included
     mealPeriod: meal.meal_period || "other", // Also add camelCase version for compatibility
+    is_mandatory: meal.is_mandatory !== undefined ? meal.is_mandatory : true,
+    isMandatory: meal.is_mandatory !== undefined ? meal.is_mandatory : true, // camelCase version
   };
 }
 
@@ -387,6 +390,17 @@ export class NutritionService {
 
   static async saveMeal(user_id: string, mealData: any, imageBase64?: string) {
     try {
+      // Determine if meal is mandatory based on meal_period or explicit is_mandatory
+      const mealPeriod = mealData.mealPeriod || mealData.meal_period || "other";
+      const is_mandatory = mealData.is_mandatory !== undefined
+        ? mealData.is_mandatory
+        : isMealMandatory(mealPeriod);
+
+      // Validate mandatory meal creation if this is a mandatory meal
+      if (is_mandatory) {
+        await MealTrackingService.validateMandatoryMealCreation(user_id);
+      }
+
       // Direct create - faster than transaction for single operation
       const meal = await prisma.meal.create({
         data: mapMealDataToPrismaFields(
@@ -394,7 +408,8 @@ export class NutritionService {
           user_id,
           imageBase64,
           mealData.mealType,
-          mealData.mealPeriod
+          mealPeriod,
+          is_mandatory
         ),
       });
 
@@ -404,7 +419,7 @@ export class NutritionService {
       return transformMealForClient(meal);
     } catch (error) {
       console.error("💥 Error saving meal:", error);
-      throw new Error("Failed to save meal");
+      throw error; // Preserve the original error message
     }
   }
 

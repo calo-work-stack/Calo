@@ -403,7 +403,24 @@
     "experimental_feature": "תכונה ניסיונית",
     "deprecated_feature": "תכונה מיושנת",
     "legacy_feature": "תכונה ישנה",
-    "of": "מתוך"
+    "of": "מתוך",
+    "date": {
+      "monthShort": "{{month, shortMonth}}"
+    },
+    "metrics": {
+      "priority": {
+        "label": "עדיפות",
+        "level": {
+          "low": "נמוכה",
+          "medium": "בינונית",
+          "high": "גבוהה"
+        }
+      },
+      "confidence": {
+        "label": "רמת ביטחון",
+        "value": "{{value}}%"
+      }
+    }
   },
   "achievements": {
     "title": "הישגים",
@@ -808,7 +825,9 @@
       "availableAnytime": "זמין בכל עת",
       "opens": "נפתח ב-{{time}}",
       "am": "לפנה״צ",
-      "pm": "אחה״צ"
+      "pm": "אחה״צ",
+      "mealsRemaining": "נותרו {{remaining}}/{{limit}} ארוחות",
+      "limitReached": "הגעת למגבלה ({{used}}/{{limit}})"
     }
   },
   "foodScanner": {
@@ -860,13 +879,33 @@
     "vitamins": "ויטמינים",
     "kcal": "קק״ל",
     "grams": "גרם",
+    "carbs": "פחמימות",
+    "fat": "שומן",
+    "productSaved": "מוצר נשמר",
+    "addedToHistory": "נוסף להיסוטריה",
     "productNotFound": "מוצר לא נמצא במאגר",
     "productIdentifiedSuccessfully": "המוצר זוהה בהצלחה",
     "couldNotIdentifyProduct": "לא הצלחנו לזהות את המוצר בתמונה",
     "couldNotOpenCamera": "לא הצלחנו לפתוח את המצלמה",
     "shoppingListUpdated": "רשימת הקניות עודכנה",
     "addedToShoppingList": "{{product}} נוסף לרשימת הקניות!",
-    "pleaseEnterBarcode": "אנא הכנס ברקוד"
+    "pleaseEnterBarcode": "אנא הכנס ברקוד",
+    "searchProducts": "חיפוש מוצרים",
+    "searchPlaceholder": "חפש לפי שם מוצר...",
+    "search": "חפש",
+    "searching": "מחפש...",
+    "searchError": "שגיאת חיפוש",
+    "searchQueryTooShort": "אנא הכנס לפחות 2 תווים",
+    "noResultsFound": "לא נמצאו מוצרים",
+    "tryDifferentKeywords": "נסה מילות מפתח אחרות או בדוק את האיות",
+    "tryDifferentSearch": "נסה לחפש עם מילות מפתח שונות",
+    "searchHint": "חפש מוצרים לפי שם כאשר סריקת הברקוד לא עובדת",
+    "loadingProduct": "טוען מוצר...",
+    "productSelected": "המוצר מוכן להוספה",
+    "richInFiber": "עשיר בסיבים תזונתיים",
+    "highInSugar": "עתיר סוכר",
+    "highInSodium": "עתיר נתרן",
+    "standardProduct": "פרופיל תזונתי סטנדרטי"
   },
   "profile": {
     "title": "פרופיל",

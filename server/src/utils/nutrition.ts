@@ -1,11 +1,18 @@
 import { AnalysisStatus } from "@prisma/client";
 
+// Helper to determine if a meal is mandatory based on meal_period
+// Only snacks are non-mandatory
+export function isMealMandatory(mealPeriod?: string): boolean {
+  return mealPeriod?.toLowerCase() !== "snack";
+}
+
 export function mapMealDataToPrismaFields(
   mealData: any,
   user_id: string,
   imageBase64?: string,
   mealType?: string,
-  mealPeriod?: string
+  mealPeriod?: string,
+  is_mandatory?: boolean
 ) {
   // Defensive parsing helpers
   const parseNumber = (value: any) =>
@@ -103,13 +110,20 @@ export function mapMealDataToPrismaFields(
     ? [mealData.ingredients]
     : [];
 
+  // Determine is_mandatory: use explicit value if provided, otherwise derive from meal_period
+  const resolvedMealPeriod = mealPeriod || "other";
+  const resolvedIsMandatory = is_mandatory !== undefined
+    ? is_mandatory
+    : isMealMandatory(resolvedMealPeriod);
+
   return {
     user_id,
     image_url: imageBase64 ? `data:image/jpeg;base64,${imageBase64}` : "",
     upload_time: new Date(),
     analysis_status: "COMPLETED" as const,
     meal_name: mealData.meal_name ?? mealData.name ?? "Unknown meal",
-    meal_period: mealPeriod || "other",
+    meal_period: resolvedMealPeriod,
+    is_mandatory: resolvedIsMandatory,
 
     // Macronutrients
     calories,
@@ -161,13 +175,17 @@ export function mapExistingMealToPrismaInput(
   user_id: string,
   date: Date
 ) {
+  const mealPeriod = originalMeal.meal_period || "other";
   return {
     user_id,
     image_url: originalMeal.image_url || "",
     upload_time: date,
     analysis_status: "COMPLETED" as const,
     meal_name: `${originalMeal.meal_name} (Copy)`,
-    meal_period: originalMeal.meal_period || "other",
+    meal_period: mealPeriod,
+    is_mandatory: originalMeal.is_mandatory !== undefined
+      ? originalMeal.is_mandatory
+      : isMealMandatory(mealPeriod),
     calories: originalMeal.calories,
     protein_g: originalMeal.protein_g,
     carbs_g: originalMeal.carbs_g,

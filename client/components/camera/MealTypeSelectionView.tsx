@@ -2,15 +2,23 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { MealTypeSelector, MealType } from './MealTypeSelector';
 
-interface MealTypeSelectionViewProps {
-  onSelect: (mealType: MealType) => void;
+interface MealsRemainingInfo {
+  remaining: number;
+  limit: number;
+  used: number;
+  canLogMandatory: boolean;
 }
 
-export function MealTypeSelectionView({ onSelect }: MealTypeSelectionViewProps) {
+interface MealTypeSelectionViewProps {
+  onSelect: (mealType: MealType) => void;
+  mealsRemaining?: MealsRemainingInfo;
+}
+
+export function MealTypeSelectionView({ onSelect, mealsRemaining }: MealTypeSelectionViewProps) {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <MealTypeSelector onSelect={onSelect} />
+        <MealTypeSelector onSelect={onSelect} mealsRemaining={mealsRemaining} />
       </View>
     </View>
   );

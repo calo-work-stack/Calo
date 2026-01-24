@@ -11,6 +11,7 @@ import { useImagePicker } from "@/hooks/camera/useImagePicker";
 import { useMealAnalysis } from "@/hooks/camera/useMealAnalysis";
 import { useIngredientEditor } from "@/hooks/camera/useIngredientEditor";
 import { useCameraAnimations } from "@/hooks/camera/useCameraAnimations";
+import { useMealsRemaining } from "@/hooks/useMealsRemaining";
 import {
   EditIngredientModal,
   DeleteConfirmModal,
@@ -30,6 +31,7 @@ function CameraScreenContent() {
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
   const { refreshAllMealData } = useMealDataRefresh();
+  const mealsRemaining = useMealsRemaining();
 
   const { pendingMeal } = useSelector((state: RootState) => state.meal);
 
@@ -62,6 +64,7 @@ function CameraScreenContent() {
     },
     onSaveComplete: () => {
       refreshAllMealData();
+      mealsRemaining.refresh(); // Refresh meals remaining count after saving
       handleReset();
     },
   });
@@ -267,7 +270,15 @@ function CameraScreenContent() {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#10B981" />
-        <MealTypeSelectionView onSelect={handleMealTypeSelect} />
+        <MealTypeSelectionView
+          onSelect={handleMealTypeSelect}
+          mealsRemaining={{
+            remaining: mealsRemaining.remaining,
+            limit: mealsRemaining.limit,
+            used: mealsRemaining.used,
+            canLogMandatory: mealsRemaining.canLogMandatory,
+          }}
+        />
       </SafeAreaView>
     );
   }

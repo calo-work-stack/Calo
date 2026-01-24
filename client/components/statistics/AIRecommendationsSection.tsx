@@ -33,6 +33,7 @@ import Animated, {
   FadeIn,
 } from "react-native-reanimated";
 import { useTheme } from "@/src/context/ThemeContext";
+import { t } from "i18next";
 
 const { width } = Dimensions.get("window");
 
@@ -152,10 +153,18 @@ const extractRecommendationsData = (recData: any): ExtractedRecommendations => {
     recData.behavioral_insights
   ) {
     extractedData = {
-      nutrition_tips: Array.isArray(recData.nutrition_tips) ? recData.nutrition_tips : [],
-      meal_suggestions: Array.isArray(recData.meal_suggestions) ? recData.meal_suggestions : [],
-      goal_adjustments: Array.isArray(recData.goal_adjustments) ? recData.goal_adjustments : [],
-      behavioral_insights: Array.isArray(recData.behavioral_insights) ? recData.behavioral_insights : [],
+      nutrition_tips: Array.isArray(recData.nutrition_tips)
+        ? recData.nutrition_tips
+        : [],
+      meal_suggestions: Array.isArray(recData.meal_suggestions)
+        ? recData.meal_suggestions
+        : [],
+      goal_adjustments: Array.isArray(recData.goal_adjustments)
+        ? recData.goal_adjustments
+        : [],
+      behavioral_insights: Array.isArray(recData.behavioral_insights)
+        ? recData.behavioral_insights
+        : [],
     };
     return extractedData;
   }
@@ -166,7 +175,7 @@ const extractRecommendationsData = (recData: any): ExtractedRecommendations => {
 
   if (Array.isArray(recData) && recData.length > 0) {
     const stringItems = recData.filter(
-      (item) => typeof item === "string" && item.trim().length > 5
+      (item) => typeof item === "string" && item.trim().length > 5,
     );
     if (stringItems.length > 0) {
       const quarter = Math.ceil(stringItems.length / 4);
@@ -184,22 +193,32 @@ const extractRecommendationsData = (recData: any): ExtractedRecommendations => {
     Object.entries(recData).forEach(([key, value]) => {
       if (Array.isArray(value) && value.length > 0) {
         const stringValues = value.filter(
-          (item) => typeof item === "string" && item.trim().length > 5
+          (item) => typeof item === "string" && item.trim().length > 5,
         );
         if (stringValues.length > 0) {
           const lowerKey = key.toLowerCase();
-          
-          if (lowerKey.includes("nutrition") || lowerKey.includes("food") || lowerKey.includes("diet")) {
+
+          if (
+            lowerKey.includes("nutrition") ||
+            lowerKey.includes("food") ||
+            lowerKey.includes("diet")
+          ) {
             extractedData.nutrition_tips.push(...stringValues);
           } else if (lowerKey.includes("meal") || lowerKey.includes("recipe")) {
             extractedData.meal_suggestions.push(...stringValues);
           } else if (lowerKey.includes("goal") || lowerKey.includes("target")) {
             extractedData.goal_adjustments.push(...stringValues);
-          } else if (lowerKey.includes("behavior") || lowerKey.includes("insight")) {
+          } else if (
+            lowerKey.includes("behavior") ||
+            lowerKey.includes("insight")
+          ) {
             extractedData.behavioral_insights.push(...stringValues);
           } else {
             const contentCheck = stringValues[0]?.toLowerCase() || "";
-            if (contentCheck.includes("eat") || contentCheck.includes("protein")) {
+            if (
+              contentCheck.includes("eat") ||
+              contentCheck.includes("protein")
+            ) {
               extractedData.nutrition_tips.push(...stringValues);
             } else if (contentCheck.includes("meal")) {
               extractedData.meal_suggestions.push(...stringValues);
@@ -218,17 +237,22 @@ const extractRecommendationsData = (recData: any): ExtractedRecommendations => {
 };
 
 // Carousel Card Component
-const CarouselCard = ({ 
-  recommendation, 
+const CarouselCard = ({
+  recommendation,
   onPress,
-  colors
-}: { 
-  recommendation: AIRecommendation; 
+  colors,
+}: {
+  recommendation: AIRecommendation;
   onPress: () => void;
   colors: any;
 }) => {
-  const priorityConfig = getPriorityConfig(recommendation.priority_level, colors);
-  const extractedRecs = extractRecommendationsData(recommendation.recommendations);
+  const priorityConfig = getPriorityConfig(
+    recommendation.priority_level,
+    colors,
+  );
+  const extractedRecs = extractRecommendationsData(
+    recommendation.recommendations,
+  );
   const allInsights = [
     ...extractedRecs.nutrition_tips,
     ...extractedRecs.meal_suggestions,
@@ -240,7 +264,7 @@ const CarouselCard = ({
   const confidence = Math.round((recommendation.confidence_score || 0) * 100);
 
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.95}
       style={styles.carouselCard}
@@ -250,9 +274,7 @@ const CarouselCard = ({
         style={styles.carouselCardGradient}
       >
         {/* Top Accent Line */}
-        <View
-          style={styles.accentLine}
-        />
+        <View style={styles.accentLine} />
 
         {/* Header with Avatar */}
         <View style={styles.carouselHeader}>
@@ -264,14 +286,30 @@ const CarouselCard = ({
               <Brain size={24} color={colors.onPrimary} />
             </LinearGradient>
             <View style={styles.avatarInfo}>
-              <Text style={[styles.avatarTitle, { color: colors.text }]}>AI Assistant</Text>
-              <Text style={[styles.avatarSubtitle, { color: colors.textSecondary }]}>Personal Insights</Text>
+              <Text style={[styles.avatarTitle, { color: colors.text }]}>
+                AI Assistant
+              </Text>
+              <Text
+                style={[styles.avatarSubtitle, { color: colors.textSecondary }]}
+              >
+                Personal Insights
+              </Text>
             </View>
           </View>
 
-          <View style={[styles.priorityBadge, { backgroundColor: priorityConfig.bgColor }]}>
+          <View
+            style={[
+              styles.priorityBadge,
+              { backgroundColor: priorityConfig.bgColor },
+            ]}
+          >
             <priorityConfig.icon size={12} color={priorityConfig.accentColor} />
-            <Text style={[styles.priorityBadgeText, { color: priorityConfig.accentColor }]}>
+            <Text
+              style={[
+                styles.priorityBadgeText,
+                { color: priorityConfig.accentColor },
+              ]}
+            >
               {recommendation.priority_level.toUpperCase()}
             </Text>
           </View>
@@ -280,7 +318,10 @@ const CarouselCard = ({
         {/* Quote Section */}
         <View style={styles.quoteSection}>
           <Text style={[styles.quoteMarks, { color: colors.primary }]}>"</Text>
-          <Text style={[styles.quoteText, { color: colors.text }]} numberOfLines={3}>
+          <Text
+            style={[styles.quoteText, { color: colors.text }]}
+            numberOfLines={3}
+          >
             {allInsights[0] || "Getting to know your patterns..."}
           </Text>
         </View>
@@ -289,35 +330,57 @@ const CarouselCard = ({
         <View style={[styles.statsRow, { borderColor: colors.border }]}>
           <View style={styles.statItem}>
             <Sparkles size={14} color={colors.primary} />
-            <Text style={[styles.statValue, { color: colors.text }]}>{allInsights.length}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Insights</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>
+              {allInsights.length}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+              Insights
+            </Text>
           </View>
 
-          <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+          <View
+            style={[styles.statDivider, { backgroundColor: colors.border }]}
+          />
 
           <View style={styles.statItem}>
             <Star size={14} color={colors.warning} fill={colors.warning} />
-            <Text style={[styles.statValue, { color: colors.text }]}>{confidence}%</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Confidence</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>
+              {confidence}%
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+              Confidence
+            </Text>
           </View>
 
-          <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+          <View
+            style={[styles.statDivider, { backgroundColor: colors.border }]}
+          />
 
           <View style={styles.statItem}>
             <Clock size={14} color={colors.textTertiary} />
             <Text style={[styles.statValue, { color: colors.text }]}>
-              {recDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+              {recDate.toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+              })}
             </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Date</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+              Date
+            </Text>
           </View>
         </View>
 
         {/* View Details Button */}
-        <TouchableOpacity 
-          style={[styles.viewDetailsButton, { backgroundColor: `${colors.primary}1A` }]} 
+        <TouchableOpacity
+          style={[
+            styles.viewDetailsButton,
+            { backgroundColor: `${colors.primary}1A` },
+          ]}
           onPress={onPress}
         >
-          <Text style={[styles.viewDetailsText, { color: colors.primary }]}>View Full Analysis</Text>
+          <Text style={[styles.viewDetailsText, { color: colors.primary }]}>
+            View Full Analysis
+          </Text>
           <ChevronRight size={16} color={colors.primary} />
         </TouchableOpacity>
       </LinearGradient>
@@ -340,37 +403,60 @@ const EmptyState = ({ colors }: { colors: any }) => (
           <Brain size={40} color={colors.onPrimary} />
         </LinearGradient>
       </View>
-      <Text style={[styles.emptyTitle, { color: colors.text }]}>AI Learning Your Patterns</Text>
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>
+        AI Learning Your Patterns
+      </Text>
       <Text style={[styles.emptyDescription, { color: colors.textSecondary }]}>
-        Keep logging your meals and activities.{'\n'}
+        Keep logging your meals and activities.{"\n"}
         Personalized insights coming soon!
       </Text>
       <View style={styles.emptyProgressDots}>
-        <View style={[styles.progressDot, styles.progressDotActive, { backgroundColor: colors.primary }]} />
-        <View style={[styles.progressDot, styles.progressDotActive, { backgroundColor: colors.primary }]} />
-        <View style={[styles.progressDot, { backgroundColor: colors.border }]} />
-        <View style={[styles.progressDot, { backgroundColor: colors.border }]} />
+        <View
+          style={[
+            styles.progressDot,
+            styles.progressDotActive,
+            { backgroundColor: colors.primary },
+          ]}
+        />
+        <View
+          style={[
+            styles.progressDot,
+            styles.progressDotActive,
+            { backgroundColor: colors.primary },
+          ]}
+        />
+        <View
+          style={[styles.progressDot, { backgroundColor: colors.border }]}
+        />
+        <View
+          style={[styles.progressDot, { backgroundColor: colors.border }]}
+        />
       </View>
     </LinearGradient>
   </Animated.View>
 );
 
 // Detail Modal Component
-const DetailModal = ({ 
-  visible, 
-  recommendation, 
+const DetailModal = ({
+  visible,
+  recommendation,
   onClose,
-  colors 
-}: { 
-  visible: boolean; 
-  recommendation: AIRecommendation | null; 
+  colors,
+}: {
+  visible: boolean;
+  recommendation: AIRecommendation | null;
   onClose: () => void;
   colors: any;
 }) => {
   if (!recommendation) return null;
 
-  const extractedRecs = extractRecommendationsData(recommendation.recommendations);
-  const priorityConfig = getPriorityConfig(recommendation.priority_level, colors);
+  const extractedRecs = extractRecommendationsData(
+    recommendation.recommendations,
+  );
+  const priorityConfig = getPriorityConfig(
+    recommendation.priority_level,
+    colors,
+  );
   const recDate = new Date(recommendation.date);
   const confidence = Math.round((recommendation.confidence_score || 0) * 100);
 
@@ -404,47 +490,64 @@ const DetailModal = ({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+      <View
+        style={[styles.modalContainer, { backgroundColor: colors.background }]}
+      >
         {/* Modal Header */}
-        <View
-          style={styles.modalHeader}
-        >
+        <View style={styles.modalHeader}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <View style={[styles.closeButtonInner, { backgroundColor: colors.card }]}>
+            <View
+              style={[
+                styles.closeButtonInner,
+                { backgroundColor: colors.card },
+              ]}
+            >
               <X size={20} color={colors.text} />
             </View>
           </TouchableOpacity>
 
           <View style={styles.modalHeaderContent}>
             <View style={styles.modalDateBadge}>
-              <Text style={styles.modalDateDay}>{recDate.getDate()}</Text>
-              <Text style={styles.modalDateMonth}>
-                {recDate.toLocaleDateString(undefined, { month: 'short' }).toUpperCase()}
+              <Text style={[styles.modalDateDay, { color: colors.text }]}>
+                {recDate.getDate()}
+              </Text>
+
+              <Text style={[styles.modalDateMonth, { color: colors.text }]}>
+                {t("common.date.monthShort", {
+                  month: recDate.getMonth(),
+                })}
               </Text>
             </View>
 
             <View style={styles.modalMetricsRow}>
               <View style={styles.modalMetric}>
-                <Award size={18} color="white" />
-                <Text style={styles.modalMetricLabel}>Priority</Text>
-                <Text style={styles.modalMetricValue}>
-                  {recommendation.priority_level.toUpperCase()}
+                <Award size={18} color={colors.text} />
+                <Text style={[styles.modalMetricLabel, { color: colors.text }]}>
+                  {t("common.metrics.priority.label")}
+                </Text>
+                <Text style={[styles.modalMetricValue, { color: colors.text }]}>
+                  {t(`common.metrics.priority.level.${recommendation.priority_level}`)}
                 </Text>
               </View>
 
               <View style={styles.modalMetricDivider} />
 
               <View style={styles.modalMetric}>
-                <Activity size={18} color="white" />
-                <Text style={styles.modalMetricLabel}>Confidence</Text>
-                <Text style={styles.modalMetricValue}>{confidence}%</Text>
+                <Activity size={18} color={colors.text} />
+                <Text style={[styles.modalMetricLabel, { color: colors.text }]}>
+                  {t("common.metrics.confidence.label")}
+                </Text>
+                <Text style={[styles.modalMetricValue, { color: colors.text }]}>
+                  {t("common.metrics.confidence.value", {
+                    value: confidence,
+                  })}
+                </Text>
               </View>
             </View>
           </View>
         </View>
-
         {/* Categories */}
-        <ScrollView 
+        <ScrollView
           style={styles.modalContent}
           showsVerticalScrollIndicator={false}
         >
@@ -454,7 +557,12 @@ const DetailModal = ({
               entering={FadeInUp.delay(index * 100)}
               style={[styles.categoryCard, { backgroundColor: colors.card }]}
             >
-              <View style={[styles.categoryHeader, { borderBottomColor: colors.border }]}>
+              <View
+                style={[
+                  styles.categoryHeader,
+                  { borderBottomColor: colors.border },
+                ]}
+              >
                 <LinearGradient
                   colors={category.config.gradient}
                   style={styles.categoryIconContainer}
@@ -465,8 +573,14 @@ const DetailModal = ({
                   <Text style={[styles.categoryTitle, { color: colors.text }]}>
                     {category.config.title}
                   </Text>
-                  <Text style={[styles.categoryCount, { color: colors.textSecondary }]}>
-                    {category.items.length} {category.items.length === 1 ? 'insight' : 'insights'}
+                  <Text
+                    style={[
+                      styles.categoryCount,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {category.items.length}{" "}
+                    {category.items.length === 1 ? "insight" : "insights"}
                   </Text>
                 </View>
               </View>
@@ -474,12 +588,24 @@ const DetailModal = ({
               <View style={styles.categoryItems}>
                 {category.items.map((item, itemIndex) => (
                   <View key={itemIndex} style={styles.categoryItem}>
-                    <View style={[styles.itemNumber, { backgroundColor: `${category.config.color}15` }]}>
-                      <Text style={[styles.itemNumberText, { color: category.config.color }]}>
+                    <View
+                      style={[
+                        styles.itemNumber,
+                        { backgroundColor: `${category.config.color}15` },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.itemNumberText,
+                          { color: category.config.color },
+                        ]}
+                      >
                         {itemIndex + 1}
                       </Text>
                     </View>
-                    <Text style={[styles.itemText, { color: colors.text }]}>{item}</Text>
+                    <Text style={[styles.itemText, { color: colors.text }]}>
+                      {item}
+                    </Text>
                   </View>
                 ))}
               </View>
@@ -492,13 +618,13 @@ const DetailModal = ({
 };
 
 // Main Component
-export const AIRecommendationsSection: React.FC<AIRecommendationsSectionProps> = ({
-  recommendations = [],
-  period = "month",
-}) => {
+export const AIRecommendationsSection: React.FC<
+  AIRecommendationsSectionProps
+> = ({ recommendations = [], period = "month" }) => {
   const { colors } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedRecommendation, setSelectedRecommendation] = useState<AIRecommendation | null>(null);
+  const [selectedRecommendation, setSelectedRecommendation] =
+    useState<AIRecommendation | null>(null);
 
   const filteredRecommendations = useMemo(() => {
     if (!Array.isArray(recommendations) || recommendations.length === 0) {
@@ -537,8 +663,8 @@ export const AIRecommendationsSection: React.FC<AIRecommendationsSectionProps> =
   }, [recommendations, period]);
 
   const handleNext = () => {
-    setCurrentIndex((prev) => 
-      prev < filteredRecommendations.length - 1 ? prev + 1 : prev
+    setCurrentIndex((prev) =>
+      prev < filteredRecommendations.length - 1 ? prev + 1 : prev,
     );
   };
 
@@ -564,8 +690,12 @@ export const AIRecommendationsSection: React.FC<AIRecommendationsSectionProps> =
             <Sparkles size={20} color={colors.onPrimary} />
           </LinearGradient>
           <View>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>AI Insights</Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              AI Insights
+            </Text>
+            <Text
+              style={[styles.sectionSubtitle, { color: colors.textSecondary }]}
+            >
               {filteredRecommendations.length} personalized recommendations
             </Text>
           </View>
@@ -574,7 +704,7 @@ export const AIRecommendationsSection: React.FC<AIRecommendationsSectionProps> =
 
       {/* Carousel */}
       <View style={styles.carouselContainer}>
-        <CarouselCard 
+        <CarouselCard
           recommendation={currentRecommendation}
           onPress={() => setSelectedRecommendation(currentRecommendation)}
           colors={colors}
@@ -589,12 +719,12 @@ export const AIRecommendationsSection: React.FC<AIRecommendationsSectionProps> =
               style={[
                 styles.navButton,
                 { backgroundColor: colors.card },
-                currentIndex === 0 && styles.navButtonDisabled
+                currentIndex === 0 && styles.navButtonDisabled,
               ]}
             >
-              <ChevronLeft 
-                size={20} 
-                color={currentIndex === 0 ? colors.muted : colors.primary} 
+              <ChevronLeft
+                size={20}
+                color={currentIndex === 0 ? colors.muted : colors.primary}
               />
             </TouchableOpacity>
 
@@ -605,7 +735,10 @@ export const AIRecommendationsSection: React.FC<AIRecommendationsSectionProps> =
                   style={[
                     styles.paginationDot,
                     { backgroundColor: colors.muted },
-                    index === currentIndex && [styles.paginationDotActive, { backgroundColor: colors.primary }]
+                    index === currentIndex && [
+                      styles.paginationDotActive,
+                      { backgroundColor: colors.primary },
+                    ],
                   ]}
                 />
               ))}
@@ -617,12 +750,17 @@ export const AIRecommendationsSection: React.FC<AIRecommendationsSectionProps> =
               style={[
                 styles.navButton,
                 { backgroundColor: colors.card },
-                currentIndex === filteredRecommendations.length - 1 && styles.navButtonDisabled
+                currentIndex === filteredRecommendations.length - 1 &&
+                  styles.navButtonDisabled,
               ]}
             >
-              <ChevronRight 
-                size={20} 
-                color={currentIndex === filteredRecommendations.length - 1 ? colors.muted : colors.primary} 
+              <ChevronRight
+                size={20}
+                color={
+                  currentIndex === filteredRecommendations.length - 1
+                    ? colors.muted
+                    : colors.primary
+                }
               />
             </TouchableOpacity>
           </View>
@@ -649,75 +787,74 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   headerIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   sectionTitle: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: -0.5,
   },
   sectionSubtitle: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: "500",
     marginTop: 2,
   },
-  carouselContainer: {
-  },
+  carouselContainer: {},
   carouselCard: {
     borderRadius: 24,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   carouselCardGradient: {
     padding: 24,
   },
   accentLine: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     height: 4,
   },
   carouselHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
   },
   avatarSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   avatarCircle: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarInfo: {
     gap: 2,
   },
   avatarTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   avatarSubtitle: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   priorityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -725,7 +862,7 @@ const styles = StyleSheet.create({
   },
   priorityBadgeText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 0.5,
   },
   quoteSection: {
@@ -734,18 +871,18 @@ const styles = StyleSheet.create({
   },
   quoteMarks: {
     fontSize: 48,
-    fontWeight: '700',
+    fontWeight: "700",
     lineHeight: 48,
     marginBottom: -8,
   },
   quoteText: {
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 16,
     marginBottom: 16,
     borderTopWidth: 1,
@@ -753,18 +890,18 @@ const styles = StyleSheet.create({
   },
   statItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 4,
   },
   statValue: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: 4,
   },
   statLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   statDivider: {
@@ -772,9 +909,9 @@ const styles = StyleSheet.create({
     height: 32,
   },
   viewDetailsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 6,
     paddingVertical: 12,
     paddingHorizontal: 20,
@@ -782,26 +919,26 @@ const styles = StyleSheet.create({
   },
   viewDetailsText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   navigation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginTop: 16,
   },
   navButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   navButtonDisabled: {
     opacity: 0.4,
   },
   pagination: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 6,
   },
   paginationDot: {
@@ -815,11 +952,11 @@ const styles = StyleSheet.create({
   emptyContainer: {
     marginHorizontal: 20,
     borderRadius: 24,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   emptyGradient: {
     padding: 48,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyIconWrapper: {
     marginBottom: 24,
@@ -828,23 +965,23 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    textAlign: 'center',
+    fontWeight: "700",
+    textAlign: "center",
     marginBottom: 8,
   },
   emptyDescription: {
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
   },
   emptyProgressDots: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   progressDot: {
@@ -862,7 +999,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   closeButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 16,
     right: 16,
     zIndex: 10,
@@ -871,8 +1008,8 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalHeaderContent: {
     alignItems: "center",

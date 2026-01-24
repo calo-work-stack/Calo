@@ -675,6 +675,42 @@ export const nutritionAPI = {
     responseCache.clear();
     return response;
   },
+
+  async getMealsRemaining(): Promise<{
+    remaining: number;
+    limit: number;
+    used: number;
+    canLogMandatory: boolean;
+  }> {
+    const cacheKey = getCacheKey("GET", "/nutrition/meals-remaining");
+    const cached = getCachedResponse(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const response = await api.get("/nutrition/meals-remaining");
+      if (response.data.success) {
+        setCachedResponse(cacheKey, response.data.data, 30000); // 30s cache
+        return response.data.data;
+      }
+    } catch (error) {
+      console.error("Error fetching meals remaining:", error);
+    }
+
+    // Return default values on error
+    return {
+      remaining: 3,
+      limit: 3,
+      used: 0,
+      canLogMandatory: true,
+    };
+  },
+
+  // Invalidate meals remaining cache (call after saving a meal)
+  invalidateMealsRemainingCache(): void {
+    Array.from(responseCache.keys())
+      .filter((key) => key.includes("/nutrition/meals-remaining"))
+      .forEach((key) => responseCache.delete(key));
+  },
 };
 
 // ==================== USER API ====================

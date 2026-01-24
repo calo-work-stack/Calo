@@ -580,7 +580,9 @@
       "availableAnytime": "Available anytime",
       "opens": "Opens {{time}}",
       "am": "AM",
-      "pm": "PM"
+      "pm": "PM",
+      "mealsRemaining": "{{remaining}}/{{limit}} meals left",
+      "limitReached": "Limit reached ({{used}}/{{limit}})"
     },
     "imagePreview": {
       "title": "Selected Image",
@@ -659,13 +661,33 @@
     "vitamins": "Vitamins",
     "kcal": "Kcal",
     "grams": "grams",
+    "carbs": "Carbs",
+    "fat": "Fat",
+    "addedToHistory": "Added to history",
+    "productSaved": "Product saved",
     "productNotFound": "Product not found",
     "productIdentifiedSuccessfully": "Product identified successfully",
     "couldNotIdentifyProduct": "Could not identify product in image",
     "couldNotOpenCamera": "Could not open camera",
     "shoppingListUpdated": "Shopping List Updated",
     "addedToShoppingList": "{{product}} added to shopping list!",
-    "pleaseEnterBarcode": "Please enter a barcode"
+    "pleaseEnterBarcode": "Please enter a barcode",
+    "searchProducts": "Search Products",
+    "searchPlaceholder": "Search by product name...",
+    "search": "Search",
+    "searching": "Searching...",
+    "searchError": "Search Error",
+    "searchQueryTooShort": "Please enter at least 2 characters",
+    "noResultsFound": "No products found",
+    "tryDifferentKeywords": "Try different keywords or check spelling",
+    "tryDifferentSearch": "Try searching with different keywords",
+    "searchHint": "Search for products by name when barcode scanning doesn't work",
+    "loadingProduct": "Loading product...",
+    "productSelected": "Product ready to add",
+    "richInFiber": "High in Fiber",
+    "highInSugar": "High in Sugar",
+    "highInSodium": "High in Sodium",
+    "standardProduct": "Standard Nutritional Profile"
   },
   "profile": {
     "title": "Profile",
@@ -1338,9 +1360,9 @@
     "language_preference": "Language of choice",
     "sign_up": {
       "email": {
-        "didnt_recive":"Didn't receive the code?",
-        "resend_email":"Resend Email in",
-        "seconds":"seconds"
+        "didnt_recive": "Didn't receive the code?",
+        "resend_email": "Resend Email in",
+        "seconds": "seconds"
       },
       "title": "Sign Up",
       "create_account": "Create Account",
@@ -1789,7 +1811,24 @@
     "beta_feature": "Beta Feature",
     "experimental_feature": "Experimental Feature",
     "deprecated_feature": "Deprecated Feature",
-    "legacy_feature": "Legacy Feature"
+    "legacy_feature": "Legacy Feature",
+    "date": {
+      "monthShort": "{{month, shortMonth}}"
+    },
+    "metrics": {
+      "priority": {
+        "label": "Priority",
+        "level": {
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        }
+      },
+      "confidence": {
+        "label": "Confidence",
+        "value": "{{value}}%"
+      }
+    }
   },
   "achievements": {
     "title": "Achievements",

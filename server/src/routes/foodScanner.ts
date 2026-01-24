@@ -3,6 +3,7 @@ import { authenticateToken, AuthRequest } from "../middleware/auth";
 import { FoodScannerService } from "../services/foodScanner";
 import { UsageTrackingService } from "../services/usageTracking";
 import { z } from "zod";
+import { ProductData } from "../types/foodScanner";
 
 const router = Router();
 
@@ -41,7 +42,8 @@ const addToMealSchema = z.object({
     barcode: z.string().optional(),
   }),
   quantity: z.number().min(1, "Quantity must be at least 1 gram"),
-  mealTiming: z.string().optional().default("SNACK"),
+  mealTiming: z.string().optional().default("snack"),
+  is_mandatory: z.boolean().optional(),
 });
 
 // Scan barcode endpoint
@@ -85,7 +87,7 @@ router.post(
         message: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 // Scan image endpoint
@@ -131,7 +133,7 @@ router.post(
 
       const result = await FoodScannerService.scanProductImage(
         imageData,
-        userId
+        userId,
       );
 
       await UsageTrackingService.incrementMealScanCount(userId);
@@ -153,7 +155,7 @@ router.post(
         message: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 // Add product to meal log endpoint
@@ -181,13 +183,15 @@ router.post(
         });
       }
 
-      const { productData, quantity, mealTiming } = validationResult.data;
+      const { productData, quantity, mealTiming, is_mandatory } =
+        validationResult.data;
 
       const meal = await FoodScannerService.addProductToMealLog(
         userId,
         productData,
         quantity,
-        mealTiming
+        mealTiming,
+        is_mandatory,
       );
 
       res.json({
@@ -202,9 +206,102 @@ router.post(
         message: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
+// Search products by name (for manual entry)
+router.get(
+  "/search",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: "User not authenticated",
+        });
+      }
+
+      const query = req.query.q as string;
+      const page = parseInt(req.query.page as string) || 1;
+
+      if (!query || query.trim().length < 2) {
+        return res.status(400).json({
+          success: false,
+          error: "Search query must be at least 2 characters",
+        });
+      }
+
+      console.log("🔍 Product search request:", query);
+      const products = await FoodScannerService.searchProductsByName(
+        query.trim(),
+        page,
+      );
+
+      res.json({
+        success: true,
+        data: products,
+        query: query,
+        page: page,
+        count: products.length,
+      });
+    } catch (error) {
+      console.error("❌ Product search error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to search products",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  },
+);
+
+// Add this to your food-scanner routes file (where you have the /search route)
+
+router.post(
+  "/search/save",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: "User not authenticated",
+        });
+      }
+
+      const productData = req.body.product as ProductData;
+
+      if (!productData || !productData.name) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid product data",
+        });
+      }
+
+      console.log("💾 Saving selected product to history:", productData.name);
+
+      await FoodScannerService.saveSearchedProductToHistory(
+        productData,
+        userId,
+      );
+
+      res.json({
+        success: true,
+        message: "Product saved to scan history",
+      });
+    } catch (error) {
+      console.error("❌ Error saving product:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to save product to history",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  },
+);
 // Get scan history
 router.get(
   "/history",
@@ -232,7 +329,7 @@ router.get(
         error: "Failed to get scan history",
       });
     }
-  }
+  },
 );
 
 export default router;

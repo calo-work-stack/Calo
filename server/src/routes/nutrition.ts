@@ -6,6 +6,7 @@ import { mealAnalysisSchema, mealUpdateSchema } from "../types/nutrition";
 import { NutritionService } from "../services/nutrition";
 import { AchievementService } from "../services/achievements";
 import { UsageTrackingService } from "../services/usageTracking";
+import { MealTrackingService } from "../services/mealTracking";
 
 const router = Router();
 
@@ -1161,6 +1162,36 @@ router.get(
       res.status(500).json({
         success: false,
         error: "Failed to get usage stats",
+      });
+    }
+  }
+);
+
+// Get meals remaining for today (mandatory meal limit tracking)
+router.get(
+  "/meals-remaining",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: "User not authenticated",
+        });
+      }
+
+      const mealsRemaining = await MealTrackingService.getMealsRemaining(userId);
+
+      res.json({
+        success: true,
+        data: mealsRemaining,
+      });
+    } catch (error) {
+      console.error("💥 Get meals remaining error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to get meals remaining",
       });
     }
   }

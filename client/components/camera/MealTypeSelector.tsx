@@ -47,9 +47,17 @@ export interface MealType {
   darkColor: string;
 }
 
+interface MealsRemainingInfo {
+  remaining: number;
+  limit: number;
+  used: number;
+  canLogMandatory: boolean;
+}
+
 interface MealTypeSelectorProps {
   onSelect: (mealType: MealType) => void;
   selectedType?: MealType;
+  mealsRemaining?: MealsRemainingInfo;
 }
 
 const getMealTypesWithTheme = (
@@ -157,14 +165,29 @@ const getCurrentHour = (): number => {
   return now.getHours() + now.getMinutes() / 60;
 };
 
-const isMealTypeAvailable = (mealTypeId: string): boolean => {
-  if (mealTypeId === "snack" || mealTypeId === "other") return true;
+// Snacks are always available, mandatory meals are limited
+const isMealTypeMandatory = (mealTypeId: string): boolean => {
+  return mealTypeId !== "snack";
+};
 
+const isMealTypeAvailable = (mealTypeId: string, mealsRemaining?: MealsRemainingInfo): boolean => {
+  // Snacks are always available (not mandatory)
+  if (mealTypeId === "snack") return true;
+
+  // Check if mandatory meal limit is reached
+  if (mealsRemaining && !mealsRemaining.canLogMandatory) {
+    return false;
+  }
+
+  // Check time restrictions
   const currentHour = getCurrentHour();
   const restriction =
     TIME_RESTRICTIONS[mealTypeId as keyof typeof TIME_RESTRICTIONS];
 
   if (!restriction) return true;
+
+  // Other is always available time-wise
+  if (mealTypeId === "other") return true;
 
   if (restriction.start > restriction.end) {
     return currentHour >= restriction.start || currentHour <= restriction.end;
@@ -203,7 +226,8 @@ const MealCard: React.FC<{
   onPress: () => void;
   index: number;
   colors: any;
-}> = ({ mealType, isSelected, isAvailable, onPress, index, colors }) => {
+  mealsRemaining?: MealsRemainingInfo;
+}> = ({ mealType, isSelected, isAvailable, onPress, index, colors, mealsRemaining }) => {
   const { t } = useTranslation();
   const scale = useSharedValue(1);
   const borderWidth = useSharedValue(isSelected ? 2.5 : 1.5);
@@ -363,9 +387,9 @@ const MealCard: React.FC<{
                   { color: colors.error || "#EF4444" },
                 ]}
               >
-                {t("camera.mealType.opens", {
-                  time: getNextAvailableTime(mealType.id, t),
-                })}
+                {mealsRemaining && !mealsRemaining.canLogMandatory && isMealTypeMandatory(mealType.id)
+                  ? t("camera.mealType.limitReached", { used: mealsRemaining.used, limit: mealsRemaining.limit })
+                  : t("camera.mealType.opens", { time: getNextAvailableTime(mealType.id, t) })}
               </Text>
             </Animated.View>
           )}
@@ -390,6 +414,7 @@ const MealCard: React.FC<{
 export const MealTypeSelector: React.FC<MealTypeSelectorProps> = ({
   onSelect,
   selectedType,
+  mealsRemaining,
 }) => {
   const { t } = useTranslation();
   const { colors, emeraldSpectrum } = useTheme();
@@ -402,10 +427,10 @@ export const MealTypeSelector: React.FC<MealTypeSelectorProps> = ({
 
   const mealAvailability = useMemo(() => {
     return MEAL_TYPES.reduce((acc, mealType) => {
-      acc[mealType.id] = isMealTypeAvailable(mealType.id);
+      acc[mealType.id] = isMealTypeAvailable(mealType.id, mealsRemaining);
       return acc;
     }, {} as Record<string, boolean>);
-  }, [currentTime, MEAL_TYPES]);
+  }, [currentTime, MEAL_TYPES, mealsRemaining]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -488,9 +513,22 @@ export const MealTypeSelector: React.FC<MealTypeSelectorProps> = ({
       >
         <Text style={themedStyles.title}>{t("camera.mealType.title")}</Text>
         <Text style={themedStyles.subtitle}>{t("camera.mealType.subtitle")}</Text>
-        <View style={themedStyles.timeContainer}>
-          <Clock size={16} color={colors.primary || "#10B981"} />
-          <Text style={themedStyles.currentTime}>{currentTimeString}</Text>
+        <View style={styles.statusRow}>
+          <View style={themedStyles.timeContainer}>
+            <Clock size={16} color={colors.primary || "#10B981"} />
+            <Text style={themedStyles.currentTime}>{currentTimeString}</Text>
+          </View>
+          {mealsRemaining && (
+            <View style={[themedStyles.timeContainer, { marginLeft: 12 }]}>
+              <UtensilsCrossed size={16} color={mealsRemaining.canLogMandatory ? colors.primary || "#10B981" : colors.error || "#EF4444"} />
+              <Text style={[
+                themedStyles.currentTime,
+                !mealsRemaining.canLogMandatory && { color: colors.error || "#EF4444" }
+              ]}>
+                {t("camera.mealType.mealsRemaining", { remaining: mealsRemaining.remaining, limit: mealsRemaining.limit })}
+              </Text>
+            </View>
+          )}
         </View>
       </Animated.View>
 
@@ -504,6 +542,7 @@ export const MealTypeSelector: React.FC<MealTypeSelectorProps> = ({
             onPress={() => handleMealTypeSelect(mealType)}
             index={index}
             colors={colors}
+            mealsRemaining={mealsRemaining}
           />
         ))}
       </View>
@@ -512,6 +551,13 @@ export const MealTypeSelector: React.FC<MealTypeSelectorProps> = ({
 };
 
 const styles = StyleSheet.create({
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    gap: 8,
+  },
   cardsContainer: {
     gap: 12,
   },
