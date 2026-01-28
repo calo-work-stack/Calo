@@ -576,25 +576,19 @@ router.get("/stats", authenticateToken, async (req: AuthRequest, res) => {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const todayWaterIntake = await Promise.race([
+      const todayWater = await Promise.race([
         prisma.waterIntake.aggregate({
           where: {
             user_id: userId,
-            date: {
-              gte: today,
-              lt: tomorrow,
-            },
+            date: { gte: today, lt: tomorrow },
           },
-          _sum: {
-            milliliters_consumed: true,
-          },
+          _sum: { cups_consumed: true },
         }),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error("Timeout")), 3000)
         ),
       ]);
-      defaultStats.todayWaterIntake =
-        (todayWaterIntake as any)?._sum?.milliliters_consumed || 0;
+      defaultStats.todayWaterIntake = (todayWater as any)?._sum?.cups_consumed || 0;
     } catch (error) {
       console.warn("⚠️ Failed to fetch water intake, using default");
     }

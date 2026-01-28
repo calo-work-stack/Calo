@@ -100,8 +100,8 @@ export default function ScannerCamera({
 
 const styles = StyleSheet.create({
   cameraWrapper: {
-    width: width - 48,
-    height: width - 48,
+    width: width -12 ,
+    height: width - 12,
     borderRadius: 28,
     overflow: "hidden",
   },
@@ -115,8 +115,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.35)",
   },
   scanFrame: {
-    width: 220,
-    height: 220,
+    width: 260,
+    height: 260,
     borderRadius: 24,
     borderWidth: 1,
   },

@@ -137,6 +137,7 @@ export class calendarStatsService {
             },
             select: {
               date: true,
+              cups_consumed: true,
               milliliters_consumed: true,
             },
           })
@@ -152,6 +153,7 @@ export class calendarStatsService {
             },
             select: {
               date: true,
+              cups_consumed: true,
               milliliters_consumed: true,
             },
           })

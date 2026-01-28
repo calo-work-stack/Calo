@@ -36,7 +36,7 @@ import { RootState } from "@/src/store";
 import { useTheme } from "@/src/context/ThemeContext";
 import { AIChatScreenProps, Message, UserProfile } from "@/src/types/ai-chat";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 export default function AIChatScreen({
   onClose,
@@ -85,7 +85,7 @@ export default function AIChatScreen({
                 text: t("common.upgradePlan") || "Upgrade",
                 onPress: () => router.replace("/payment-plan"),
               },
-            ]
+            ],
           );
           router.replace("/(tabs)");
           return;
@@ -106,7 +106,7 @@ export default function AIChatScreen({
                 text: t("common.upgradePlan") || "Upgrade",
                 onPress: () => router.replace("/payment-plan"),
               },
-            ]
+            ],
           );
           router.replace("/(tabs)");
           return;
@@ -231,42 +231,32 @@ export default function AIChatScreen({
     setInputText("");
     setIsTyping(true);
 
-    // Create abort controller for timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     try {
       const res = await chatAPI.sendMessage(
         msg,
-        language === "he" ? "hebrew" : "english"
+        language === "he" ? "hebrew" : "english",
       );
 
-      // Clear timeout immediately after successful response
       clearTimeout(timeoutId);
 
-      console.log("AI Chat full response:", JSON.stringify(res, null, 2));
-
-      // Extract AI content with clearer logic
       let aiContent = "";
 
-      // Handle the expected server format first: { success: true, response: { response: "...", messageId: "..." } }
       if (res && res.success && res.response) {
         if (typeof res.response === "string") {
           aiContent = res.response;
         } else if (typeof res.response === "object" && res.response.response) {
-          // This is your expected format
           aiContent = res.response.response;
         } else if (typeof res.response === "object") {
-          // Fallback: try other common fields
           aiContent =
             res.response.message ||
             res.response.content ||
             res.response.text ||
             "";
         }
-      }
-      // Fallback: try other response formats
-      else if (res && typeof res === "string") {
+      } else if (res && typeof res === "string") {
         aiContent = res;
       } else if (res && res.data) {
         if (typeof res.data === "string") {
@@ -281,17 +271,9 @@ export default function AIChatScreen({
         aiContent = res.message;
       }
 
-      console.log("AI Chat extracted content length:", aiContent?.length);
-      console.log(
-        "AI Chat extracted content preview:",
-        aiContent?.substring(0, 150)
-      );
-
-      // Clean up the content
       if (aiContent && typeof aiContent === "string") {
         aiContent = aiContent.trim();
 
-        // If it looks like JSON, try to extract the message
         if (
           (aiContent.startsWith("{") || aiContent.startsWith("[")) &&
           aiContent.length > 50
@@ -307,25 +289,15 @@ export default function AIChatScreen({
               aiContent = extracted;
             }
           } catch (parseError) {
-            // Keep original if JSON parsing fails
-            console.log(
-              "AI Chat: Content looks like JSON but couldn't parse, keeping as-is"
-            );
+            console.log("Content looks like JSON but couldn't parse");
           }
         }
       }
 
-      // Final validation - ensure we have actual content
       if (!aiContent || !aiContent.trim() || aiContent.length < 3) {
-        console.error("AI Chat: Empty or invalid response", {
-          hasContent: !!aiContent,
-          length: aiContent?.length,
-          response: res,
-        });
         throw new Error("Empty response from AI");
       }
 
-      // Success - add the AI message
       const allergens = checkForAllergens(aiContent);
       const aiMsg: Message = {
         id: `bot-${Date.now()}`,
@@ -341,19 +313,16 @@ export default function AIChatScreen({
       setMessages((p) => [...p, aiMsg]);
     } catch (error: any) {
       clearTimeout(timeoutId);
-      console.error("AI Chat error details:", {
-        name: error?.name,
-        message: error?.message,
-        response: error?.response?.data,
-        status: error?.response?.status,
-      });
+      console.error("AI Chat error details:", error);
 
-      // Determine error type for better user feedback
       let errorMessage =
         t("ai_chat.error.serverError") ||
         "Sorry, I couldn't process your message. Please try again.";
 
-      if (error?.name === "AbortError" || errorMessageIncludes(error, "timeout")) {
+      if (
+        error?.name === "AbortError" ||
+        errorMessageIncludes(error, "timeout")
+      ) {
         errorMessage =
           t("ai_chat.error.timeout") ||
           "The request took too long. Please try again.";
@@ -394,6 +363,7 @@ export default function AIChatScreen({
       setIsTyping(false);
     }
   };
+
   const clearChat = () => {
     Alert.alert(t("ai_chat.clearChat.title"), t("ai_chat.clearChat.message"), [
       { text: t("ai_chat.clearChat.cancel"), style: "cancel" },
@@ -436,15 +406,15 @@ export default function AIChatScreen({
           ]}
         >
           {!isUser && (
-            <View style={[s.botIcon, { backgroundColor: colors.card }]}>
-              <Bot size={16} color={emeraldSpectrum.emerald500} />
+            <View style={s.botIconContainer}>
+              <Bot size={18} color="#fff" />
             </View>
           )}
           <View style={s.msgContent}>
             <View
               style={[
                 s.bubble,
-                { backgroundColor: isUser ? colors.card : colors.surface },
+                isUser ? s.userBubble : s.botBubble,
                 msg.hasWarning &&
                   msg.allergenWarning &&
                   msg.allergenWarning.length > 0 &&
@@ -454,11 +424,9 @@ export default function AIChatScreen({
               {msg.hasWarning &&
                 msg.allergenWarning &&
                 msg.allergenWarning.length > 0 && (
-                  <View
-                    style={[s.warnBanner, { borderBottomColor: colors.error }]}
-                  >
-                    <AlertTriangle size={12} color={colors.error} />
-                    <Text style={[s.warnText, { color: colors.error }]}>
+                  <View style={s.warnBanner}>
+                    <AlertTriangle size={12} color="#FF6B6B" />
+                    <Text style={s.warnText}>
                       {t("ai_chat.allergen_warning")}:{" "}
                       {msg.allergenWarning.join(", ")}
                     </Text>
@@ -467,64 +435,23 @@ export default function AIChatScreen({
               <Text
                 style={[
                   s.msgText,
-                  { color: colors.text, textAlign: isRTL ? "right" : "left" },
+                  isUser && s.userMsgText,
+                  { textAlign: isRTL ? "right" : "left" },
                 ]}
               >
                 {msg.content}
               </Text>
-              <Text
-                style={[
-                  s.time,
-                  {
-                    color: colors.textTertiary,
-                    textAlign:
-                      isRTL && isUser
-                        ? "left"
-                        : isRTL
-                        ? "right"
-                        : isUser
-                        ? "right"
-                        : "left",
-                  },
-                ]}
-              >
-                {msg.timestamp.toLocaleTimeString(
-                  language === "he" ? "he-IL" : "en-US",
-                  { hour: "2-digit", minute: "2-digit" }
-                )}
-              </Text>
             </View>
             {msg.suggestions && (
               <View style={s.suggests}>
-                <Text
-                  style={[
-                    s.sugLabel,
-                    {
-                      color: colors.textSecondary,
-                      textAlign: isRTL ? "right" : "left",
-                    },
-                  ]}
-                >
-                  {t("ai_chat.ask_anything")}
-                </Text>
                 <View style={s.sugGrid}>
                   {msg.suggestions.map((sug, i) => (
                     <TouchableOpacity
                       key={i}
-                      style={[
-                        s.sugBtn,
-                        {
-                          backgroundColor: colors.card,
-                          borderColor: colors.border,
-                        },
-                      ]}
+                      style={s.sugBtn}
                       onPress={() => setInputText(sug)}
                     >
-                      <Text
-                        style={[s.sugBtnText, { color: colors.textSecondary }]}
-                      >
-                        {sug}
-                      </Text>
+                      <Text style={s.sugBtnText}>{sug}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -532,13 +459,11 @@ export default function AIChatScreen({
             )}
           </View>
           {isUser && (
-            <View
-              style={[s.userIcon, { backgroundColor: colors.surfaceVariant }]}
-            >
+            <View style={s.userIconContainer}>
               {user?.avatar_url ? (
                 <Image source={{ uri: user.avatar_url }} style={s.profImg} />
               ) : (
-                <User size={16} color={colors.text} />
+                <User size={18} color="#fff" />
               )}
             </View>
           )}
@@ -547,227 +472,171 @@ export default function AIChatScreen({
     );
   };
 
-  if (isLoading) return <LoadingScreen text={t("loading.loading","loading.ai_chat")} />;
+  if (isLoading)
+    return <LoadingScreen text={t("loading.loading", "loading.ai_chat")} />;
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
-        <View
-          style={[
-            s.header,
-            {
-              backgroundColor: colors.background,
-              borderBottomColor: colors.border,
-            },
-          ]}
+    <View style={s.container}>
+      <View
+        style={StyleSheet.absoluteFill}
+      />
+      <SafeAreaView style={s.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
-          <View style={[s.hContent, isRTL && s.hContentRTL]}>
-            <View style={[s.hLeft, isRTL && s.hLeftRTL]}>
-              <View style={[s.iconWrap, { backgroundColor: colors.card }]}>
-                <Bot size={18} color={emeraldSpectrum.emerald500} />
+          {/* Header */}
+          <View style={s.header}>
+            <View style={[s.hContent, isRTL && s.hContentRTL]}>
+              <View style={[s.hLeft, isRTL && s.hLeftRTL]}>
+                <Text style={s.onlineStatus}>{t("ai_chat.title")}</Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={[
-                    s.hTitle,
-                    { color: colors.text, textAlign: isRTL ? "right" : "left" },
-                  ]}
-                >
-                  {t("ai_chat.title")}
-                </Text>
-                <Text
-                  style={[
-                    s.hSub,
-                    {
-                      color: colors.textSecondary,
-                      textAlign: isRTL ? "right" : "left",
-                    },
-                  ]}
-                >
-                  {t("ai_chat.subtitle")}
-                </Text>
-              </View>
+              <TouchableOpacity style={s.clearBtn} onPress={clearChat}>
+                <Trash2 size={18} color="#fff" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={[s.clearBtn, { backgroundColor: colors.card }]}
-              onPress={clearChat}
-            >
-              <Trash2 size={16} color={colors.error} />
-            </TouchableOpacity>
-          </View>
-          {(userProfile.allergies.length > 0 ||
-            userProfile.medicalConditions.length > 0) && (
-            <View style={[s.profCard, { backgroundColor: colors.card }]}>
-              <View
-                style={[s.profHdr, isRTL && { flexDirection: "row-reverse" }]}
-              >
-                <Shield size={14} color={emeraldSpectrum.emerald500} />
-                <Text style={[s.profTitle, { color: colors.text }]}>
-                  {t("ai_chat.safety_profile.title")}
-                </Text>
-              </View>
-              <View style={{ gap: 8 }}>
-                {userProfile.allergies.length > 0 && (
-                  <View
-                    style={[
-                      s.profSec,
-                      isRTL && { flexDirection: "row-reverse" },
-                    ]}
-                  >
-                    <Text style={[s.profLbl, { color: colors.textSecondary }]}>
-                      {t("ai_chat.safety_profile.allergies")}
-                    </Text>
-                    <View style={s.tags}>
-                      {userProfile.allergies.map((a, i) => (
-                        <View
-                          key={i}
-                          style={[
-                            s.allergyTag,
-                            {
-                              borderColor: colors.error,
-                              backgroundColor: colors.error + "20",
-                            },
-                          ]}
-                        >
-                          <Text style={[s.allergyTxt, { color: colors.error }]}>
-                            {a}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-                {userProfile.medicalConditions.length > 0 && (
-                  <View
-                    style={[
-                      s.profSec,
-                      isRTL && { flexDirection: "row-reverse" },
-                    ]}
-                  >
-                    <Text style={[s.profLbl, { color: colors.textSecondary }]}>
-                      {t("ai_chat.safety_profile.medical")}
-                    </Text>
-                    <View style={s.tags}>
-                      {userProfile.medicalConditions.map((c, i) => (
-                        <View
-                          key={i}
-                          style={[
-                            s.medTag,
-                            {
-                              borderColor: colors.warning,
-                              backgroundColor: colors.warning + "20",
-                            },
-                          ]}
-                        >
-                          <Text style={[s.medTxt, { color: colors.warning }]}>
-                            {c}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-              </View>
-            </View>
-          )}
-        </View>
-        <ScrollView
-          ref={scrollViewRef}
-          style={{ flex: 1, backgroundColor: colors.background }}
-          contentContainerStyle={{
-            paddingHorizontal: 14,
-            paddingTop: 12,
-            paddingBottom: 16,
-          }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {messages.map(renderMessage)}
-          {isTyping && (
-            <View style={{ marginBottom: 12 }}>
-              <View
-                style={[
-                  { flexDirection: "row", alignItems: "center", gap: 8 },
-                  isRTL && { flexDirection: "row-reverse" },
-                ]}
-              >
-                <View style={[s.botIcon, { backgroundColor: colors.card }]}>
-                  <Bot size={16} color={emeraldSpectrum.emerald500} />
-                </View>
+            {(userProfile.allergies.length > 0 ||
+              userProfile.medicalConditions.length > 0) && (
+              <View style={s.profCard}>
                 <View
-                  style={[s.typeBubble, { backgroundColor: colors.surface }]}
+                  style={[s.profHdr, isRTL && { flexDirection: "row-reverse" }]}
                 >
-                  <ActivityIndicator
-                    size="small"
-                    color={emeraldSpectrum.emerald500}
-                  />
-                  <Text style={[s.typeText, { color: colors.textSecondary }]}>
-                    {t("ai_chat.typing")}
+                  <Shield size={14} color="#fff" />
+                  <Text style={s.profTitle}>
+                    {t("ai_chat.safety_profile.title")}
                   </Text>
                 </View>
+                <View style={{ gap: 8 }}>
+                  {userProfile.allergies.length > 0 && (
+                    <View
+                      style={[
+                        s.profSec,
+                        isRTL && { flexDirection: "row-reverse" },
+                      ]}
+                    >
+                      <Text style={s.profLbl}>
+                        {t("ai_chat.safety_profile.allergies")}
+                      </Text>
+                      <View style={s.tags}>
+                        {userProfile.allergies.map((a, i) => (
+                          <View key={i} style={s.allergyTag}>
+                            <Text style={s.allergyTxt}>{a}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                  {userProfile.medicalConditions.length > 0 && (
+                    <View
+                      style={[
+                        s.profSec,
+                        isRTL && { flexDirection: "row-reverse" },
+                      ]}
+                    >
+                      <Text style={s.profLbl}>
+                        {t("ai_chat.safety_profile.medical")}
+                      </Text>
+                      <View style={s.tags}>
+                        {userProfile.medicalConditions.map((c, i) => (
+                          <View key={i} style={s.medTag}>
+                            <Text style={s.medTxt}>{c}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </View>
               </View>
-            </View>
-          )}
-        </ScrollView>
-        <View style={[s.inputArea, { backgroundColor: colors.background }]}>
-          <View style={[s.inputCont, { backgroundColor: colors.card }]}>
-            <TextInput
-              style={[
-                s.input,
-                { color: colors.text, textAlign: isRTL ? "right" : "left" },
-              ]}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder={t("ai_chat.type_message")}
-              placeholderTextColor={colors.textTertiary}
-              multiline
-            />
-            <TouchableOpacity style={s.sendBtn} onPress={sendMessage}>
-              <LinearGradient
-                colors={[
-                  emeraldSpectrum.emerald400,
-                  emeraldSpectrum.emerald600,
-                ]}
-                start={[0, 0]}
-                end={[1, 1]}
-                style={s.sendGradient}
-              >
-                <Send size={16} color="#fff" />
-              </LinearGradient>
-            </TouchableOpacity>
+            )}
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+
+          {/* Messages */}
+          <ScrollView
+            ref={scrollViewRef}
+            style={s.scrollView}
+            contentContainerStyle={s.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {messages.map(renderMessage)}
+            {isTyping && (
+              <View style={{ marginBottom: 12 }}>
+                <View
+                  style={[
+                    { flexDirection: "row", alignItems: "center", gap: 8 },
+                    isRTL && { flexDirection: "row-reverse" },
+                  ]}
+                >
+                  <View style={s.botIconContainer}>
+                    <Bot size={18} color="#fff" />
+                  </View>
+                  <View style={s.typeBubble}>
+                    <ActivityIndicator size="small" color="#9B7EDE" />
+                    <Text style={s.typeText}>{t("ai_chat.typing")}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Input Area */}
+          <View style={s.inputArea}>
+            <View style={s.inputCont}>
+              <TextInput
+                style={[s.input, { textAlign: isRTL ? "right" : "left" }]}
+                value={inputText}
+                onChangeText={setInputText}
+                placeholder={t("ai_chat.type_message") || "Enter message"}
+                placeholderTextColor="#999"
+                multiline
+              />
+              <TouchableOpacity
+                style={s.sendBtn}
+                onPress={sendMessage}
+                disabled={!inputText.trim()}
+              >
+                <Send size={18} color="#999" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1 },
-  header: { borderBottomWidth: 1, paddingBottom: 8 },
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    paddingTop: 12,
+  },
   hContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 8,
-    padding: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
   },
-  hContentRTL: { flexDirection: "row-reverse" },
-  hLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  hLeftRTL: { flexDirection: "row-reverse" },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
+  hContentRTL: {
+    flexDirection: "row-reverse",
   },
-  hTitle: { fontWeight: "700", fontSize: 16 },
-  hSub: { fontSize: 12 },
+  hLeft: {
+    flex: 1,
+  },
+  hLeftRTL: {
+    alignItems: "flex-end",
+  },
+  onlineStatus: {
+    color: "#fff",
+    fontSize: 12,
+    opacity: 0.8,
+  },
   clearBtn: {
     width: 36,
     height: 36,
@@ -775,103 +644,222 @@ const s = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  profCard: { marginTop: 12, borderRadius: 12, padding: 12 },
+  profCard: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 16,
+    padding: 12,
+    backdropFilter: "blur(10px)",
+  },
   profHdr: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     marginBottom: 8,
   },
-  profTitle: { fontWeight: "600", fontSize: 14 },
+  profTitle: {
+    fontWeight: "600",
+    fontSize: 13,
+    color: "#fff",
+  },
   profSec: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
     flexWrap: "wrap",
   },
-  profLbl: { fontSize: 12, fontWeight: "500" },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  profLbl: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "rgba(255, 255, 255, 0.9)",
+  },
+  tags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
   allergyTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: "rgba(255, 107, 107, 0.2)",
+    borderRadius: 12,
     borderWidth: 1,
-    borderRadius: 8,
+    borderColor: "rgba(255, 107, 107, 0.3)",
   },
-  allergyTxt: { fontSize: 10 },
+  allergyTxt: {
+    fontSize: 10,
+    color: "#FFB3B3",
+  },
   medTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: "rgba(255, 193, 7, 0.2)",
+    borderRadius: 12,
     borderWidth: 1,
-    borderRadius: 8,
+    borderColor: "rgba(255, 193, 7, 0.3)",
   },
-  medTxt: { fontSize: 10 },
-  msgContainer: { marginVertical: 4 },
-  msgRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  botIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  medTxt: {
+    fontSize: 10,
+    color: "#FFE082",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+  },
+  msgContainer: {
+    marginBottom: 16,
+  },
+  msgRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  botIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
-  userIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  userIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
-  profImg: { width: 28, height: 28, borderRadius: 14 },
-  msgContent: { flex: 1 },
-  bubble: { padding: 10, borderRadius: 12 },
-  warnBubble: { borderWidth: 1, borderColor: "#FF0000" },
+  profImg: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  msgContent: {
+    flex: 1,
+    maxWidth: width * 0.75,
+  },
+  bubble: {
+    padding: 16,
+    borderRadius: 20,
+  },
+  botBubble: {
+    backgroundColor: "#fff",
+    borderBottomLeftRadius: 4,
+  },
+  userBubble: {
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    borderBottomRightRadius: 4,
+  },
+  warnBubble: {
+    borderWidth: 1.5,
+    borderColor: "#FF6B6B",
+  },
   warnBanner: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 4,
-    borderBottomWidth: 2,
-    borderRadius: 4,
-    marginBottom: 4,
+    paddingBottom: 8,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 107, 107, 0.2)",
   },
-  warnText: { fontSize: 10, marginLeft: 4 },
-  msgText: { fontSize: 14 },
-  time: { fontSize: 10, marginTop: 4 },
-  suggests: { marginTop: 6 },
-  sugLabel: { fontSize: 12, marginBottom: 4 },
-  sugGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  warnText: {
+    fontSize: 10,
+    marginLeft: 4,
+    color: "#FF6B6B",
+  },
+  msgText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: "#333",
+  },
+  userMsgText: {
+    color: "#fff",
+  },
+  suggests: {
+    marginTop: 12,
+    gap: 8,
+  },
+  sugGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
   sugBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  sugBtnText: { fontSize: 12 },
+  sugBtnText: {
+    fontSize: 13,
+    color: "#8B5CF6",
+    fontWeight: "500",
+  },
   typeBubble: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    backgroundColor: "#fff",
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
   },
-  typeText: { fontSize: 12 },
-  inputArea: { padding: 12 },
+  typeText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  inputArea: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: Platform.OS === "ios" ? 24 : 16,
+  },
   inputCont: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 24,
-    paddingHorizontal: 12,
+    backgroundColor: "#fff",
+    borderRadius: 30,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  input: { flex: 1, maxHeight: 100, fontSize: 14 },
-  sendBtn: { marginLeft: 8 },
-  sendGradient: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
+  iconBtn: {
+    padding: 4,
+    marginRight: 4,
   },
-  userLTR: { justifyContent: "flex-end" },
-  userRTL: { justifyContent: "flex-start" },
-  botRTL: { flexDirection: "row-reverse" },
+  input: {
+    flex: 1,
+    maxHeight: 100,
+    fontSize: 15,
+    color: "#333",
+    paddingVertical: 8,
+  },
+  sendBtn: {
+    padding: 6,
+    marginLeft: 4,
+  },
+  userLTR: {
+    justifyContent: "flex-end",
+  },
+  userRTL: {
+    justifyContent: "flex-start",
+    flexDirection: "row-reverse",
+  },
+  botRTL: {
+    flexDirection: "row-reverse",
+  },
 });

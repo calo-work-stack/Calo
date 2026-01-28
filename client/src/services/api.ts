@@ -14,7 +14,7 @@ import { errorMessageIncludes } from "../utils/errorHandler";
 // 1. In-memory token cache to avoid async storage reads on every request
 let cachedToken: string | null = null;
 let tokenCacheTimestamp: number = 0;
-const TOKEN_CACHE_DURATION = 60000; // 1 minute cache
+const TOKEN_CACHE_DURATION = 300000; // 5 minute cache (increased from 1 min for better performance)
 
 // 2. Request queue for batching similar requests
 const requestQueue: Map<string, Promise<any>> = new Map();
@@ -208,15 +208,15 @@ const getApiBaseUrl = (): string => {
 const createApiInstance = (): AxiosInstance => {
   const instance = axios.create({
     baseURL: getApiBaseUrl(),
-    timeout: 10000, // Reduced from 15s to 10s for faster failures
+    timeout: 8000, // Reduced to 8s for faster failures on regular requests
     withCredentials: Platform.OS === "web",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
+      "Cache-Control": "no-cache", // Ensure fresh responses
     },
-    // Enable HTTP/2 multiplexing if available
-    httpAgent: undefined,
-    httpsAgent: undefined,
+    // NOTE: Don't use custom transformRequest - axios handles JSON serialization automatically
+    // Using a custom transform causes double-stringification issues
   });
 
   // Optimized request interceptor
@@ -425,27 +425,44 @@ export const nutritionAPI = {
       throw new APIError("Image data is required");
     }
 
-    // No caching for meal analysis - always fresh
-    const response = await api.post(
-      "/nutrition/analyze",
-      {
-        imageBase64: imageBase64.trim(),
-        updateText,
-        editedIngredients,
-        language,
-        mealPeriod,
-      },
-      {
-        timeout: 120000, // 120s timeout - AI analysis can take time
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
-      },
-    );
+    console.log("🍽️ Starting meal analysis API call...");
+    const startTime = Date.now();
 
-    if (!response.data.success) {
-      throw new APIError(response.data.error || "Analysis failed");
+    try {
+      // No caching for meal analysis - always fresh
+      const response = await api.post(
+        "/nutrition/analyze",
+        {
+          imageBase64: imageBase64.trim(),
+          updateText,
+          editedIngredients,
+          language,
+          mealPeriod,
+        },
+        {
+          timeout: 120000, // 120s timeout - AI analysis can take time
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
+        },
+      );
+
+      const duration = Date.now() - startTime;
+      console.log(`✅ Meal analysis API completed in ${duration}ms`);
+      console.log("📊 Response data keys:", Object.keys(response.data || {}));
+
+      if (!response.data.success) {
+        throw new APIError(response.data.error || "Analysis failed");
+      }
+      return response.data;
+    } catch (error: any) {
+      const duration = Date.now() - startTime;
+      console.error(`❌ Meal analysis API failed after ${duration}ms:`, {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+      });
+      throw error;
     }
-    return response.data;
   },
 
   isRetryableError(error: any): boolean {

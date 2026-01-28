@@ -20,7 +20,7 @@ import statisticsRoutes from "./routes/statistics";
 import foodScannerRoutes from "./routes/foodScanner";
 import { EnhancedCronJobService } from "./services/cron/enhanced";
 import { enhancedDailyGoalsRoutes } from "./routes/enhanced/dailyGoals";
-import { enhancedRecommendationsRoutes } from "./routes/enhanced/recommendations";
+import { testRecommendationsRoutes } from "./routes/enhanced/recommendations";
 import { enhancedDatabaseRoutes } from "./routes/enhanced/database";
 import { dailyGoalsRoutes } from "./routes/dailyGoal";
 import achievementsRouter from "./routes/achievements";
@@ -36,8 +36,11 @@ import { prisma, connectDatabase } from "./lib/database";
 
 // Load environment variables first
 dotenv.config();
-console.log('🔍 DATABASE_URL loaded:', process.env.DATABASE_URL ? '✅ Yes' : '❌ No');
-console.log('🔍 First 50 chars:', process.env.DATABASE_URL?.substring(0, 50));
+console.log(
+  "🔍 DATABASE_URL loaded:",
+  process.env.DATABASE_URL ? "✅ Yes" : "❌ No",
+);
+console.log("🔍 First 50 chars:", process.env.DATABASE_URL?.substring(0, 50));
 // ⚠️ MOVE server and config declarations BEFORE startServer function
 let server: Server;
 
@@ -81,26 +84,53 @@ app.use(
   helmet({
     contentSecurityPolicy: config.isDevelopment ? false : undefined,
     crossOriginEmbedderPolicy: false,
-  })
+  }),
 );
 
 app.use(
   compression({
-    level: 6, // Balance between speed and compression ratio
-    threshold: 1024, // Only compress responses > 1KB
-  })
+    level: 4, // Reduced from 6 for faster compression (speed over ratio)
+    threshold: 2048, // Only compress responses > 2KB (reduced CPU overhead)
+    // Skip compression for small/fast endpoints
+    filter: (req, res) => {
+      const skipPaths = ["/health", "/test"];
+      if (skipPaths.some((path) => req.path.startsWith(path))) {
+        return false;
+      }
+      return compression.filter(req, res);
+    },
+  }),
 );
 
-// Optimized rate limiter with skip function
+// Optimized rate limiter with skip function for fast paths
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: config.isDevelopment ? 1000 : 100,
+  max: config.isDevelopment ? 5000 : 200, // Increased limits
   message: "Too many requests, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.path === "/health", // Skip health checks
+  // Skip rate limiting for fast endpoints
+  skip: (req) => {
+    const fastPaths = ["/health", "/test", "/api/auth/me", "/api/dashboard"];
+    return fastPaths.some((path) => req.path.startsWith(path));
+  },
 });
 app.use(limiter);
+
+// Request timing middleware for performance monitoring (dev only)
+if (config.isDevelopment) {
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on("finish", () => {
+      const duration = Date.now() - start;
+      if (duration > 500) {
+        // Log slow requests (>500ms)
+        console.log(`⚠️ SLOW: ${req.method} ${req.path} took ${duration}ms`);
+      }
+    });
+    next();
+  });
+}
 
 // Pre-computed CORS origins
 const corsOrigins = [
@@ -118,7 +148,7 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
-  })
+  }),
 );
 
 app.use(cookieParser());
@@ -199,7 +229,7 @@ apiRouter.use("/food-scanner", foodScannerRoutes);
 apiRouter.use("/shopping-lists", shoppingListRoutes);
 apiRouter.use("/", statisticsRoutes);
 apiRouter.use("/daily-goals", enhancedDailyGoalsRoutes);
-apiRouter.use("/recommendations", enhancedRecommendationsRoutes);
+apiRouter.use("/recommendations", testRecommendationsRoutes);
 apiRouter.use("/database", enhancedDatabaseRoutes);
 apiRouter.use("/daily-goals-simple", dailyGoalsRoutes);
 apiRouter.use("/", achievementsRouter);
@@ -212,9 +242,8 @@ apiRouter.use("/", promoteAdminRoutes);
 if (config.isDevelopment) {
   apiRouter.post("/test/create-daily-goals", async (req, res) => {
     try {
-      const { EnhancedDailyGoalsService } = await import(
-        "./services/database/dailyGoals"
-      );
+      const { EnhancedDailyGoalsService } =
+        await import("./services/database/dailyGoals");
 
       const [debugInfo, result] = await Promise.all([
         EnhancedDailyGoalsService.debugDatabaseState(),
@@ -242,9 +271,8 @@ if (config.isDevelopment) {
     authenticateToken,
     async (req: AuthRequest, res) => {
       try {
-        const { EnhancedDailyGoalsService } = await import(
-          "./services/database/dailyGoals"
-        );
+        const { EnhancedDailyGoalsService } =
+          await import("./services/database/dailyGoals");
 
         const [success, goals] = await Promise.all([
           EnhancedDailyGoalsService.createDailyGoalForUser(req.user.user_id),
@@ -262,7 +290,7 @@ if (config.isDevelopment) {
           error: error instanceof Error ? error.message : "Unknown error",
         });
       }
-    }
+    },
   );
 }
 

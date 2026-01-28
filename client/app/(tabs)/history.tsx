@@ -261,11 +261,12 @@ export default function HistoryScreen() {
       }
 
       // Category filter
+      // FIX: Check _g fields FIRST since API returns protein_g, carbs_g, fats_g
       if (filters.category !== "all") {
-        const calories = meal.calories || 0;
-        const protein = meal.protein || meal.protein_g || 0;
-        const carbs = meal.carbs || meal.carbs_g || 0;
-        const fat = meal.fat || meal.fats_g || 0;
+        const calories = Number(meal.calories) || 0;
+        const protein = Number(meal.protein_g) || Number(meal.protein) || 0;
+        const carbs = Number(meal.carbs_g) || Number(meal.carbs) || 0;
+        const fat = Number(meal.fats_g) || Number(meal.fat) || 0;
         const total = protein + carbs + fat;
 
         switch (filters.category) {

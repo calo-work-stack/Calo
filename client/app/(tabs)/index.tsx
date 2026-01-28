@@ -85,8 +85,8 @@ const HomeScreen = React.memo(() => {
     targetFat: 60,
     waterMl: 2500,
   });
-  const [waterGoalMl, setWaterGoalMl] = useState(2500); // Default 2500ml (10 cups)
-  const waterGoalCups = Math.ceil(waterGoalMl / 250); // Convert ml to cups (250ml per cup)
+  const [waterGoalMl, setWaterGoalMl] = useState(2500);
+  const waterGoalCups = Math.ceil(waterGoalMl / 250);
   const [refreshing, setRefreshing] = useState(false);
   const [, setIsDataLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -131,6 +131,9 @@ const HomeScreen = React.memo(() => {
   const waterSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  // FIXED VERSION - Key changes marked with // FIX comments
+
+  // Around line 155-170, replace the dailyTotals calculation:
 
   const processedMealsData = useMemo(() => {
     if (!meals || meals.length === 0) {
@@ -151,15 +154,20 @@ const HomeScreen = React.memo(() => {
       meal.created_at.startsWith(today),
     );
 
+    // FIX: Handle both snake_case and camelCase field names from backend
+    // IMPORTANT: Check _g fields FIRST since API returns protein_g, carbs_g, fats_g
     const dailyTotals = todayMeals.reduce(
       (
         acc: { calories: any; protein: any; carbs: any; fat: any },
-        meal: { calories: any; protein: any; carbs: any; fat: any },
+        meal: any,
       ) => ({
-        calories: acc.calories + (meal.calories || 0),
-        protein: acc.protein + (meal.protein || 0),
-        carbs: acc.carbs + (meal.carbs || 0),
-        fat: acc.fat + (meal.fat || 0),
+        calories: acc.calories + (Number(meal.calories) || 0),
+        // FIX: Check protein_g FIRST (API format), then protein (compatibility)
+        protein: acc.protein + (Number(meal.protein_g) || Number(meal.protein) || 0),
+        // FIX: Check carbs_g FIRST (API format), then carbs (compatibility)
+        carbs: acc.carbs + (Number(meal.carbs_g) || Number(meal.carbs) || 0),
+        // FIX: Check fats_g FIRST (API format), then fat/fats (compatibility)
+        fat: acc.fat + (Number(meal.fats_g) || Number(meal.fat) || Number(meal.fats) || 0),
       }),
       { calories: 0, protein: 0, carbs: 0, fat: 0 },
     );
@@ -171,10 +179,15 @@ const HomeScreen = React.memo(() => {
     };
   }, [meals]);
 
+  // ADDITIONAL FIX: Around line 173-179, update the updateDailyGoals function
   const updateDailyGoals = useCallback(() => {
+    console.log("🔍 DEBUG: Daily Totals:", processedMealsData.dailyTotals); // FIX: Add debug logging
     setDailyGoals((prev) => ({
       ...prev,
-      ...processedMealsData.dailyTotals,
+      calories: processedMealsData.dailyTotals.calories,
+      protein: processedMealsData.dailyTotals.protein,
+      carbs: processedMealsData.dailyTotals.carbs,
+      fat: processedMealsData.dailyTotals.fat,
     }));
   }, [processedMealsData.dailyTotals]);
 
@@ -189,7 +202,7 @@ const HomeScreen = React.memo(() => {
         targetCarbs: 250,
         targetFat: 65,
       }));
-      setWaterGoalMl(2500); // Default 2500ml for free users
+      setWaterGoalMl(2500);
       return;
     }
 
@@ -205,7 +218,6 @@ const HomeScreen = React.memo(() => {
           targetCarbs: goalsResponse.data.carbs_g || 200,
           targetFat: goalsResponse.data.fats_g || 60,
         }));
-        // Set water goal from DailyGoal table
         setWaterGoalMl(goalsResponse.data.water_ml || 2500);
       } else {
         const createResponse = await dailyGoalsAPI.createDailyGoals();
@@ -217,7 +229,6 @@ const HomeScreen = React.memo(() => {
             targetCarbs: createResponse.data.carbs_g || 200,
             targetFat: createResponse.data.fats_g || 60,
           }));
-          // Set water goal from DailyGoal table
           setWaterGoalMl(createResponse.data.water_ml || 2500);
         }
       }
@@ -230,10 +241,10 @@ const HomeScreen = React.memo(() => {
         targetCarbs: 200,
         targetFat: 60,
       }));
-      setWaterGoalMl(2500); // Default on error
+      setWaterGoalMl(2500);
     }
   }, [user?.user_id, user?.subscription_type, t]);
-  console.log(dailyGoals);
+
   const loadWaterIntake = useCallback(async () => {
     if (!user?.user_id) return;
 
@@ -356,7 +367,7 @@ const HomeScreen = React.memo(() => {
         syncWaterWithServer(newTotal);
       }, 1000);
     },
-    [waterCups, syncWaterWithServer],
+    [waterCups, syncWaterWithServer, waterGoalCups],
   );
 
   const loadAllData = useCallback(
@@ -427,29 +438,29 @@ const HomeScreen = React.memo(() => {
       return {
         text: t("greetings.morning"),
         icon: currentHour <= 7 ? Coffee : Sun,
-        color: colors.warning,
-        bgColor: isDark ? colors.primaryContainer : "#FEF3C7",
+        gradient: ["#FF6B6B", "#FFE66D"] as const,
+        color: "#FF6B6B",
       };
     } else if (currentHour >= 12 && currentHour < 17) {
       return {
         text: t("greetings.afternoon"),
         icon: Sun,
-        color: colors.warning,
-        bgColor: isDark ? colors.primaryContainer : "#FEF9C3",
+        gradient: ["#4ECDC4", "#44A08D"] as const,
+        color: "#4ECDC4",
       };
     } else if (currentHour >= 17 && currentHour < 22) {
       return {
         text: t("greetings.evening"),
         icon: Sun,
-        color: colors.warning,
-        bgColor: isDark ? colors.primaryContainer : "#FED7AA",
+        gradient: ["#F857A6", "#FF5858"] as const,
+        color: "#F857A6",
       };
     } else {
       return {
         text: t("greetings.night"),
         icon: Sun,
-        color: colors.primary,
-        bgColor: isDark ? colors.primaryContainer : "#E0E7FF",
+        gradient: ["#5B247A", "#1BCEDF"] as const,
+        color: "#5B247A",
       };
     }
   };
@@ -565,91 +576,107 @@ const HomeScreen = React.memo(() => {
             />
           }
         >
+          {/* Premium Header */}
           <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.profileContainer}>
-                <Image
-                  source={{
-                    uri:
-                      user?.avatar_url ||
-                      "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1",
-                  }}
-                  style={styles.profileImage}
-                />
-                <View
-                  style={[
-                    styles.onlineIndicator,
-                    { backgroundColor: colors.success },
-                  ]}
-                />
-              </View>
-              <View style={styles.headerInfo}>
-                <Text style={[styles.dateText, { color: colors.text }]}>
-                  {getCurrentDate()}
-                </Text>
+            <View style={styles.headerContent}>
+              <View style={styles.profileSection}>
+                <View style={styles.profileWrapper}>
+                  <LinearGradient
+                    colors={greeting.gradient}
+                    style={styles.profileGradientRing}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <View
+                      style={[
+                        styles.profileImageContainer,
+                        { backgroundColor: colors.background },
+                      ]}
+                    >
+                      <Image
+                        source={{
+                          uri:
+                            user?.avatar_url ||
+                            "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1",
+                        }}
+                        style={styles.profileImage}
+                      />
+                    </View>
+                  </LinearGradient>
+                  <View
+                    style={[
+                      styles.onlineIndicator,
+                      {
+                        backgroundColor: colors.success,
+                        borderColor: colors.background,
+                      },
+                    ]}
+                  />
+                </View>
+                <View style={styles.headerTextContent}>
+                  <Text
+                    style={[styles.dateText, { color: colors.textSecondary }]}
+                  >
+                    {getCurrentDate()}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
 
-          <View style={styles.greetingCard}>
+          {/* Elevated Greeting Card with Dynamic Gradient */}
+          <View style={styles.greetingCardContainer}>
             <LinearGradient
-              colors={[colors.primary, colors.primaryContainer]}
-              style={styles.greetingGradient}
+              colors={greeting.gradient}
+              style={styles.greetingCard}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <View style={styles.greetingContent}>
-                <View style={styles.greetingLeft}>
-                  <View
-                    style={[
-                      styles.greetingIconContainer,
-                      { backgroundColor: greeting.bgColor },
-                    ]}
-                  >
-                    <IconComponent size={24} color={greeting.color} />
+              <View style={styles.greetingOverlay}>
+                <View style={styles.greetingContent}>
+                  <View style={styles.greetingTextSection}>
+                    <View style={styles.greetingIconWrapper}>
+                      <View
+                        style={[
+                          styles.greetingIconBg,
+                          { backgroundColor: "rgba(255, 255, 255, 0.25)" },
+                        ]}
+                      >
+                        <IconComponent
+                          size={28}
+                          color="#FFFFFF"
+                          strokeWidth={2.5}
+                        />
+                      </View>
+                    </View>
+                    <View style={styles.greetingTextContent}>
+                      <Text style={styles.greetingLabel}>{greeting.text}</Text>
+                      <Text style={styles.greetingUserName}>{user?.name}!</Text>
+                    </View>
                   </View>
-                  <View>
-                    <Text
-                      style={[
-                        styles.greetingText,
-                        { color: colors.onPrimary, opacity: 0.9 },
-                      ]}
-                    >
-                      {greeting.text}
-                    </Text>
-                    <Text
-                      style={[styles.greetingName, { color: colors.onPrimary }]}
-                    >
-                      {user?.name}!
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.greetingStats}>
-                  <View
-                    style={[
-                      styles.statBadge,
-                      { backgroundColor: colors.glass },
-                    ]}
-                  >
-                    <Star
-                      size={16}
-                      color={colors.warning}
-                      fill={colors.warning}
-                    />
-                    <Text
-                      style={[
-                        styles.statBadgeText,
-                        { color: colors.onPrimary },
-                      ]}
-                    >
-                      {t("home.level")} {user?.level || 1}
-                    </Text>
+                  <View style={styles.levelBadgeContainer}>
+                    <View style={styles.levelBadge}>
+                      <Star
+                        size={18}
+                        color="#FFD700"
+                        fill="#FFD700"
+                        strokeWidth={0}
+                      />
+                      <Text style={styles.levelText}>
+                        {t("home.level")} {user?.level || 1}
+                      </Text>
+                    </View>
                   </View>
                 </View>
+
+                {/* Decorative Elements */}
+                <View style={styles.decorativeCircle1} />
+                <View style={styles.decorativeCircle2} />
               </View>
             </LinearGradient>
           </View>
 
+          {/* Progress Section with Enhanced Design */}
           <View style={styles.progressSection}>
             <CircularCaloriesProgress
               calories={dailyGoals.calories}
@@ -658,6 +685,7 @@ const HomeScreen = React.memo(() => {
             />
           </View>
 
+          {/* Water Intake */}
           <WaterIntakeCard
             currentCups={waterCups}
             maxCups={waterGoalCups}
@@ -668,6 +696,7 @@ const HomeScreen = React.memo(() => {
             disabled={isUpdating}
           />
 
+          {/* Premium Stats Cards */}
           <View style={styles.statsSection}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               {t("home.yourProgress")}
@@ -678,43 +707,53 @@ const HomeScreen = React.memo(() => {
                   styles.statCard,
                   {
                     backgroundColor: colors.surface,
-                    borderColor: colors.border,
                   },
                 ]}
               >
-                <View style={styles.statCardHeader}>
-                  <View
-                    style={[
-                      styles.statIcon,
-                      {
-                        backgroundColor: isDark
-                          ? colors.primaryContainer
-                          : "#FEF3C7",
-                      },
-                    ]}
-                  >
-                    <Trophy size={20} color={colors.warning} />
-                  </View>
-                  <Text
-                    style={[
-                      styles.statCardTitle,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {t("home.totalXP")}
-                  </Text>
-                </View>
-                <Text style={[styles.statCardValue, { color: colors.text }]}>
-                  {(user?.total_points || 0).toLocaleString()}
-                </Text>
-                <Text
-                  style={[
-                    styles.statCardSubtext,
-                    { color: colors.textTertiary },
-                  ]}
+                <LinearGradient
+                  colors={
+                    isDark
+                      ? ["rgba(255, 215, 0, 0.15)", "rgba(255, 215, 0, 0.05)"]
+                      : ["#FFF9E6", "#FFFBF0"]
+                  }
+                  style={styles.statCardGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                 >
-                  {t("home.keepItUp")}
-                </Text>
+                  <View style={styles.statCardContent}>
+                    <View
+                      style={[
+                        styles.statIconContainer,
+                        { backgroundColor: "rgba(255, 215, 0, 0.2)" },
+                      ]}
+                    >
+                      <Trophy size={24} color="#FFD700" strokeWidth={2} />
+                    </View>
+                    <View style={styles.statCardTextSection}>
+                      <Text
+                        style={[
+                          styles.statCardLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {t("home.totalXP")}
+                      </Text>
+                      <Text
+                        style={[styles.statCardValue, { color: colors.text }]}
+                      >
+                        {(user?.total_points || 0).toLocaleString()}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.statCardSubtext,
+                          { color: colors.textTertiary },
+                        ]}
+                      >
+                        {t("home.keepItUp")}
+                      </Text>
+                    </View>
+                  </View>
+                </LinearGradient>
               </View>
 
               <View
@@ -722,162 +761,173 @@ const HomeScreen = React.memo(() => {
                   styles.statCard,
                   {
                     backgroundColor: colors.surface,
-                    borderColor: colors.border,
                   },
                 ]}
               >
-                <View style={styles.statCardHeader}>
-                  <View
-                    style={[
-                      styles.statIcon,
-                      {
-                        backgroundColor: isDark
-                          ? colors.primaryContainer
-                          : "#FEE2E2",
-                      },
-                    ]}
-                  >
-                    <Flame size={20} color={colors.error} />
-                  </View>
-                  <Text
-                    style={[
-                      styles.statCardTitle,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {t("home.streak")}
-                  </Text>
-                </View>
-                <Text style={[styles.statCardValue, { color: colors.text }]}>
-                  {user?.current_streak || 0}
-                </Text>
-                <Text
-                  style={[
-                    styles.statCardSubtext,
-                    { color: colors.textTertiary },
-                  ]}
+                <LinearGradient
+                  colors={
+                    isDark
+                      ? [
+                          "rgba(255, 107, 107, 0.15)",
+                          "rgba(255, 107, 107, 0.05)",
+                        ]
+                      : ["#FFE8E8", "#FFF5F5"]
+                  }
+                  style={styles.statCardGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                 >
-                  {t("home.daysInARow")}
-                </Text>
+                  <View style={styles.statCardContent}>
+                    <View
+                      style={[
+                        styles.statIconContainer,
+                        { backgroundColor: "rgba(255, 107, 107, 0.2)" },
+                      ]}
+                    >
+                      <Flame size={24} color="#FF6B6B" strokeWidth={2} />
+                    </View>
+                    <View style={styles.statCardTextSection}>
+                      <Text
+                        style={[
+                          styles.statCardLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {t("home.streak")}
+                      </Text>
+                      <Text
+                        style={[styles.statCardValue, { color: colors.text }]}
+                      >
+                        {user?.current_streak || 0}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.statCardSubtext,
+                          { color: colors.textTertiary },
+                        ]}
+                      >
+                        {t("home.daysInARow")}
+                      </Text>
+                    </View>
+                  </View>
+                </LinearGradient>
               </View>
             </View>
           </View>
 
+          {/* Modern Action Grid */}
           <View style={styles.actionsSection}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               {t("home.quick_actions")}
             </Text>
             <View style={styles.actionsGrid}>
               <TouchableOpacity
-                style={[
-                  styles.actionCard,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
+                style={[styles.actionCard, { backgroundColor: colors.surface }]}
                 onPress={() => router.push("/(tabs)/camera")}
+                activeOpacity={0.7}
               >
-                <View
-                  style={[
-                    styles.actionIcon,
-                    {
-                      backgroundColor: isDark
-                        ? colors.primaryContainer
-                        : colors.emerald50,
-                    },
+                <LinearGradient
+                  colors={[
+                    "rgba(16, 185, 129, 0.1)",
+                    "rgba(16, 185, 129, 0.05)",
                   ]}
+                  style={styles.actionCardGradient}
                 >
-                  <Camera size={24} color={colors.primary} />
-                </View>
-                <Text style={[styles.actionText, { color: colors.text }]}>
-                  {t("home.addMeal")}
-                </Text>
+                  <View
+                    style={[
+                      styles.actionIconCircle,
+                      { backgroundColor: "rgba(16, 185, 129, 0.15)" },
+                    ]}
+                  >
+                    <Camera size={26} color="#10B981" strokeWidth={2} />
+                  </View>
+                  <Text style={[styles.actionLabel, { color: colors.text }]}>
+                    {t("home.addMeal")}
+                  </Text>
+                </LinearGradient>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.actionCard,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
+                style={[styles.actionCard, { backgroundColor: colors.surface }]}
                 onPress={() => router.push("/(tabs)/food-scanner")}
+                activeOpacity={0.7}
               >
-                <View
-                  style={[
-                    styles.actionIcon,
-                    {
-                      backgroundColor: isDark
-                        ? colors.primaryContainer
-                        : "#EFF6FF",
-                    },
+                <LinearGradient
+                  colors={[
+                    "rgba(59, 130, 246, 0.1)",
+                    "rgba(59, 130, 246, 0.05)",
                   ]}
+                  style={styles.actionCardGradient}
                 >
-                  <Target size={24} color={colors.primary} />
-                </View>
-                <Text style={[styles.actionText, { color: colors.text }]}>
-                  {t("home.scanFood")}
-                </Text>
+                  <View
+                    style={[
+                      styles.actionIconCircle,
+                      { backgroundColor: "rgba(59, 130, 246, 0.15)" },
+                    ]}
+                  >
+                    <Target size={26} color="#3B82F6" strokeWidth={2} />
+                  </View>
+                  <Text style={[styles.actionLabel, { color: colors.text }]}>
+                    {t("home.scanFood")}
+                  </Text>
+                </LinearGradient>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.actionCard,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
+                style={[styles.actionCard, { backgroundColor: colors.surface }]}
                 onPress={handleOpenShoppingList}
+                activeOpacity={0.7}
               >
-                <View
-                  style={[
-                    styles.actionIcon,
-                    {
-                      backgroundColor: isDark
-                        ? colors.primaryContainer
-                        : "#FEF3C7",
-                    },
+                <LinearGradient
+                  colors={[
+                    "rgba(245, 158, 11, 0.1)",
+                    "rgba(245, 158, 11, 0.05)",
                   ]}
+                  style={styles.actionCardGradient}
                 >
-                  <ShoppingCart size={24} color={colors.warning} />
-                </View>
-                <Text style={[styles.actionText, { color: colors.text }]}>
-                  {t("home.shopping")}
-                </Text>
+                  <View
+                    style={[
+                      styles.actionIconCircle,
+                      { backgroundColor: "rgba(245, 158, 11, 0.15)" },
+                    ]}
+                  >
+                    <ShoppingCart size={26} color="#F59E0B" strokeWidth={2} />
+                  </View>
+                  <Text style={[styles.actionLabel, { color: colors.text }]}>
+                    {t("home.shopping")}
+                  </Text>
+                </LinearGradient>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.actionCard,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
+                style={[styles.actionCard, { backgroundColor: colors.surface }]}
                 onPress={() => router.push("/(tabs)/statistics")}
+                activeOpacity={0.7}
               >
-                <View
-                  style={[
-                    styles.actionIcon,
-                    {
-                      backgroundColor: isDark
-                        ? colors.primaryContainer
-                        : "#F3E8FF",
-                    },
+                <LinearGradient
+                  colors={[
+                    "rgba(139, 92, 246, 0.1)",
+                    "rgba(139, 92, 246, 0.05)",
                   ]}
+                  style={styles.actionCardGradient}
                 >
-                  <TrendingUp size={24} color={colors.primary} />
-                </View>
-                <Text style={[styles.actionText, { color: colors.text }]}>
-                  {t("home.statistics")}
-                </Text>
+                  <View
+                    style={[
+                      styles.actionIconCircle,
+                      { backgroundColor: "rgba(139, 92, 246, 0.15)" },
+                    ]}
+                  >
+                    <TrendingUp size={26} color="#8B5CF6" strokeWidth={2} />
+                  </View>
+                  <Text style={[styles.actionLabel, { color: colors.text }]}>
+                    {t("home.statistics")}
+                  </Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </View>
 
+          {/* Enhanced Activity Section */}
           <View style={styles.activitySection}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -886,27 +936,24 @@ const HomeScreen = React.memo(() => {
               <TouchableOpacity
                 style={styles.viewAllButton}
                 onPress={() => router.push("/(tabs)/history")}
+                activeOpacity={0.7}
               >
                 <Text style={[styles.viewAllText, { color: colors.primary }]}>
                   {t("home.viewAll")}
                 </Text>
-                <ChevronRight size={16} color={colors.primary} />
+                <ChevronRight
+                  size={18}
+                  color={colors.primary}
+                  strokeWidth={2.5}
+                />
               </TouchableOpacity>
             </View>
 
             <View
-              style={[
-                styles.activityList,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
+              style={[styles.activityCard, { backgroundColor: colors.surface }]}
             >
               {isLoading ? (
-                <View
-                  style={[
-                    styles.activityItem,
-                    { borderBottomColor: colors.border },
-                  ]}
-                >
+                <View style={styles.activityItem}>
                   <Text style={[styles.activityTitle, { color: colors.text }]}>
                     {t("home.loadingMeals")}
                   </Text>
@@ -917,9 +964,12 @@ const HomeScreen = React.memo(() => {
                     key={meal.meal_id || `meal-${index}`}
                     style={[
                       styles.activityItem,
-                      { borderBottomColor: colors.border },
-                      index === processedMealsData.recentMeals.length - 1 &&
-                        styles.lastActivityItem,
+                      index !== processedMealsData.recentMeals.length - 1 && {
+                        borderBottomWidth: 1,
+                        borderBottomColor: isDark
+                          ? "rgba(255, 255, 255, 0.08)"
+                          : "rgba(0, 0, 0, 0.05)",
+                      },
                     ]}
                     onPress={() => {
                       const mealId = meal.meal_id || meal.id;
@@ -933,27 +983,26 @@ const HomeScreen = React.memo(() => {
                     activeOpacity={0.7}
                   >
                     {meal.image_url ? (
-                      <Image
-                        source={{ uri: meal.image_url }}
-                        style={styles.mealImage}
-                      />
+                      <View style={styles.mealImageWrapper}>
+                        <Image
+                          source={{ uri: meal.image_url }}
+                          style={styles.mealImage}
+                        />
+                      </View>
                     ) : (
                       <View
                         style={[
-                          styles.activityIcon,
-                          {
-                            backgroundColor: isDark
-                              ? colors.primaryContainer
-                              : colors.emerald50,
-                          },
+                          styles.mealPlaceholder,
+                          { backgroundColor: "rgba(16, 185, 129, 0.1)" },
                         ]}
                       >
-                        <Camera size={20} color={colors.primary} />
+                        <Camera size={22} color="#10B981" strokeWidth={2} />
                       </View>
                     )}
                     <View style={styles.activityContent}>
                       <Text
                         style={[styles.activityTitle, { color: colors.text }]}
+                        numberOfLines={1}
                       >
                         {meal.name || t("home.unknownMeal")}
                       </Text>
@@ -966,64 +1015,64 @@ const HomeScreen = React.memo(() => {
                         {meal.created_at && formatTime(meal.created_at)}
                       </Text>
                     </View>
-                    <Text
-                      style={[
-                        styles.activityCalories,
-                        { color: colors.primary },
-                      ]}
-                    >
-                      {meal.calories || 0} {t("meals.kcal")}
-                    </Text>
+                    <View style={styles.caloriesBadge}>
+                      <Text
+                        style={[styles.caloriesText, { color: colors.primary }]}
+                      >
+                        {meal.calories || 0}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.caloriesUnit,
+                          { color: colors.textTertiary },
+                        ]}
+                      >
+                        {t("meals.kcal")}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 ))
               ) : (
-                <View
-                  style={[
-                    styles.activityItem,
-                    { borderBottomColor: colors.border },
-                  ]}
-                >
+                <View style={styles.emptyStateContainer}>
                   <View
                     style={[
-                      styles.activityIcon,
-                      { backgroundColor: colors.card },
-                    ]}
-                  >
-                    <Target size={20} color={colors.textTertiary} />
-                  </View>
-                  <View style={styles.activityContent}>
-                    <Text
-                      style={[styles.activityTitle, { color: colors.text }]}
-                    >
-                      {t("home.noMealsToday")}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.activityTime,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {t("home.addFirstMeal")}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.activityBadge,
+                      styles.emptyIconCircle,
                       {
                         backgroundColor: isDark
-                          ? colors.primaryContainer
-                          : colors.emerald50,
-                        borderColor: colors.primary,
+                          ? "rgba(255, 255, 255, 0.05)"
+                          : "rgba(0, 0, 0, 0.03)",
                       },
                     ]}
-                    onPress={() => router.push("/(tabs)/camera")}
                   >
-                    <Text
-                      style={[
-                        styles.activityBadgeText,
-                        { color: colors.primary },
-                      ]}
-                    >
+                    <Target
+                      size={32}
+                      color={colors.textTertiary}
+                      strokeWidth={1.5}
+                    />
+                  </View>
+                  <Text
+                    style={[styles.emptyStateTitle, { color: colors.text }]}
+                  >
+                    {t("home.noMealsToday")}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.emptyStateSubtitle,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {t("home.addFirstMeal")}
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.addMealButton,
+                      { backgroundColor: colors.primary },
+                    ]}
+                    onPress={() => router.push("/(tabs)/camera")}
+                    activeOpacity={0.8}
+                  >
+                    <Camera size={18} color="#FFFFFF" strokeWidth={2.5} />
+                    <Text style={styles.addMealButtonText}>
                       {t("home.addMeal")}
                     </Text>
                   </TouchableOpacity>
@@ -1054,182 +1103,262 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 32,
   },
+
+  // Premium Header
   header: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  headerContent: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center",
-    padding: 20,
-    paddingTop: 10,
   },
-  headerLeft: {
+  profileSection: {
     flexDirection: "row",
     alignItems: "center",
   },
-  profileContainer: {
+  profileWrapper: {
     position: "relative",
-    marginRight: 12,
+    marginRight: 14,
+  },
+  profileGradientRing: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 3,
+  },
+  profileImageContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    padding: 2,
   },
   profileImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: "100%",
+    height: "100%",
+    borderRadius: 26,
   },
   onlineIndicator: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
+    bottom: 2,
+    right: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 3,
   },
-  headerInfo: {
+  headerTextContent: {
     flex: 1,
   },
   dateText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
+    letterSpacing: -0.2,
+  },
+
+  // Elevated Greeting Card
+  greetingCardContainer: {
+    marginHorizontal: 24,
+    marginTop: 20,
+    marginBottom: 28,
+    borderRadius: 28,
   },
   greetingCard: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    borderRadius: 20,
+    borderRadius: 28,
     overflow: "hidden",
   },
-  greetingGradient: {
-    padding: 24,
+  greetingOverlay: {
+    padding: 28,
+    position: "relative",
+    overflow: "hidden",
   },
   greetingContent: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    zIndex: 2,
   },
-  greetingLeft: {
+  greetingTextSection: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
   },
-  greetingIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
+  greetingIconWrapper: {
     marginRight: 16,
   },
-  greetingText: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  greetingName: {
-    fontSize: 24,
-    fontWeight: "700",
-    marginTop: 2,
-  },
-  greetingStats: {
-    alignItems: "flex-end",
-  },
-  statBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
-  },
-  statBadgeText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  progressSection: {
-    marginBottom: 32,
-    marginHorizontal: 16,
-  },
-  statsSection: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 16,
-  },
-  statsGrid: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 0.5,
-  },
-  statCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  statCardTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  statCardValue: {
-    fontSize: 24,
-    fontWeight: "800",
-    marginBottom: 4,
-  },
-  statCardSubtext: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  actionsSection: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
-  },
-  actionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  actionCard: {
-    width: (width - 56) / 2,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: "center",
-    borderWidth: 0.5,
-  },
-  actionIcon: {
+  greetingIconBg: {
     width: 56,
     height: 56,
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
   },
-  actionText: {
-    fontSize: 14,
+  greetingTextContent: {
+    flex: 1,
+  },
+  greetingLabel: {
+    fontSize: 16,
     fontWeight: "600",
-    textAlign: "center",
+    color: "rgba(255, 255, 255, 0.9)",
+    marginBottom: 4,
+    letterSpacing: 0.3,
   },
+  greetingUserName: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    letterSpacing: -0.5,
+  },
+  levelBadgeContainer: {
+    alignItems: "flex-end",
+  },
+  levelBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
+    backdropFilter: "blur(10px)",
+  },
+  levelText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
+  },
+  decorativeCircle1: {
+    position: "absolute",
+    top: -40,
+    right: -40,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    zIndex: 1,
+  },
+  decorativeCircle2: {
+    position: "absolute",
+    bottom: -30,
+    left: -30,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    zIndex: 1,
+  },
+
+  // Progress Section
+  progressSection: {
+    marginBottom: 32,
+    marginHorizontal: 20,
+  },
+
+  // Premium Stats Cards
+  statsSection: {
+    paddingHorizontal: 24,
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    marginBottom: 18,
+    letterSpacing: -0.5,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    gap: 14,
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 24,
+    overflow: "hidden",
+  },
+  statCardGradient: {
+    padding: 20,
+  },
+  statCardContent: {
+    gap: 14,
+  },
+  statIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statCardTextSection: {
+    gap: 4,
+  },
+  statCardLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
+  statCardValue: {
+    fontSize: 32,
+    fontWeight: "900",
+    letterSpacing: -1,
+    marginTop: 4,
+  },
+  statCardSubtext: {
+    fontSize: 13,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+
+  // Modern Action Grid
+  actionsSection: {
+    paddingHorizontal: 24,
+    marginBottom: 32,
+  },
+  actionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 14,
+  },
+  actionCard: {
+    width: (width - 62) / 2,
+    borderRadius: 24,
+    overflow: "hidden",
+  },
+  actionCardGradient: {
+    padding: 24,
+    alignItems: "center",
+    gap: 14,
+  },
+  actionIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionLabel: {
+    fontSize: 15,
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: -0.2,
+  },
+
+  // Enhanced Activity Section
   activitySection: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     marginBottom: 32,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 18,
   },
   viewAllButton: {
     flexDirection: "row",
@@ -1237,84 +1366,129 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   viewAllText: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: -0.2,
   },
-  activityList: {
-    borderRadius: 16,
-    borderWidth: 0.5,
+  activityCard: {
+    borderRadius: 24,
+    overflow: "hidden",
   },
   activityItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
+    padding: 18,
+    gap: 14,
   },
-  lastActivityItem: {
-    borderBottomWidth: 0,
+  mealImageWrapper: {},
+  mealImage: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
   },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  mealPlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
-  },
-  mealImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
   },
   activityContent: {
     flex: 1,
+    gap: 4,
   },
   activityTitle: {
     fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 2,
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
   activityTime: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "500",
   },
-  activityCalories: {
-    fontSize: 16,
-    fontWeight: "600",
+  caloriesBadge: {
+    alignItems: "flex-end",
+    gap: 2,
   },
-  activityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
+  caloriesText: {
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: -0.5,
   },
-  activityBadgeText: {
+  caloriesUnit: {
     fontSize: 12,
     fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
+
+  // Empty State
+  emptyStateContainer: {
+    alignItems: "center",
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 8,
+    letterSpacing: -0.3,
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 24,
+    textAlign: "center",
+  },
+  addMealButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 16,
+    gap: 10,
+  },
+  addMealButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
+  },
+
   bottomSpacing: {
-    height: 20,
+    height: 32,
   },
+
+  // Error States
   errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 24,
   },
   errorText: {
     fontSize: 16,
     textAlign: "center",
-    marginBottom: 20,
-    fontWeight: "500",
+    marginBottom: 24,
+    fontWeight: "600",
+    letterSpacing: -0.2,
   },
   retryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
   },
   retryButtonText: {
-    fontWeight: "600",
+    fontWeight: "700",
     fontSize: 16,
+    letterSpacing: 0.2,
   },
 });

@@ -26,6 +26,7 @@ import { HealthInsights } from "@/components/camera/HealthInsights";
 import { MealType } from "@/components/camera/MealTypeSelector";
 import { AnalysisData } from "@/src/types/camera";
 import { CameraErrorBoundary } from "@/components/camera/CameraErrorBoundary";
+import { estimateTotalPrice } from "@/src/utils/pricing";
 
 function CameraScreenContent() {
   const { t } = useTranslation();
@@ -87,14 +88,26 @@ function CameraScreenContent() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [selectedMealType, setSelectedMealType] = useState<MealType | null>(
-    null
+    null,
   );
   const [showMealTypeSelector, setShowMealTypeSelector] = useState(true);
 
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // CRITICAL: Watch pendingMeal from Redux to ensure UI transitions when analysis completes
+  // This is the primary fallback - if Redux has analysis data, FORCE the UI to show results
   useEffect(() => {
+    console.log("📊 pendingMeal effect triggered:", {
+      hasAnalysis: !!pendingMeal?.analysis,
+      hasBeenAnalyzed,
+      showResults,
+      mealName: pendingMeal?.analysis?.meal_name,
+    });
+
     if (pendingMeal?.analysis) {
+      console.log(
+        "✅ Redux has pendingMeal.analysis - forcing UI transition to results",
+      );
       setAnalysisData(pendingMeal.analysis);
       setHasBeenAnalyzed(true);
       setShowResults(true);
@@ -124,7 +137,7 @@ function CameraScreenContent() {
     if (!selectedMealType) {
       Alert.alert(
         "Select Meal Type",
-        "Please select a meal type before taking a photo"
+        "Please select a meal type before taking a photo",
       );
       return;
     }
@@ -140,7 +153,7 @@ function CameraScreenContent() {
     if (!selectedMealType) {
       Alert.alert(
         "Select Meal Type",
-        "Please select a meal type before selecting from gallery"
+        "Please select a meal type before selecting from gallery",
       );
       return;
     }
@@ -165,7 +178,7 @@ function CameraScreenContent() {
     const success = await analyzeImage(
       selectedImage,
       selectedMealType.period,
-      userComment
+      userComment,
     );
 
     if (success) {
@@ -180,7 +193,7 @@ function CameraScreenContent() {
   };
 
   const handleSaveMeal = async () => {
-    if (!analysisData) {
+    if (!analysisData && !pendingMeal?.analysis) {
       Alert.alert(t("common.error"), "No analysis data to save");
       return;
     }
@@ -214,7 +227,7 @@ function CameraScreenContent() {
 
   const getNutritionValue = (
     data: AnalysisData | undefined,
-    field: string
+    field: string,
   ): number => {
     if (!data) return 0;
 
@@ -240,6 +253,24 @@ function CameraScreenContent() {
 
   const getMealName = (data: AnalysisData): string => {
     return data?.name || data?.meal_name || "Analyzed Meal";
+  };
+
+  const calculateEstimatedPrice = (data: AnalysisData | undefined): number => {
+    if (!data?.ingredients || data.ingredients.length === 0) return 0;
+
+    try {
+      const ingredientsForPricing = data.ingredients.map((ing: any) => ({
+        name: ing.name || "",
+        quantity: ing.quantity || ing.grams || 100,
+        unit: ing.unit || "g",
+        category: ing.category || "other",
+      }));
+
+      return estimateTotalPrice(ingredientsForPricing);
+    } catch (error) {
+      console.warn("Error calculating price:", error);
+      return 0;
+    }
   };
 
   const calculateTotalNutrition = () => {
@@ -315,7 +346,10 @@ function CameraScreenContent() {
     );
   }
 
-  if (showResults && analysisData) {
+  // Use analysisData or fallback to pendingMeal?.analysis
+  const displayData = analysisData || pendingMeal?.analysis;
+
+  if (showResults && displayData) {
     const totalNutrition = calculateTotalNutrition();
 
     return (
@@ -331,8 +365,9 @@ function CameraScreenContent() {
           <View style={styles.resultsContainer}>
             <AnalysisResults
               imageUri={selectedImage!}
-              mealName={getMealName(analysisData)}
+              mealName={getMealName(displayData)}
               nutrition={totalNutrition}
+              estimatedPrice={calculateEstimatedPrice(displayData)}
             />
 
             <ActionButtons
@@ -344,15 +379,15 @@ function CameraScreenContent() {
             />
 
             <IngredientsList
-              ingredients={pendingMeal?.analysis?.ingredients || []}
+              ingredients={displayData?.ingredients || []}
               onEditIngredient={startEdit}
               onRemoveIngredient={removeIngredient}
               onAddIngredient={startAdd}
             />
 
             <HealthInsights
-              recommendations={analysisData.recommendations}
-              healthNotes={analysisData.healthNotes}
+              recommendations={displayData?.recommendations}
+              healthNotes={displayData?.recommendations}
             />
           </View>
         </ScrollView>

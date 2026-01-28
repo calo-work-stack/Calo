@@ -4,6 +4,7 @@ import { FoodScannerService } from "../services/foodScanner";
 import { UsageTrackingService } from "../services/usageTracking";
 import { z } from "zod";
 import { ProductData } from "../types/foodScanner";
+import { estimateProductPrice } from "../utils/pricing";
 
 const router = Router();
 
@@ -40,10 +41,15 @@ const addToMealSchema = z.object({
     labels: z.array(z.string()),
     health_score: z.number().optional(),
     barcode: z.string().optional(),
+    // Price estimation fields
+    estimated_price: z.number().optional(),
+    price_per_100g: z.number().optional(),
+    price_confidence: z.enum(["high", "medium", "low"]).optional(),
   }),
   quantity: z.number().min(1, "Quantity must be at least 1 gram"),
   mealTiming: z.string().optional().default("snack"),
   is_mandatory: z.boolean().optional(),
+  estimated_price: z.number().optional(), // Final price for the quantity
 });
 
 // Scan barcode endpoint
@@ -186,6 +192,15 @@ router.post(
       const { productData, quantity, mealTiming, is_mandatory } =
         validationResult.data;
 
+      // Calculate estimated price for the quantity
+      let finalEstimatedPrice = validationResult.data.estimated_price;
+      if (!finalEstimatedPrice && productData.price_per_100g) {
+        finalEstimatedPrice = Math.round((productData.price_per_100g * quantity / 100) * 100) / 100;
+      } else if (!finalEstimatedPrice) {
+        const priceEstimate = estimateProductPrice(productData.name, productData.category, quantity);
+        finalEstimatedPrice = priceEstimate.estimated_price;
+      }
+
       const meal = await FoodScannerService.addProductToMealLog(
         userId,
         productData,
@@ -196,7 +211,10 @@ router.post(
 
       res.json({
         success: true,
-        data: meal,
+        data: {
+          ...meal,
+          estimated_price: finalEstimatedPrice,
+        },
       });
     } catch (error) {
       console.error("❌ Add to meal error:", error);

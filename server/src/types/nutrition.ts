@@ -9,6 +9,8 @@ export const mealAnalysisSchema = z.object({
     .optional(),
   updateText: z.string().optional(), // For meal updates
   editedIngredients: z.array(z.any()).default([]), // For user-edited ingredients
+  mealType: z.string().optional(), // Added mealType
+  mealPeriod: z.string().optional(), // Added mealPeriod
 });
 
 export const mealUpdateSchema = z.object({
@@ -43,73 +45,73 @@ export const directMealUpdateSchema = z.object({
     .union([z.number(), z.string()])
     .optional()
     .transform((val) =>
-      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined
+      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined,
     ),
   protein_g: z
     .union([z.number(), z.string()])
     .optional()
     .transform((val) =>
-      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined
+      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined,
     ),
   carbs_g: z
     .union([z.number(), z.string()])
     .optional()
     .transform((val) =>
-      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined
+      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined,
     ),
   fats_g: z
     .union([z.number(), z.string()])
     .optional()
     .transform((val) =>
-      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined
+      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined,
     ),
   fiber_g: z
     .union([z.number(), z.string()])
     .optional()
     .transform((val) =>
-      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined
+      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined,
     ),
   sugar_g: z
     .union([z.number(), z.string()])
     .optional()
     .transform((val) =>
-      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined
+      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined,
     ),
   sodium_mg: z
     .union([z.number(), z.string()])
     .optional()
     .transform((val) =>
-      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined
+      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined,
     ),
   saturated_fats_g: z
     .union([z.number(), z.string()])
     .optional()
     .transform((val) =>
-      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined
+      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined,
     ),
   polyunsaturated_fats_g: z
     .union([z.number(), z.string()])
     .optional()
     .transform((val) =>
-      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined
+      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined,
     ),
   monounsaturated_fats_g: z
     .union([z.number(), z.string()])
     .optional()
     .transform((val) =>
-      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined
+      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined,
     ),
   cholesterol_mg: z
     .union([z.number(), z.string()])
     .optional()
     .transform((val) =>
-      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined
+      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined,
     ),
   serving_size_g: z
     .union([z.number(), z.string()])
     .optional()
     .transform((val) =>
-      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined
+      val ? (typeof val === "string" ? parseFloat(val) : val) : undefined,
     ),
   ingredients: z.any().optional(),
   food_category: z.string().optional(),

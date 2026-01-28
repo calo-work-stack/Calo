@@ -250,7 +250,7 @@ export class StatisticsService {
           orderBy: { date: "desc" },
         }),
 
-        // Water intakes - optimized
+        // Water intakes
         prisma.waterIntake.findMany({
           where: {
             user_id: userId,
@@ -258,11 +258,6 @@ export class StatisticsService {
               gte: definedStartDate,
               lte: definedEndDate,
             },
-          },
-          select: {
-            date: true,
-            cups_consumed: true,
-            milliliters_consumed: true,
           },
           orderBy: { date: "desc" },
         }),
@@ -1121,12 +1116,16 @@ export class StatisticsService {
             liquids_ml: true,
           },
         }),
+        // Water intake
         prisma.waterIntake.findMany({
           where: {
             user_id: userId,
             date: { gte: startDate, lte: endDate },
           },
-          select: { milliliters_consumed: true },
+          select: {
+            cups_consumed: true,
+            milliliters_consumed: true,
+          },
         }),
       ]);
 

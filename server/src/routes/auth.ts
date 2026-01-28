@@ -250,15 +250,35 @@ router.post("/signin", async (req, res, next) => {
   }
 });
 
+// User questionnaire cache for /me endpoint
+const meCache = new Map<string, { data: any; timestamp: number }>();
+const ME_CACHE_TTL = 120000; // 2 minutes cache
+
 router.get("/me", authenticateToken, async (req: AuthRequest, res) => {
   try {
+    const userId = req.user.user_id;
+
+    // Check cache first for instant response
+    const cached = meCache.get(userId);
+    if (cached && Date.now() - cached.timestamp < ME_CACHE_TTL) {
+      // Update user data from token (always fresh from auth cache)
+      const cachedData = { ...cached.data };
+      Object.assign(cachedData, {
+        level: req.user.level,
+        total_points: req.user.total_points,
+        current_xp: req.user.current_xp,
+        current_streak: req.user.current_streak,
+      });
+      return res.json({ success: true, user: cachedData });
+    }
+
     const questionnaire = await prisma.userQuestionnaire.findFirst({
-      where: { user_id: req.user.user_id },
+      where: { user_id: userId },
       select: { meals_per_day: true },
     });
 
     const userData = {
-      user_id: req.user.user_id,
+      user_id: userId,
       name: req.user.name,
       email: req.user.email,
       email_verified: req.user.email_verified,
@@ -285,6 +305,9 @@ router.get("/me", authenticateToken, async (req: AuthRequest, res) => {
       ai_requests_count: req.user.ai_requests_count,
       ai_requests_reset_at: req.user.ai_requests_reset_at,
     };
+
+    // Update cache
+    meCache.set(userId, { data: userData, timestamp: Date.now() });
 
     res.json({
       success: true,

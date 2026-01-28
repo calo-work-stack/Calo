@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   View,
   Text,
@@ -13,6 +19,7 @@ import {
   FlatList,
   Platform,
   Dimensions,
+  Easing,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -38,8 +45,16 @@ import {
   Zap,
   Target,
   Activity,
-  DollarSign,
   Trash2,
+  Sparkles,
+  BookOpen,
+  Timer,
+  Wallet,
+  ChevronRight,
+  RefreshCw,
+  LayoutGrid,
+  List,
+  SortAsc,
 } from "lucide-react-native";
 import { api } from "@/src/services/api";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -48,97 +63,227 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/src/store";
 import { EnhancedMenuCreator } from "@/components/menu";
 import { RecommendedMenu } from "@/src/types/recommended-menus";
-import { FILTER_OPTIONS } from "@/src/Features/Features/recommended-features";
 import { LinearGradient } from "expo-linear-gradient";
-import { NutritionHabits } from "@/components/menu/NutritionHabits";
+import { BlurView } from "expo-blur";
+import { MenuCardSkeleton } from "@/components/loaders/SkeletonLoader";
 
-// ==================== OPTIMIZED COMPONENTS ====================
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const isSmallDevice = SCREEN_WIDTH < 375;
 
-// Enhanced Filter Modal with better performance
-const FilterModal = React.memo(
+const FILTER_OPTIONS = [
+  { key: "all", label: "menus.filters.all", icon: LayoutGrid },
+  { key: "recent", label: "menus.filters.recent", icon: Clock },
+  { key: "high_protein", label: "menus.filters.high_protein", icon: Target },
+  { key: "low_calorie", label: "menus.filters.low_calorie", icon: Flame },
+  { key: "quick_prep", label: "menus.filters.quick_prep", icon: Timer },
+  {
+    key: "budget_friendly",
+    label: "menus.filters.budget_friendly",
+    icon: Wallet,
+  },
+];
+
+const SORT_OPTIONS = [
+  { key: "newest", label: "menus.sort_options.newest" },
+  { key: "oldest", label: "menus.sort_options.oldest" },
+  { key: "calories_low", label: "menus.sort_options.calories_low" },
+  { key: "calories_high", label: "menus.sort_options.calories_high" },
+  { key: "cost_low", label: "menus.sort_options.cost_low" },
+  { key: "cost_high", label: "menus.sort_options.cost_high" },
+];
+
+const FilterSortModal = React.memo(
   ({
     visible,
     onClose,
     selectedFilter,
+    selectedSort,
     onFilterSelect,
+    onSortSelect,
     colors,
     t,
   }: any) => {
+    const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+
+    useEffect(() => {
+      if (visible) {
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 65,
+          friction: 11,
+        }).start();
+      } else {
+        Animated.timing(slideAnim, {
+          toValue: SCREEN_HEIGHT,
+          duration: 250,
+          useNativeDriver: true,
+        }).start();
+      }
+    }, [visible, slideAnim]);
+
+    if (!visible) return null;
+
     return (
       <Modal
         visible={visible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={onClose}
+        statusBarTranslucent
       >
-        <View style={styles.filterModalOverlay}>
-          <View
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={onClose}
+        >
+          <Animated.View
             style={[
               styles.filterModalContainer,
-              { backgroundColor: colors.card },
+              {
+                backgroundColor: colors.card,
+                transform: [{ translateY: slideAnim }],
+              },
             ]}
           >
-            <View style={styles.filterModalHeader}>
-              <Text style={[styles.filterModalTitle, { color: colors.text }]}>
-                {t("menus.filter_menus")}
-              </Text>
+            <TouchableOpacity activeOpacity={1}>
+              {/* Handle */}
+              <View style={styles.modalHandle}>
+                <View
+                  style={[styles.handleBar, { backgroundColor: colors.border }]}
+                />
+              </View>
+
+              {/* Header */}
+              <View style={styles.filterModalHeader}>
+                <Text style={[styles.filterModalTitle, { color: colors.text }]}>
+                  {t("menus.filter_and_sort")}
+                </Text>
+                <TouchableOpacity
+                  onPress={onClose}
+                  style={[
+                    styles.modalCloseBtn,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <X size={20} color={colors.icon} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Filters Section */}
+              <View style={styles.filterSection}>
+                <Text
+                  style={[styles.filterSectionTitle, { color: colors.text }]}
+                >
+                  {t("menus.filter_by")}
+                </Text>
+                <View style={styles.filterGrid}>
+                  {FILTER_OPTIONS.map((option) => {
+                    const IconComponent = option.icon;
+                    const isSelected = selectedFilter === option.key;
+
+                    return (
+                      <TouchableOpacity
+                        key={option.key}
+                        style={[
+                          styles.filterChip,
+                          {
+                            backgroundColor: isSelected
+                              ? colors.emerald500
+                              : colors.surface,
+                            borderColor: isSelected
+                              ? colors.emerald500
+                              : colors.border,
+                          },
+                        ]}
+                        onPress={() => onFilterSelect(option.key)}
+                      >
+                        <IconComponent
+                          size={16}
+                          color={isSelected ? "#ffffff" : colors.icon}
+                        />
+                        <Text
+                          style={[
+                            styles.filterChipText,
+                            { color: isSelected ? "#ffffff" : colors.text },
+                          ]}
+                        >
+                          {t(option.label)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Sort Section */}
+              <View style={styles.filterSection}>
+                <Text
+                  style={[styles.filterSectionTitle, { color: colors.text }]}
+                >
+                  {t("menus.sort_by")}
+                </Text>
+                <View style={styles.sortList}>
+                  {SORT_OPTIONS.map((option) => {
+                    const isSelected = selectedSort === option.key;
+
+                    return (
+                      <TouchableOpacity
+                        key={option.key}
+                        style={[
+                          styles.sortOption,
+                          {
+                            backgroundColor: isSelected
+                              ? colors.emerald500 + "15"
+                              : "transparent",
+                          },
+                        ]}
+                        onPress={() => onSortSelect(option.key)}
+                      >
+                        <Text
+                          style={[
+                            styles.sortOptionText,
+                            {
+                              color: isSelected
+                                ? colors.emerald500
+                                : colors.text,
+                              fontWeight: isSelected ? "700" : "500",
+                            },
+                          ]}
+                        >
+                          {t(option.label)}
+                        </Text>
+                        {isSelected && (
+                          <CheckCircle size={18} color={colors.emerald500} />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Apply Button */}
               <TouchableOpacity
+                style={[
+                  styles.applyButton,
+                  { backgroundColor: colors.emerald500 },
+                ]}
                 onPress={onClose}
-                style={styles.filterCloseButton}
               >
-                <X size={24} color={colors.icon} />
+                <Text style={styles.applyButtonText}>
+                  {t("menus.apply_filters")}
+                </Text>
               </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              style={styles.filterOptions}
-              showsVerticalScrollIndicator={false}
-            >
-              {FILTER_OPTIONS.map((option) => {
-                const IconComponent = option.icon;
-                const isSelected = selectedFilter === option.key;
-
-                return (
-                  <TouchableOpacity
-                    key={option.key}
-                    style={[
-                      styles.filterOption,
-                      {
-                        backgroundColor: isSelected
-                          ? colors.emerald500
-                          : colors.surface,
-                      },
-                    ]}
-                    onPress={() => {
-                      onFilterSelect(option.key);
-                      onClose();
-                    }}
-                  >
-                    <IconComponent
-                      size={20}
-                      color={isSelected ? "#ffffff" : colors.icon}
-                    />
-                    <Text
-                      style={[
-                        styles.filterOptionText,
-                        { color: isSelected ? "#ffffff" : colors.text },
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                    {isSelected && <CheckCircle size={16} color="#ffffff" />}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </View>
+            </TouchableOpacity>
+          </Animated.View>
+        </TouchableOpacity>
       </Modal>
     );
   },
 );
 
-// Optimized Menu Card with gradient and better visuals
+// ==================== ENHANCED MENU CARD ====================
+
 const MenuCard = React.memo(
   ({
     menu,
@@ -149,7 +294,30 @@ const MenuCard = React.memo(
     onStart,
     onView,
     onDelete,
+    index,
   }: any) => {
+    const scaleAnim = useRef(new Animated.Value(0.95)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      const delay = index * 80;
+      Animated.parallel([
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 400,
+          delay,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          delay,
+          useNativeDriver: true,
+          tension: 100,
+          friction: 10,
+        }),
+      ]).start();
+    }, [index, opacityAnim, scaleAnim]);
+
     const avgCaloriesPerDay = Math.round(
       menu.total_calories / (menu.days_count || 1),
     );
@@ -157,303 +325,323 @@ const MenuCard = React.memo(
       (menu.total_protein || 0) / (menu.days_count || 1),
     );
 
-    const getDifficultyColor = (level: number) => {
-      if (level <= 2) return "#10b981";
-      if (level <= 3) return "#f59e0b";
-      return "#ef4444";
+    const getDifficultyConfig = (level: number) => {
+      if (level <= 2)
+        return {
+          color: "#10b981",
+          label: t("menus.difficulty.easy"),
+          bg: "#10b98120",
+        };
+      if (level <= 3)
+        return {
+          color: "#f59e0b",
+          label: t("menus.difficulty.medium"),
+          bg: "#f59e0b20",
+        };
+      return {
+        color: "#ef4444",
+        label: t("menus.difficulty.hard"),
+        bg: "#ef444420",
+      };
     };
 
-    const getDifficultyLabel = (level: number) => {
-      if (level <= 2) return t("menus.difficulty.easy");
-      if (level <= 3) return t("menus.difficulty.medium");
-      return t("menus.difficulty.hard");
-    };
+    const difficultyConfig = getDifficultyConfig(menu.difficulty_level);
 
     return (
-      <View style={[styles.menuCard, { backgroundColor: colors.card }]}>
-        {/* Gradient Header */}
+      <Animated.View
+        style={[
+          styles.menuCard,
+          {
+            backgroundColor: colors.card,
+            opacity: opacityAnim,
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}
+      >
+        {/* Top Section with Gradient */}
         <LinearGradient
-          colors={[colors.emerald500 + "20", colors.emerald500 + "05"]}
+          colors={[colors.emerald500 + "15", "transparent"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.menuImageHeader}
+          style={styles.cardGradient}
         >
-          <View style={styles.menuImageContent}>
+          <View style={styles.cardTopRow}>
             <View
               style={[
-                styles.iconContainer,
+                styles.menuIconBg,
                 { backgroundColor: colors.emerald500 },
               ]}
             >
-              <ChefHat size={28} color="#ffffff" />
+              <ChefHat size={24} color="#ffffff" />
             </View>
-            <View style={styles.menuBadges}>
+
+            <View style={styles.cardBadges}>
               <View
-                style={[styles.badge, { backgroundColor: colors.emerald500 }]}
+                style={[
+                  styles.daysBadge,
+                  { backgroundColor: colors.emerald500 },
+                ]}
               >
                 <Calendar size={12} color="#ffffff" />
-                <Text style={styles.badgeText}>{menu.days_count}d</Text>
+                <Text style={styles.daysBadgeText}>
+                  {menu.days_count} {t("menus.days_short")}
+                </Text>
               </View>
               <View
                 style={[
-                  styles.badge,
-                  {
-                    backgroundColor: getDifficultyColor(menu.difficulty_level),
-                  },
+                  styles.difficultyBadge,
+                  { backgroundColor: difficultyConfig.bg },
                 ]}
               >
-                <Star size={12} color="#ffffff" />
-                <Text style={styles.badgeText}>
-                  {getDifficultyLabel(menu.difficulty_level)}
+                <Star size={12} color={difficultyConfig.color} />
+                <Text
+                  style={[
+                    styles.difficultyText,
+                    { color: difficultyConfig.color },
+                  ]}
+                >
+                  {difficultyConfig.label}
                 </Text>
               </View>
             </View>
           </View>
         </LinearGradient>
 
-        {/* Menu Content */}
-        <View style={styles.menuContent}>
-          <View style={styles.menuHeader}>
-            <Text
-              style={[styles.menuTitle, { color: colors.text }]}
-              numberOfLines={2}
-            >
-              {menu.title}
-            </Text>
-            <Text style={[styles.menuSubtitle, { color: colors.icon }]}>
-              {menu.dietary_category || "Balanced Menu"}
-            </Text>
-          </View>
+        {/* Content Section */}
+        <View style={styles.cardContent}>
+          <Text
+            style={[styles.menuTitle, { color: colors.text }]}
+            numberOfLines={2}
+          >
+            {menu.title}
+          </Text>
+          <Text style={[styles.menuCategory, { color: colors.icon }]}>
+            {menu.dietary_category || t("menus.balanced_menu")}
+          </Text>
 
-          {/* Enhanced Nutrition Grid */}
-          <View style={styles.nutritionGrid}>
-            <View style={styles.nutritionItem}>
-              <View
-                style={[styles.nutritionIcon, { backgroundColor: "#fef3c7" }]}
-              >
-                <Flame size={16} color="#f59e0b" />
+          {/* Stats Row */}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <View style={[styles.statIconBg, { backgroundColor: "#fef3c7" }]}>
+                <Flame size={14} color="#f59e0b" />
               </View>
-              <Text style={[styles.nutritionValue, { color: colors.text }]}>
-                {avgCaloriesPerDay}
-              </Text>
-              <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
-                {t("menus.calories")}
-              </Text>
-            </View>
-
-            <View style={styles.nutritionItem}>
-              <View
-                style={[styles.nutritionIcon, { backgroundColor: "#dcfce7" }]}
-              >
-                <TrendingUp size={16} color="#10b981" />
-              </View>
-              <Text style={[styles.nutritionValue, { color: colors.text }]}>
-                {avgProteinPerDay}g
-              </Text>
-              <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
-                {t("menus.protein")}
-              </Text>
-            </View>
-
-            <View style={styles.nutritionItem}>
-              <View
-                style={[styles.nutritionIcon, { backgroundColor: "#f3e8ff" }]}
-              >
-                <Clock size={16} color="#8b5cf6" />
-              </View>
-              <Text style={[styles.nutritionValue, { color: colors.text }]}>
-                {menu.prep_time_minutes || 30}m
-              </Text>
-              <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
-                {t("menus.prep")}
-              </Text>
-            </View>
-          </View>
-
-          {/* Cost and Rating Row */}
-          <View style={styles.menuMeta}>
-            {menu.estimated_cost && (
-              <View
-                style={[
-                  styles.costBadge,
-                  { backgroundColor: colors.success + "20" },
-                ]}
-              >
-                <Text style={[styles.costText, { color: colors.success }]}>
-                  ₪{menu.estimated_cost.toFixed(0)}
+              <View>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {avgCaloriesPerDay}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.icon }]}>
+                  {t("foodScanner.kcal")}
                 </Text>
               </View>
-            )}
+            </View>
 
-            <View style={styles.ratingBadge}>
-              <Star size={14} color="#FFB800" fill="#FFB800" />
-              <Text style={[styles.ratingText, { color: colors.text }]}>
-                {menu.difficulty_level}/5
-              </Text>
+            <View
+              style={[styles.statDivider, { backgroundColor: colors.border }]}
+            />
+
+            <View style={styles.statItem}>
+              <View style={[styles.statIconBg, { backgroundColor: "#dcfce7" }]}>
+                <TrendingUp size={14} color="#10b981" />
+              </View>
+              <View>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {avgProteinPerDay}g
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.icon }]}>
+                  {t("foodScannner.protein")}
+                </Text>
+              </View>
+            </View>
+
+            <View
+              style={[styles.statDivider, { backgroundColor: colors.border }]}
+            />
+
+            <View style={styles.statItem}>
+              <View style={[styles.statIconBg, { backgroundColor: "#e0e7ff" }]}>
+                <Wallet size={14} color="#6366f1" />
+              </View>
+              <View>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  ₪{Math.round(menu.estimated_cost || 0)}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.icon }]}>
+                  {t("menu_details.est_cost")}
+                </Text>
+              </View>
             </View>
           </View>
 
           {/* Action Buttons */}
-          <View style={styles.menuActions}>
+          <View style={styles.actionRow}>
             <TouchableOpacity
-              style={[styles.viewButton, { backgroundColor: colors.surface }]}
+              style={[
+                styles.actionBtn,
+                styles.viewBtn,
+                { backgroundColor: colors.surface },
+              ]}
               onPress={() => onView(menu.menu_id)}
             >
               <Eye size={16} color={colors.icon} />
-              <Text style={[styles.viewButtonText, { color: colors.icon }]}>
-                {t("menus.view")}
+              <Text style={[styles.actionBtnText, { color: colors.text }]}>
+                {t("common.view")}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[
-                styles.startButton,
+                styles.actionBtn,
+                styles.startBtn,
                 { backgroundColor: colors.emerald500 },
               ]}
               onPress={() => onStart(menu.menu_id)}
             >
               <Play size={16} color="#ffffff" />
-              <Text style={styles.startButtonText}>
-                {t("menus.start")}
-              </Text>
+              <Text style={styles.startBtnText}>{t("menus.start")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.viewButton, { backgroundColor: colors.error + "20" }]}
+              style={[
+                styles.actionBtn,
+                styles.deleteBtn,
+                { backgroundColor: colors.error + "15" },
+              ]}
               onPress={() => onDelete(menu.menu_id)}
             >
               <Trash2 size={16} color={colors.error} />
-              <Text style={[styles.viewButtonText, { color: colors.error }]}>
-                {t("menus.delete")}
-              </Text>
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </Animated.View>
     );
   },
 );
 
-// Active Plan Card with gradient
-const ActivePlanCard = React.memo(
-  ({ plan, colors, t, onContinue }: any) => {
-    return (
-      <LinearGradient
-        colors={[colors.emerald500, colors.emerald500 + "dd"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.activePlanCard}
-      >
-        <View style={styles.activePlanHeader}>
-          <View style={styles.activePlanBadge}>
-            <CheckCircle size={16} color="#ffffff" />
-            <Text style={styles.activePlanBadgeText}>
-              {t("menus.active")}
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={onContinue}
-            style={styles.activePlanAction}
-          >
-            <ArrowRight size={16} color="#ffffff" />
-          </TouchableOpacity>
-        </View>
+// ==================== ACTIVE PLAN BANNER ====================
 
-        <Text style={styles.activePlanTitle}>
-          {plan.name || t("menus.your_active_plan")}
-        </Text>
+const ActivePlanBanner = React.memo(({ plan, colors, t, onContinue }: any) => {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
-        <Text style={styles.activePlanSubtitle}>
-          {t("menus.continue_tracking")}
-        </Text>
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.02,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [pulseAnim]);
 
-        <TouchableOpacity
-          style={styles.activePlanContinueButton}
-          onPress={onContinue}
+  return (
+    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+      <TouchableOpacity onPress={onContinue} activeOpacity={0.95}>
+        <LinearGradient
+          colors={[colors.emerald500, colors.emerald600 || colors.emerald500]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.activePlanBanner}
         >
-          <Text style={styles.activePlanContinueText}>
-            {t("menus.continue_plan")}
-          </Text>
-          <ArrowRight size={14} color="#ffffff" />
-        </TouchableOpacity>
-      </LinearGradient>
-    );
-  },
-);
+          <View style={styles.activePlanContent}>
+            <View style={styles.activePlanLeft}>
+              <View style={styles.activePlanBadge}>
+                <Sparkles size={14} color="#ffffff" />
+                <Text style={styles.activePlanBadgeText}>
+                  {t("menus.active")}
+                </Text>
+              </View>
+              <Text style={styles.activePlanTitle}>
+                {plan.name || t("menus.your_active_plan")}
+              </Text>
+              <Text style={styles.activePlanSubtitle}>
+                {t("menus.tap_to_continue")}
+              </Text>
+            </View>
 
-// Quick Stats Component
-const QuickStats = React.memo(({ menus, colors, t }: any) => {
+            <View style={styles.activePlanArrow}>
+              <ChevronRight size={28} color="#ffffff" />
+            </View>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
+
+// ==================== QUICK STATS CARD ====================
+
+const QuickStatsCard = React.memo(({ menus, colors, t }: any) => {
   const stats = useMemo(() => {
     if (!menus.length) return null;
 
-    const totalCalories = menus.reduce(
-      (sum: number, menu: any) => sum + (menu.total_calories || 0),
-      0,
+    const totalMenus = menus.length;
+    const avgCalories = Math.round(
+      menus.reduce((sum: number, m: any) => sum + (m.total_calories || 0), 0) /
+        totalMenus,
     );
-    const avgCalories = Math.round(totalCalories / menus.length);
     const totalMeals = menus.reduce(
-      (sum: number, menu: any) => sum + (menu.meals?.length || 0),
+      (sum: number, m: any) => sum + (m.meals?.length || 0),
       0,
     );
     const avgCost = Math.round(
-      menus.reduce(
-        (sum: number, menu: any) => sum + (menu.estimated_cost || 0),
-        0,
-      ) / menus.length,
+      menus.reduce((sum: number, m: any) => sum + (m.estimated_cost || 0), 0) /
+        totalMenus,
     );
 
-    return {
-      totalMenus: menus.length,
-      avgCalories,
-      totalMeals,
-      avgCost,
-    };
+    return { totalMenus, avgCalories, totalMeals, avgCost };
   }, [menus]);
 
   if (!stats) return null;
 
   return (
-    <View style={[styles.statsCard, { backgroundColor: colors.card }]}>
-      <View style={styles.statsHeader}>
-        <Text style={[styles.statsTitle, { color: colors.text }]}>
-          {t("menus.menu_overview")}
+    <View style={[styles.quickStatsCard, { backgroundColor: colors.card }]}>
+      <View style={styles.quickStatsHeader}>
+        <Award size={18} color={colors.emerald500} />
+        <Text style={[styles.quickStatsTitle, { color: colors.text }]}>
+          {t("menus.your_menu_stats")}
         </Text>
-        <Award size={20} color={colors.emerald500} />
       </View>
 
-      <View style={styles.statsGrid}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.emerald500 }]}>
+      <View style={styles.quickStatsGrid}>
+        <View style={styles.quickStatItem}>
+          <Text style={[styles.quickStatValue, { color: colors.emerald500 }]}>
             {stats.totalMenus}
           </Text>
-          <Text style={[styles.statLabel, { color: colors.icon }]}>
+          <Text style={[styles.quickStatLabel, { color: colors.icon }]}>
             {t("menus.menus")}
           </Text>
         </View>
 
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.emerald500 }]}>
+        <View
+          style={[styles.quickStatDivider, { backgroundColor: colors.border }]}
+        />
+
+        <View style={styles.quickStatItem}>
+          <Text style={[styles.quickStatValue, { color: colors.emerald500 }]}>
             {stats.avgCalories}
           </Text>
-          <Text style={[styles.statLabel, { color: colors.icon }]}>
+          <Text style={[styles.quickStatLabel, { color: colors.icon }]}>
             {t("menus.avg_cal")}
           </Text>
         </View>
 
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.emerald500 }]}>
-            {stats.totalMeals}
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.icon }]}>
-            {t("menus.meals")}
-          </Text>
-        </View>
+        <View
+          style={[styles.quickStatDivider, { backgroundColor: colors.border }]}
+        />
 
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.emerald500 }]}>
+        <View style={styles.quickStatItem}>
+          <Text style={[styles.quickStatValue, { color: colors.emerald500 }]}>
             ₪{stats.avgCost}
           </Text>
-          <Text style={[styles.statLabel, { color: colors.icon }]}>
+          <Text style={[styles.quickStatLabel, { color: colors.icon }]}>
             {t("menus.avg_cost")}
           </Text>
         </View>
@@ -462,11 +650,12 @@ const QuickStats = React.memo(({ menus, colors, t }: any) => {
   );
 });
 
-// Category Pills Component
+// ==================== CATEGORY FILTER PILLS ====================
+
 const CategoryPills = React.memo(
-  ({ colors, t, onCategorySelect, selectedCategory }: any) => {
+  ({ colors, t, selectedCategory, onCategorySelect }: any) => {
     const categories = [
-      { key: "all", label: t("menus.categories.all"), icon: ChefHat },
+      { key: "all", label: t("menus.categories.all"), icon: LayoutGrid },
       { key: "healthy", label: t("menus.categories.healthy"), icon: Heart },
       { key: "keto", label: t("menus.categories.keto"), icon: Target },
       { key: "protein", label: t("menus.categories.protein"), icon: Activity },
@@ -477,8 +666,8 @@ const CategoryPills = React.memo(
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.categoryScrollContainer}
-        contentContainerStyle={styles.categoryContainer}
+        style={styles.categoryScroll}
+        contentContainerStyle={styles.categoryContent}
       >
         {categories.map((category) => {
           const IconComponent = category.icon;
@@ -493,6 +682,7 @@ const CategoryPills = React.memo(
                   backgroundColor: isActive
                     ? colors.emerald500
                     : colors.surface,
+                  borderColor: isActive ? colors.emerald500 : colors.border,
                 },
               ]}
               onPress={() => onCategorySelect(category.key)}
@@ -503,7 +693,7 @@ const CategoryPills = React.memo(
               />
               <Text
                 style={[
-                  styles.categoryText,
+                  styles.categoryPillText,
                   { color: isActive ? "#ffffff" : colors.text },
                 ]}
               >
@@ -513,6 +703,74 @@ const CategoryPills = React.memo(
           );
         })}
       </ScrollView>
+    );
+  },
+);
+
+// ==================== EMPTY STATE ====================
+
+const EmptyState = React.memo(
+  ({ colors, t, searchQuery, onCreateMenu }: any) => {
+    const bounceAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      const bounce = Animated.loop(
+        Animated.sequence([
+          Animated.timing(bounceAnim, {
+            toValue: -10,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(bounceAnim, {
+            toValue: 0,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      bounce.start();
+      return () => bounce.stop();
+    }, [bounceAnim]);
+
+    return (
+      <View style={styles.emptyState}>
+        <Animated.View
+          style={[
+            styles.emptyIconContainer,
+            {
+              backgroundColor: colors.surface,
+              transform: [{ translateY: bounceAnim }],
+            },
+          ]}
+        >
+          <ChefHat size={48} color={colors.emerald500} />
+        </Animated.View>
+
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>
+          {searchQuery
+            ? t("menus.no_results_found")
+            : t("menus.no_menus_available")}
+        </Text>
+        <Text style={[styles.emptySubtitle, { color: colors.icon }]}>
+          {searchQuery
+            ? t("menus.try_different_search")
+            : t("menus.create_personalized_menu")}
+        </Text>
+
+        {!searchQuery && (
+          <TouchableOpacity
+            style={[styles.emptyButton, { backgroundColor: colors.emerald500 }]}
+            onPress={onCreateMenu}
+          >
+            <Plus size={20} color="#ffffff" />
+            <Text style={styles.emptyButtonText}>
+              {t("menus.create_first_menu")}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
     );
   },
 );
@@ -531,22 +789,20 @@ export default function RecommendedMenusScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
+  const [selectedSort, setSelectedSort] = useState("newest");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [hasActivePlan, setHasActivePlan] = useState(false);
   const [activePlanData, setActivePlanData] = useState<any>(null);
   const [showEnhancedCreation, setShowEnhancedCreation] = useState(false);
-  const [currentActivePlan, setCurrentActivePlan] = useState<any>(null);
 
   // Animations
-  const [fadeAnim] = useState(new Animated.Value(0));
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const headerAnim = useRef(new Animated.Value(-50)).current;
 
-  // ==================== OPTIMIZED DATA LOADING ====================
-
-  // Load all data in parallel for better performance
+  // Load all data in parallel
   const loadAllData = useCallback(async () => {
     try {
-      // Use Promise.all to fetch data in parallel
       const [menusResponse, activePlanResponse] = await Promise.all([
         api
           .get("/recommended-menus")
@@ -556,14 +812,12 @@ export default function RecommendedMenusScreen() {
           .catch(() => ({ data: { success: false } })),
       ]);
 
-      // Process menus
       if (menusResponse.data.success) {
         setMenus(menusResponse.data.data || []);
       } else {
         setMenus([]);
       }
 
-      // Process active plan
       if (
         activePlanResponse.data.success &&
         activePlanResponse.data.hasActivePlan &&
@@ -571,41 +825,45 @@ export default function RecommendedMenusScreen() {
       ) {
         const planData = {
           plan_id: activePlanResponse.data.planId,
-          name: activePlanResponse.data.planName || "Active Plan",
+          name: activePlanResponse.data.planName || t("menus.active_plan"),
           data: activePlanResponse.data.data,
         };
-        setCurrentActivePlan(planData);
         setActivePlanData(planData);
         setHasActivePlan(true);
       } else {
-        setCurrentActivePlan(null);
         setActivePlanData(null);
         setHasActivePlan(false);
       }
     } catch (error) {
       console.error("Error loading data:", error);
       setMenus([]);
-      setCurrentActivePlan(null);
       setActivePlanData(null);
       setHasActivePlan(false);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadAllData();
 
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
-  }, [loadAllData]);
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.spring(headerAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 80,
+        friction: 12,
+      }),
+    ]).start();
+  }, [loadAllData, fadeAnim, headerAnim]);
 
   useFocusEffect(
     useCallback(() => {
-      // Only check for active plan, not reload all menus
       api
         .get("/meal-plans/current")
         .then((response) => {
@@ -616,24 +874,21 @@ export default function RecommendedMenusScreen() {
           ) {
             const planData = {
               plan_id: response.data.planId,
-              name: response.data.planName || "Active Plan",
+              name: response.data.planName || t("menus.active_plan"),
               data: response.data.data,
             };
-            setCurrentActivePlan(planData);
             setActivePlanData(planData);
             setHasActivePlan(true);
           } else {
-            setCurrentActivePlan(null);
             setActivePlanData(null);
             setHasActivePlan(false);
           }
         })
         .catch(() => {
-          setCurrentActivePlan(null);
           setActivePlanData(null);
           setHasActivePlan(false);
         });
-    }, []),
+    }, [t]),
   );
 
   const onRefresh = useCallback(async () => {
@@ -652,21 +907,18 @@ export default function RecommendedMenusScreen() {
 
         if (response.data.success && response.data.data) {
           const newPlan = response.data.data;
-          setCurrentActivePlan(newPlan);
+          setActivePlanData(newPlan);
           setHasActivePlan(true);
 
-          Alert.alert(
-            t("common.success"),
-            t("menus.menu_started_success"),
-            [
-              {
-                text: t("common.ok"),
-                onPress: () => {
-                  router.push(`/menu/activeMenu?planId=${newPlan.plan_id}`);
-                },
+          Alert.alert(t("common.success"), t("menus.menu_started_success"), [
+            {
+              text: t("menus.view_plan"),
+              onPress: () => {
+                router.push(`/menu/activeMenu?planId=${newPlan.plan_id}`);
               },
-            ],
-          );
+            },
+            { text: t("common.ok") },
+          ]);
         }
       } catch (error: any) {
         Alert.alert(
@@ -684,72 +936,48 @@ export default function RecommendedMenusScreen() {
 
   const handleDeleteMenu = useCallback(
     async (menuId: string) => {
-      // Show confirmation dialog
-      Alert.alert(
-        t("menus.confirm_delete"),
-        t("menus.delete_confirmation"),
-        [
-          {
-            text: t("common.cancel"),
-            style: "cancel",
-          },
-          {
-            text: t("menus.delete"),
-            style: "destructive",
-            onPress: async () => {
-              try {
-                console.log("🗑️ Attempting to delete menu:", menuId);
+      Alert.alert(t("menus.confirm_delete"), t("menus.delete_confirmation"), [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("menus.delete"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const response = await api.delete(`/recommended-menus/${menuId}`);
 
-                // Make the DELETE request
-                const response = await api.delete(
-                  `/recommended-menus/${menuId}`,
-                );
+              if (response.data.success) {
+                setMenus((prev) => prev.filter((m) => m.menu_id !== menuId));
 
-                console.log("✅ Delete response:", response.data);
-
-                if (response.data.success) {
-                  // Optimistically remove from UI
-                  setMenus((prev) => prev.filter((m) => m.menu_id !== menuId));
-
-                  // Also check if this was the active menu
-                  if (activePlanData?.plan_id === menuId) {
-                    setCurrentActivePlan(null);
-                    setActivePlanData(null);
-                    setHasActivePlan(false);
-                  }
-
-                  // Show success message
-                  Alert.alert(
-                    t("common.success"),
-                    t("menus.menu_deleted_success", { mealsDeleted: response.data.mealsDeleted || 0 }),
-                  );
-                } else {
-                  throw new Error(response.data.error || "Failed to delete");
+                if (activePlanData?.plan_id === menuId) {
+                  setActivePlanData(null);
+                  setHasActivePlan(false);
                 }
-              } catch (error: any) {
-                console.error("Failed to delete menu:", error);
 
-                // Parse error message
-                const errorMessage =
-                  error.response?.data?.error ||
-                  error.message ||
-                  t("menus.failed_to_delete");
-
-                Alert.alert(t("common.error"), errorMessage);
+                Alert.alert(
+                  t("common.success"),
+                  t("menus.menu_deleted_success"),
+                );
+              } else {
+                throw new Error(response.data.error || "Failed to delete");
               }
-            },
+            } catch (error: any) {
+              Alert.alert(
+                t("common.error"),
+                error.response?.data?.error ||
+                  error.message ||
+                  t("menus.failed_to_delete"),
+              );
+            }
           },
-        ],
-      );
+        },
+      ]);
     },
     [t, activePlanData],
   );
 
-  // ==================== OPTIMIZED FILTERING ====================
-
+  // Filter and sort menus
   const filteredMenus = useMemo(() => {
     let filtered = menus.filter((menu) => {
-      // Exclude active menu
       if (
         hasActivePlan &&
         activePlanData &&
@@ -760,7 +988,7 @@ export default function RecommendedMenusScreen() {
       return true;
     });
 
-    // Apply search filter
+    // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -771,7 +999,7 @@ export default function RecommendedMenusScreen() {
       );
     }
 
-    // Apply category filter (from pills)
+    // Category filter
     if (selectedCategory !== "all") {
       filtered = filtered.filter((menu) => {
         const category = menu.dietary_category?.toLowerCase() || "";
@@ -779,7 +1007,7 @@ export default function RecommendedMenusScreen() {
       });
     }
 
-    // Apply advanced filter (from filter modal)
+    // Advanced filter
     if (selectedFilter !== "all") {
       filtered = filtered.filter((menu) => {
         switch (selectedFilter) {
@@ -790,41 +1018,60 @@ export default function RecommendedMenusScreen() {
               return menuDate > weekAgo;
             }
             return false;
-
           case "high_protein":
             const proteinRatio =
               ((menu.total_protein || 0) / (menu.total_calories || 1)) * 4;
             return proteinRatio >= 0.25;
-
           case "low_calorie":
-            const avgCaloriesPerDay =
-              menu.total_calories / (menu.days_count || 1);
-            return avgCaloriesPerDay <= 1800;
-
+            const avgCal = menu.total_calories / (menu.days_count || 1);
+            return avgCal <= 1800;
           case "quick_prep":
             return (menu.prep_time_minutes || 60) <= 30;
-
           case "budget_friendly":
             return (menu.estimated_cost || 1000) <= 200;
-
           default:
             return true;
         }
       });
     }
 
+    // Sort
+    filtered.sort((a, b) => {
+      switch (selectedSort) {
+        case "oldest":
+          return (
+            new Date(a.created_at || 0).getTime() -
+            new Date(b.created_at || 0).getTime()
+          );
+        case "calories_low":
+          return (a.total_calories || 0) - (b.total_calories || 0);
+        case "calories_high":
+          return (b.total_calories || 0) - (a.total_calories || 0);
+        case "cost_low":
+          return (a.estimated_cost || 0) - (b.estimated_cost || 0);
+        case "cost_high":
+          return (b.estimated_cost || 0) - (a.estimated_cost || 0);
+        case "newest":
+        default:
+          return (
+            new Date(b.created_at || 0).getTime() -
+            new Date(a.created_at || 0).getTime()
+          );
+      }
+    });
+
     return filtered;
   }, [
     menus,
     searchQuery,
     selectedFilter,
+    selectedSort,
     selectedCategory,
     hasActivePlan,
     activePlanData,
   ]);
 
-  // Enhanced creation modal
-  const renderEnhancedCreationModal = () => {
+  const renderMenuCreationModal = () => {
     if (!showEnhancedCreation) return null;
 
     return (
@@ -833,10 +1080,7 @@ export default function RecommendedMenusScreen() {
           try {
             setShowEnhancedCreation(false);
             await loadAllData();
-            Alert.alert(
-              t("common.success"),
-              t("menus.menu_created_success"),
-            );
+            Alert.alert(t("common.success"), t("menus.menu_created_success"));
           } catch (error) {
             console.error("Error handling menu creation:", error);
           }
@@ -848,7 +1092,27 @@ export default function RecommendedMenusScreen() {
 
   if (isLoading) {
     return (
-      <LoadingScreen text={t("loading.loading", "loading.recommended_menus")} />
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
+        <View style={styles.loadingContainer}>
+          <View
+            style={[
+              styles.loadingHeader,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            <Text style={[styles.pageTitle, { color: colors.text }]}>
+              {t("menus.recommended_menus")}
+            </Text>
+          </View>
+          <View style={styles.skeletonList}>
+            {[1, 2, 3].map((i) => (
+              <MenuCardSkeleton key={i} colors={colors} />
+            ))}
+          </View>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -856,34 +1120,78 @@ export default function RecommendedMenusScreen() {
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      {/* Fixed Search Header */}
-      <View
-        style={[styles.searchHeader, { backgroundColor: colors.background }]}
+      {/* Header */}
+      <Animated.View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.background,
+            transform: [{ translateY: headerAnim }],
+          },
+        ]}
       >
-        <View style={styles.searchContainer}>
+        <View style={styles.headerTop}>
+          <Text style={[styles.pageTitle, { color: colors.text }]}>
+            {t("menus.recommended_menus")}
+          </Text>
+          <TouchableOpacity
+            style={[styles.createBtn, { backgroundColor: colors.emerald500 }]}
+            onPress={() => setShowEnhancedCreation(true)}
+          >
+            <Plus size={20} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Search and Filter Row */}
+        <View style={styles.searchRow}>
           <View style={[styles.searchBar, { backgroundColor: colors.surface }]}>
-            <Search size={20} color={colors.icon} />
+            <Search size={18} color={colors.icon} />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
               placeholder={t("menus.search_menus")}
+              placeholderTextColor={colors.icon}
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor={colors.icon}
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery("")}>
+                <X size={18} color={colors.icon} />
+              </TouchableOpacity>
+            )}
           </View>
 
           <TouchableOpacity
-            style={[styles.filterButton, { backgroundColor: colors.surface }]}
+            style={[
+              styles.filterBtn,
+              {
+                backgroundColor:
+                  selectedFilter !== "all" || selectedSort !== "newest"
+                    ? colors.emerald500 + "20"
+                    : colors.surface,
+                borderColor:
+                  selectedFilter !== "all" || selectedSort !== "newest"
+                    ? colors.emerald500
+                    : colors.border,
+              },
+            ]}
             onPress={() => setShowFilterModal(true)}
           >
-            <Filter size={20} color={colors.icon} />
+            <Filter
+              size={18}
+              color={
+                selectedFilter !== "all" || selectedSort !== "newest"
+                  ? colors.emerald500
+                  : colors.icon
+              }
+            />
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
 
-      {/* Scrollable Content */}
+      {/* Main Content */}
       <Animated.ScrollView
-        style={[styles.scrollContent, { opacity: fadeAnim }]}
+        style={[styles.scrollView, { opacity: fadeAnim }]}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -894,531 +1202,454 @@ export default function RecommendedMenusScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.contentContainer}>
-          {/* Page Title */}
-          <Text style={[styles.pageTitle, { color: colors.text }]}>
-            {t("menus.recommended_menus")}
-          </Text>
-
-          {/* Active Plan Card */}
-          {hasActivePlan && activePlanData && (
-            <ActivePlanCard
-              plan={activePlanData}
-              colors={colors}
-              t={t}
-              onContinue={() => {
-                router.push(
-                  `/menu/activeMenu?planId=${activePlanData.plan_id}`,
-                );
-              }}
-            />
-          )}
-
-          {/* Category Pills */}
-          <CategoryPills
+        {/* Active Plan Banner */}
+        {hasActivePlan && activePlanData && (
+          <ActivePlanBanner
+            plan={activePlanData}
             colors={colors}
             t={t}
-            selectedCategory={selectedCategory}
-            onCategorySelect={setSelectedCategory}
+            onContinue={() => {
+              router.push(`/menu/activeMenu?planId=${activePlanData.plan_id}`);
+            }}
           />
+        )}
 
-          {/* Create New Menu Button */}
-          <TouchableOpacity
-            style={[
-              styles.createMenuButton,
-              { backgroundColor: colors.emerald500 },
-            ]}
-            onPress={() => setShowEnhancedCreation(true)}
-          >
-            <Plus size={20} color="#ffffff" />
-            <Text style={styles.createMenuButtonText}>
-              {t("menus.create_new_menu")}
-            </Text>
-          </TouchableOpacity>
+        {/* Category Pills */}
+        <CategoryPills
+          colors={colors}
+          t={t}
+          selectedCategory={selectedCategory}
+          onCategorySelect={setSelectedCategory}
+        />
 
-          {/* Quick Stats */}
-          {filteredMenus.length > 0 && (
-            <QuickStats
-              menus={filteredMenus}
-              colors={colors}
-              t={t}
-            />
-          )}
+        {/* Quick Stats */}
+        {filteredMenus.length > 0 && (
+          <QuickStatsCard menus={filteredMenus} colors={colors} t={t} />
+        )}
 
-          {/* Menus List - Using FlatList for better performance */}
-          {filteredMenus.length > 0 ? (
-            <FlatList
-              data={filteredMenus}
-              keyExtractor={(item) => item.menu_id}
-              renderItem={({ item }) => (
-                <MenuCard
-                  menu={item}
-                  colors={colors}
-                  isDark={isDark}
-                  t={t}
-                  isRTL={isRTL}
-                  onStart={handleStartMenu}
-                  onView={handleViewMenu}
-                  onDelete={handleDeleteMenu}
-                />
-              )}
-              scrollEnabled={false}
-              contentContainerStyle={styles.menusGrid}
-              initialNumToRender={5}
-              maxToRenderPerBatch={10}
-              windowSize={5}
-              removeClippedSubviews={true}
-            />
-          ) : (
-            <View style={styles.emptyState}>
-              <View
-                style={[styles.emptyIcon, { backgroundColor: colors.surface }]}
-              >
-                <ChefHat size={48} color={colors.emerald500} />
-              </View>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                {searchQuery.trim()
-                  ? t("menus.no_results_found")
-                  : t("menus.no_menus_available")}
-              </Text>
-              <Text style={[styles.emptyText, { color: colors.icon }]}>
-                {searchQuery.trim()
-                  ? t("menus.try_different_search")
-                  : t("menus.create_personalized_menu")}
-              </Text>
+        {/* Menus List */}
+        {filteredMenus.length > 0 ? (
+          <View style={styles.menusList}>
+            {filteredMenus.map((menu, index) => (
+              <MenuCard
+                key={menu.menu_id}
+                menu={menu}
+                colors={colors}
+                isDark={isDark}
+                t={t}
+                isRTL={isRTL}
+                onStart={handleStartMenu}
+                onView={handleViewMenu}
+                onDelete={handleDeleteMenu}
+                index={index}
+              />
+            ))}
+          </View>
+        ) : (
+          <EmptyState
+            colors={colors}
+            t={t}
+            searchQuery={searchQuery}
+            onCreateMenu={() => setShowEnhancedCreation(true)}
+          />
+        )}
 
-              {!searchQuery.trim() && (
-                <TouchableOpacity
-                  style={[
-                    styles.emptyButton,
-                    { backgroundColor: colors.emerald500 },
-                  ]}
-                  onPress={() => setShowEnhancedCreation(true)}
-                >
-                  <Plus size={18} color="#ffffff" />
-                  <Text style={styles.emptyButtonText}>
-                    {t("menus.create_first_menu")}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-
-          {/* Nutrition Habits Section */}
-          {filteredMenus.length > 0 && (
-            <View style={styles.habitsSection}>
-              <NutritionHabits />
-            </View>
-          )}
-        </View>
+        {/* Bottom Spacing */}
+        <View style={{ height: 100 }} />
       </Animated.ScrollView>
 
       {/* Modals */}
-      <FilterModal
+      <FilterSortModal
         visible={showFilterModal}
         onClose={() => setShowFilterModal(false)}
         selectedFilter={selectedFilter}
+        selectedSort={selectedSort}
         onFilterSelect={setSelectedFilter}
+        onSortSelect={setSelectedSort}
         colors={colors}
         t={t}
       />
 
-      {renderEnhancedCreationModal()}
+      {renderMenuCreationModal()}
     </SafeAreaView>
   );
 }
 
 // ==================== STYLES ====================
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const isSmallDevice = SCREEN_WIDTH < 375;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
 
-  // Fixed Search Header
-  searchHeader: {
-    paddingHorizontal: isSmallDevice ? 16 : 20,
-    paddingTop: Platform.select({ ios: 8, android: 10 }),
-    paddingBottom: isSmallDevice ? 12 : 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.05)",
+  // Loading
+  loadingContainer: {
+    flex: 1,
+  },
+  loadingHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
 
-  searchContainer: {
+  // Skeleton
+  skeletonList: {
+    paddingHorizontal: 20,
+    gap: 16,
+  },
+  skeletonCard: {
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 8,
+  },
+  skeletonHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  skeletonIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  skeletonBadges: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  skeletonBadge: {
+    width: 60,
+    height: 24,
+    borderRadius: 12,
+  },
+  skeletonTitle: {
+    height: 24,
+    width: "70%",
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  skeletonSubtitle: {
+    height: 16,
+    width: "50%",
+    borderRadius: 6,
+    marginBottom: 16,
+  },
+  skeletonStats: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  skeletonStat: {
+    width: "30%",
+    height: 60,
+    borderRadius: 12,
+  },
+  skeletonActions: {
     flexDirection: "row",
     gap: 12,
   },
+  skeletonButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+  },
 
+  // Header
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: Platform.select({ ios: 8, android: 16 }),
+    paddingBottom: 16,
+  },
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  pageTitle: {
+    fontSize: isSmallDevice ? 28 : 32,
+    fontWeight: "900",
+    letterSpacing: -1,
+  },
+  createBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
   searchBar: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 25,
+    borderRadius: 16,
     gap: 10,
   },
-
   searchInput: {
     flex: 1,
     fontSize: 16,
+    fontWeight: "500",
+  },
+  filterBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
   },
 
-  filterButton: {
+  // Scroll
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+
+  // Active Plan Banner
+  activePlanBanner: {
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+  },
+  activePlanContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  activePlanLeft: {
+    flex: 1,
+  },
+  activePlanBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: "flex-start",
+    gap: 6,
+    marginBottom: 10,
+  },
+  activePlanBadgeText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  activePlanTitle: {
+    color: "#ffffff",
+    fontSize: 20,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  activePlanSubtitle: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  activePlanArrow: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // Category Pills
+  categoryScroll: {
+    marginBottom: 20,
+  },
+  categoryContent: {
+    gap: 10,
+    paddingRight: 20,
+  },
+  categoryPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
+    borderWidth: 1,
+  },
+  categoryPillText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  // Quick Stats
+  quickStatsCard: {
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 20,
+  },
+  quickStatsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
+  },
+  quickStatsTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  quickStatsGrid: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  quickStatItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  quickStatValue: {
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  quickStatLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  quickStatDivider: {
+    width: 1,
+    height: 30,
+  },
+
+  // Menu Card
+  menusList: {
+    gap: 16,
+  },
+  menuCard: {
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  cardGradient: {
+    padding: 18,
+  },
+  cardTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  menuIconBg: {
     width: 48,
     height: 48,
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
   },
-
-  // Scrollable Content
-  scrollContent: {
-    flex: 1,
-  },
-
-  contentContainer: {
-    paddingHorizontal: isSmallDevice ? 16 : 20,
-    paddingTop: isSmallDevice ? 16 : 20,
-    paddingBottom: Platform.select({ ios: 120, android: 100 }),
-  },
-
-  pageTitle: {
-    fontSize: isSmallDevice ? 26 : 32,
-    fontWeight: "900",
-    marginBottom: isSmallDevice ? 16 : 20,
-    letterSpacing: -0.8,
-  },
-
-  // Active Plan Card
-  activePlanCard: {
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 24,
-    overflow: "hidden",
-  },
-
-  activePlanHeader: {
+  cardBadges: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
-
-  activePlanBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.25)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-
-  activePlanBadgeText: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-
-  activePlanAction: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  activePlanTitle: {
-    color: "#ffffff",
-    fontSize: 26,
-    fontWeight: "800",
-    marginBottom: 8,
-    letterSpacing: -0.5,
-  },
-
-  activePlanSubtitle: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 15,
-    marginBottom: 18,
-  },
-
-  activePlanContinueButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingVertical: 14,
-    borderRadius: 12,
     gap: 8,
   },
-
-  activePlanContinueText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-
-  // Category Scroll
-  categoryScrollContainer: {
-    marginBottom: 24,
-  },
-
-  categoryContainer: {
-    paddingRight: 20,
-    gap: 12,
-  },
-
-  categoryPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 24,
-    gap: 8,
-  },
-
-  categoryText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-
-  // Create Menu Button
-  createMenuButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 28,
-    paddingVertical: 18,
-    borderRadius: 20,
-    marginBottom: 24,
-    gap: 10,
-  },
-
-  createMenuButtonText: {
-    color: "#ffffff",
-    fontSize: 17,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-  },
-
-  // Quick Stats Card
-  statsCard: {
-    padding: 20,
-    borderRadius: 20,
-    marginBottom: 24,
-  },
-
-  statsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-
-  statsTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-
-  statsGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-
-  statItem: {
-    alignItems: "center",
-    gap: 6,
-    flex: 1,
-  },
-
-  statValue: {
-    fontSize: 22,
-    fontWeight: "800",
-  },
-
-  statLabel: {
-    fontSize: 12,
-    fontWeight: "500",
-    textAlign: "center",
-  },
-
-  // Menus Grid
-  menusGrid: {
-    gap: 20,
-  },
-
-  // Enhanced Menu Cards
-  menuCard: {
-    borderRadius: 24,
-    overflow: "hidden",
-    marginBottom: 8,
-  },
-
-  menuImageHeader: {
-    height: 140,
-    justifyContent: "space-between",
-    padding: 20,
-  },
-
-  menuImageContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  menuBadges: {
-    gap: 8,
-  },
-
-  badge: {
+  daysBadge: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 12,
     gap: 4,
   },
-
-  badgeText: {
+  daysBadgeText: {
     color: "#ffffff",
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
   },
-
-  menuContent: {
+  difficultyBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  difficultyText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  cardContent: {
     padding: 18,
+    paddingTop: 0,
   },
-
-  menuHeader: {
-    marginBottom: 16,
-  },
-
   menuTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "800",
-    marginBottom: 6,
+    marginBottom: 4,
     letterSpacing: -0.5,
   },
-
-  menuSubtitle: {
+  menuCategory: {
     fontSize: 14,
-    fontWeight: "600",
-    opacity: 0.8,
-  },
-
-  // Enhanced Nutrition Grid
-  nutritionGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    fontWeight: "500",
     marginBottom: 16,
-    paddingVertical: 8,
   },
-
-  nutritionItem: {
+  statsRow: {
+    flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    flex: 1,
+    marginBottom: 18,
   },
-
-  nutritionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  statItem: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  statIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
-
-  nutritionValue: {
-    fontSize: 18,
+  statValue: {
+    fontSize: 16,
     fontWeight: "800",
   },
-
-  nutritionLabel: {
-    fontSize: 12,
+  statLabel: {
+    fontSize: 11,
     fontWeight: "500",
   },
-
-  // Menu Meta
-  menuMeta: {
+  statDivider: {
+    width: 1,
+    height: 28,
+    marginHorizontal: 8,
+  },
+  actionRow: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
+    gap: 10,
   },
-
-  costBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    gap: 4,
-  },
-
-  costText: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-
-  ratingBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-
-  ratingText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-
-  // Action Buttons
-  menuActions: {
-    flexDirection: "row",
-    gap: 12,
-  },
-
-  viewButton: {
-    flex: 1,
+  actionBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 14,
     gap: 6,
   },
-
-  viewButtonText: {
-    fontSize: 15,
+  viewBtn: {
+    flex: 1,
+  },
+  startBtn: {
+    flex: 2,
+  },
+  deleteBtn: {
+    width: 44,
+  },
+  actionBtnText: {
+    fontSize: 14,
     fontWeight: "600",
   },
-
-  startButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 6,
-  },
-
-  startButtonText: {
-    fontSize: 15,
-    fontWeight: "700",
+  startBtnText: {
     color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "700",
   },
 
   // Empty State
@@ -1428,39 +1659,34 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     paddingHorizontal: 40,
   },
-
-  emptyIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+  emptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 24,
   },
-
   emptyTitle: {
     fontSize: 22,
     fontWeight: "800",
-    marginBottom: 10,
+    marginBottom: 8,
     textAlign: "center",
   },
-
-  emptyText: {
+  emptySubtitle: {
     fontSize: 16,
     textAlign: "center",
     marginBottom: 28,
     lineHeight: 24,
   },
-
   emptyButton: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 28,
     paddingVertical: 16,
-    borderRadius: 25,
+    borderRadius: 20,
     gap: 10,
   },
-
   emptyButtonText: {
     color: "#ffffff",
     fontSize: 16,
@@ -1468,64 +1694,97 @@ const styles = StyleSheet.create({
   },
 
   // Filter Modal
-  filterModalOverlay: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
-
   filterModalContainer: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: "70%",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: SCREEN_HEIGHT * 0.8,
   },
-
+  modalHandle: {
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  handleBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+  },
   filterModalHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 24,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.05)",
+    paddingBottom: 20,
   },
-
   filterModalTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "800",
   },
-
-  filterCloseButton: {
+  modalCloseBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
-
-  filterOptions: {
-    padding: 20,
+  filterSection: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
   },
-
-  filterOption: {
+  filterSectionTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 14,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    opacity: 0.6,
+  },
+  filterGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  filterChip: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    borderRadius: 16,
-    marginBottom: 10,
-    gap: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
   },
-
-  filterOptionText: {
-    flex: 1,
-    fontSize: 16,
+  filterChipText: {
+    fontSize: 14,
     fontWeight: "600",
   },
-
-  habitsSection: {
-    paddingHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 20,
+  sortList: {
+    gap: 4,
+  },
+  sortOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  sortOptionText: {
+    fontSize: 15,
+  },
+  applyButton: {
+    marginHorizontal: 24,
+    marginBottom: Platform.select({ ios: 40, android: 24 }),
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+  },
+  applyButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

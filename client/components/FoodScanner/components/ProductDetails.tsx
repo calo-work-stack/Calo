@@ -7,16 +7,17 @@ import {
   ScrollView,
   TouchableOpacity,
 } from "react-native";
-import { ArrowLeft, History, Plus, ShoppingCart } from "lucide-react-native";
+import { ArrowLeft, History, Plus, ShoppingCart, Wallet } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/context/ThemeContext";
-import { ScanResult } from "@/src/types/statistics";
+import { ScanResult, PriceEstimate } from "@/src/types/statistics";
 import HealthIndicators from "./HealthIndicators";
 import NutritionBars from "./NutritionBars";
 
 interface ProductDetailsProps {
   scanResult: ScanResult;
   quantity: number;
+  priceEstimate?: PriceEstimate | null;
   onBack: () => void;
   onShowHistory: () => void;
   onAddToMeal: () => void;
@@ -26,6 +27,7 @@ interface ProductDetailsProps {
 export default function ProductDetails({
   scanResult,
   quantity,
+  priceEstimate,
   onBack,
   onShowHistory,
   onAddToMeal,
@@ -83,6 +85,43 @@ export default function ProductDetails({
           </Text>
         </View>
       </View>
+
+      {/* Estimated Price Section */}
+      {priceEstimate && priceEstimate.estimated_price > 0 && (
+        <View style={[styles.priceSection, { backgroundColor: colors.surface }]}>
+          <View style={styles.priceSectionHeader}>
+            <View style={[styles.priceIconContainer, { backgroundColor: colors.primary + "20" }]}>
+              <Wallet size={20} color={colors.primary} />
+            </View>
+            <Text style={[styles.priceSectionTitle, { color: colors.text }]}>
+              {t("foodScanner.estimatedCost")}
+            </Text>
+          </View>
+          <View style={styles.priceContent}>
+            <Text style={[styles.priceValue, { color: colors.primary }]}>
+              {priceEstimate.price_range}
+            </Text>
+            {priceEstimate.confidence && (
+              <View style={[styles.confidenceBadge, {
+                backgroundColor: priceEstimate.confidence === 'high' ? '#10B98120' :
+                                 priceEstimate.confidence === 'medium' ? '#F59E0B20' : '#EF444420'
+              }]}>
+                <Text style={[styles.confidenceText, {
+                  color: priceEstimate.confidence === 'high' ? '#10B981' :
+                         priceEstimate.confidence === 'medium' ? '#F59E0B' : '#EF4444'
+                }]}>
+                  {t(`foodScanner.confidence.${priceEstimate.confidence}`)}
+                </Text>
+              </View>
+            )}
+          </View>
+          {priceEstimate.market_context && (
+            <Text style={[styles.marketContext, { color: colors.textSecondary }]}>
+              {priceEstimate.market_context}
+            </Text>
+          )}
+        </View>
+      )}
 
       {/* Health Indicators */}
       <HealthIndicators nutrition={scanResult.product.nutrition_per_100g} />
@@ -179,7 +218,6 @@ const styles = StyleSheet.create({
     padding: 16,
     flexDirection: "row",
     alignItems: "center",
-    elevation: 4,
   },
   productImage: {
     width: 72,
@@ -200,6 +238,52 @@ const styles = StyleSheet.create({
   },
   productWeight: {
     fontSize: 13,
+  },
+  priceSection: {
+    margin: 20,
+    marginTop: 12,
+    borderRadius: 16,
+    padding: 16,
+  },
+  priceSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  priceIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  priceSectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  priceContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  priceValue: {
+    fontSize: 24,
+    fontWeight: "800",
+  },
+  confidenceBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  confidenceText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  marketContext: {
+    fontSize: 12,
+    marginTop: 8,
+    fontStyle: "italic",
   },
   ingredientsSection: {
     paddingHorizontal: 20,
@@ -255,6 +339,5 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    elevation: 3,
   },
 });

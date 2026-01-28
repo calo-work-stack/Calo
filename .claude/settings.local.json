@@ -16,7 +16,12 @@
       "mcp__ide__getDiagnostics",
       "Bash(wc:*)",
       "Bash(npm run build)",
-      "Bash(npx expo:*)"
+      "Bash(npx expo:*)",
+      "Bash(npm install:*)",
+      "Bash(npx eslint:*)",
+      "Bash(timeout 10 npm run dev:*)",
+      "Bash(node -e:*)",
+      "Bash(npx ts-node -e \"import ''./src/services/nutrition''\")"
     ]
   }
 }

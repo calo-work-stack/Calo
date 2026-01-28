@@ -171,12 +171,13 @@ export const useMealStatsSelector = () => {
         const today = new Date().toISOString().split('T')[0];
         const todayMeals = meals.filter(meal => meal.created_at.startsWith(today));
         
+        // FIX: Check _g fields FIRST since API returns protein_g, carbs_g, fats_g
         return todayMeals.reduce(
           (acc, meal) => ({
-            calories: acc.calories + (meal.calories || 0),
-            protein: acc.protein + (meal.protein || 0),
-            carbs: acc.carbs + (meal.carbs || 0),
-            fat: acc.fat + (meal.fat || 0),
+            calories: acc.calories + (Number(meal.calories) || 0),
+            protein: acc.protein + (Number(meal.protein_g) || Number(meal.protein) || 0),
+            carbs: acc.carbs + (Number(meal.carbs_g) || Number(meal.carbs) || 0),
+            fat: acc.fat + (Number(meal.fats_g) || Number(meal.fat) || 0),
             mealCount: acc.mealCount + 1,
           }),
           { calories: 0, protein: 0, carbs: 0, fat: 0, mealCount: 0 }

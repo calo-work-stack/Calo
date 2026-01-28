@@ -9,7 +9,7 @@ declare global {
 export const prisma =
   global.__prisma ||
   new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    log: process.env.NODE_ENV === "development" ? ["error"] : ["error"], // Reduced logging for speed
     datasources: {
       db: {
         url: process.env.DATABASE_URL,
@@ -17,10 +17,13 @@ export const prisma =
     },
     // Optimize transaction behavior for faster responses
     transactionOptions: {
-      maxWait: 5000, // Max time to wait for a connection (5s)
-      timeout: 10000, // Max transaction duration (10s)
+      maxWait: 3000, // Reduced from 5s to 3s for faster failures
+      timeout: 8000, // Reduced from 10s to 8s
     },
   });
+
+// Enable query result caching hint for Prisma
+// Note: Actual caching depends on database configuration
 
 if (process.env.NODE_ENV !== "production") {
   global.__prisma = prisma;

@@ -55,7 +55,7 @@ export class CalendarService {
       const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
       // ⚡ PARALLEL QUERIES - fetch all data at once instead of sequentially
-      const [meals, dailyGoals, waterIntakes, events] = await Promise.all([
+      const [meals, dailyGoals, events] = await Promise.all([
         // Fetch meals - only select needed fields for performance
         prisma.meal.findMany({
           where: {
@@ -74,7 +74,7 @@ export class CalendarService {
           orderBy: { upload_time: "asc" },
         }),
 
-        // Fetch daily goals
+        // Fetch daily goals (includes water_ml)
         prisma.dailyGoal.findMany({
           where: {
             user_id: user_id,
@@ -87,19 +87,6 @@ export class CalendarService {
             carbs_g: true,
             fats_g: true,
             water_ml: true,
-          },
-        }),
-
-        // Fetch water intake
-        prisma.waterIntake.findMany({
-          where: {
-            user_id: user_id,
-            date: { gte: startDate, lte: endDate },
-          },
-          select: {
-            date: true,
-            cups_consumed: true,
-            milliliters_consumed: true,
           },
         }),
 
@@ -120,6 +107,19 @@ export class CalendarService {
           orderBy: { date: "asc" },
         }),
       ]);
+
+      // Fetch water intakes
+      const waterIntakes = await prisma.waterIntake.findMany({
+        where: {
+          user_id: user_id,
+          date: { gte: startDate, lte: endDate },
+        },
+        select: {
+          date: true,
+          cups_consumed: true,
+          milliliters_consumed: true,
+        },
+      });
 
       console.log("⚡ Parallel fetch complete:", meals.length, "meals");
 

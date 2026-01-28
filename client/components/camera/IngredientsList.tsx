@@ -43,7 +43,7 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
   onRemoveIngredient,
   onAddIngredient,
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const { addItem, bulkAddItems, isAddingItem, isBulkAdding } =
     useShoppingList();
@@ -132,18 +132,165 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
 
   if (ingredients.length === 0) return null;
 
+  const styles = StyleSheet.create({
+    container: {
+      marginBottom: 20,
+      padding: 10,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16,
+      paddingHorizontal: 4,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      flex: 1,
+    },
+    iconWrapper: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.card,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: "800",
+      color: colors.text,
+      letterSpacing: -0.6,
+    },
+    subtitle: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontWeight: "600",
+      marginTop: 3,
+      letterSpacing: -0.1,
+    },
+    headerActions: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    addAllButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.primary,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    addButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.success,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    ingredientsList: {
+      gap: 12,
+      padding: 10,
+    },
+    ingredientCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: colors.card,
+      borderRadius: 20,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    ingredientLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      flex: 1,
+      gap: 14,
+    },
+    ingredientDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.tint,
+    },
+    ingredientInfo: {
+      flex: 1,
+      gap: 8,
+    },
+    ingredientName: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: colors.text,
+      letterSpacing: -0.3,
+    },
+    nutritionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    nutritionChip: {
+      paddingVertical: 4,
+      paddingHorizontal: 0,
+    },
+    nutritionDivider: {
+      width: 1,
+      height: 12,
+      backgroundColor: colors.border,
+    },
+    nutritionText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      letterSpacing: -0.1,
+    },
+    ingredientActions: {
+      flexDirection: "row",
+      gap: 8,
+      marginLeft: 12,
+    },
+    actionButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    cartButton: {
+      backgroundColor: colors.emerald50,
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    editButton: {
+      backgroundColor: isDark ? colors.surfaceVariant : "#FFFBEB",
+      borderWidth: 1,
+      borderColor: colors.warning,
+    },
+    deleteButton: {
+      backgroundColor: isDark ? colors.surfaceVariant : "#FEF2F2",
+      borderWidth: 1,
+      borderColor: colors.error,
+    },
+  });
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.iconWrapper}>
-            <ChefHat size={22} color="#FF6B35" strokeWidth={2.5} />
+            <ChefHat size={22} color={colors.tint} strokeWidth={2.5} />
           </View>
           <View>
             <Text style={styles.title}>{t("history.ingredients")}</Text>
             <Text style={styles.subtitle}>
-              {ingredients.length} {t("statistics.items_detected")}
+              {ingredients.length}{" "}
+              {t("statistics.items_detected", { count: ingredients.length })}
             </Text>
           </View>
         </View>
@@ -155,7 +302,11 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
               disabled={isBulkAdding || addingToShoppingList === "all"}
               activeOpacity={0.7}
             >
-              <ShoppingCart size={18} color="#FFFFFF" strokeWidth={2.5} />
+              <ShoppingCart
+                size={18}
+                color={colors.onPrimary}
+                strokeWidth={2.5}
+              />
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -163,7 +314,7 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
             onPress={onAddIngredient}
             activeOpacity={0.7}
           >
-            <Plus size={20} color="#FFFFFF" strokeWidth={2.5} />
+            <Plus size={20} color={colors.onPrimary} strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
       </View>
@@ -207,7 +358,11 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
                 disabled={isAddingItem || addingToShoppingList === `${index}`}
                 activeOpacity={0.7}
               >
-                <ShoppingCart size={15} color="#3B82F6" strokeWidth={2.5} />
+                <ShoppingCart
+                  size={15}
+                  color={colors.primary}
+                  strokeWidth={2.5}
+                />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -215,7 +370,7 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
                 onPress={() => onEditIngredient(ingredient, index)}
                 activeOpacity={0.7}
               >
-                <Edit3 size={15} color="#F59E0B" strokeWidth={2.5} />
+                <Edit3 size={15} color={colors.warning} strokeWidth={2.5} />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -223,7 +378,7 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
                 onPress={() => onRemoveIngredient(index)}
                 activeOpacity={0.7}
               >
-                <Trash2 size={15} color="#EF4444" strokeWidth={2.5} />
+                <Trash2 size={15} color={colors.error} strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
           </View>
@@ -232,152 +387,3 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 20,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-    paddingHorizontal: 4,
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    flex: 1,
-  },
-  iconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#FFF4ED",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#1A2744",
-    letterSpacing: -0.6,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: "#8B92A8",
-    fontWeight: "600",
-    marginTop: 3,
-    letterSpacing: -0.1,
-  },
-  headerActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  addAllButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#3B82F6",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#3B82F6",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#10B981",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  ingredientsList: {
-    gap: 12,
-  },
-  ingredientCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 16,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  ingredientLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    gap: 14,
-  },
-  ingredientDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#FF6B35",
-  },
-  ingredientInfo: {
-    flex: 1,
-    gap: 8,
-  },
-  ingredientName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1A2744",
-    letterSpacing: -0.3,
-  },
-  nutritionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  nutritionChip: {
-    paddingVertical: 4,
-    paddingHorizontal: 0,
-  },
-  nutritionDivider: {
-    width: 1,
-    height: 12,
-    backgroundColor: "#E5E7EB",
-  },
-  nutritionText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#8B92A8",
-    letterSpacing: -0.1,
-  },
-  ingredientActions: {
-    flexDirection: "row",
-    gap: 8,
-    marginLeft: 12,
-  },
-  actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cartButton: {
-    backgroundColor: "#EFF6FF",
-  },
-  editButton: {
-    backgroundColor: "#FFFBEB",
-  },
-  deleteButton: {
-    backgroundColor: "#FEF2F2",
-  },
-});

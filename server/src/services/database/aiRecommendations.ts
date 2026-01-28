@@ -708,6 +708,7 @@ Current vs Target: Calories ${performance.avgDailyCalories}/${Math.round(calorie
           },
           select: {
             cups_consumed: true,
+            milliliters_consumed: true,
             date: true,
           },
         }),

@@ -470,30 +470,67 @@ export class EnhancedDailyGoalsService {
   }
 
   /**
-   * Get user's current daily goals - CREATE IF MISSING using UPSERT
+   * Get user's current daily goals WITH consumption data - CREATE IF MISSING using UPSERT
    */
-  static async getUserDailyGoals(userId: string): Promise<NutritionGoals> {
+  static async getUserDailyGoals(userId: string): Promise<NutritionGoals & { consumed: NutritionGoals; remaining: NutritionGoals; meals: any[] }> {
     try {
       console.log(`📊 === GETTING DAILY GOALS FOR USER: ${userId} ===`);
 
       const today = new Date();
       const todayString = today.toISOString().split("T")[0];
       const todayDate = new Date(todayString);
+      const startOfDay = new Date(todayString + "T00:00:00.000Z");
+      const endOfDay = new Date(todayString + "T23:59:59.999Z");
 
       console.log(`📅 Looking for goals on date: ${todayString}`);
-      console.log(`📅 Date object: ${todayDate.toISOString()}`);
 
-      // Get questionnaire for goal calculation
-      const questionnaire = await prisma.userQuestionnaire.findFirst({
-        where: { user_id: userId },
-        orderBy: { date_completed: "desc" },
-      });
+      // Run queries in parallel for better performance
+      const [questionnaire, todayMeals, waterIntake] = await Promise.all([
+        // Get questionnaire for goal calculation
+        prisma.userQuestionnaire.findFirst({
+          where: { user_id: userId },
+          orderBy: { date_completed: "desc" },
+        }),
+        // Get today's meals for consumption calculation
+        prisma.meal.findMany({
+          where: {
+            user_id: userId,
+            created_at: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+          },
+          select: {
+            meal_id: true,
+            meal_name: true,
+            calories: true,
+            protein_g: true,
+            carbs_g: true,
+            fats_g: true,
+            fiber_g: true,
+            sugar_g: true,
+            sodium_mg: true,
+            created_at: true,
+            meal_period: true,
+            is_mandatory: true,
+          },
+          orderBy: { created_at: "desc" },
+        }),
+        // Get today's water intake
+        prisma.waterIntake.findFirst({
+          where: {
+            user_id: userId,
+            date: todayDate,
+          },
+        }),
+      ]);
 
       console.log(`📋 Questionnaire found: ${!!questionnaire}`);
+      console.log(`🍽️ Today's meals: ${todayMeals.length}`);
+      console.log(`💧 Water intake: ${waterIntake?.milliliters_consumed || 0}ml`);
 
       // Calculate goals
       const goals = this.calculatePersonalizedGoals(questionnaire);
-      console.log(`🎯 Calculated goals:`, goals);
 
       // Use UPSERT to get or create goals
       const dailyGoal = await prisma.dailyGoal.upsert({
@@ -504,7 +541,6 @@ export class EnhancedDailyGoalsService {
           },
         },
         update: {
-          // Don't update existing goals unless needed
           updated_at: new Date(),
         },
         create: {
@@ -521,14 +557,39 @@ export class EnhancedDailyGoalsService {
         },
       });
 
-      console.log(`✅ UPSERTED daily goal:`, {
-        id: dailyGoal.id,
-        user_id: dailyGoal.user_id,
-        date: dailyGoal.date.toISOString(),
-        calories: dailyGoal.calories,
+      // Calculate consumed totals from today's meals
+      const consumed = {
+        calories: todayMeals.reduce((sum, m) => sum + (Number(m.calories) || 0), 0),
+        protein_g: todayMeals.reduce((sum, m) => sum + (Number(m.protein_g) || 0), 0),
+        carbs_g: todayMeals.reduce((sum, m) => sum + (Number(m.carbs_g) || 0), 0),
+        fats_g: todayMeals.reduce((sum, m) => sum + (Number(m.fats_g) || 0), 0),
+        fiber_g: todayMeals.reduce((sum, m) => sum + (Number(m.fiber_g) || 0), 0),
+        sugar_g: todayMeals.reduce((sum, m) => sum + (Number(m.sugar_g) || 0), 0),
+        sodium_mg: todayMeals.reduce((sum, m) => sum + (Number(m.sodium_mg) || 0), 0),
+        water_ml: waterIntake?.milliliters_consumed || 0,
+      };
+
+      // Calculate remaining (goals - consumed)
+      const remaining = {
+        calories: Math.max(0, Number(dailyGoal.calories) - consumed.calories),
+        protein_g: Math.max(0, Number(dailyGoal.protein_g) - consumed.protein_g),
+        carbs_g: Math.max(0, Number(dailyGoal.carbs_g) - consumed.carbs_g),
+        fats_g: Math.max(0, Number(dailyGoal.fats_g) - consumed.fats_g),
+        fiber_g: Math.max(0, Number(dailyGoal.fiber_g) - consumed.fiber_g),
+        sugar_g: Math.max(0, Number(dailyGoal.sugar_g) - consumed.sugar_g),
+        sodium_mg: Math.max(0, Number(dailyGoal.sodium_mg) - consumed.sodium_mg),
+        water_ml: Math.max(0, Number(dailyGoal.water_ml) - consumed.water_ml),
+      };
+
+      console.log(`✅ Goals fetched:`, {
+        goals: { calories: dailyGoal.calories, protein: dailyGoal.protein_g },
+        consumed: { calories: consumed.calories, protein: consumed.protein_g },
+        remaining: { calories: remaining.calories, protein: remaining.protein_g },
+        mealsCount: todayMeals.length,
       });
 
       return {
+        // Target goals
         calories: Number(dailyGoal.calories),
         protein_g: Number(dailyGoal.protein_g),
         carbs_g: Number(dailyGoal.carbs_g),
@@ -537,11 +598,17 @@ export class EnhancedDailyGoalsService {
         sodium_mg: Number(dailyGoal.sodium_mg),
         sugar_g: Number(dailyGoal.sugar_g),
         water_ml: Number(dailyGoal.water_ml),
+        // Consumed today
+        consumed,
+        // Remaining
+        remaining,
+        // Today's meals list
+        meals: todayMeals,
       };
     } catch (error) {
       console.error("💥 Error getting user daily goals:", error);
-      // Return safe defaults
-      return {
+      // Return safe defaults with empty consumption
+      const defaultGoals = {
         calories: 2000,
         protein_g: 150,
         carbs_g: 250,
@@ -550,6 +617,21 @@ export class EnhancedDailyGoalsService {
         sodium_mg: 2300,
         sugar_g: 50,
         water_ml: 2500,
+      };
+      return {
+        ...defaultGoals,
+        consumed: {
+          calories: 0,
+          protein_g: 0,
+          carbs_g: 0,
+          fats_g: 0,
+          fiber_g: 0,
+          sodium_mg: 0,
+          sugar_g: 0,
+          water_ml: 0,
+        },
+        remaining: defaultGoals,
+        meals: [],
       };
     }
   }

@@ -37,6 +37,7 @@ import {
   Zap,
   Brain,
   Scale,
+  Wallet,
 } from "lucide-react-native";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import { LinearGradient } from "expo-linear-gradient";
@@ -44,7 +45,10 @@ import { LinearGradient } from "expo-linear-gradient";
 const { width } = Dimensions.get("window");
 
 // Enable LayoutAnimation for Android
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
@@ -67,20 +71,51 @@ interface MealCardProps {
   isHighlighted?: boolean;
 }
 
-const MEAL_PERIOD_CONFIG: Record<string, { icon: any; color: string; gradient: string[] }> = {
-  breakfast: { icon: Sunrise, color: "#FF9F0A", gradient: ["#FF9F0A", "#FFB340"] },
+const MEAL_PERIOD_CONFIG: Record<
+  string,
+  { icon: any; color: string; gradient: string[] }
+> = {
+  breakfast: {
+    icon: Sunrise,
+    color: "#FF9F0A",
+    gradient: ["#FF9F0A", "#FFB340"],
+  },
   lunch: { icon: Sun, color: "#FF6B6B", gradient: ["#FF6B6B", "#FF8E8E"] },
   dinner: { icon: Sunset, color: "#8B5CF6", gradient: ["#8B5CF6", "#A78BFA"] },
   snack: { icon: Apple, color: "#10B981", gradient: ["#10B981", "#34D399"] },
-  late_night: { icon: Moon, color: "#6366F1", gradient: ["#6366F1", "#818CF8"] },
+  late_night: {
+    icon: Moon,
+    color: "#6366F1",
+    gradient: ["#6366F1", "#818CF8"],
+  },
   other: { icon: Coffee, color: "#8E8E93", gradient: ["#8E8E93", "#A8A8AC"] },
 };
 
 const RATING_CATEGORIES = [
-  { key: "taste_rating", label: "history.ratings.taste", icon: ChefHat, color: "#FF6B6B" },
-  { key: "satiety_rating", label: "history.ratings.satiety", icon: Scale, color: "#10B981" },
-  { key: "energy_rating", label: "history.ratings.energy", icon: Zap, color: "#F59E0B" },
-  { key: "heaviness_rating", label: "history.ratings.heaviness", icon: Brain, color: "#8B5CF6" },
+  {
+    key: "taste_rating",
+    label: "history.ratings.taste",
+    icon: ChefHat,
+    color: "#FF6B6B",
+  },
+  {
+    key: "satiety_rating",
+    label: "history.ratings.satiety",
+    icon: Scale,
+    color: "#10B981",
+  },
+  {
+    key: "energy_rating",
+    label: "history.ratings.energy",
+    icon: Zap,
+    color: "#F59E0B",
+  },
+  {
+    key: "heaviness_rating",
+    label: "history.ratings.heaviness",
+    icon: Brain,
+    color: "#8B5CF6",
+  },
 ];
 
 export default function MealCard({
@@ -100,12 +135,16 @@ export default function MealCard({
     energy_rating: meal.energy_rating || meal.energyRating || 0,
     heaviness_rating: meal.heaviness_rating || meal.heavinessRating || 0,
   });
-  const [isFavorite, setIsFavorite] = useState(meal.is_favorite || meal.isFavorite || false);
+  const [isFavorite, setIsFavorite] = useState(
+    meal.is_favorite || meal.isFavorite || false,
+  );
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const swipeableRef = useRef<any>(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const highlightAnim = useRef(new Animated.Value(isHighlighted ? 1 : 0)).current;
+  const highlightAnim = useRef(
+    new Animated.Value(isHighlighted ? 1 : 0),
+  ).current;
 
   // Update local state when meal prop changes
   useEffect(() => {
@@ -122,15 +161,26 @@ export default function MealCard({
   useEffect(() => {
     if (isHighlighted) {
       Animated.sequence([
-        Animated.timing(highlightAnim, { toValue: 1, duration: 300, useNativeDriver: false }),
+        Animated.timing(highlightAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+        }),
         Animated.delay(2000),
-        Animated.timing(highlightAnim, { toValue: 0, duration: 500, useNativeDriver: false }),
+        Animated.timing(highlightAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: false,
+        }),
       ]).start();
     }
   }, [isHighlighted]);
 
-  const mealPeriod = (meal.meal_period || meal.mealPeriod || "other").toLowerCase().replace(/\s+/g, "_");
-  const periodConfig = MEAL_PERIOD_CONFIG[mealPeriod] || MEAL_PERIOD_CONFIG.other;
+  const mealPeriod = (meal.meal_period || meal.mealPeriod || "other")
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+  const periodConfig =
+    MEAL_PERIOD_CONFIG[mealPeriod] || MEAL_PERIOD_CONFIG.other;
   const PeriodIcon = periodConfig.icon;
 
   const mealId = meal.id || meal.meal_id?.toString();
@@ -141,9 +191,9 @@ export default function MealCard({
 
     return rawIngredients.map((ing: any) => {
       // If it's already an object with name property, use it
-      if (typeof ing === 'object' && ing !== null && 'name' in ing) {
+      if (typeof ing === "object" && ing !== null && "name" in ing) {
         return {
-          name: ing.name || 'Unknown',
+          name: ing.name || "Unknown",
           calories: Number(ing.calories) || 0,
           protein: Number(ing.protein) || 0,
           carbs: Number(ing.carbs) || 0,
@@ -153,7 +203,7 @@ export default function MealCard({
         };
       }
       // If it's a string (from manual meal), convert to object
-      if (typeof ing === 'string') {
+      if (typeof ing === "string") {
         return {
           name: ing,
           calories: 0,
@@ -164,7 +214,7 @@ export default function MealCard({
       }
       // Fallback for unexpected types
       return {
-        name: String(ing) || 'Unknown',
+        name: String(ing) || "Unknown",
         calories: 0,
         protein: 0,
         carbs: 0,
@@ -177,8 +227,16 @@ export default function MealCard({
 
   const handleToggleFavorite = useCallback(() => {
     Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 1.4, duration: 100, useNativeDriver: true }),
-      Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+      Animated.timing(scaleAnim, {
+        toValue: 1.4,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
     ]).start();
 
     setIsFavorite(!isFavorite);
@@ -191,7 +249,7 @@ export default function MealCard({
   }, [isExpanded]);
 
   const handleRatingChange = useCallback((key: string, value: number) => {
-    setLocalRatings(prev => ({ ...prev, [key]: value }));
+    setLocalRatings((prev) => ({ ...prev, [key]: value }));
     setHasUnsavedChanges(true);
   }, []);
 
@@ -204,7 +262,9 @@ export default function MealCard({
     if (!dateStr) return "";
     const date = new Date(dateStr);
     const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
+    );
 
     if (diffDays === 0) return t("common.today");
     if (diffDays === 1) return t("common.yesterday");
@@ -219,15 +279,19 @@ export default function MealCard({
       localRatings.satiety_rating,
       localRatings.energy_rating,
       localRatings.heaviness_rating,
-    ].filter(r => r > 0);
+    ].filter((r) => r > 0);
 
     if (ratings.length === 0) return 0;
     return ratings.reduce((a, b) => a + b, 0) / ratings.length;
   };
 
-  const renderStars = (rating: number, onPress: (value: number) => void, size: number = 20) => (
+  const renderStars = (
+    rating: number,
+    onPress: (value: number) => void,
+    size: number = 20,
+  ) => (
     <View style={styles.starsRow}>
-      {[1, 2, 3, 4, 5].map(star => (
+      {[1, 2, 3, 4, 5].map((star) => (
         <TouchableOpacity
           key={star}
           onPress={() => onPress(star)}
@@ -247,7 +311,7 @@ export default function MealCard({
 
   const renderMiniStars = (rating: number) => (
     <View style={styles.miniStarsRow}>
-      {[1, 2, 3, 4, 5].map(star => (
+      {[1, 2, 3, 4, 5].map((star) => (
         <Star
           key={star}
           size={10}
@@ -314,7 +378,7 @@ export default function MealCard({
           {
             backgroundColor: colors.card,
             borderColor: isHighlighted ? borderColor : colors.border,
-            borderWidth: isHighlighted ? 2: 1,
+            borderWidth: isHighlighted ? 2 : 1,
           },
         ]}
       >
@@ -333,7 +397,12 @@ export default function MealCard({
                 resizeMode="cover"
               />
             ) : (
-              <View style={[styles.imagePlaceholder, { backgroundColor: colors.surfaceVariant }]}>
+              <View
+                style={[
+                  styles.imagePlaceholder,
+                  { backgroundColor: colors.surfaceVariant },
+                ]}
+              >
                 <Camera size={28} color={colors.muted} />
               </View>
             )}
@@ -362,48 +431,95 @@ export default function MealCard({
           <View style={styles.infoSection}>
             {/* Meal Name & Rating */}
             <View style={styles.nameRow}>
-              <Text style={[styles.mealName, { color: colors.text }]} numberOfLines={2}>
+              <Text
+                style={[styles.mealName, { color: colors.text }]}
+                numberOfLines={2}
+              >
                 {meal.meal_name || meal.name || t("history.unknownMeal")}
               </Text>
               {avgRating > 0 && (
                 <View style={styles.avgRatingBadge}>
                   <Star size={12} color="#FFB800" fill="#FFB800" />
-                  <Text style={styles.avgRatingText}>{avgRating.toFixed(1)}</Text>
+                  <Text style={styles.avgRatingText}>
+                    {avgRating.toFixed(1)}
+                  </Text>
                 </View>
               )}
             </View>
 
             {/* Calories Badge */}
             <View style={styles.caloriesRow}>
-              <View style={[styles.caloriesBadge, { backgroundColor: isDark ? "#FF9F0A20" : "#FFF4E6" }]}>
+              <View
+                style={[
+                  styles.caloriesBadge,
+                  { backgroundColor: isDark ? "#FF9F0A20" : "#FFF4E6" },
+                ]}
+              >
                 <Flame size={14} color="#FF9F0A" />
-                <Text style={styles.caloriesValue}>{Math.round(meal.calories || 0)}</Text>
-                <Text style={styles.caloriesUnit}>kcal</Text>
+                <Text style={styles.caloriesValue}>
+                  {Math.round(meal.calories || 0)}
+                </Text>
+                <Text style={styles.caloriesUnit}>{t("common.kcal")}</Text>
               </View>
+              <Text>
+                {/* Estimated Cost Badge */}
+                {(meal.estimated_cost || meal.estimatedCost) &&
+                  (meal.estimated_cost > 0 || meal.estimatedCost > 0) && (
+                    <View
+                      style={[
+                        styles.costBadge,
+                        { backgroundColor: isDark ? "#10B98120" : "#ECFDF5" },
+                      ]}
+                    >
+                      <Wallet size={12} color="#10B981" />
+                      <Text style={styles.costValue}>
+                        {(meal.estimated_cost || meal.estimatedCost).toFixed(0)}
+                      </Text>
+                      <Text style={styles.costCurrency}>₪</Text>
+                    </View>
+                  )}
+              </Text>
 
               <View style={styles.dateContainer}>
                 <Clock size={11} color={colors.muted} />
                 <Text style={[styles.dateText, { color: colors.muted }]}>
-                  {formatDate(meal.created_at || meal.upload_time || meal.createdAt)}
+                  {formatDate(
+                    meal.created_at || meal.upload_time || meal.createdAt,
+                  )}
                 </Text>
               </View>
             </View>
 
             {/* Macros Row */}
             <View style={styles.macrosRow}>
-              <View style={[styles.macroChip, { backgroundColor: isDark ? "#FF3B3015" : "#FFF0F0" }]}>
+              <View
+                style={[
+                  styles.macroChip,
+                  { backgroundColor: isDark ? "#FF3B3015" : "#FFF0F0" },
+                ]}
+              >
                 <Dumbbell size={11} color="#FF3B30" />
                 <Text style={[styles.macroText, { color: "#FF3B30" }]}>
                   {Math.round(meal.protein_g || meal.protein || 0)}g
                 </Text>
               </View>
-              <View style={[styles.macroChip, { backgroundColor: isDark ? "#34C75915" : "#F0FFF4" }]}>
+              <View
+                style={[
+                  styles.macroChip,
+                  { backgroundColor: isDark ? "#34C75915" : "#F0FFF4" },
+                ]}
+              >
                 <Wheat size={11} color="#34C759" />
                 <Text style={[styles.macroText, { color: "#34C759" }]}>
                   {Math.round(meal.carbs_g || meal.carbs || 0)}g
                 </Text>
               </View>
-              <View style={[styles.macroChip, { backgroundColor: isDark ? "#007AFF15" : "#F0F7FF" }]}>
+              <View
+                style={[
+                  styles.macroChip,
+                  { backgroundColor: isDark ? "#007AFF15" : "#F0F7FF" },
+                ]}
+              >
                 <Droplets size={11} color="#007AFF" />
                 <Text style={[styles.macroText, { color: "#007AFF" }]}>
                   {Math.round(meal.fats_g || meal.fat || meal.fats || 0)}g
@@ -418,7 +534,11 @@ export default function MealCard({
               <TouchableOpacity
                 style={[
                   styles.actionButton,
-                  { backgroundColor: isFavorite ? "#FF2D5520" : colors.surfaceVariant }
+                  {
+                    backgroundColor: isFavorite
+                      ? "#FF2D5520"
+                      : colors.surfaceVariant,
+                  },
                 ]}
                 onPress={handleToggleFavorite}
                 activeOpacity={0.7}
@@ -432,7 +552,10 @@ export default function MealCard({
             </Animated.View>
 
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: colors.surfaceVariant }]}
+              style={[
+                styles.actionButton,
+                { backgroundColor: colors.surfaceVariant },
+              ]}
               onPress={handleExpand}
               activeOpacity={0.7}
             >
@@ -448,7 +571,9 @@ export default function MealCard({
         {/* Expanded Section */}
         {isExpanded && (
           <View style={styles.expandedSection}>
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View
+              style={[styles.divider, { backgroundColor: colors.border }]}
+            />
 
             {/* Ingredients Section */}
             {ingredients.length > 0 && (
@@ -463,21 +588,42 @@ export default function MealCard({
                   {ingredients.slice(0, 6).map((ing, index) => (
                     <View
                       key={index}
-                      style={[styles.ingredientChip, { backgroundColor: colors.surfaceVariant }]}
+                      style={[
+                        styles.ingredientChip,
+                        { backgroundColor: colors.surfaceVariant },
+                      ]}
                     >
-                      <Text style={[styles.ingredientName, { color: colors.text }]} numberOfLines={1}>
+                      <Text
+                        style={[styles.ingredientName, { color: colors.text }]}
+                        numberOfLines={1}
+                      >
                         {ing.name}
                       </Text>
                       {ing.calories > 0 && (
-                        <Text style={[styles.ingredientCals, { color: colors.muted }]}>
+                        <Text
+                          style={[
+                            styles.ingredientCals,
+                            { color: colors.muted },
+                          ]}
+                        >
                           {Math.round(ing.calories)} cal
                         </Text>
                       )}
                     </View>
                   ))}
                   {ingredients.length > 6 && (
-                    <View style={[styles.ingredientChip, { backgroundColor: colors.primary + "20" }]}>
-                      <Text style={[styles.ingredientName, { color: colors.primary }]}>
+                    <View
+                      style={[
+                        styles.ingredientChip,
+                        { backgroundColor: colors.primary + "20" },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.ingredientName,
+                          { color: colors.primary },
+                        ]}
+                      >
                         +{ingredients.length - 6} more
                       </Text>
                     </View>
@@ -498,18 +644,33 @@ export default function MealCard({
               <View style={styles.ratingsGrid}>
                 {RATING_CATEGORIES.map((category) => {
                   const IconComponent = category.icon;
-                  const rating = localRatings[category.key as keyof typeof localRatings];
+                  const rating =
+                    localRatings[category.key as keyof typeof localRatings];
                   return (
                     <View key={category.key} style={styles.ratingRow}>
                       <View style={styles.ratingLabelContainer}>
-                        <View style={[styles.ratingIconBg, { backgroundColor: category.color + "20" }]}>
+                        <View
+                          style={[
+                            styles.ratingIconBg,
+                            { backgroundColor: category.color + "20" },
+                          ]}
+                        >
                           <IconComponent size={14} color={category.color} />
                         </View>
-                        <Text style={[styles.ratingLabel, { color: colors.textSecondary }]}>
+                        <Text
+                          style={[
+                            styles.ratingLabel,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           {t(category.label)}
                         </Text>
                       </View>
-                      {renderStars(rating, (v) => handleRatingChange(category.key, v), 18)}
+                      {renderStars(
+                        rating,
+                        (v) => handleRatingChange(category.key, v),
+                        18,
+                      )}
                     </View>
                   );
                 })}
@@ -520,42 +681,69 @@ export default function MealCard({
                 style={[
                   styles.saveButton,
                   {
-                    backgroundColor: hasUnsavedChanges ? colors.primary : colors.surfaceVariant,
+                    backgroundColor: hasUnsavedChanges
+                      ? colors.primary
+                      : colors.surfaceVariant,
                     opacity: hasUnsavedChanges ? 1 : 0.6,
-                  }
+                  },
                 ]}
                 onPress={handleSaveRatings}
                 activeOpacity={0.8}
                 disabled={!hasUnsavedChanges}
               >
-                <Text style={[
-                  styles.saveButtonText,
-                  { color: hasUnsavedChanges ? "#FFF" : colors.textSecondary }
-                ]}>
-                  {hasUnsavedChanges ? t("common.save") : t("history.ratingsSaved")}
+                <Text
+                  style={[
+                    styles.saveButtonText,
+                    {
+                      color: hasUnsavedChanges ? "#FFF" : colors.textSecondary,
+                    },
+                  ]}
+                >
+                  {hasUnsavedChanges
+                    ? t("common.save")
+                    : t("history.ratingsSaved")}
                 </Text>
               </TouchableOpacity>
             </View>
 
             {/* Additional Info */}
-            {(meal.description || meal.food_category || meal.cooking_method) && (
+            {(meal.description ||
+              meal.food_category ||
+              meal.cooking_method) && (
               <View style={styles.additionalInfo}>
-                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <View
+                  style={[styles.divider, { backgroundColor: colors.border }]}
+                />
                 {meal.description && (
-                  <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
+                  <Text
+                    style={[
+                      styles.descriptionText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     {meal.description}
                   </Text>
                 )}
                 <View style={styles.tagsRow}>
                   {meal.food_category && (
-                    <View style={[styles.tagChip, { backgroundColor: colors.surfaceVariant }]}>
+                    <View
+                      style={[
+                        styles.tagChip,
+                        { backgroundColor: colors.surfaceVariant },
+                      ]}
+                    >
                       <Text style={[styles.tagText, { color: colors.text }]}>
                         {meal.food_category}
                       </Text>
                     </View>
                   )}
                   {meal.cooking_method && (
-                    <View style={[styles.tagChip, { backgroundColor: colors.surfaceVariant }]}>
+                    <View
+                      style={[
+                        styles.tagChip,
+                        { backgroundColor: colors.surfaceVariant },
+                      ]}
+                    >
                       <Text style={[styles.tagText, { color: colors.text }]}>
                         {meal.cooking_method}
                       </Text>
@@ -676,6 +864,25 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "600",
     color: "#FF9F0A",
+    opacity: 0.8,
+  },
+  costBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    gap: 3,
+  },
+  costValue: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#10B981",
+  },
+  costCurrency: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#10B981",
     opacity: 0.8,
   },
   dateContainer: {

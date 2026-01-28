@@ -11,11 +11,11 @@ import { MealTrackingService } from "../services/mealTracking";
 const router = Router();
 
 const waterIntakeSchema = z.object({
-  cups_consumed: z.number().min(0).max(50), // Allow up to 50 cups (12.5L) for flexible water goals
+  cups_consumed: z.number().min(0).max(50),
   date: z.string().optional(),
 });
 
-// Track water intake
+// Track water intake (using database)
 router.post(
   "/water-intake",
   authenticateToken,
@@ -33,155 +33,60 @@ router.post(
 
       const validationResult = waterIntakeSchema.safeParse(req.body);
       if (!validationResult.success) {
-        console.error("❌ Validation error:", validationResult.error);
         return res.status(400).json({
           success: false,
-          error:
-            "Invalid request data: " +
-            validationResult.error.errors.map((e) => e.message).join(", "),
+          error: "Invalid request data",
         });
       }
 
       const { cups_consumed, date } = validationResult.data;
       const trackingDate = date ? new Date(date) : new Date();
+      trackingDate.setHours(0, 0, 0, 0);
 
-      // Get user's water goal from DailyGoal table
-      const userDailyGoal = await prisma.dailyGoal.findFirst({
-        where: { user_id: userId },
-        orderBy: { created_at: "desc" },
-        select: { water_ml: true },
-      });
+      // Calculate milliliters
+      const milliliters_consumed = cups_consumed * 250;
 
-      // Calculate max cups based on user's water goal (default 2500ml = 10 cups)
-      const waterGoalMl = userDailyGoal?.water_ml || 2500;
-      const maxCups = Math.ceil(waterGoalMl / 250);
-      const limitedCups = Math.min(cups_consumed, maxCups);
-      const limitedMilliliters = limitedCups * 250;
-
-      // Set date to start of day for consistent comparison
-      const startOfDay = new Date(
-        trackingDate.getFullYear(),
-        trackingDate.getMonth(),
-        trackingDate.getDate()
-      );
-
-      // Use atomic upsert - faster than transaction with find/update pattern
+      // Upsert water intake record in database
       const waterRecord = await prisma.waterIntake.upsert({
         where: {
           user_id_date: {
             user_id: userId,
-            date: startOfDay,
+            date: trackingDate,
           },
         },
         update: {
-          cups_consumed: limitedCups,
-          milliliters_consumed: limitedMilliliters,
+          cups_consumed,
+          milliliters_consumed,
           updated_at: new Date(),
         },
         create: {
           user_id: userId,
-          date: startOfDay,
-          cups_consumed: limitedCups,
-          milliliters_consumed: limitedMilliliters,
+          date: trackingDate,
+          cups_consumed,
+          milliliters_consumed,
         },
       });
 
       // Calculate XP based on water intake
       let xpAwarded = 0;
-      const waterGoalComplete = limitedCups >= 8;
+      const waterGoalComplete = cups_consumed >= 8;
 
-      if (limitedCups >= 8) {
-        xpAwarded = 25; // 25 XP for completing 8+ cups goal
-      } else if (limitedCups >= 4) {
-        xpAwarded = 15; // 15 XP for partial progress
-      } else if (limitedCups > 0) {
-        xpAwarded = 5; // 5 XP for any progress
+      if (cups_consumed >= 8) {
+        xpAwarded = 25;
+      } else if (cups_consumed >= 4) {
+        xpAwarded = 15;
+      } else if (cups_consumed > 0) {
+        xpAwarded = 5;
       }
 
-      // Check for achievements and XP after successful save
       try {
-        console.log(
-          `🎯 Water goal complete: ${waterGoalComplete}, XP awarded: ${xpAwarded}`
-        );
-
         const achievementResult = await AchievementService.updateUserProgress(
           userId,
-          false, // completedDay
-          waterGoalComplete, // waterGoalComplete
-          false, // calorieGoalComplete
+          false,
+          waterGoalComplete,
+          false,
           xpAwarded
         );
-
-        // Check for complete day if water goal is met
-        if (waterGoalComplete) {
-          const today = new Date();
-          const startOfDayToday = new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            today.getDate()
-          );
-          const endOfDayToday = new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            today.getDate(),
-            23,
-            59,
-            59,
-            999
-          );
-
-          // Check if calorie goal is also complete
-          const todayMeals = await prisma.meal.findMany({
-            where: {
-              user_id: userId,
-              created_at: {
-                gte: startOfDayToday,
-                lte: endOfDayToday,
-              },
-            },
-          });
-
-          const todayCalories = todayMeals.reduce(
-            (sum, meal) => sum + (meal.calories || 0),
-            0
-          );
-          const calorieGoalComplete = todayCalories >= 1800;
-
-          // If both goals are complete, trigger complete day
-          if (calorieGoalComplete) {
-            const completeDayResult =
-              await AchievementService.updateUserProgress(
-                userId,
-                true, // completedDay
-                false, // waterGoalComplete (already processed)
-                false, // calorieGoalComplete (already processed)
-                0 // No additional XP for complete day itself
-              );
-
-            // Merge results safely
-            if (
-              completeDayResult.newAchievements &&
-              completeDayResult.newAchievements.length > 0
-            ) {
-              achievementResult.newAchievements = [
-                ...(achievementResult.newAchievements || []),
-                ...completeDayResult.newAchievements,
-              ];
-            }
-
-            if (
-              typeof achievementResult.xpGained === "number" &&
-              typeof completeDayResult.xpGained === "number"
-            ) {
-              achievementResult.xpGained += completeDayResult.xpGained;
-            }
-
-            if (completeDayResult.leveledUp) {
-              achievementResult.leveledUp = completeDayResult.leveledUp;
-              achievementResult.newLevel = completeDayResult.newLevel;
-            }
-          }
-        }
 
         res.json({
           success: true,
@@ -192,14 +97,10 @@ router.post(
           newAchievements: achievementResult.newAchievements || [],
         });
       } catch (achievementError) {
-        console.warn(
-          "⚠️ Achievement processing failed, but water intake saved:",
-          achievementError
-        );
         res.json({
           success: true,
           data: waterRecord,
-          xpAwarded: xpAwarded,
+          xpAwarded,
           leveledUp: false,
           newLevel: undefined,
           newAchievements: [],
@@ -210,13 +111,12 @@ router.post(
       res.status(500).json({
         success: false,
         error: "Failed to track water intake",
-        details: error instanceof Error ? error.message : "Unknown error",
       });
     }
   }
 );
 
-// Get water intake for a specific date
+// Get water intake for a specific date (using database)
 router.get(
   "/water-intake/:date",
   authenticateToken,
@@ -230,23 +130,13 @@ router.get(
 
     try {
       const trackingDate = new Date(date);
-      const startOfDay = new Date(
-        trackingDate.getFullYear(),
-        trackingDate.getMonth(),
-        trackingDate.getDate()
-      );
-      const endOfDay = new Date(
-        trackingDate.getFullYear(),
-        trackingDate.getMonth(),
-        trackingDate.getDate() + 1
-      );
+      trackingDate.setHours(0, 0, 0, 0);
 
-      const waterRecord = await prisma.waterIntake.findFirst({
+      const waterRecord = await prisma.waterIntake.findUnique({
         where: {
-          user_id: userId,
-          date: {
-            gte: startOfDay,
-            lt: endOfDay,
+          user_id_date: {
+            user_id: userId,
+            date: trackingDate,
           },
         },
       });
@@ -394,15 +284,20 @@ router.post("/analyze", authenticateToken, async (req: AuthRequest, res) => {
 
     await UsageTrackingService.incrementMealScanCount(req.user.user_id);
 
-    console.log("Analysis completed successfully");
-    res.json({
+    const responseData = {
       ...result,
       usage: {
         current: limitCheck.current + 1,
         limit: limitCheck.limit,
         remaining: limitCheck.remaining - 1,
       },
-    });
+    };
+
+    // Log response size to help debug any remaining issues
+    const responseSize = JSON.stringify(responseData).length;
+    console.log(`📤 Sending response (${Math.round(responseSize / 1024)}KB)`);
+
+    res.json(responseData);
   } catch (error) {
     console.error("Analyze meal error:", error);
     const message =

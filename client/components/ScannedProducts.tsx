@@ -81,7 +81,9 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
   const [products, setProducts] = useState<ScannedProduct[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<ScannedProduct | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ScannedProduct | null>(
+    null,
+  );
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -104,9 +106,9 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
     try {
       console.log("🔍 Loading products from /food-scanner/history");
       const response = await api.get("/food-scanner/history");
-      
+
       console.log("📦 Response:", JSON.stringify(response.data, null, 2));
-      
+
       if (response.data.success && response.data.data) {
         console.log("✅ Products loaded:", response.data.data.length);
         setProducts(response.data.data);
@@ -123,7 +125,7 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
   };
 
   const categories = useMemo(() => {
-    const cats = new Set(products.map(p => p.category));
+    const cats = new Set(products.map((p) => p.category));
     return ["all", ...Array.from(cats)];
   }, [products]);
 
@@ -136,7 +138,7 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
         (p) =>
           p.name?.toLowerCase().includes(query) ||
           p.brand?.toLowerCase().includes(query) ||
-          p.category?.toLowerCase().includes(query)
+          p.category?.toLowerCase().includes(query),
       );
     }
 
@@ -158,7 +160,9 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    const diffInDays = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
+    );
 
     if (diffInDays === 0) return "Today";
     if (diffInDays === 1) return "Yesterday";
@@ -166,17 +170,25 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  const renderGridCard = (product: ScannedProduct) => {
+  const renderGridCard = (product: ScannedProduct, index: number) => {
     const scoreColor = getScoreColor(product.health_score);
-    
+
     return (
       <TouchableOpacity
-        key={product.id}
-        style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        key={`grid-${product.id}-${index}`}
+        style={[
+          styles.gridCard,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
         onPress={() => setSelectedProduct(product)}
         activeOpacity={0.7}
       >
-        <View style={[styles.gridImageContainer, { backgroundColor: colors.surface }]}>
+        <View
+          style={[
+            styles.gridImageContainer,
+            { backgroundColor: colors.surface },
+          ]}
+        >
           {product.image_url ? (
             <Image
               source={{ uri: product.image_url }}
@@ -185,10 +197,14 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
             />
           ) : (
             <View style={styles.gridImagePlaceholder}>
-              <Package size={32} color={colors.textTertiary} strokeWidth={1.5} />
+              <Package
+                size={32}
+                color={colors.textTertiary}
+                strokeWidth={1.5}
+              />
             </View>
           )}
-          
+
           {product.health_score && (
             <View style={[styles.scoreChip, { backgroundColor: scoreColor }]}>
               <Text style={styles.scoreChipText}>{product.health_score}</Text>
@@ -197,23 +213,33 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
         </View>
 
         <View style={styles.gridContent}>
-          <Text style={[styles.gridBrand, { color: colors.textTertiary }]} numberOfLines={1}>
+          <Text
+            style={[styles.gridBrand, { color: colors.textTertiary }]}
+            numberOfLines={1}
+          >
             {product.brand || product.category}
           </Text>
-          <Text style={[styles.gridName, { color: colors.text }]} numberOfLines={2}>
+          <Text
+            style={[styles.gridName, { color: colors.text }]}
+            numberOfLines={2}
+          >
             {product.name || product.product_name}
           </Text>
-          
+
           <View style={styles.gridStats}>
             <View style={styles.gridStat}>
               <Flame size={12} color={colors.textSecondary} />
-              <Text style={[styles.gridStatText, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.gridStatText, { color: colors.textSecondary }]}
+              >
                 {product.nutrition_per_100g?.calories || 0}
               </Text>
             </View>
             <View style={styles.gridStat}>
               <Activity size={12} color={colors.textSecondary} />
-              <Text style={[styles.gridStatText, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.gridStatText, { color: colors.textSecondary }]}
+              >
                 {product.nutrition_per_100g?.protein || 0}g
               </Text>
             </View>
@@ -223,17 +249,25 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
     );
   };
 
-  const renderListCard = (product: ScannedProduct) => {
+  const renderListCard = (product: ScannedProduct, index: number) => {
     const scoreColor = getScoreColor(product.health_score);
-    
+
     return (
       <TouchableOpacity
-        key={product.id}
-        style={[styles.listCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        key={`list-${product.id}-${index}`}
+        style={[
+          styles.listCard,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
         onPress={() => setSelectedProduct(product)}
         activeOpacity={0.7}
       >
-        <View style={[styles.listImageContainer, { backgroundColor: colors.surface }]}>
+        <View
+          style={[
+            styles.listImageContainer,
+            { backgroundColor: colors.surface },
+          ]}
+        >
           {product.image_url ? (
             <Image
               source={{ uri: product.image_url }}
@@ -242,7 +276,11 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
             />
           ) : (
             <View style={styles.listImagePlaceholder}>
-              <Package size={24} color={colors.textTertiary} strokeWidth={1.5} />
+              <Package
+                size={24}
+                color={colors.textTertiary}
+                strokeWidth={1.5}
+              />
             </View>
           )}
         </View>
@@ -250,14 +288,20 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
         <View style={styles.listContent}>
           <View style={styles.listHeader}>
             <View style={styles.listTitleContainer}>
-              <Text style={[styles.listBrand, { color: colors.textTertiary }]} numberOfLines={1}>
+              <Text
+                style={[styles.listBrand, { color: colors.textTertiary }]}
+                numberOfLines={1}
+              >
                 {product.brand || product.category}
               </Text>
-              <Text style={[styles.listName, { color: colors.text }]} numberOfLines={1}>
+              <Text
+                style={[styles.listName, { color: colors.text }]}
+                numberOfLines={1}
+              >
                 {product.name || product.product_name}
               </Text>
             </View>
-            
+
             {product.health_score && (
               <View style={[styles.listScore, { backgroundColor: scoreColor }]}>
                 <Text style={styles.listScoreText}>{product.health_score}</Text>
@@ -268,17 +312,25 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
           <View style={styles.listFooter}>
             <View style={styles.listStats}>
               <Flame size={14} color={colors.textSecondary} />
-              <Text style={[styles.listStatText, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.listStatText, { color: colors.textSecondary }]}
+              >
                 {product.nutrition_per_100g?.calories || 0} cal
               </Text>
-              <Text style={[styles.listDivider, { color: colors.border }]}>•</Text>
+              <Text style={[styles.listDivider, { color: colors.border }]}>
+                •
+              </Text>
               <Activity size={14} color={colors.textSecondary} />
-              <Text style={[styles.listStatText, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.listStatText, { color: colors.textSecondary }]}
+              >
                 {product.nutrition_per_100g?.protein || 0}g protein
               </Text>
             </View>
-            
-            <Text style={[styles.listDate, { color: colors.textTertiary }]}>{formatDate(product.created_at)}</Text>
+
+            <Text style={[styles.listDate, { color: colors.textTertiary }]}>
+              {formatDate(product.created_at)}
+            </Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -296,9 +348,22 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
         presentationStyle="pageSheet"
         onRequestClose={() => setSelectedProduct(null)}
       >
-        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        <View
+          style={[
+            styles.modalContainer,
+            { backgroundColor: colors.background },
+          ]}
+        >
           {/* Simple Header */}
-          <View style={[styles.modalHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <View
+            style={[
+              styles.modalHeader,
+              {
+                backgroundColor: colors.card,
+                borderBottomColor: colors.border,
+              },
+            ]}
+          >
             <TouchableOpacity onPress={() => setSelectedProduct(null)}>
               <View style={styles.modalCloseBtn}>
                 <X size={24} color={colors.text} strokeWidth={2} />
@@ -306,7 +371,10 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.modalScroll}
+            showsVerticalScrollIndicator={false}
+          >
             {/* Product Hero */}
             <View style={[styles.modalHero, { backgroundColor: colors.card }]}>
               {selectedProduct.image_url ? (
@@ -316,21 +384,41 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
                   resizeMode="cover"
                 />
               ) : (
-                <View style={[styles.modalImagePlaceholder, { backgroundColor: colors.surface }]}>
-                  <Package size={64} color={colors.textTertiary} strokeWidth={1.5} />
+                <View
+                  style={[
+                    styles.modalImagePlaceholder,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <Package
+                    size={64}
+                    color={colors.textTertiary}
+                    strokeWidth={1.5}
+                  />
                 </View>
               )}
 
               <View style={styles.modalProductInfo}>
-                <Text style={[styles.modalBrand, { color: colors.textTertiary }]}>
+                <Text
+                  style={[styles.modalBrand, { color: colors.textTertiary }]}
+                >
                   {selectedProduct.brand || selectedProduct.category}
                 </Text>
-                <Text style={[styles.modalName, { color: colors.text }]}>{selectedProduct.name || selectedProduct.product_name}</Text>
+                <Text style={[styles.modalName, { color: colors.text }]}>
+                  {selectedProduct.name || selectedProduct.product_name}
+                </Text>
 
                 {selectedProduct.health_score && (
                   <View style={styles.modalScoreContainer}>
-                    <View style={[styles.modalScoreBadge, { backgroundColor: scoreColor }]}>
-                      <Text style={styles.modalScoreValue}>{selectedProduct.health_score}</Text>
+                    <View
+                      style={[
+                        styles.modalScoreBadge,
+                        { backgroundColor: scoreColor },
+                      ]}
+                    >
+                      <Text style={styles.modalScoreValue}>
+                        {selectedProduct.health_score}
+                      </Text>
                       <Text style={styles.modalScoreLabel}>Health Score</Text>
                     </View>
                   </View>
@@ -339,23 +427,76 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
             </View>
 
             {/* Nutrition Grid */}
-            <View style={[styles.modalSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.modalSectionTitle, { color: colors.text }]}>Nutrition per 100g</Text>
-              
+            <View
+              style={[
+                styles.modalSection,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Text style={[styles.modalSectionTitle, { color: colors.text }]}>
+                Nutrition per 100g
+              </Text>
+
               <View style={styles.nutritionGrid}>
                 {[
-                  { icon: Flame, label: "Calories", value: selectedProduct.nutrition_per_100g?.calories || 0, unit: "", color: "#EF4444" },
-                  { icon: Activity, label: "Protein", value: selectedProduct.nutrition_per_100g?.protein || 0, unit: "g", color: "#10B981" },
-                  { icon: Droplets, label: "Carbs", value: selectedProduct.nutrition_per_100g?.carbs || 0, unit: "g", color: "#3B82F6" },
-                  { icon: Leaf, label: "Fat", value: selectedProduct.nutrition_per_100g?.fat || 0, unit: "g", color: "#F59E0B" },
+                  {
+                    icon: Flame,
+                    label: "Calories",
+                    value: selectedProduct.nutrition_per_100g?.calories || 0,
+                    unit: "",
+                    color: "#EF4444",
+                  },
+                  {
+                    icon: Activity,
+                    label: "Protein",
+                    value: selectedProduct.nutrition_per_100g?.protein || 0,
+                    unit: "g",
+                    color: "#10B981",
+                  },
+                  {
+                    icon: Droplets,
+                    label: "Carbs",
+                    value: selectedProduct.nutrition_per_100g?.carbs || 0,
+                    unit: "g",
+                    color: "#3B82F6",
+                  },
+                  {
+                    icon: Leaf,
+                    label: "Fat",
+                    value: selectedProduct.nutrition_per_100g?.fat || 0,
+                    unit: "g",
+                    color: "#F59E0B",
+                  },
                 ].map((item, index) => (
-                  <View key={index} style={[styles.nutritionCard, { backgroundColor: colors.surface }]}>
+                  <View
+                    key={index}
+                    style={[
+                      styles.nutritionCard,
+                      { backgroundColor: colors.surface },
+                    ]}
+                  >
                     <item.icon size={20} color={item.color} strokeWidth={2} />
-                    <Text style={[styles.nutritionValue, { color: colors.text }]}>
+                    <Text
+                      style={[styles.nutritionValue, { color: colors.text }]}
+                    >
                       {item.value}
-                      <Text style={[styles.nutritionUnit, { color: colors.textTertiary }]}>{item.unit}</Text>
+                      <Text
+                        style={[
+                          styles.nutritionUnit,
+                          { color: colors.textTertiary },
+                        ]}
+                      >
+                        {item.unit}
+                      </Text>
                     </Text>
-                    <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>{item.label}</Text>
+                    <Text
+                      style={[
+                        styles.nutritionLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
                   </View>
                 ))}
               </View>
@@ -363,19 +504,38 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
               {/* Extra Nutrition */}
               {(selectedProduct.nutrition_per_100g?.fiber ||
                 selectedProduct.nutrition_per_100g?.sugar) && (
-                <View style={styles.extraNutrition}>
+                <View
+                  style={[
+                    styles.extraNutrition,
+                    { borderTopColor: colors.border },
+                  ]}
+                >
                   {selectedProduct.nutrition_per_100g?.fiber !== undefined && (
                     <View style={styles.extraRow}>
-                      <Text style={styles.extraLabel}>Fiber</Text>
-                      <Text style={styles.extraValue}>
+                      <Text
+                        style={[
+                          styles.extraLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Fiber
+                      </Text>
+                      <Text style={[styles.extraValue, { color: colors.text }]}>
                         {selectedProduct.nutrition_per_100g.fiber}g
                       </Text>
                     </View>
                   )}
                   {selectedProduct.nutrition_per_100g?.sugar !== undefined && (
                     <View style={styles.extraRow}>
-                      <Text style={styles.extraLabel}>Sugar</Text>
-                      <Text style={styles.extraValue}>
+                      <Text
+                        style={[
+                          styles.extraLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Sugar
+                      </Text>
+                      <Text style={[styles.extraValue, { color: colors.text }]}>
                         {selectedProduct.nutrition_per_100g.sugar}g
                       </Text>
                     </View>
@@ -385,36 +545,64 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
             </View>
 
             {/* Ingredients */}
-            {selectedProduct.ingredients && selectedProduct.ingredients.length > 0 && (
-              <View style={[styles.modalSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[styles.modalSectionTitle, { color: colors.text }]}>Ingredients</Text>
-                <Text style={[styles.ingredientsText, { color: colors.textSecondary }]}>
-                  {selectedProduct.ingredients.join(", ")}
-                </Text>
-              </View>
-            )}
+            {selectedProduct.ingredients &&
+              selectedProduct.ingredients.length > 0 && (
+                <View
+                  style={[
+                    styles.modalSection,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[styles.modalSectionTitle, { color: colors.text }]}
+                  >
+                    Ingredients
+                  </Text>
+                  <Text
+                    style={[
+                      styles.ingredientsText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {selectedProduct.ingredients.join(", ")}
+                  </Text>
+                </View>
+              )}
 
             {/* Allergens */}
-            {selectedProduct.allergens && selectedProduct.allergens.length > 0 && (
-              <View style={[styles.modalSection, styles.allergenSection]}>
-                <View style={styles.allergenHeader}>
-                  <AlertTriangle size={20} color="#EF4444" strokeWidth={2} />
-                  <Text style={styles.allergenTitle}>Contains Allergens</Text>
+            {selectedProduct.allergens &&
+              selectedProduct.allergens.length > 0 && (
+                <View style={[styles.modalSection, styles.allergenSection]}>
+                  <View style={styles.allergenHeader}>
+                    <AlertTriangle size={20} color="#EF4444" strokeWidth={2} />
+                    <Text style={styles.allergenTitle}>Contains Allergens</Text>
+                  </View>
+                  <View style={styles.allergenList}>
+                    {selectedProduct.allergens.map((allergen, index) => (
+                      <Text key={index} style={styles.allergenItem}>
+                        • {allergen}
+                      </Text>
+                    ))}
+                  </View>
                 </View>
-                <View style={styles.allergenList}>
-                  {selectedProduct.allergens.map((allergen, index) => (
-                    <Text key={index} style={styles.allergenItem}>
-                      • {allergen}
-                    </Text>
-                  ))}
-                </View>
-              </View>
-            )}
+              )}
 
             {/* Labels */}
             {selectedProduct.labels && selectedProduct.labels.length > 0 && (
-              <View style={[styles.modalSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[styles.modalSectionTitle, { color: colors.text }]}>Certifications</Text>
+              <View
+                style={[
+                  styles.modalSection,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <Text
+                  style={[styles.modalSectionTitle, { color: colors.text }]}
+                >
+                  Certifications
+                </Text>
                 <View style={styles.labelsList}>
                   {selectedProduct.labels.map((label, index) => (
                     <View key={index} style={styles.labelChip}>
@@ -442,14 +630,21 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
     >
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Minimalist Header */}
-        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <View
+          style={[
+            styles.header,
+            { backgroundColor: colors.card, borderBottomColor: colors.border },
+          ]}
+        >
           <View style={styles.headerTop}>
             <TouchableOpacity onPress={onClose} style={styles.backBtn}>
               <X size={24} color={colors.text} strokeWidth={2} />
             </TouchableOpacity>
-            
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Products</Text>
-            
+
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
+              Products
+            </Text>
+
             <TouchableOpacity
               onPress={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
               style={styles.viewToggle}
@@ -463,7 +658,12 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
           </View>
 
           {/* Clean Search */}
-          <View style={[styles.searchBar, { backgroundColor: colors.surfaceVariant }]}>
+          <View
+            style={[
+              styles.searchBar,
+              { backgroundColor: colors.surfaceVariant },
+            ]}
+          >
             <Search size={20} color={colors.textTertiary} strokeWidth={2} />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
@@ -490,7 +690,12 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
                 key={cat}
                 style={[
                   styles.categoryPill,
-                  { backgroundColor: selectedCategory === cat ? colors.primary : colors.surface },
+                  {
+                    backgroundColor:
+                      selectedCategory === cat
+                        ? colors.primary
+                        : colors.surface,
+                  },
                   selectedCategory === cat && styles.categoryPillActive,
                 ]}
                 onPress={() => setSelectedCategory(cat)}
@@ -498,7 +703,9 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
                 <Text
                   style={[
                     styles.categoryPillText,
-                    { color: selectedCategory === cat ? "#FFFFFF" : colors.text },
+                    {
+                      color: selectedCategory === cat ? "#FFFFFF" : colors.text,
+                    },
                     selectedCategory === cat && styles.categoryPillTextActive,
                   ]}
                 >
@@ -516,7 +723,22 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
           </View>
         ) : filteredProducts.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Package size={64} color={colors.textTertiary} strokeWidth={1.5} />
+            <View
+              style={[
+                styles.emptyIconContainer,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(0,0,0,0.03)",
+                },
+              ]}
+            >
+              <Package
+                size={48}
+                color={colors.textTertiary}
+                strokeWidth={1.5}
+              />
+            </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
               {searchQuery ? "No results found" : "No products yet"}
             </Text>
@@ -533,14 +755,18 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
                 contentContainerStyle={styles.gridContainer}
                 showsVerticalScrollIndicator={false}
               >
-                {filteredProducts.map(renderGridCard)}
+                {filteredProducts.map((product, index) =>
+                  renderGridCard(product, index),
+                )}
               </ScrollView>
             ) : (
               <ScrollView
                 contentContainerStyle={styles.listContainer}
                 showsVerticalScrollIndicator={false}
               >
-                {filteredProducts.map(renderListCard)}
+                {filteredProducts.map((product, index) =>
+                  renderListCard(product, index),
+                )}
               </ScrollView>
             )}
           </Animated.View>
@@ -578,8 +804,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: "600",
+    fontSize: 22,
+    fontWeight: "700",
     color: "#1A1A1A",
     letterSpacing: -0.5,
   },
@@ -595,8 +821,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
     marginHorizontal: 20,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 14,
     gap: 12,
     marginBottom: 16,
   },
@@ -608,11 +834,11 @@ const styles = StyleSheet.create({
   },
   categoriesScroll: {
     paddingHorizontal: 20,
-    gap: 8,
+    gap: 10,
   },
   categoryPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     borderRadius: 20,
     backgroundColor: "#F5F5F5",
   },
@@ -639,16 +865,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     gap: 12,
   },
+  emptyIconContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#1A1A1A",
-    marginTop: 16,
+    marginTop: 4,
+    letterSpacing: -0.3,
   },
   emptyText: {
     fontSize: 15,
     color: "#666666",
     textAlign: "center",
+    fontWeight: "500",
   },
   gridContainer: {
     padding: 20,
@@ -659,7 +895,7 @@ const styles = StyleSheet.create({
   gridCard: {
     width: (width - 56) / 2,
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#E0E0E0",
@@ -681,21 +917,21 @@ const styles = StyleSheet.create({
   },
   scoreChip: {
     position: "absolute",
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    top: 10,
+    right: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
   },
   scoreChipText: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "800",
     color: "#FFFFFF",
   },
   gridContent: {
-    padding: 12,
+    padding: 14,
   },
   gridBrand: {
     fontSize: 11,
@@ -706,44 +942,45 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   gridName: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
     color: "#1A1A1A",
-    lineHeight: 18,
-    marginBottom: 8,
-    minHeight: 36,
+    lineHeight: 20,
+    marginBottom: 10,
+    minHeight: 40,
+    letterSpacing: -0.3,
   },
   gridStats: {
     flexDirection: "row",
-    gap: 8,
+    gap: 12,
   },
   gridStat: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 5,
   },
   gridStatText: {
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
     color: "#666666",
   },
   listContainer: {
     padding: 20,
-    gap: 12,
+    gap: 14,
   },
   listCard: {
     flexDirection: "row",
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 12,
-    gap: 12,
+    borderRadius: 20,
+    padding: 14,
+    gap: 14,
     borderWidth: 1,
     borderColor: "#E0E0E0",
   },
   listImageContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
+    width: 85,
+    height: 85,
+    borderRadius: 14,
     backgroundColor: "#F5F5F5",
     overflow: "hidden",
   },
@@ -776,23 +1013,24 @@ const styles = StyleSheet.create({
     color: "#999999",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   listName: {
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "700",
     color: "#1A1A1A",
+    letterSpacing: -0.3,
   },
   listScore: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
   },
   listScoreText: {
-    fontSize: 13,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "800",
     color: "#FFFFFF",
   },
   listFooter: {
@@ -806,7 +1044,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   listStatText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
     color: "#666666",
   },
@@ -815,7 +1053,7 @@ const styles = StyleSheet.create({
     color: "#CCCCCC",
   },
   listDate: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
     color: "#999999",
   },
@@ -843,24 +1081,24 @@ const styles = StyleSheet.create({
   },
   modalHero: {
     backgroundColor: "#FFFFFF",
-    padding: 20,
+    padding: 24,
     alignItems: "center",
     marginBottom: 16,
   },
   modalImage: {
-    width: 180,
-    height: 180,
-    borderRadius: 20,
-    marginBottom: 20,
+    width: 200,
+    height: 200,
+    borderRadius: 24,
+    marginBottom: 24,
   },
   modalImagePlaceholder: {
-    width: 180,
-    height: 180,
-    borderRadius: 20,
+    width: 200,
+    height: 200,
+    borderRadius: 24,
     backgroundColor: "#F5F5F5",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 24,
   },
   modalProductInfo: {
     width: "100%",
@@ -872,14 +1110,14 @@ const styles = StyleSheet.create({
     color: "#999999",
     textTransform: "uppercase",
     letterSpacing: 1,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   modalName: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 26,
+    fontWeight: "800",
     color: "#1A1A1A",
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 24,
     letterSpacing: -0.5,
   },
   modalScoreContainer: {
@@ -887,15 +1125,15 @@ const styles = StyleSheet.create({
   },
   modalScoreBadge: {
     alignSelf: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 16,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 20,
     alignItems: "center",
     gap: 4,
   },
   modalScoreValue: {
-    fontSize: 28,
-    fontWeight: "800",
+    fontSize: 32,
+    fontWeight: "900",
     color: "#FFFFFF",
   },
   modalScoreLabel: {
@@ -910,34 +1148,34 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     marginHorizontal: 16,
     marginBottom: 16,
-    padding: 20,
-    borderRadius: 16,
+    padding: 24,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: "#E0E0E0",
   },
   modalSectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "800",
     color: "#1A1A1A",
-    marginBottom: 16,
+    marginBottom: 20,
     letterSpacing: -0.3,
   },
   nutritionGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: 14,
   },
   nutritionCard: {
-    width: (width - 88) / 2,
+    width: (width - 92) / 2,
     backgroundColor: "#F5F5F5",
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
   nutritionValue: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 26,
+    fontWeight: "800",
     color: "#1A1A1A",
   },
   nutritionUnit: {
@@ -946,16 +1184,16 @@ const styles = StyleSheet.create({
     color: "#999999",
   },
   nutritionLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
     color: "#666666",
   },
   extraNutrition: {
-    marginTop: 16,
-    paddingTop: 16,
+    marginTop: 20,
+    paddingTop: 20,
     borderTopWidth: 1,
     borderTopColor: "#E0E0E0",
-    gap: 12,
+    gap: 14,
   },
   extraRow: {
     flexDirection: "row",
@@ -963,18 +1201,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   extraLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
     color: "#666666",
   },
   extraValue: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "800",
     color: "#1A1A1A",
   },
   ingredientsText: {
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 24,
     color: "#666666",
     fontWeight: "500",
   },
@@ -986,42 +1224,42 @@ const styles = StyleSheet.create({
   allergenHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 14,
   },
   allergenTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 17,
+    fontWeight: "800",
     color: "#DC2626",
   },
   allergenList: {
-    gap: 8,
+    gap: 10,
   },
   allergenItem: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
     color: "#DC2626",
-    lineHeight: 20,
+    lineHeight: 22,
   },
   labelsList: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
   },
   labelChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
     backgroundColor: "#F0FDF4",
     borderWidth: 1,
     borderColor: "#BBF7D0",
   },
   labelText: {
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#166534",
   },
 });

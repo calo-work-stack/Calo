@@ -171,7 +171,7 @@ export class CronJobService {
             {
               // Only users with GOLD or PLATINUM subscription can receive AI recommendations
               subscription_type: {
-                in: ["GOLD", "PLATINUM"],
+                in: ["GOLD", "PREMIUM"],
               },
             },
             {
@@ -203,6 +203,7 @@ export class CronJobService {
 
       let successCount = 0;
       let errorCount = 0;
+      const errors: Array<{ userId: string; error: string }> = [];
 
       // Process users sequentially to avoid overwhelming the system
       for (const user of usersWithoutRecommendations) {
@@ -229,22 +230,35 @@ export class CronJobService {
           }
         } catch (error) {
           errorCount++;
+          const errorMessage = error instanceof Error ? error.message : String(error);
           console.error(
             `❌ Failed to generate recommendations for user ${user.user_id}:`,
-            error instanceof Error ? error.message : error
+            errorMessage
           );
+          
+          errors.push({
+            userId: user.user_id,
+            error: errorMessage,
+          });
 
           // Continue with next user instead of failing completely
           continue;
         }
 
-        // Small delay between users to be respectful
+        // Small delay between users to be respectful to API limits
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
       console.log(
         `✅ Daily recommendations completed: ${successCount} success, ${errorCount} errors out of ${usersWithoutRecommendations.length} users`
       );
+
+      if (errors.length > 0) {
+        console.log("📋 Error summary:");
+        errors.forEach(({ userId, error }) => {
+          console.log(`  - ${userId}: ${error}`);
+        });
+      }
     } catch (error) {
       console.error("💥 Error in daily recommendations generation:", error);
     } finally {

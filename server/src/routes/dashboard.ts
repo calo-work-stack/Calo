@@ -4,6 +4,10 @@ import { prisma } from "../lib/database";
 
 const router = Router();
 
+// Dashboard cache for instant responses
+const dashboardCache = new Map<string, { data: any; timestamp: number }>();
+const DASHBOARD_CACHE_TTL = 30000; // 30 seconds cache
+
 // Single endpoint to get ALL initial dashboard data
 router.get(
   "/initial-data",
@@ -13,6 +17,12 @@ router.get(
       const userId = req.user.user_id;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+
+      // Check cache first for instant response
+      const cached = dashboardCache.get(userId);
+      if (cached && Date.now() - cached.timestamp < DASHBOARD_CACHE_TTL) {
+        return res.json({ success: true, data: cached.data, cached: true });
+      }
 
       // Run ALL queries in PARALLEL - this is the key!
       const [
@@ -53,7 +63,7 @@ router.get(
         prisma.waterIntake.findFirst({
           where: {
             user_id: userId,
-            date: { gte: today },
+            date: today,
           },
         }),
 
@@ -102,17 +112,22 @@ router.get(
         }),
       ]);
 
+      const responseData = {
+        meals,
+        dailyGoals,
+        waterIntake,
+        shoppingList,
+        questionnaire: questionnaireData,
+        usage: usageStats,
+        chatMessages: recentMessages,
+      };
+
+      // Update cache for next request
+      dashboardCache.set(userId, { data: responseData, timestamp: Date.now() });
+
       res.json({
         success: true,
-        data: {
-          meals,
-          dailyGoals,
-          waterIntake,
-          shoppingList,
-          questionnaire: questionnaireData,
-          usage: usageStats,
-          chatMessages: recentMessages,
-        },
+        data: responseData,
       });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -123,5 +138,20 @@ router.get(
     }
   }
 );
+
+// Invalidate dashboard cache (call this when user data changes)
+export function invalidateDashboardCache(userId: string): void {
+  dashboardCache.delete(userId);
+}
+
+// Clean up old cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of dashboardCache.entries()) {
+    if (now - value.timestamp > DASHBOARD_CACHE_TTL * 2) {
+      dashboardCache.delete(key);
+    }
+  }
+}, 60000); // Clean every minute
 
 export default router;

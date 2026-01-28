@@ -6,6 +6,7 @@ import {
   WeeklyMealPlan,
 } from "../types/mealPlans";
 import { OpenAIService } from "./openai";
+import { estimateIngredientPrice } from "../utils/pricing";
 
 // Helper function to sanitize strings
 function sanitizeString(input: string): string {
@@ -1730,13 +1731,22 @@ Please return a JSON object with the following structure:
             existing.totalQuantity +=
               (ingredient.quantity || 1) * schedule.portion_multiplier;
           } else {
+            // Use provided cost or calculate from pricing utility
+            const ingredientCost = ingredient.estimatedCost ||
+              estimateIngredientPrice(
+                ingredient.name || "unknown",
+                ingredient.quantity || 100,
+                ingredient.unit || "g",
+                ingredient.category || "other"
+              ).estimated_price;
+
             ingredientMap.set(key, {
               name: ingredient.name || "Unknown ingredient",
               totalQuantity:
                 (ingredient.quantity || 1) * schedule.portion_multiplier,
               unit: ingredient.unit || "piece",
               category: ingredient.category || "Other",
-              estimatedCost: ingredient.estimatedCost || 5,
+              estimatedCost: ingredientCost,
             });
           }
         });

@@ -13,7 +13,6 @@ import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useStatistics } from "@/hooks/useStatistics";
-import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 // Components
@@ -106,82 +105,6 @@ export default function StatisticsScreen() {
       </Animated.View>
     );
   };
-
-  // Render hydration card
-  const renderHydrationCard = () => {
-    const waterMetric = categorizedMetrics.hydration[0];
-    if (!waterMetric) return null;
-
-    const percentage = Math.min(
-      100,
-      Math.round((waterMetric.value / waterMetric.target) * 100),
-    );
-
-    return (
-      <Animated.View
-        entering={FadeInDown.delay(300).duration(400)}
-        style={styles.hydrationSection}
-      >
-        <LinearGradient
-          colors={isDark ? ["#1E3A5F", "#1E293B"] : ["#EBF8FF", "#DBEAFE"]}
-          style={styles.hydrationCard}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.hydrationHeader}>
-            <View style={styles.hydrationIconContainer}>
-              <Droplets size={24} color="#3B82F6" fill="#3B82F620" />
-            </View>
-            <View style={styles.hydrationInfo}>
-              <Text style={[styles.hydrationTitle, { color: colors.text }]}>
-                {t("statistics.daily_hydration") || "Daily Hydration"}
-              </Text>
-              <Text
-                style={[
-                  styles.hydrationSubtitle,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                {t("statistics.stay_hydrated") ||
-                  "Stay hydrated for better health"}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.hydrationProgress}>
-            <View style={styles.hydrationValues}>
-              <Text style={[styles.hydrationCurrent, { color: "#3B82F6" }]}>
-                {Math.round(waterMetric.value)}
-              </Text>
-              <Text
-                style={[styles.hydrationUnit, { color: colors.textSecondary }]}
-              >
-                / {waterMetric.target} {t("statistics.ml")}
-              </Text>
-            </View>
-
-            <View
-              style={[
-                styles.hydrationBar,
-                { backgroundColor: isDark ? "#374151" : "#E2E8F0" },
-              ]}
-            >
-              <LinearGradient
-                colors={["#3B82F6", "#60A5FA"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.hydrationBarFill, { width: `${percentage}%` }]}
-              />
-            </View>
-
-            <Text style={[styles.hydrationPercent, { color: colors.muted }]}>
-              {percentage}% {t("statistics.of_goal") || "of goal"}
-            </Text>
-          </View>
-        </LinearGradient>
-      </Animated.View>
-    );
-  };
-
   // Render weekly progress chart
   const renderWeeklyProgress = () => {
     if (!weeklyData.length) return null;
@@ -227,35 +150,40 @@ export default function StatisticsScreen() {
         <AIRecommendationsSection
           recommendations={aiRecommendations}
           period={selectedPeriod}
-          colors={{
-            ...colors,
-            textTertiary: colors.textSecondary,
-            emerald400: "#34D399",
-            emerald500: "#10B981",
-            emerald600: "#059669",
-            emerald700: "#047857",
-          }}
         />
       </Animated.View>
     );
   };
 
   const renderLevelProgress = () => {
+    // Ensure all values are defined with proper defaults
+    const levelData = {
+      level: gamificationStats?.level ?? 1,
+      currentXP: gamificationStats?.currentXP ?? 0,
+      nextLevelXP: gamificationStats?.nextLevelXP ?? 100,
+      xpProgress: gamificationStats?.xpProgress ?? 0,
+      xpToNext: gamificationStats?.xpToNext ?? 100,
+      dailyStreak: gamificationStats?.dailyStreak ?? 0,
+      weeklyStreak: gamificationStats?.weeklyStreak ?? 0,
+      perfectDays: gamificationStats?.perfectDays ?? 0,
+      totalPoints: gamificationStats?.totalPoints ?? 0,
+    };
+
     return (
       <Animated.View
         entering={FadeInDown.delay(100).duration(400)}
         style={styles.levelSection}
       >
         <LevelProgress
-          level={gamificationStats.level}
-          currentXP={gamificationStats.currentXP}
-          nextLevelXP={gamificationStats.nextLevelXP}
-          xpProgress={gamificationStats.xpProgress}
-          xpToNext={gamificationStats.xpToNext}
-          dailyStreak={gamificationStats.dailyStreak}
-          weeklyStreak={gamificationStats.weeklyStreak}
-          perfectDays={gamificationStats.perfectDays}
-          totalPoints={gamificationStats.totalPoints}
+          level={levelData.level}
+          currentXP={levelData.currentXP}
+          nextLevelXP={levelData.nextLevelXP}
+          xpProgress={levelData.xpProgress}
+          xpToNext={levelData.xpToNext}
+          dailyStreak={levelData.dailyStreak}
+          weeklyStreak={levelData.weeklyStreak}
+          perfectDays={levelData.perfectDays}
+          totalPoints={levelData.totalPoints}
         />
       </Animated.View>
     );
@@ -337,19 +265,16 @@ export default function StatisticsScreen() {
           style={styles.levelSection}
         >
           <DuolingoStreak
-            dailyStreak={gamificationStats.dailyStreak}
-            weeklyStreak={gamificationStats.weeklyStreak}
-            perfectDays={gamificationStats.perfectDays}
-            totalPoints={gamificationStats.totalPoints}
-            bestStreak={progressStats.bestStreak}
+            dailyStreak={gamificationStats?.dailyStreak ?? 0}
+            weeklyStreak={gamificationStats?.weeklyStreak ?? 0}
+            perfectDays={gamificationStats?.perfectDays ?? 0}
+            totalPoints={gamificationStats?.totalPoints ?? 0}
+            bestStreak={progressStats?.bestStreak ?? 0}
           />
         </Animated.View>
         {renderLevelProgress()}
         {/* Nutrition Metrics Grid */}
         {renderNutritionMetrics()}
-
-        {/* Hydration Card */}
-        {renderHydrationCard()}
 
         {/* Weekly Progress Chart */}
         {renderWeeklyProgress()}

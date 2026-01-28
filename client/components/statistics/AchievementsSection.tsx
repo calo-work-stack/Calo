@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -28,6 +28,9 @@ import {
   Lock,
   TrendingUp,
   Gift,
+  CheckCircle2,
+  Gem,
+  Shield,
 } from "lucide-react-native";
 import Animated, {
   FadeInUp,
@@ -39,6 +42,8 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withSequence,
+  withTiming,
+  Easing,
 } from "react-native-reanimated";
 import { useTheme } from "@/src/context/ThemeContext";
 import { t } from "i18next";
@@ -63,6 +68,7 @@ interface Achievement {
   maxProgress?: number;
   xpReward: number;
   unlockedDate?: string;
+  verified?: boolean; // New field for verification status
 }
 
 const getLocalizedText = (
@@ -107,6 +113,10 @@ const getAchievementIcon = (
       return <Calendar {...iconProps} />;
     case "zap":
       return <Zap {...iconProps} />;
+    case "gem":
+      return <Gem {...iconProps} />;
+    case "shield":
+      return <Shield {...iconProps} />;
     default:
       return <Award {...iconProps} />;
   }
@@ -119,32 +129,44 @@ const getRarityConfig = (rarity: string) => {
         color: "#FFD700",
         gradient: ["#FFD700", "#FFA500", "#FF8C00"],
         bgGradient: ["#FFF9E5", "#FFEFC7"],
-        glow: "rgba(255, 215, 0, 0.3)",
+        darkBgGradient: ["#4A3B00", "#3D3000"],
+        glow: "rgba(255, 215, 0, 0.4)",
+        shadowColor: "#FFD700",
         label: "Legendary",
+        particles: ["#FFED4E", "#FFD700", "#FFA500"],
       };
     case "EPIC":
       return {
         color: "#9333EA",
         gradient: ["#C084FC", "#9333EA", "#7E22CE"],
         bgGradient: ["#FAF5FF", "#F3E8FF"],
-        glow: "rgba(147, 51, 234, 0.3)",
+        darkBgGradient: ["#3D1E5C", "#2D1545"],
+        glow: "rgba(147, 51, 234, 0.4)",
+        shadowColor: "#9333EA",
         label: "Epic",
+        particles: ["#C084FC", "#9333EA", "#7E22CE"],
       };
     case "RARE":
       return {
         color: "#3B82F6",
         gradient: ["#60A5FA", "#3B82F6", "#2563EB"],
         bgGradient: ["#EFF6FF", "#DBEAFE"],
-        glow: "rgba(59, 130, 246, 0.3)",
+        darkBgGradient: ["#1E3A5F", "#152C4A"],
+        glow: "rgba(59, 130, 246, 0.4)",
+        shadowColor: "#3B82F6",
         label: "Rare",
+        particles: ["#60A5FA", "#3B82F6", "#2563EB"],
       };
     case "UNCOMMON":
       return {
         color: "#10B981",
         gradient: ["#34D399", "#10B981", "#059669"],
         bgGradient: ["#ECFDF5", "#D1FAE5"],
-        glow: "rgba(16, 185, 129, 0.3)",
+        darkBgGradient: ["#1E4B3D", "#163B2F"],
+        glow: "rgba(16, 185, 129, 0.4)",
+        shadowColor: "#10B981",
         label: "Uncommon",
+        particles: ["#34D399", "#10B981", "#059669"],
       };
     case "COMMON":
     default:
@@ -152,29 +174,42 @@ const getRarityConfig = (rarity: string) => {
         color: "#6B7280",
         gradient: ["#9CA3AF", "#6B7280", "#4B5563"],
         bgGradient: ["#F9FAFB", "#F3F4F6"],
-        glow: "rgba(107, 114, 128, 0.3)",
+        darkBgGradient: ["#374151", "#1F2937"],
+        glow: "rgba(107, 114, 128, 0.4)",
+        shadowColor: "#6B7280",
         label: "Common",
+        particles: ["#9CA3AF", "#6B7280", "#4B5563"],
       };
   }
 };
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
+// Enhanced Preview Card with better visuals
 const AchievementPreviewCard: React.FC<{
   achievement: Achievement;
   index: number;
   onPress: () => void;
   locale?: string;
-}> = ({ achievement, index, onPress, locale = "en" }) => {
+  isDark?: boolean;
+}> = ({ achievement, index, onPress, locale = "en", isDark = false }) => {
   const scale = useSharedValue(1);
+  const rotation = useSharedValue(0);
   const rarityConfig = getRarityConfig(achievement.rarity);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [{ scale: scale.value }, { rotateZ: `${rotation.value}deg` }],
   }));
 
   const handlePressIn = () => {
     scale.value = withSpring(0.92, { damping: 15, stiffness: 400 });
+    if (achievement.unlocked) {
+      rotation.value = withSequence(
+        withTiming(-2, { duration: 100 }),
+        withTiming(2, { duration: 100 }),
+        withTiming(0, { duration: 100 }),
+      );
+    }
   };
 
   const handlePressOut = () => {
@@ -192,100 +227,174 @@ const AchievementPreviewCard: React.FC<{
     >
       {achievement.unlocked ? (
         <LinearGradient
-          colors={rarityConfig.bgGradient as any}
+          colors={
+            isDark
+              ? (rarityConfig.darkBgGradient as any)
+              : (rarityConfig.bgGradient as any)
+          }
           style={styles.previewGradient}
         >
-          {/* Glow effect for unlocked */}
+          {/* Enhanced glow effect */}
           <View
-            style={[styles.glowEffect, { backgroundColor: rarityConfig.glow }]}
+            style={[
+              styles.glowEffect,
+              {
+                backgroundColor: rarityConfig.glow,
+                shadowColor: rarityConfig.shadowColor,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.8,
+                shadowRadius: 8,
+              },
+            ]}
           />
 
-          {/* Icon */}
+          {/* Shimmer overlay for legendary */}
+          {achievement.rarity === "LEGENDARY" && (
+            <Animated.View
+              style={styles.shimmerOverlay}
+              entering={FadeIn.delay(index * 60 + 300)}
+            />
+          )}
+
+          {/* Icon with enhanced shadow */}
           <View
             style={[
               styles.previewIconContainer,
-              { backgroundColor: rarityConfig.color + "20" },
+              {
+                backgroundColor: rarityConfig.color + "20",
+                shadowColor: rarityConfig.shadowColor,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+              },
             ]}
           >
-            {getAchievementIcon(achievement.icon, 28, rarityConfig.color)}
+            {getAchievementIcon(achievement.icon, 30, rarityConfig.color)}
           </View>
 
-          {/* Checkmark badge */}
-          <Animated.View
-            entering={ZoomIn.delay(index * 60 + 200)}
-            style={styles.checkmarkBadge}
-          >
-            <LinearGradient
-              colors={["#10B981", "#059669"]}
-              style={styles.checkmarkCircle}
+          {/* Verification badge for unlocked achievements */}
+          {achievement.verified && (
+            <Animated.View
+              entering={ZoomIn.delay(index * 60 + 250)}
+              style={styles.verifiedBadge}
             >
-              <Text style={styles.checkmarkText}>✓</Text>
-            </LinearGradient>
-          </Animated.View>
+              <LinearGradient
+                colors={["#10B981", "#059669"]}
+                style={styles.verifiedCircle}
+              >
+                <CheckCircle2 size={14} color="white" strokeWidth={3} />
+              </LinearGradient>
+            </Animated.View>
+          )}
 
           {/* Title */}
-          <Text style={styles.previewTitle} numberOfLines={2}>
+          <Text
+            style={[styles.previewTitle, isDark && { color: "#FFFFFF" }]}
+            numberOfLines={2}
+          >
             {getLocalizedText(achievement.title, locale)}
           </Text>
 
-          {/* Rarity indicator */}
+          {/* Enhanced rarity indicator */}
           <View style={styles.rarityIndicator}>
-            <View
-              style={[
-                styles.rarityDot,
-                { backgroundColor: rarityConfig.color },
-              ]}
-            />
-            <View
-              style={[
-                styles.rarityDot,
-                { backgroundColor: rarityConfig.color },
-              ]}
-            />
-            <View
-              style={[
-                styles.rarityDot,
-                { backgroundColor: rarityConfig.color },
-              ]}
-            />
+            {[
+              ...Array(
+                achievement.rarity === "LEGENDARY"
+                  ? 5
+                  : achievement.rarity === "EPIC"
+                    ? 4
+                    : achievement.rarity === "RARE"
+                      ? 3
+                      : 2,
+              ),
+            ].map((_, i) => (
+              <Animated.View
+                key={i}
+                entering={FadeIn.delay(index * 60 + 400 + i * 50)}
+              >
+                <View
+                  style={[
+                    styles.rarityDot,
+                    {
+                      backgroundColor: rarityConfig.color,
+                      shadowColor: rarityConfig.shadowColor,
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.5,
+                      shadowRadius: 2,
+                    },
+                  ]}
+                />
+              </Animated.View>
+            ))}
           </View>
         </LinearGradient>
       ) : (
         <LinearGradient
-          colors={["#FAFAFA", "#F5F5F5"]}
+          colors={isDark ? ["#1F2937", "#111827"] : ["#FAFAFA", "#F5F5F5"]}
           style={styles.previewGradient}
         >
           {/* Locked icon */}
           <View
             style={[
               styles.previewIconContainer,
-              { backgroundColor: "#E5E5EA" },
+              { backgroundColor: isDark ? "#374151" : "#E5E5EA" },
             ]}
           >
-            <Lock size={26} color="#9CA3AF" strokeWidth={2.5} />
+            <Lock
+              size={28}
+              color={isDark ? "#6B7280" : "#9CA3AF"}
+              strokeWidth={2.5}
+            />
           </View>
 
-          {/* Title */}
+          {/* Progress text */}
           <Text
-            style={[styles.previewTitle, { color: "#9CA3AF" }]}
+            style={[
+              styles.previewTitle,
+              { color: isDark ? "#9CA3AF" : "#6B7280" },
+            ]}
             numberOfLines={2}
           >
             {achievement.progress}/{achievement.maxProgress || "?"}
           </Text>
 
+          {/* Progress bar */}
+          <View style={styles.lockedProgressBar}>
+            <View
+              style={[
+                styles.lockedProgressFill,
+                {
+                  width: `${Math.min(
+                    100,
+                    (achievement.progress / (achievement.maxProgress || 1)) *
+                      100,
+                  )}%`,
+                  backgroundColor: rarityConfig.color,
+                },
+              ]}
+            />
+          </View>
+
           {/* Progress hint */}
-          <Text style={styles.lockedHint}>Keep going!</Text>
+          <Text style={[styles.lockedHint, isDark && { color: "#6B7280" }]}>
+            {Math.round(
+              (achievement.progress / (achievement.maxProgress || 1)) * 100,
+            )}
+            %
+          </Text>
         </LinearGradient>
       )}
     </AnimatedTouchable>
   );
 };
 
+// Enhanced Full Card with better details
 const AchievementFullCard: React.FC<{
   achievement: Achievement;
   index: number;
   locale?: string;
-}> = ({ achievement, index, locale = "en" }) => {
+  isDark?: boolean;
+}> = ({ achievement, index, locale = "en", isDark = false }) => {
   const scale = useSharedValue(1);
   const rarityConfig = getRarityConfig(achievement.rarity);
 
@@ -316,18 +425,51 @@ const AchievementFullCard: React.FC<{
       <LinearGradient
         colors={
           achievement.unlocked
-            ? (rarityConfig.bgGradient as any)
-            : (["#FFFFFF", "#FAFAFA"] as any)
+            ? isDark
+              ? (rarityConfig.darkBgGradient as any)
+              : (rarityConfig.bgGradient as any)
+            : isDark
+              ? (["#1F2937", "#111827"] as any)
+              : (["#FFFFFF", "#FAFAFA"] as any)
         }
         style={styles.fullCardGradient}
       >
         {achievement.unlocked && (
-          <View
-            style={[
-              styles.fullCardGlow,
-              { backgroundColor: rarityConfig.glow },
-            ]}
-          />
+          <>
+            <View
+              style={[
+                styles.fullCardGlow,
+                {
+                  backgroundColor: rarityConfig.glow,
+                  shadowColor: rarityConfig.shadowColor,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.6,
+                  shadowRadius: 6,
+                },
+              ]}
+            />
+
+            {/* Particle effects for legendary */}
+            {achievement.rarity === "LEGENDARY" && (
+              <View style={styles.particleContainer}>
+                {[...Array(5)].map((_, i) => (
+                  <Animated.View
+                    key={i}
+                    style={[
+                      styles.particle,
+                      {
+                        backgroundColor: rarityConfig.particles[i % 3],
+                        left: `${20 + i * 15}%`,
+                      },
+                    ]}
+                    entering={FadeInUp.delay(index * 50 + 300 + i * 100)
+                      .springify()
+                      .damping(15)}
+                  />
+                ))}
+              </View>
+            )}
+          </>
         )}
 
         <View style={styles.fullCardContent}>
@@ -339,14 +481,26 @@ const AchievementFullCard: React.FC<{
                 {
                   backgroundColor: achievement.unlocked
                     ? rarityConfig.color + "20"
-                    : "#F3F4F6",
+                    : isDark
+                      ? "#374151"
+                      : "#F3F4F6",
+                  shadowColor: achievement.unlocked
+                    ? rarityConfig.shadowColor
+                    : "transparent",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 8,
                 },
               ]}
             >
               {achievement.unlocked ? (
-                getAchievementIcon(achievement.icon, 36, rarityConfig.color)
+                getAchievementIcon(achievement.icon, 40, rarityConfig.color)
               ) : (
-                <Lock size={32} color="#9CA3AF" strokeWidth={2.5} />
+                <Lock
+                  size={36}
+                  color={isDark ? "#6B7280" : "#9CA3AF"}
+                  strokeWidth={2.5}
+                />
               )}
             </View>
 
@@ -354,11 +508,21 @@ const AchievementFullCard: React.FC<{
               <View
                 style={[
                   styles.rarityBadge,
-                  { backgroundColor: rarityConfig.color + "20" },
+                  {
+                    backgroundColor: rarityConfig.color + "20",
+                    borderWidth: 1.5,
+                    borderColor: rarityConfig.color + "40",
+                  },
                 ]}
               >
                 <Text
-                  style={[styles.rarityText, { color: rarityConfig.color }]}
+                  style={[
+                    styles.rarityText,
+                    {
+                      color: rarityConfig.color,
+                      fontWeight: "900",
+                    },
+                  ]}
                 >
                   {rarityConfig.label}
                 </Text>
@@ -372,7 +536,15 @@ const AchievementFullCard: React.FC<{
               <Text
                 style={[
                   styles.fullCardTitle,
-                  { color: achievement.unlocked ? "#000000" : "#6B7280" },
+                  {
+                    color: achievement.unlocked
+                      ? isDark
+                        ? "#FFFFFF"
+                        : "#000000"
+                      : isDark
+                        ? "#9CA3AF"
+                        : "#6B7280",
+                  },
                 ]}
                 numberOfLines={2}
               >
@@ -383,9 +555,17 @@ const AchievementFullCard: React.FC<{
                 <Animated.View entering={ZoomIn.delay(index * 50 + 200)}>
                   <LinearGradient
                     colors={rarityConfig.gradient as any}
-                    style={styles.xpBadge}
+                    style={[
+                      styles.xpBadge,
+                      {
+                        shadowColor: rarityConfig.shadowColor,
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.4,
+                        shadowRadius: 4,
+                      },
+                    ]}
                   >
-                    <Sparkles size={14} color="white" strokeWidth={2.5} />
+                    <Sparkles size={16} color="white" strokeWidth={2.5} />
                     <Text style={styles.xpText}>+{achievement.xpReward}</Text>
                   </LinearGradient>
                 </Animated.View>
@@ -395,7 +575,15 @@ const AchievementFullCard: React.FC<{
             <Text
               style={[
                 styles.fullCardDescription,
-                { color: achievement.unlocked ? "#4B5563" : "#9CA3AF" },
+                {
+                  color: achievement.unlocked
+                    ? isDark
+                      ? "#D1D5DB"
+                      : "#4B5563"
+                    : isDark
+                      ? "#6B7280"
+                      : "#9CA3AF",
+                },
               ]}
               numberOfLines={2}
             >
@@ -404,31 +592,64 @@ const AchievementFullCard: React.FC<{
 
             {/* Progress or date */}
             {achievement.unlocked ? (
-              achievement.unlockedDate && (
-                <View style={styles.unlockedDateRow}>
-                  <Calendar size={14} color="#10B981" />
-                  <Text style={styles.dateText}>
-                    Unlocked{" "}
-                    {new Date(achievement.unlockedDate).toLocaleDateString(
-                      "en-US",
-                      {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      },
-                    )}
-                  </Text>
-                </View>
-              )
+              <View style={styles.unlockedInfo}>
+                {achievement.unlockedDate && (
+                  <View style={styles.unlockedDateRow}>
+                    <Calendar size={14} color={rarityConfig.color} />
+                    <Text
+                      style={[styles.dateText, { color: rarityConfig.color }]}
+                    >
+                      Unlocked{" "}
+                      {new Date(achievement.unlockedDate).toLocaleDateString(
+                        "en-US",
+                        {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        },
+                      )}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Verification status */}
+                {achievement.verified && (
+                  <View style={styles.verificationRow}>
+                    <CheckCircle2 size={14} color="#10B981" strokeWidth={2.5} />
+                    <Text style={styles.verifiedText}>Verified</Text>
+                  </View>
+                )}
+              </View>
             ) : (
               <View style={styles.progressSection}>
                 <View style={styles.progressHeader}>
-                  <Text style={styles.progressLabel}>Progress</Text>
-                  <Text style={styles.progressValue}>
+                  <Text
+                    style={[
+                      styles.progressLabel,
+                      isDark && { color: "#9CA3AF" },
+                    ]}
+                  >
+                    Progress
+                  </Text>
+                  <Text
+                    style={[
+                      styles.progressValue,
+                      isDark && { color: "#D1D5DB" },
+                    ]}
+                  >
                     {achievement.progress}/{achievement.maxProgress || "?"}
                   </Text>
                 </View>
-                <View style={styles.progressBarContainer}>
+                <View
+                  style={[
+                    styles.progressBarContainer,
+                    {
+                      backgroundColor: isDark
+                        ? "#374151"
+                        : "rgba(0, 0, 0, 0.08)",
+                    },
+                  ]}
+                >
                   <LinearGradient
                     colors={rarityConfig.gradient as any}
                     start={{ x: 0, y: 0 }}
@@ -439,6 +660,14 @@ const AchievementFullCard: React.FC<{
                     ]}
                   />
                 </View>
+                <Text
+                  style={[
+                    styles.progressPercentage,
+                    isDark && { color: "#9CA3AF" },
+                  ]}
+                >
+                  {Math.round(progressPercentage)}% complete
+                </Text>
               </View>
             )}
           </View>
@@ -448,7 +677,15 @@ const AchievementFullCard: React.FC<{
           <View style={styles.fullCardCheckmark}>
             <LinearGradient
               colors={["#10B981", "#059669"]}
-              style={styles.checkmarkCircle}
+              style={[
+                styles.checkmarkCircle,
+                {
+                  shadowColor: "#10B981",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.5,
+                  shadowRadius: 4,
+                },
+              ]}
             >
               <Text style={styles.checkmarkText}>✓</Text>
             </LinearGradient>
@@ -466,7 +703,7 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   const categories = [
     { key: "all", label: "All", icon: Trophy },
@@ -502,6 +739,17 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
     (totalUnlocked / achievements.length) * 100,
   );
 
+  // Calculate rarity distribution
+  const rarityStats = useMemo(() => {
+    const stats = { LEGENDARY: 0, EPIC: 0, RARE: 0, UNCOMMON: 0, COMMON: 0 };
+    achievements.forEach((a) => {
+      if (a.unlocked && a.rarity) {
+        stats[a.rarity.toUpperCase() as keyof typeof stats]++;
+      }
+    });
+    return stats;
+  }, [achievements]);
+
   return (
     <>
       {/* Main Section */}
@@ -512,14 +760,12 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
         {/* Header */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionHeaderLeft}>
-            <View
-              style={[
-                styles.sectionIcon,
-                { backgroundColor: colors.emerald100 },
-              ]}
+            <LinearGradient
+              colors={["#10B981", "#059669"]}
+              style={styles.sectionIcon}
             >
               <Trophy size={24} color="white" strokeWidth={2.5} />
-            </View>
+            </LinearGradient>
             <View>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Achievements
@@ -530,28 +776,36 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
                   { color: colors.textSecondary },
                 ]}
               >
-                {totalUnlocked} {t("common.of")} {achievements.length} {t("common.unlocked")}
+                {totalUnlocked} {t("common.of")} {achievements.length}{" "}
+                {t("common.unlocked")}
               </Text>
             </View>
           </View>
 
           <TouchableOpacity
-            style={[
-              styles.viewAllButton,
-              { backgroundColor: colors.emerald100 },
-            ]}
+            style={[styles.viewAllButton]}
             onPress={() => setShowModal(true)}
             activeOpacity={0.7}
           >
-            <ChevronRight size={16} color="white" strokeWidth={3} />
+            <LinearGradient
+              colors={["#10B981", "#059669"]}
+              style={styles.viewAllGradient}
+            >
+              <ChevronRight size={16} color="white" strokeWidth={3} />
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
-        {/* Progress bar */}
+        {/* Enhanced progress bar */}
         <View style={styles.overallProgress}>
-          <View style={styles.progressBarContainer}>
+          <View
+            style={[
+              styles.progressBarContainer,
+              { backgroundColor: isDark ? "#374151" : "rgba(0, 0, 0, 0.08)" },
+            ]}
+          >
             <LinearGradient
-              colors={[colors.emerald100,colors.emerald500]}
+              colors={["#10B981", "#059669"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[
@@ -560,14 +814,19 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
               ]}
             />
           </View>
-          <Text
-            style={[
-              styles.progressPercentageText,
-              { color: colors.textSecondary },
-            ]}
-          >
-            {completionPercentage}% {t("common.complete")}
-          </Text>
+          <View style={styles.progressTextRow}>
+            <Text
+              style={[
+                styles.progressPercentageText,
+                { color: colors.textSecondary },
+              ]}
+            >
+              {completionPercentage}% {t("common.complete")}
+            </Text>
+            <Text style={[styles.xpTotalText, { color: colors.textSecondary }]}>
+              {totalXP} XP earned
+            </Text>
+          </View>
         </View>
 
         {/* Scrollable preview cards */}
@@ -585,12 +844,13 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
               index={index}
               onPress={() => setShowModal(true)}
               locale={locale}
+              isDark={isDark}
             />
           ))}
         </ScrollView>
       </Animated.View>
 
-      {/* Modal */}
+      {/* Enhanced Modal */}
       <Modal
         visible={showModal}
         animationType="slide"
@@ -604,7 +864,11 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
           ]}
         >
           {/* Modal Header */}
-          <BlurView intensity={20} tint="light" style={styles.modalHeader}>
+          <BlurView
+            intensity={20}
+            tint={isDark ? "dark" : "light"}
+            style={styles.modalHeader}
+          >
             <View style={styles.modalHandle} />
             <View style={styles.modalHeaderContent}>
               <View>
@@ -635,7 +899,7 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.modalContentContainer}
           >
-            {/* Stats Cards */}
+            {/* Enhanced Stats Cards */}
             <View style={styles.statsContainer}>
               <View style={styles.statsRow}>
                 <View
@@ -695,6 +959,67 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
                   </Text>
                 </View>
               </View>
+
+              {/* Rarity breakdown */}
+              {rarityStats.LEGENDARY + rarityStats.EPIC + rarityStats.RARE >
+                0 && (
+                <View
+                  style={[
+                    styles.rarityBreakdown,
+                    { backgroundColor: colors.card },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.rarityBreakdownTitle,
+                      { color: colors.text },
+                    ]}
+                  >
+                    Rare Achievements
+                  </Text>
+                  <View style={styles.rarityList}>
+                    {rarityStats.LEGENDARY > 0 && (
+                      <View style={styles.rarityItem}>
+                        <Gem size={16} color="#FFD700" />
+                        <Text
+                          style={[
+                            styles.rarityItemText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {rarityStats.LEGENDARY} Legendary
+                        </Text>
+                      </View>
+                    )}
+                    {rarityStats.EPIC > 0 && (
+                      <View style={styles.rarityItem}>
+                        <Star size={16} color="#9333EA" />
+                        <Text
+                          style={[
+                            styles.rarityItemText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {rarityStats.EPIC} Epic
+                        </Text>
+                      </View>
+                    )}
+                    {rarityStats.RARE > 0 && (
+                      <View style={styles.rarityItem}>
+                        <Medal size={16} color="#3B82F6" />
+                        <Text
+                          style={[
+                            styles.rarityItemText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {rarityStats.RARE} Rare
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )}
             </View>
 
             {/* Category filters */}
@@ -758,6 +1083,7 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
                       achievement={achievement}
                       index={index}
                       locale={locale}
+                      isDark={isDark}
                     />
                   ))}
                 </View>
@@ -791,6 +1117,7 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
                       achievement={achievement}
                       index={index + unlockedAchievements.length}
                       locale={locale}
+                      isDark={isDark}
                     />
                   ))}
                 </View>
@@ -808,6 +1135,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderRadius: 24,
     padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -827,6 +1158,10 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   sectionTitle: {
     fontSize: 22,
@@ -839,25 +1174,33 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   viewAllButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  viewAllGradient: {
     paddingHorizontal: 10,
     paddingVertical: 10,
     borderRadius: 20,
-  },
-  viewAllText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "white",
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   overallProgress: {
     marginBottom: 20,
   },
+  progressTextRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
   progressPercentageText: {
     fontSize: 12,
     fontWeight: "600",
-    marginTop: 8,
+  },
+  xpTotalText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   previewScrollContent: {
     paddingRight: 20,
@@ -880,9 +1223,18 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 3,
+    height: 4,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+  },
+  shimmerOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: 20,
   },
   previewIconContainer: {
     width: 56,
@@ -892,10 +1244,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 10,
   },
-  checkmarkBadge: {
+  verifiedBadge: {
     position: "absolute",
     top: 8,
     right: 8,
+  },
+  verifiedCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   checkmarkCircle: {
     width: 24,
@@ -922,9 +1281,21 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   rarityDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  lockedProgressBar: {
+    width: "100%",
+    height: 4,
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    borderRadius: 2,
+    marginTop: 8,
+    overflow: "hidden",
+  },
+  lockedProgressFill: {
+    height: "100%",
+    borderRadius: 2,
   },
   lockedHint: {
     fontSize: 11,
@@ -984,6 +1355,7 @@ const styles = StyleSheet.create({
   // Stats
   statsContainer: {
     padding: 20,
+    gap: 16,
   },
   statsRow: {
     flexDirection: "row",
@@ -995,6 +1367,10 @@ const styles = StyleSheet.create({
     padding: 18,
     alignItems: "center",
     gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   statIconContainer: {
     width: 48,
@@ -1003,6 +1379,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   statValue: {
     fontSize: 26,
@@ -1010,6 +1390,33 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   statLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  rarityBreakdown: {
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  rarityBreakdownTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 12,
+  },
+  rarityList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  rarityItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  rarityItemText: {
     fontSize: 13,
     fontWeight: "600",
   },
@@ -1029,9 +1436,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   categoryChipActive: {
     backgroundColor: "#10B981",
+    shadowColor: "#10B981",
+    shadowOpacity: 0.3,
   },
   categoryChipText: {
     fontSize: 14,
@@ -1058,6 +1471,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   categoryTitle: {
     fontSize: 20,
@@ -1076,6 +1493,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     position: "relative",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
   },
   fullCardGlow: {
     position: "absolute",
@@ -1083,6 +1504,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 4,
+  },
+  particleContainer: {
+    position: "absolute",
+    top: 10,
+    left: 0,
+    right: 0,
+    height: 20,
+    flexDirection: "row",
+  },
+  particle: {
+    position: "absolute",
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    opacity: 0.6,
   },
   fullCardContent: {
     flexDirection: "row",
@@ -1148,6 +1584,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontWeight: "500",
   },
+  unlockedInfo: {
+    gap: 8,
+  },
   unlockedDateRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1155,8 +1594,19 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 13,
-    color: "#10B981",
     fontWeight: "600",
+  },
+  verificationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  verifiedText: {
+    fontSize: 12,
+    color: "#10B981",
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   progressSection: {
     gap: 8,
@@ -1187,6 +1637,12 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: "100%",
     borderRadius: 4,
+  },
+  progressPercentage: {
+    fontSize: 11,
+    color: "#6B7280",
+    fontWeight: "600",
+    textAlign: "right",
   },
   fullCardCheckmark: {
     position: "absolute",

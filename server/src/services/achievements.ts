@@ -193,7 +193,7 @@ export class AchievementService {
         throw new Error("User not found");
       }
 
-      // Get water intake count
+      // Get water goal completions (8+ cups)
       const waterIntakeCount = await prisma.waterIntake.count({
         where: {
           user_id: userId,
@@ -377,7 +377,7 @@ export class AchievementService {
         throw new Error("User not found");
       }
 
-      // Get current user progress for achievements
+      // Get water goal completions (8+ cups)
       const waterIntakeCount = await prisma.waterIntake.count({
         where: {
           user_id: userId,
@@ -537,6 +537,7 @@ export class AchievementService {
       },
     });
 
+    // Check water intake for yesterday
     const completedWaterIntake = await prisma.waterIntake.count({
       where: {
         user_id: userId,
@@ -548,7 +549,7 @@ export class AchievementService {
       },
     });
 
-    return completedMeals > 0 && completedWaterIntake > 0;
+    return completedMeals > 0 || completedWaterIntake > 0;
   }
 
   static async updateUserProgress(

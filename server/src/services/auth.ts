@@ -17,8 +17,8 @@ const SESSION_EXPIRES_DAYS = 7;
 const PASSWORD_RESET_EXPIRES = "15m";
 
 // Token cache for performance - avoid DB hit on every request
-const TOKEN_CACHE_TTL_MS = 60000; // 60 seconds cache
-const tokenCache = new Map<string, { user: any; expiresAt: number }>();
+const TOKEN_CACHE_TTL_MS = 300000; // 5 minutes cache (increased from 60s for better performance)
+const tokenCache = new Map<string, { user: any; expiresAt: number; sessionVerified: boolean }>();
 
 // Cleanup expired cache entries periodically
 setInterval(() => {
@@ -28,7 +28,7 @@ setInterval(() => {
       tokenCache.delete(token);
     }
   }
-}, 30000); // Clean up every 30 seconds
+}, 60000); // Clean up every 60 seconds
 
 const userSelectFields = {
   user_id: true,
@@ -558,12 +558,13 @@ export class AuthService {
 
   static async verifyToken(token: string) {
     try {
-      // Check cache first to avoid DB hit
+      // Check cache first to avoid DB hit - FAST PATH
       const cached = tokenCache.get(token);
       if (cached && cached.expiresAt > Date.now()) {
         return cached.user;
       }
 
+      // Verify JWT first (fast, no DB)
       const decoded = jwt.verify(token, JWT_SECRET) as {
         user_id: string;
         email: string;
@@ -578,6 +579,15 @@ export class AuthService {
         throw new Error("Invalid token payload");
       }
 
+      // If we had a cached entry that just expired, refresh from DB in background
+      // but return the cached user immediately for better UX
+      if (cached && cached.sessionVerified) {
+        // Refresh cache in background (fire and forget)
+        this.refreshTokenCache(token).catch(() => {});
+        return cached.user;
+      }
+
+      // First time verification - must hit DB
       const session = await prisma.session.findUnique({
         where: { token },
         include: {
@@ -586,7 +596,6 @@ export class AuthService {
       });
 
       if (!session || session.expiresAt < new Date()) {
-        // Remove from cache if expired
         tokenCache.delete(token);
         throw new Error("Session expired");
       }
@@ -594,16 +603,42 @@ export class AuthService {
       // Decrypt sensitive fields
       const decryptedUser = processUserForResponse(session.user);
 
-      // Cache the result for 60 seconds
+      // Cache the result
       tokenCache.set(token, {
         user: decryptedUser,
         expiresAt: Date.now() + TOKEN_CACHE_TTL_MS,
+        sessionVerified: true,
       });
 
       return decryptedUser;
     } catch {
       tokenCache.delete(token);
       throw new Error("Invalid token");
+    }
+  }
+
+  // Background refresh of token cache
+  private static async refreshTokenCache(token: string): Promise<void> {
+    try {
+      const session = await prisma.session.findUnique({
+        where: { token },
+        include: {
+          user: { select: userSelectFields },
+        },
+      });
+
+      if (session && session.expiresAt > new Date()) {
+        const decryptedUser = processUserForResponse(session.user);
+        tokenCache.set(token, {
+          user: decryptedUser,
+          expiresAt: Date.now() + TOKEN_CACHE_TTL_MS,
+          sessionVerified: true,
+        });
+      } else {
+        tokenCache.delete(token);
+      }
+    } catch {
+      // Silent fail - cache will expire naturally
     }
   }
 

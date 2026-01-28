@@ -119,13 +119,41 @@ export function useMealAnalysis(options: UseMealAnalysisOptions = {}) {
         mealPeriod: mealType,
       };
 
+      console.log("📡 Dispatching analyzeMeal thunk...");
       const result = await dispatch(analyzeMeal(analysisParams));
+      console.log("📬 Thunk result received:", {
+        type: result.type,
+        fulfilled: analyzeMeal.fulfilled.match(result),
+        hasPayload: !!result.payload,
+      });
 
       if (analyzeMeal.fulfilled.match(result)) {
-        setHasBeenAnalyzed(true);
-        options.onAnalysisComplete?.();
+        console.log("✅ Analysis fulfilled, setting state...");
+        // CRITICAL: Set analysisData from the result so UI can display it
+        const analysis = result.payload?.analysis;
+        if (analysis) {
+          console.log("📊 Setting analysisData:", {
+            mealName: analysis?.meal_name,
+            calories: analysis?.calories,
+            ingredientsCount: analysis?.ingredients?.length || 0,
+          });
+          // Force state update synchronously
+          setAnalysisData(analysis);
+          setHasBeenAnalyzed(true);
+          console.log("🎬 State updated, calling onAnalysisComplete callback...");
+          // Use setTimeout to ensure state update has propagated
+          setTimeout(() => {
+            options.onAnalysisComplete?.();
+          }, 50);
+        } else {
+          // Even if analysis is empty, mark as analyzed so UI transitions
+          console.warn("⚠️ Analysis fulfilled but no analysis data in payload");
+          setHasBeenAnalyzed(true);
+          options.onAnalysisComplete?.();
+        }
         return true;
       } else {
+        console.log("❌ Analysis failed/rejected:", result.payload);
         const errorMessage = result.payload || "Analysis failed";
         Alert.alert(
           "Analysis Failed",

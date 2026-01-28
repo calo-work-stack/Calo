@@ -8,6 +8,7 @@ import { CalendarService } from "./calendar";
 import { clearStatisticsCache } from "./statistics";
 import { errorMessageIncludes, getErrorMessage } from "../utils/errorUtils";
 import { MealTrackingService } from "./mealTracking";
+import { estimateIngredientPrice } from "../utils/pricing";
 
 // Cache for frequently accessed data
 const userStatsCache = new Map<string, { data: any; timestamp: number }>();
@@ -25,7 +26,7 @@ function transformMealForClient(meal: any) {
   const feedback = additives.feedback || {};
 
   // Safely parse ingredients
-  let ingredients = [];
+  let ingredients: any[] = [];
   if (meal.ingredients) {
     if (Array.isArray(meal.ingredients)) {
       ingredients = meal.ingredients;
@@ -37,6 +38,11 @@ function transformMealForClient(meal: any) {
       }
     }
   }
+
+  // Calculate total estimated cost from ingredients
+  const totalEstimatedCost = ingredients.reduce((sum: number, ing: any) => {
+    return sum + (ing.estimated_cost || 0);
+  }, 0);
 
   return {
     meal_id: meal.meal_id,
@@ -79,6 +85,14 @@ function transformMealForClient(meal: any) {
     mealPeriod: meal.meal_period || "other", // Also add camelCase version for compatibility
     is_mandatory: meal.is_mandatory !== undefined ? meal.is_mandatory : true,
     isMandatory: meal.is_mandatory !== undefined ? meal.is_mandatory : true, // camelCase version
+    estimated_cost:
+      totalEstimatedCost > 0
+        ? Math.round(totalEstimatedCost * 100) / 100
+        : null,
+    estimatedCost:
+      totalEstimatedCost > 0
+        ? Math.round(totalEstimatedCost * 100) / 100
+        : null,
   };
 }
 
@@ -102,13 +116,13 @@ export class NutritionService {
     console.log("💬 Update text provided:", !!data.updateText);
     console.log(
       "🥗 Edited ingredients provided:",
-      data.editedIngredients?.length || 0
+      data.editedIngredients?.length || 0,
     );
     console.log("🍽️ Meal Type:", data.mealType);
     console.log("🕰️ Meal Period:", data.mealPeriod);
 
     // Ensure proper meal type mapping
-    const mealTypeMapping = {
+    const mealTypeMapping: Record<string, string> = {
       breakfast: "breakfast",
       lunch: "lunch",
       dinner: "dinner",
@@ -136,7 +150,8 @@ export class NutritionService {
     }
 
     // Normalize meal type
-    finalMealType = mealTypeMapping[finalMealType] || "other";
+    finalMealType =
+      (finalMealType && mealTypeMapping[finalMealType]) || "other";
 
     console.log("🔄 Final meal type determined:", finalMealType);
     console.log("📅 Original meal period:", data.mealPeriod);
@@ -149,13 +164,13 @@ export class NutritionService {
           cleanBase64,
           language,
           data.updateText,
-          data.editedIngredients
+          data.editedIngredients,
         ),
         new Promise<never>((_, reject) =>
           setTimeout(
             () => reject(new Error("Analysis timeout after 60 seconds")),
-            60000
-          )
+            60000,
+          ),
         ),
       ]);
     } catch (error: unknown) {
@@ -165,13 +180,13 @@ export class NutritionService {
       // If it's a timeout, throw a user-friendly message
       if (errorMessageIncludes(error, "timeout")) {
         throw new Error(
-          "Analysis is taking too long. Please try again with a clearer image."
+          "Analysis is taking too long. Please try again with a clearer image.",
         );
       }
 
       // For other errors, provide a helpful fallback message
       throw new Error(
-        "Unable to analyze this image. Please try a clearer photo with better lighting, or try again later."
+        "Unable to analyze this image. Please try a clearer photo with better lighting, or try again later.",
       );
     }
 
@@ -200,6 +215,13 @@ export class NutritionService {
       (ingredient, index) => {
         // Ensure ingredient is an object with proper structure
         if (typeof ingredient === "string") {
+          // Estimate price for string ingredients
+          const priceEstimate = estimateIngredientPrice(
+            ingredient,
+            100,
+            "g",
+            "other",
+          );
           return {
             name: ingredient,
             calories: 0,
@@ -209,8 +231,18 @@ export class NutritionService {
             fiber: 0,
             sugar: 0,
             sodium_mg: 0,
+            estimated_cost: priceEstimate.estimated_price,
           };
         }
+
+        // Estimate price for structured ingredients
+        const servingSize = Number(ingredient.serving_size_g || 100);
+        const priceEstimate = estimateIngredientPrice(
+          ingredient.name || `Item ${index + 1}`,
+          servingSize,
+          "g",
+          (ingredient as any).category || "other", // Type-safe fallback
+        );
 
         return {
           name: ingredient.name || `Item ${index + 1}`,
@@ -224,10 +256,10 @@ export class NutritionService {
           cholesterol_mg: Number(ingredient.cholesterol_mg || 0),
           saturated_fats_g: Number(ingredient.saturated_fats_g || 0),
           polyunsaturated_fats_g: Number(
-            ingredient.polyunsaturated_fats_g || 0
+            ingredient.polyunsaturated_fats_g || 0,
           ),
           monounsaturated_fats_g: Number(
-            ingredient.monounsaturated_fats_g || 0
+            ingredient.monounsaturated_fats_g || 0,
           ),
           omega_3_g: Number(ingredient.omega_3_g || 0),
           omega_6_g: Number(ingredient.omega_6_g || 0),
@@ -235,14 +267,16 @@ export class NutritionService {
           insoluble_fiber_g: Number(ingredient.insoluble_fiber_g || 0),
           alcohol_g: Number(ingredient.alcohol_g || 0),
           caffeine_mg: Number(ingredient.caffeine_mg || 0),
-          serving_size_g: Number(ingredient.serving_size_g || 0),
+          serving_size_g: servingSize,
           glycemic_index: ingredient.glycemic_index || null,
           insulin_index: ingredient.insulin_index || null,
           vitamins_json: ingredient.vitamins_json || {},
           micronutrients_json: ingredient.micronutrients_json || {},
           allergens_json: ingredient.allergens_json || {},
+          estimated_cost:
+            ingredient.estimated_cost || priceEstimate.estimated_price,
         };
-      }
+      },
     );
 
     const mappedMeal = mapMealDataToPrismaFields(
@@ -250,7 +284,7 @@ export class NutritionService {
       user_id,
       cleanBase64,
       data.mealType,
-      data.mealPeriod
+      data.mealPeriod,
     );
 
     // Validate that we have meaningful data
@@ -261,30 +295,45 @@ export class NutritionService {
     // Ensure minimum nutritional data
     if (mappedMeal.calories === 0 && ingredients.length === 0) {
       throw new Error(
-        "Analysis failed to identify any nutritional content. Please try a clearer image."
+        "Analysis failed to identify any nutritional content. Please try a clearer image.",
       );
     }
 
     console.log("✅ Meal analysis completed successfully!");
 
+    // CRITICAL FIX: Don't include base64 image in response - client already has it
+    // Including it causes response to be several MB and leads to timeout/hanging
+    const { image_url, ...mappedMealWithoutImage } = mappedMeal;
+
+    // ✅ CORRECT CODE - PRESERVES NUTRITION DATA
+    const responseData = {
+      ingredients,
+      healthScore: (analysis.confidence || 75).toString(),
+      recommendations:
+        analysis.healthNotes ||
+        analysis.recommendations ||
+        "Meal analysis completed successfully.",
+      ...mappedMealWithoutImage, // Spread LAST to include all nutrition fields
+    };
+
+    // Validation (optional but recommended)
+    console.log("📊 Nutrition check:", {
+      calories: responseData.calories,
+      protein_g: responseData.protein_g,
+      carbs_g: responseData.carbs_g,
+      fats_g: responseData.fats_g,
+    });
+
     return {
       success: true,
-      data: {
-        ...mappedMeal,
-        ingredients,
-        healthScore: (analysis.confidence || 75).toString(),
-        recommendations:
-          analysis.healthNotes ||
-          analysis.recommendations ||
-          "Meal analysis completed successfully.",
-      },
+      data: responseData,
       confidence: analysis.confidence || 75,
     };
   }
 
   static async updateMeal(
     user_id: string,
-    params: { meal_id: string; updateText: string; language?: string }
+    params: { meal_id: string; updateText: string; language?: string },
   ): Promise<any> {
     try {
       console.log("🔄 Starting meal update process for meal:", params.meal_id);
@@ -343,7 +392,7 @@ export class NutritionService {
       // Call the AI analysis with the update text and existing context
       const analysisResult = await this.analyzeMeal(user_id, {
         imageBase64,
-        language: params.language || "english",
+        language: params.language,
         date: new Date().toISOString().split("T")[0],
         updateText: params.updateText,
         editedIngredients: existingIngredients,
@@ -362,7 +411,7 @@ export class NutritionService {
         user_id,
         imageBase64,
         undefined,
-        existingMeal.meal_period || "other" // Ensure meal_period is preserved
+        existingMeal.meal_period || "other", // Ensure meal_period is preserved
       );
 
       // Update the meal in the database
@@ -392,9 +441,10 @@ export class NutritionService {
     try {
       // Determine if meal is mandatory based on meal_period or explicit is_mandatory
       const mealPeriod = mealData.mealPeriod || mealData.meal_period || "other";
-      const is_mandatory = mealData.is_mandatory !== undefined
-        ? mealData.is_mandatory
-        : isMealMandatory(mealPeriod);
+      const is_mandatory =
+        mealData.is_mandatory !== undefined
+          ? mealData.is_mandatory
+          : isMealMandatory(mealPeriod);
 
       // Validate mandatory meal creation if this is a mandatory meal
       if (is_mandatory) {
@@ -409,7 +459,7 @@ export class NutritionService {
           imageBase64,
           mealData.mealType,
           mealPeriod,
-          is_mandatory
+          is_mandatory,
         ),
       });
 
@@ -426,7 +476,7 @@ export class NutritionService {
   static async getUserMeals(
     user_id: string,
     offset: number = 0,
-    limit: number = 100
+    limit: number = 100,
   ): Promise<any[]> {
     try {
       console.log(`📱 Fetching meals for user: ${user_id}`);
@@ -484,6 +534,7 @@ export class NutritionService {
           additives_json: true,
           health_risk_notes: true,
           ingredients: true,
+          estimated_cost: true,
           created_at: true,
           updated_at: true,
           // User interaction fields - favorites and ratings
@@ -541,6 +592,10 @@ export class NutritionService {
         description: meal.description,
         confidence: meal.confidence,
         analysisStatus: meal.analysis_status,
+
+        // Estimated cost (both snake_case and camelCase for compatibility)
+        estimated_cost: meal.estimated_cost || 0,
+        estimatedCost: meal.estimated_cost || 0,
       }));
 
       // Cache the results
@@ -560,7 +615,7 @@ export class NutritionService {
   static async getRangeStatistics(
     userId: string,
     startDate: string,
-    endDate: string
+    endDate: string,
   ) {
     try {
       console.log("📊 Getting range statistics for user:", userId);
@@ -653,7 +708,7 @@ export class NutritionService {
             ].flatMap((field) => [
               [`total_${field}`, 0],
               [`average_${field}`, 0],
-            ])
+            ]),
           ),
         };
 
@@ -703,7 +758,7 @@ export class NutritionService {
       }
 
       const uniqueDates = new Set(
-        meals.map((meal) => meal.created_at.toISOString().split("T")[0])
+        meals.map((meal) => meal.created_at.toISOString().split("T")[0]),
       );
       const totalDays = uniqueDates.size;
 
@@ -711,51 +766,54 @@ export class NutritionService {
         Object.entries(totals).map(([key, val]) => [
           `average_${key}`,
           totalDays > 0 ? val / totalDays : 0,
-        ])
+        ]),
       );
 
       // Group meals by day
-      const dailyData = meals.reduce((acc, meal) => {
-        const date = meal.created_at.toISOString().split("T")[0];
-        if (!acc[date]) {
-          acc[date] = {
-            date,
-            meals: [],
-          };
-        }
+      const dailyData = meals.reduce(
+        (acc, meal) => {
+          const date = meal.created_at.toISOString().split("T")[0];
+          if (!acc[date]) {
+            acc[date] = {
+              date,
+              meals: [],
+            };
+          }
 
-        acc[date].meals.push({
-          meal_id: meal.meal_id,
-          user_id: meal.user_id,
-          meal_name: meal.meal_name,
-          calories: meal.calories,
-          protein_g: meal.protein_g,
-          carbs_g: meal.carbs_g,
-          fats_g: meal.fats_g,
-          saturated_fats_g: meal.saturated_fats_g,
-          polyunsaturated_fats_g: meal.polyunsaturated_fats_g,
-          monounsaturated_fats_g: meal.monounsaturated_fats_g,
-          omega_3_g: meal.omega_3_g,
-          omega_6_g: meal.omega_6_g,
-          fiber_g: meal.fiber_g,
-          soluble_fiber_g: meal.soluble_fiber_g,
-          insoluble_fiber_g: meal.insoluble_fiber_g,
-          sugar_g: meal.sugar_g,
-          cholesterol_mg: meal.cholesterol_mg,
-          sodium_mg: meal.sodium_mg,
-          alcohol_g: meal.alcohol_g,
-          caffeine_mg: meal.caffeine_mg,
-          liquids_ml: meal.liquids_ml,
-          serving_size_g: meal.serving_size_g,
-          glycemic_index: meal.glycemic_index,
-          insulin_index: meal.insulin_index,
-          confidence: meal.confidence,
-          created_at: meal.created_at,
-          upload_time: meal.upload_time,
-        });
+          acc[date].meals.push({
+            meal_id: meal.meal_id,
+            user_id: meal.user_id,
+            meal_name: meal.meal_name,
+            calories: meal.calories,
+            protein_g: meal.protein_g,
+            carbs_g: meal.carbs_g,
+            fats_g: meal.fats_g,
+            saturated_fats_g: meal.saturated_fats_g,
+            polyunsaturated_fats_g: meal.polyunsaturated_fats_g,
+            monounsaturated_fats_g: meal.monounsaturated_fats_g,
+            omega_3_g: meal.omega_3_g,
+            omega_6_g: meal.omega_6_g,
+            fiber_g: meal.fiber_g,
+            soluble_fiber_g: meal.soluble_fiber_g,
+            insoluble_fiber_g: meal.insoluble_fiber_g,
+            sugar_g: meal.sugar_g,
+            cholesterol_mg: meal.cholesterol_mg,
+            sodium_mg: meal.sodium_mg,
+            alcohol_g: meal.alcohol_g,
+            caffeine_mg: meal.caffeine_mg,
+            liquids_ml: meal.liquids_ml,
+            serving_size_g: meal.serving_size_g,
+            glycemic_index: meal.glycemic_index,
+            insulin_index: meal.insulin_index,
+            confidence: meal.confidence,
+            created_at: meal.created_at,
+            upload_time: meal.upload_time,
+          });
 
-        return acc;
-      }, {} as Record<string, any>);
+          return acc;
+        },
+        {} as Record<string, any>,
+      );
 
       const dailyBreakdown = Object.values(dailyData);
 
@@ -766,14 +824,17 @@ export class NutritionService {
           Object.entries(totals).map(([key, val]) => [
             `total_${key}`,
             Math.round(val * 100) / 100,
-          ])
+          ]),
         ),
-        ...Object.entries(averages).reduce((acc, [key, val]) => {
-          acc[key] = Math.round(val * 100) / 100;
-          return acc;
-        }, {} as Record<string, number>),
+        ...Object.entries(averages).reduce(
+          (acc, [key, val]) => {
+            acc[key] = Math.round(val * 100) / 100;
+            return acc;
+          },
+          {} as Record<string, number>,
+        ),
         dailyBreakdown: dailyBreakdown.sort((a, b) =>
-          a.date.localeCompare(b.date)
+          a.date.localeCompare(b.date),
         ),
         dateRange: {
           startDate,
@@ -843,7 +904,7 @@ export class NutritionService {
           fiber: 0,
           sugar: 0,
           meal_count: 0,
-        }
+        },
       );
 
       // Cache the result
@@ -862,7 +923,7 @@ export class NutritionService {
   static async saveMealFeedback(
     user_id: string,
     meal_id: string,
-    feedback: any
+    feedback: any,
   ) {
     try {
       const meal = await prisma.meal.findFirst({
@@ -934,7 +995,7 @@ export class NutritionService {
   static async duplicateMeal(
     user_id: string,
     meal_id: string,
-    newDate?: string
+    newDate?: string,
   ) {
     try {
       const originalMeal = await prisma.meal.findFirst({
@@ -947,7 +1008,7 @@ export class NutritionService {
         data: mapExistingMealToPrismaInput(
           originalMeal,
           user_id,
-          duplicateDate
+          duplicateDate,
         ),
       });
 
@@ -973,7 +1034,7 @@ export class NutritionService {
 
     keysToDelete.forEach((key) => userStatsCache.delete(key));
     console.log(
-      `🧹 Cleared ${keysToDelete.length} cache entries for user ${user_id}`
+      `🧹 Cleared ${keysToDelete.length} cache entries for user ${user_id}`,
     );
   }
 
@@ -989,7 +1050,7 @@ export class NutritionService {
 
     keysToDelete.forEach((key) => mealsCache.delete(key));
     console.log(
-      `🧹 Cleared ${keysToDelete.length} meal cache entries for user ${user_id}`
+      `🧹 Cleared ${keysToDelete.length} meal cache entries for user ${user_id}`,
     );
   }
 
@@ -1030,7 +1091,9 @@ export class NutritionService {
         data: [processedMeal],
         timestamp: Date.now(),
       });
-      console.log(`⚡ Initialized cache with meal ${meal.meal_id} for user ${user_id}`);
+      console.log(
+        `⚡ Initialized cache with meal ${meal.meal_id} for user ${user_id}`,
+      );
     }
 
     // Clear related caches since totals changed
@@ -1047,11 +1110,15 @@ export class NutritionService {
     const cached = mealsCache.get(cacheKey);
 
     if (cached) {
-      const index = cached.data.findIndex((m: any) => m.meal_id === meal.meal_id);
+      const index = cached.data.findIndex(
+        (m: any) => m.meal_id === meal.meal_id,
+      );
       if (index !== -1) {
         cached.data[index] = this.processMealForCache(meal);
         cached.timestamp = Date.now();
-        console.log(`⚡ Updated meal ${meal.meal_id} in cache for user ${user_id}`);
+        console.log(
+          `⚡ Updated meal ${meal.meal_id} in cache for user ${user_id}`,
+        );
       }
     }
 
@@ -1073,7 +1140,9 @@ export class NutritionService {
       if (index !== -1) {
         cached.data.splice(index, 1);
         cached.timestamp = Date.now();
-        console.log(`⚡ Removed meal ${meal_id} from cache for user ${user_id}`);
+        console.log(
+          `⚡ Removed meal ${meal_id} from cache for user ${user_id}`,
+        );
       }
     }
 
@@ -1121,6 +1190,8 @@ export class NutritionService {
       description: meal.description,
       confidence: meal.confidence,
       analysisStatus: meal.analysis_status,
+      estimated_cost: meal.estimated_cost || 0,
+      estimatedCost: meal.estimated_cost || 0,
     };
   }
 }

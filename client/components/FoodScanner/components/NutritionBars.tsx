@@ -18,7 +18,7 @@ export default function NutritionBars({
   const nutrients = [
     {
       key: "protein",
-      label: t("foodScanner.protein"),
+      label: t("common.protein"),
       value: nutrition.protein || 0,
       reference: 30,
       highThreshold: 10,

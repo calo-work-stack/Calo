@@ -25,10 +25,10 @@ import ScannedProducts from "@/components/ScannedProducts";
 import { PriceEstimate, ProductData, ScanResult } from "@/src/types/statistics";
 
 // Import new components
-import ScannerCamera from "@/components/FoodScanner/components/ScannerCamera";
-import ProductDetails from "@/components/FoodScanner/components/ProductDetails";
-import ProductSearchModal from "@/components/FoodScanner/components/ProductSearchModal";
-import ScanHistoryModal from "@/components/FoodScanner/components/ScanHistoryModal";
+import ScannerCamera from "./ScannerCamera";
+import ProductDetails from "./ProductDetails";
+import ProductSearchModal from "./ProductSearchModal";
+import ScanHistoryModal from "./ScanHistoryModal";
 
 const { width } = Dimensions.get("window");
 
@@ -676,7 +676,6 @@ export default function FoodScannerScreen() {
           <ProductDetails
             scanResult={scanResult}
             quantity={quantity}
-            priceEstimate={priceEstimate}
             onBack={handleRescan}
             onShowHistory={() => setShowHistoryModal(true)}
             onAddToMeal={handleAddToMealHistory}

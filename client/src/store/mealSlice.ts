@@ -207,16 +207,30 @@ export const analyzeMeal = createAsyncThunk(
 
       console.log("Base64 data length:", cleanBase64.length);
 
-      const response = await nutritionAPI.analyzeMeal(
-        cleanBase64,
-        params.updateText,
-        params.editedIngredients || [],
-        params.language || "english",
-        params.mealType
-      );
-      console.log("API response received:", response);
+      console.log("🚀 Calling nutritionAPI.analyzeMeal...");
+      let response;
+      try {
+        response = await nutritionAPI.analyzeMeal(
+          cleanBase64,
+          params.updateText,
+          params.editedIngredients || [],
+          params.language || "english",
+          params.mealType
+        );
+        console.log("✅ API response received:", {
+          success: response?.success,
+          hasData: !!response?.data,
+          mealName: response?.data?.meal_name,
+          calories: response?.data?.calories,
+        });
+      } catch (apiError: any) {
+        console.error("❌ API call failed:", apiError.message);
+        throw apiError;
+      }
 
+      console.log("🔍 Checking response validity...");
       if (response && response.success && response.data) {
+        console.log("✅ Response is valid, creating pendingMeal...");
         try {
           const validatedData = MealAnalysisSchema.parse(response.data);
           console.log("Data validation successful");
@@ -253,41 +267,39 @@ export const analyzeMeal = createAsyncThunk(
         };
         console.log("Pending meal created:", pendingMeal);
 
-        // CRITICAL FIX: Only save small analysis data, NEVER base64
-        try {
-          const storageData = {
-            analysis: pendingMeal.analysis,
-            timestamp: pendingMeal.timestamp,
-          };
+        // CRITICAL FIX: Save analysis data in BACKGROUND - don't await!
+        // This prevents storage operations from blocking the UI update
+        const storageData = {
+          analysis: pendingMeal.analysis,
+          timestamp: pendingMeal.timestamp,
+        };
 
-          // Check size before saving
+        try {
           const serializedMeal = JSON.stringify(storageData);
           const sizeKB = (serializedMeal.length * 2) / 1024;
 
-          if (sizeKB > 50) {
-            console.warn(
-              `⚠️ Analysis data too large (${sizeKB.toFixed(
-                1
-              )}KB), not persisting`
-            );
+          if (sizeKB <= 50) {
+            // Run storage operation in background - DON'T AWAIT
+            // This is critical to prevent the UI from getting stuck
+            Promise.resolve().then(async () => {
+              try {
+                const canStore = await StorageCleanupService.checkStorageBeforeOperation();
+                if (canStore) {
+                  await optimizedStorage.setItem(PENDING_MEAL_KEY, serializedMeal);
+                  console.log(`✅ Pending meal saved in background (${sizeKB.toFixed(1)}KB)`);
+                }
+              } catch (err) {
+                console.warn("Background storage failed:", err);
+              }
+            });
           } else {
-            // Use optimizedStorage with storage cleanup validation
-            const canStore = await StorageCleanupService.checkStorageBeforeOperation();
-            if (canStore) {
-              await optimizedStorage.setItem(PENDING_MEAL_KEY, serializedMeal);
-              console.log(
-                `✅ Pending meal analysis saved (${sizeKB.toFixed(1)}KB)`
-              );
-            } else {
-              console.warn("⚠️ Storage unavailable, skipping persistence");
-            }
+            console.warn(`⚠️ Analysis data too large (${sizeKB.toFixed(1)}KB), not persisting`);
           }
         } catch (storageError: any) {
-          console.warn("Failed to save pending meal to storage:", storageError);
-          // Continue without storage - meal is still in memory
+          console.warn("Failed to serialize pending meal:", storageError);
         }
 
-        console.log("Analysis completed successfully");
+        console.log("✅ Analysis completed successfully, returning pendingMeal");
         return pendingMeal;
       } else {
         const errorMessage =
@@ -889,15 +901,18 @@ const mealSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(analyzeMeal.pending, (state) => {
+        console.log("📝 Redux: analyzeMeal.pending");
         state.isAnalyzing = true;
         state.error = null;
       })
       .addCase(analyzeMeal.fulfilled, (state, action) => {
+        console.log("✅ Redux: analyzeMeal.fulfilled - setting isAnalyzing=false");
         state.isAnalyzing = false;
         state.pendingMeal = action.payload;
         state.error = null;
       })
       .addCase(analyzeMeal.rejected, (state, action) => {
+        console.log("❌ Redux: analyzeMeal.rejected:", action.payload);
         state.isAnalyzing = false;
         state.error = action.payload as string;
       })

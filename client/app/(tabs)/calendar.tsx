@@ -781,21 +781,6 @@ export default function CalendarScreen() {
     );
   };
 
-  const renderEnhancedStatistics = () => {
-    return (
-      <View style={dynamicStyles.statisticsSection}>
-        <Text style={dynamicStyles.statisticsSectionTitle}>
-          {t("calendar.monthlyStats")}
-        </Text>
-        <StatisticsCarousel
-          statistics={enhancedStatistics}
-          isLoading={isLoadingEnhancedStats}
-          language={language}
-        />
-      </View>
-    );
-  };
-
   if (
     (isLoading || isLoadingCalendar) &&
     Object.keys(calendarData).length === 0
@@ -832,10 +817,6 @@ export default function CalendarScreen() {
           </View>
         </View>
 
-        {/* Enhanced Statistics Carousel */}
-        {renderEnhancedStatistics()}
-
-        {/* Gamification Section */}
         {renderGamificationSection()}
 
         {/* Enhanced Calendar Navigation */}

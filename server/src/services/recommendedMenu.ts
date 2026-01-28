@@ -1,6 +1,28 @@
 import { prisma } from "../lib/database";
 import { OpenAIService } from "./openai";
 import { UserContextService, ComprehensiveUserContext } from "./userContext";
+import {
+  estimateIngredientPrice,
+  estimateTotalPrice,
+  formatPrice,
+} from "../utils/pricing";
+
+// Budget validation constants
+const DEFAULT_DAILY_BUDGET = 100; // ₪100/day default
+const MIN_DAILY_BUDGET = 30; // Minimum realistic daily food budget
+const MAX_DAILY_BUDGET = 500; // Maximum daily food budget
+
+export interface BudgetValidation {
+  isWithinBudget: boolean;
+  totalCost: number;
+  dailyBudget: number;
+  totalBudget: number;
+  overageAmount: number;
+  costBreakdown: {
+    day: number;
+    cost: number;
+  }[];
+}
 
 export interface GenerateMenuParams {
   userId: string;
@@ -43,12 +65,163 @@ export interface MenuCompletionSummary {
 }
 
 export class RecommendedMenuService {
+  /**
+   * Get user's daily food budget from questionnaire
+   */
+  static async getUserDailyBudget(userId: string): Promise<number> {
+    try {
+      const questionnaire = await prisma.userQuestionnaire.findFirst({
+        where: { user_id: userId },
+        orderBy: { date_completed: "desc" },
+        select: { daily_food_budget: true },
+      });
+
+      const budget = questionnaire?.daily_food_budget;
+      if (budget && budget >= MIN_DAILY_BUDGET && budget <= MAX_DAILY_BUDGET) {
+        return budget;
+      }
+      return DEFAULT_DAILY_BUDGET;
+    } catch (error) {
+      console.warn("Failed to get user budget, using default:", error);
+      return DEFAULT_DAILY_BUDGET;
+    }
+  }
+
+  /**
+   * Calculate total cost from menu meals and their ingredients
+   */
+  static calculateMenuCost(meals: any[]): {
+    totalCost: number;
+    dailyCosts: Map<number, number>;
+  } {
+    const dailyCosts = new Map<number, number>();
+    let totalCost = 0;
+
+    for (const meal of meals) {
+      const dayNumber = meal.day_number || 1;
+      let mealCost = 0;
+
+      if (meal.ingredients && Array.isArray(meal.ingredients)) {
+        for (const ingredient of meal.ingredients) {
+          const cost =
+            ingredient.estimated_cost ||
+            estimateIngredientPrice(
+              ingredient.name,
+              ingredient.quantity || 100,
+              ingredient.unit || "g",
+              ingredient.category || "other",
+            ).estimated_price;
+          mealCost += cost;
+        }
+      }
+
+      totalCost += mealCost;
+      dailyCosts.set(dayNumber, (dailyCosts.get(dayNumber) || 0) + mealCost);
+    }
+
+    return { totalCost: Math.round(totalCost * 100) / 100, dailyCosts };
+  }
+
+  /**
+   * Validate menu cost against user's budget
+   */
+  static async validateMenuBudget(
+    userId: string,
+    meals: any[],
+    daysCount: number,
+  ): Promise<BudgetValidation> {
+    const dailyBudget = await this.getUserDailyBudget(userId);
+    const totalBudget = dailyBudget * daysCount;
+    const { totalCost, dailyCosts } = this.calculateMenuCost(meals);
+
+    const costBreakdown = Array.from(dailyCosts.entries()).map(
+      ([day, cost]) => ({
+        day,
+        cost: Math.round(cost * 100) / 100,
+      }),
+    );
+
+    const isWithinBudget = totalCost <= totalBudget;
+    const overageAmount = isWithinBudget
+      ? 0
+      : Math.round((totalCost - totalBudget) * 100) / 100;
+
+    return {
+      isWithinBudget,
+      totalCost,
+      dailyBudget,
+      totalBudget,
+      overageAmount,
+      costBreakdown,
+    };
+  }
+
+  /**
+   * Optimize menu to fit within budget by suggesting cheaper alternatives
+   */
+  static async optimizeMenuForBudget(
+    meals: any[],
+    targetBudget: number,
+    currentCost: number,
+  ): Promise<{ optimizedMeals: any[]; savings: number }> {
+    const reductionNeeded = currentCost - targetBudget;
+    if (reductionNeeded <= 0) {
+      return { optimizedMeals: meals, savings: 0 };
+    }
+
+    console.log(
+      `💰 Need to reduce menu cost by ₪${reductionNeeded.toFixed(2)}`,
+    );
+
+    // Sort meals by cost (highest first) and try to optimize
+    const mealsWithCost = meals
+      .map((meal) => {
+        const { totalCost } = this.calculateMenuCost([meal]);
+        return { meal, cost: totalCost };
+      })
+      .sort((a, b) => b.cost - a.cost);
+
+    let totalSavings = 0;
+    const optimizedMeals = mealsWithCost.map(({ meal }) => {
+      // Simple optimization: reduce expensive ingredient quantities by 10-20%
+      if (meal.ingredients && Array.isArray(meal.ingredients)) {
+        meal.ingredients = meal.ingredients.map((ing: any) => {
+          if (ing.estimated_cost && ing.estimated_cost > 5) {
+            const reduction = Math.min(0.2, reductionNeeded / currentCost);
+            const newQuantity = Math.round(
+              (ing.quantity || 100) * (1 - reduction),
+            );
+            const savings = ing.estimated_cost * reduction;
+            totalSavings += savings;
+            return {
+              ...ing,
+              quantity: newQuantity,
+              estimated_cost: ing.estimated_cost - savings,
+            };
+          }
+          return ing;
+        });
+      }
+      return meal;
+    });
+
+    console.log(`💵 Achieved savings of ₪${totalSavings.toFixed(2)}`);
+    return { optimizedMeals, savings: Math.round(totalSavings * 100) / 100 };
+  }
+
   static async generatePersonalizedMenu(params: GenerateMenuParams) {
     try {
       console.log("🎯 Generating personalized menu for user:", params.userId);
 
+      // Get user's daily budget for menu generation
+      const userBudget =
+        params.budget || (await this.getUserDailyBudget(params.userId));
+      console.log(`💰 User daily budget: ₪${userBudget}`);
+
       // Get comprehensive user context for maximum personalization
-      const userContext = await UserContextService.getComprehensiveContext(params.userId);
+      const userContext = await UserContextService.getComprehensiveContext(
+        params.userId,
+      );
 
       // Get user's questionnaire for personalization
       const questionnaire = await prisma.userQuestionnaire.findFirst({
@@ -58,7 +231,7 @@ export class RecommendedMenuService {
 
       if (!questionnaire) {
         throw new Error(
-          "User questionnaire not found. Please complete the questionnaire first."
+          "User questionnaire not found. Please complete the questionnaire first.",
         );
       }
 
@@ -69,7 +242,10 @@ export class RecommendedMenuService {
       });
 
       // Calculate dynamic targets based on user context
-      const dynamicTargets = this.calculateDynamicTargets(userContext, nutritionPlan);
+      const dynamicTargets = this.calculateDynamicTargets(
+        userContext,
+        nutritionPlan,
+      );
 
       // Generate menu using AI with comprehensive context or fallback
       const menuData = await this.generateMenuWithAI(
@@ -77,7 +253,7 @@ export class RecommendedMenuService {
         questionnaire,
         nutritionPlan,
         userContext,
-        dynamicTargets
+        dynamicTargets,
       );
 
       // Save to database with context metadata
@@ -85,7 +261,7 @@ export class RecommendedMenuService {
         params.userId,
         menuData,
         params.days || 7,
-        userContext
+        userContext,
       );
 
       console.log("✅ Personalized menu generated successfully");
@@ -101,7 +277,7 @@ export class RecommendedMenuService {
    */
   private static calculateDynamicTargets(
     context: ComprehensiveUserContext,
-    nutritionPlan: any
+    nutritionPlan: any,
   ): {
     calories: number;
     protein: number;
@@ -110,8 +286,10 @@ export class RecommendedMenuService {
     water: number;
     adjustmentReason: string;
   } {
-    const baseCalories = nutritionPlan?.goal_calories || context.goals.dailyCalories;
-    const baseProtein = nutritionPlan?.goal_protein_g || context.goals.dailyProtein;
+    const baseCalories =
+      nutritionPlan?.goal_calories || context.goals.dailyCalories;
+    const baseProtein =
+      nutritionPlan?.goal_protein_g || context.goals.dailyProtein;
     const baseCarbs = nutritionPlan?.goal_carbs_g || context.goals.dailyCarbs;
     const baseFats = nutritionPlan?.goal_fats_g || context.goals.dailyFats;
     const baseWater = context.goals.dailyWater;
@@ -140,10 +318,16 @@ export class RecommendedMenuService {
     }
 
     // Adjust based on calorie trend
-    if (context.performance.caloriesTrend === "increasing" && context.profile.mainGoal === "lose_weight") {
+    if (
+      context.performance.caloriesTrend === "increasing" &&
+      context.profile.mainGoal === "lose_weight"
+    ) {
       calorieMultiplier *= 0.97;
       adjustmentReason += "Slight reduction to support weight loss goal. ";
-    } else if (context.performance.caloriesTrend === "decreasing" && context.profile.mainGoal === "gain_muscle") {
+    } else if (
+      context.performance.caloriesTrend === "decreasing" &&
+      context.profile.mainGoal === "gain_muscle"
+    ) {
       calorieMultiplier *= 1.05;
       proteinMultiplier *= 1.1;
       adjustmentReason += "Increased to support muscle gain goal. ";
@@ -167,7 +351,8 @@ export class RecommendedMenuService {
       carbs: Math.round(baseCarbs * calorieMultiplier),
       fats: Math.round(baseFats * calorieMultiplier),
       water: baseWater,
-      adjustmentReason: adjustmentReason || "Standard targets based on your profile.",
+      adjustmentReason:
+        adjustmentReason || "Standard targets based on your profile.",
     };
   }
 
@@ -176,7 +361,9 @@ export class RecommendedMenuService {
       console.log("🎨 Generating custom menu for user:", params.userId);
 
       // Get comprehensive user context for personalization
-      const userContext = await UserContextService.getComprehensiveContext(params.userId);
+      const userContext = await UserContextService.getComprehensiveContext(
+        params.userId,
+      );
 
       // Get user context
       const questionnaire = await prisma.userQuestionnaire.findFirst({
@@ -186,7 +373,7 @@ export class RecommendedMenuService {
 
       if (!questionnaire) {
         throw new Error(
-          "User questionnaire not found. Please complete the questionnaire first."
+          "User questionnaire not found. Please complete the questionnaire first.",
         );
       }
 
@@ -197,14 +384,17 @@ export class RecommendedMenuService {
       });
 
       // Calculate dynamic targets
-      const dynamicTargets = this.calculateDynamicTargets(userContext, nutritionPlan);
+      const dynamicTargets = this.calculateDynamicTargets(
+        userContext,
+        nutritionPlan,
+      );
 
       // Generate custom menu based on request with full context
       const menuData = await this.generateCustomMenuWithAI(
         params,
         questionnaire,
         userContext,
-        dynamicTargets
+        dynamicTargets,
       );
 
       // Save to database
@@ -212,7 +402,7 @@ export class RecommendedMenuService {
         params.userId,
         menuData,
         params.days || 7,
-        userContext
+        userContext,
       );
 
       console.log("✅ Custom menu generated successfully");
@@ -228,17 +418,35 @@ export class RecommendedMenuService {
     questionnaire: any,
     nutritionPlan: any,
     userContext?: ComprehensiveUserContext,
-    dynamicTargets?: { calories: number; protein: number; carbs: number; fats: number; water: number; adjustmentReason: string }
+    dynamicTargets?: {
+      calories: number;
+      protein: number;
+      carbs: number;
+      fats: number;
+      water: number;
+      adjustmentReason: string;
+    },
   ) {
     try {
       if (!process.env.OPENAI_API_KEY) {
         console.log("⚠️ No OpenAI key, using fallback menu generation");
-        return this.generateFallbackMenu(params, questionnaire, userContext, dynamicTargets);
+        return this.generateFallbackMenu(
+          params,
+          questionnaire,
+          userContext,
+          dynamicTargets,
+        );
       }
 
       // Use enhanced prompt with full user context if available
       const prompt = userContext
-        ? this.buildEnhancedMenuPrompt(params, questionnaire, nutritionPlan, userContext, dynamicTargets!)
+        ? this.buildEnhancedMenuPrompt(
+            params,
+            questionnaire,
+            nutritionPlan,
+            userContext,
+            dynamicTargets!,
+          )
         : this.buildMenuGenerationPrompt(params, questionnaire, nutritionPlan);
 
       const aiResponse = await OpenAIService.generateText(prompt, 2000);
@@ -248,7 +456,12 @@ export class RecommendedMenuService {
       return menuData;
     } catch (error) {
       console.log("⚠️ AI menu generation failed, using fallback");
-      return this.generateFallbackMenu(params, questionnaire, userContext, dynamicTargets);
+      return this.generateFallbackMenu(
+        params,
+        questionnaire,
+        userContext,
+        dynamicTargets,
+      );
     }
   }
 
@@ -260,9 +473,23 @@ export class RecommendedMenuService {
     questionnaire: any,
     nutritionPlan: any,
     context: ComprehensiveUserContext,
-    dynamicTargets: { calories: number; protein: number; carbs: number; fats: number; water: number; adjustmentReason: string }
+    dynamicTargets: {
+      calories: number;
+      protein: number;
+      carbs: number;
+      fats: number;
+      water: number;
+      adjustmentReason: string;
+    },
   ): string {
-    const { profile, performance, mealPatterns, streaks, healthInsights, achievements } = context;
+    const {
+      profile,
+      performance,
+      mealPatterns,
+      streaks,
+      healthInsights,
+      achievements,
+    } = context;
 
     return `Generate a HIGHLY PERSONALIZED ${params.days || 7}-day meal plan based on comprehensive user data.
 
@@ -281,7 +508,7 @@ Kosher: ${profile.kosher ? "YES - meals must be kosher" : "No restriction"}
 
 === PERSONALIZED NUTRITION TARGETS ===
 📊 Daily Calories: ${dynamicTargets.calories}kcal
-🥩 Protein: ${dynamicTargets.protein}g (${Math.round(dynamicTargets.protein * 4 / dynamicTargets.calories * 100)}% of calories)
+🥩 Protein: ${dynamicTargets.protein}g (${Math.round(((dynamicTargets.protein * 4) / dynamicTargets.calories) * 100)}% of calories)
 🍞 Carbs: ${dynamicTargets.carbs}g
 🥑 Fats: ${dynamicTargets.fats}g
 💧 Water: ${dynamicTargets.water}ml/day
@@ -361,18 +588,36 @@ Return JSON with this structure:
     params: GenerateMenuParams,
     questionnaire: any,
     userContext?: ComprehensiveUserContext,
-    dynamicTargets?: { calories: number; protein: number; carbs: number; fats: number; water: number; adjustmentReason: string }
+    dynamicTargets?: {
+      calories: number;
+      protein: number;
+      carbs: number;
+      fats: number;
+      water: number;
+      adjustmentReason: string;
+    },
   ) {
     try {
       if (!process.env.OPENAI_API_KEY) {
         console.log("⚠️ No OpenAI key, using fallback custom menu");
-        return this.generateFallbackCustomMenu(params, questionnaire, userContext, dynamicTargets);
+        return this.generateFallbackCustomMenu(
+          params,
+          questionnaire,
+          userContext,
+          dynamicTargets,
+        );
       }
 
       // Use enhanced prompt with context if available
-      const prompt = userContext && dynamicTargets
-        ? this.buildEnhancedCustomMenuPrompt(params, questionnaire, userContext, dynamicTargets)
-        : this.buildCustomMenuPrompt(params, questionnaire);
+      const prompt =
+        userContext && dynamicTargets
+          ? this.buildEnhancedCustomMenuPrompt(
+              params,
+              questionnaire,
+              userContext,
+              dynamicTargets,
+            )
+          : this.buildCustomMenuPrompt(params, questionnaire);
 
       const aiResponse = await OpenAIService.generateText(prompt, 2000);
 
@@ -381,7 +626,12 @@ Return JSON with this structure:
       return menuData;
     } catch (error) {
       console.log("⚠️ AI custom menu generation failed, using fallback");
-      return this.generateFallbackCustomMenu(params, questionnaire, userContext, dynamicTargets);
+      return this.generateFallbackCustomMenu(
+        params,
+        questionnaire,
+        userContext,
+        dynamicTargets,
+      );
     }
   }
 
@@ -392,9 +642,17 @@ Return JSON with this structure:
     params: GenerateMenuParams,
     questionnaire: any,
     context: ComprehensiveUserContext,
-    dynamicTargets: { calories: number; protein: number; carbs: number; fats: number; water: number; adjustmentReason: string }
+    dynamicTargets: {
+      calories: number;
+      protein: number;
+      carbs: number;
+      fats: number;
+      water: number;
+      adjustmentReason: string;
+    },
   ): string {
-    const { profile, performance, mealPatterns, streaks, healthInsights } = context;
+    const { profile, performance, mealPatterns, streaks, healthInsights } =
+      context;
 
     return `Create a PERSONALIZED custom meal plan based on this specific request: "${params.customRequest}"
 
@@ -437,7 +695,7 @@ Return JSON with the standard menu structure including title, description, total
   private static buildMenuGenerationPrompt(
     params: GenerateMenuParams,
     questionnaire: any,
-    nutritionPlan: any
+    nutritionPlan: any,
   ): string {
     return `Generate a ${params.days || 7}-day personalized meal plan.
 
@@ -504,7 +762,7 @@ Return JSON with this structure:
 
   private static buildCustomMenuPrompt(
     params: GenerateMenuParams,
-    questionnaire: any
+    questionnaire: any,
   ): string {
     return `Create a custom meal plan based on this request: "${
       params.customRequest
@@ -554,15 +812,22 @@ Return the same JSON structure as before with meals that specifically address th
     }
   }
 
-  private static generateFallbackMenu(
+  private static async generateFallbackMenu(
     params: GenerateMenuParams,
     questionnaire: any,
     userContext?: ComprehensiveUserContext,
-    dynamicTargets?: { calories: number; protein: number; carbs: number; fats: number; water: number; adjustmentReason: string }
+    dynamicTargets?: {
+      calories: number;
+      protein: number;
+      carbs: number;
+      fats: number;
+      water: number;
+      adjustmentReason: string;
+    },
   ) {
     const days = params.days || 7;
     const mealsPerDay = this.getMealsPerDayCount(
-      params.mealsPerDay || "3_main"
+      params.mealsPerDay || "3_main",
     );
 
     // Calculate per-meal targets based on dynamic targets
@@ -579,8 +844,12 @@ Return the same JSON structure as before with meals that specifically address th
       {
         name: "Protein Scrambled Eggs",
         meal_type: "BREAKFAST",
-        calories: isWeightLoss ? Math.round(caloriesPerMeal * 0.85) : caloriesPerMeal,
-        protein: isMuscleGain ? Math.round(proteinPerMeal * 1.1) : proteinPerMeal,
+        calories: isWeightLoss
+          ? Math.round(caloriesPerMeal * 0.85)
+          : caloriesPerMeal,
+        protein: isMuscleGain
+          ? Math.round(proteinPerMeal * 1.1)
+          : proteinPerMeal,
         carbs: isWeightLoss ? 12 : 18,
         fat: isWeightLoss ? 15 : 20,
         fiber: 3,
@@ -589,7 +858,12 @@ Return the same JSON structure as before with meals that specifically address th
         instructions:
           "Scramble eggs with vegetables and serve with whole grain toast",
         ingredients: [
-          { name: "eggs", quantity: isMuscleGain ? 3 : 2, unit: "piece", category: "protein" },
+          {
+            name: "eggs",
+            quantity: isMuscleGain ? 3 : 2,
+            unit: "piece",
+            category: "protein",
+          },
           {
             name: "whole grain bread",
             quantity: isWeightLoss ? 1 : 2,
@@ -603,7 +877,9 @@ Return the same JSON structure as before with meals that specifically address th
         name: "Grilled Chicken Salad",
         meal_type: "LUNCH",
         calories: caloriesPerMeal,
-        protein: isMuscleGain ? Math.round(proteinPerMeal * 1.2) : proteinPerMeal,
+        protein: isMuscleGain
+          ? Math.round(proteinPerMeal * 1.2)
+          : proteinPerMeal,
         carbs: isWeightLoss ? 20 : 28,
         fat: 18,
         fiber: 8,
@@ -624,14 +900,21 @@ Return the same JSON structure as before with meals that specifically address th
             unit: "g",
             category: "vegetable",
           },
-          { name: "olive oil", quantity: isWeightLoss ? 10 : 15, unit: "ml", category: "fat" },
+          {
+            name: "olive oil",
+            quantity: isWeightLoss ? 10 : 15,
+            unit: "ml",
+            category: "fat",
+          },
         ],
       },
       {
         name: "Baked Salmon with Quinoa",
         meal_type: "DINNER",
         calories: Math.round(caloriesPerMeal * 1.1),
-        protein: isMuscleGain ? Math.round(proteinPerMeal * 1.15) : proteinPerMeal,
+        protein: isMuscleGain
+          ? Math.round(proteinPerMeal * 1.15)
+          : proteinPerMeal,
         carbs: isWeightLoss ? 35 : 45,
         fat: 18,
         fiber: 6,
@@ -646,7 +929,12 @@ Return the same JSON structure as before with meals that specifically address th
             unit: "g",
             category: "protein",
           },
-          { name: "quinoa", quantity: isWeightLoss ? 60 : 80, unit: "g", category: "grain" },
+          {
+            name: "quinoa",
+            quantity: isWeightLoss ? 60 : 80,
+            unit: "g",
+            category: "grain",
+          },
           { name: "broccoli", quantity: 120, unit: "g", category: "vegetable" },
         ],
       },
@@ -662,7 +950,12 @@ Return the same JSON structure as before with meals that specifically address th
         cooking_method: "Assembly",
         instructions: "Top Greek yogurt with nuts, seeds, and berries",
         ingredients: [
-          { name: "Greek yogurt", quantity: 200, unit: "g", category: "protein" },
+          {
+            name: "Greek yogurt",
+            quantity: 200,
+            unit: "g",
+            category: "protein",
+          },
           { name: "mixed berries", quantity: 50, unit: "g", category: "fruit" },
           { name: "almonds", quantity: 20, unit: "g", category: "fat" },
         ],
@@ -679,7 +972,12 @@ Return the same JSON structure as before with meals that specifically address th
         cooking_method: "Blending",
         instructions: "Blend all ingredients until smooth",
         ingredients: [
-          { name: "protein powder", quantity: 30, unit: "g", category: "protein" },
+          {
+            name: "protein powder",
+            quantity: 30,
+            unit: "g",
+            category: "protein",
+          },
           { name: "banana", quantity: 1, unit: "piece", category: "fruit" },
           { name: "almond milk", quantity: 250, unit: "ml", category: "dairy" },
         ],
@@ -692,7 +990,9 @@ Return the same JSON structure as before with meals that specifically address th
     for (let day = 1; day <= days; day++) {
       for (let mealIndex = 0; mealIndex < mealsPerDay; mealIndex++) {
         const mealType = mealTypes[mealIndex] || "SNACK";
-        const templateMeal = fallbackMeals.find(m => m.meal_type === mealType) || fallbackMeals[mealIndex % fallbackMeals.length];
+        const templateMeal =
+          fallbackMeals.find((m) => m.meal_type === mealType) ||
+          fallbackMeals[mealIndex % fallbackMeals.length];
 
         meals.push({
           ...templateMeal,
@@ -707,18 +1007,45 @@ Return the same JSON structure as before with meals that specifically address th
     const totalCarbs = meals.reduce((sum, meal) => sum + meal.carbs, 0);
     const totalFat = meals.reduce((sum, meal) => sum + meal.fat, 0);
 
-    const goal = userContext?.profile.mainGoal || questionnaire.main_goal || "health";
+    // Calculate actual estimated cost from ingredients
+    const { totalCost, dailyCosts } = this.calculateMenuCost(meals);
+    const dailyBudget =
+      params.budget || (await this.getUserDailyBudget(params.userId));
+    const totalBudget = dailyBudget * days;
+
+    // Log budget status
+    console.log(
+      `💰 Menu cost: ₪${totalCost.toFixed(2)} / Budget: ₪${totalBudget.toFixed(2)}`,
+    );
+    if (totalCost > totalBudget) {
+      console.warn(
+        `⚠️ Menu exceeds budget by ₪${(totalCost - totalBudget).toFixed(2)}`,
+      );
+    }
+
+    const goal =
+      userContext?.profile.mainGoal || questionnaire.main_goal || "health";
     const adjustmentNote = dynamicTargets?.adjustmentReason || "";
+    const budgetNote =
+      totalCost <= totalBudget
+        ? `Within budget (₪${totalCost.toFixed(0)}/${totalBudget.toFixed(0)})`
+        : `Over budget by ₪${(totalCost - totalBudget).toFixed(0)}`;
 
     return {
       title: `Personalized ${days}-Day Menu for ${goal}`,
-      description: `Customized meal plan with ${dynamicTargets?.calories || 2000}kcal daily target. ${adjustmentNote}`,
+      description: `Customized meal plan with ${dynamicTargets?.calories || 2000}kcal daily target. ${adjustmentNote} ${budgetNote}`,
       total_calories: totalCalories,
       total_protein: totalProtein,
       total_carbs: totalCarbs,
       total_fat: totalFat,
       days_count: days,
-      estimated_cost: params.budget || 200,
+      estimated_cost: totalCost,
+      daily_budget: dailyBudget,
+      total_budget: totalBudget,
+      is_within_budget: totalCost <= totalBudget,
+      daily_cost_breakdown: Array.from(dailyCosts.entries()).map(
+        ([day, cost]) => ({ day, cost }),
+      ),
       meals,
     };
   }
@@ -727,25 +1054,32 @@ Return the same JSON structure as before with meals that specifically address th
     params: GenerateMenuParams,
     questionnaire: any,
     userContext?: ComprehensiveUserContext,
-    dynamicTargets?: { calories: number; protein: number; carbs: number; fats: number; water: number; adjustmentReason: string }
+    dynamicTargets?: {
+      calories: number;
+      protein: number;
+      carbs: number;
+      fats: number;
+      water: number;
+      adjustmentReason: string;
+    },
   ) {
     // Similar to fallback menu but customized based on the request
     const customizedMeals = this.customizeMealsBasedOnRequest(
       params.customRequest || "",
-      questionnaire
+      questionnaire,
     );
 
     return this.generateFallbackMenu(
       { ...params, customRequest: undefined },
       questionnaire,
       userContext,
-      dynamicTargets
+      dynamicTargets,
     );
   }
 
   private static customizeMealsBasedOnRequest(
     request: string,
-    questionnaire: any
+    questionnaire: any,
   ) {
     // Analyze the custom request and adjust meals accordingly
     const lowerRequest = request.toLowerCase();
@@ -767,7 +1101,7 @@ Return the same JSON structure as before with meals that specifically address th
     userId: string,
     menuData: any,
     daysCount: number,
-    userContext?: ComprehensiveUserContext
+    userContext?: ComprehensiveUserContext,
   ) {
     try {
       console.log("💾 Saving menu to database...");
@@ -779,10 +1113,14 @@ Return the same JSON structure as before with meals that specifically address th
       // Determine dietary category based on user context
       let dietaryCategory = menuData.dietary_category || "BALANCED";
       if (userContext) {
-        if (userContext.profile.dietaryStyle === "vegetarian") dietaryCategory = "VEGETARIAN";
-        else if (userContext.profile.dietaryStyle === "vegan") dietaryCategory = "VEGAN";
-        else if (userContext.profile.mainGoal === "lose_weight") dietaryCategory = "LOW_CALORIE";
-        else if (userContext.profile.mainGoal === "gain_muscle") dietaryCategory = "HIGH_PROTEIN";
+        if (userContext.profile.dietaryStyle === "vegetarian")
+          dietaryCategory = "VEGETARIAN";
+        else if (userContext.profile.dietaryStyle === "vegan")
+          dietaryCategory = "VEGAN";
+        else if (userContext.profile.mainGoal === "lose_weight")
+          dietaryCategory = "LOW_CALORIE";
+        else if (userContext.profile.mainGoal === "gain_muscle")
+          dietaryCategory = "HIGH_PROTEIN";
       }
 
       // Create the recommended menu with context-aware metadata
@@ -840,18 +1178,28 @@ Return the same JSON structure as before with meals that specifically address th
 
         // Save ingredients
         if (meal.ingredients && Array.isArray(meal.ingredients)) {
-          const ingredientPromises = meal.ingredients.map((ingredient: any) =>
-            prisma.recommendedIngredient.create({
+          const ingredientPromises = meal.ingredients.map((ingredient: any) => {
+            // Use AI-provided cost or calculate from pricing utility
+            const ingredientCost =
+              ingredient.estimated_cost ||
+              estimateIngredientPrice(
+                ingredient.name,
+                ingredient.quantity || 100,
+                ingredient.unit || "g",
+                ingredient.category || "other",
+              ).estimated_price;
+
+            return prisma.recommendedIngredient.create({
               data: {
                 meal_id: savedMeal.meal_id,
                 name: ingredient.name,
                 quantity: ingredient.quantity || 1,
                 unit: ingredient.unit || "piece",
                 category: ingredient.category || "other",
-                estimated_cost: ingredient.estimated_cost || 5,
+                estimated_cost: ingredientCost,
               },
-            })
-          );
+            });
+          });
 
           await Promise.all(ingredientPromises);
         }
@@ -886,7 +1234,7 @@ Return the same JSON structure as before with meals that specifically address th
     userId: string,
     menuId: string,
     mealId: string,
-    preferences: any
+    preferences: any,
   ) {
     try {
       console.log("🔄 Replacing meal in menu:", { menuId, mealId });
@@ -912,7 +1260,7 @@ Return the same JSON structure as before with meals that specifically address th
       const replacementMeal = await this.generateReplacementMeal(
         currentMeal,
         preferences,
-        userId
+        userId,
       );
 
       // Update the meal
@@ -959,7 +1307,7 @@ Return the same JSON structure as before with meals that specifically address th
   private static async generateReplacementMeal(
     currentMeal: any,
     preferences: any,
-    userId: string
+    userId: string,
   ) {
     // Get user preferences
     const questionnaire = await prisma.userQuestionnaire.findFirst({
@@ -1067,7 +1415,7 @@ Generate a COMPLETE new menu in JSON format with the same structure as before, b
       const savedMenu = await this.saveMenuToDatabase(
         params.userId,
         menuData,
-        params.originalMenu.days_count
+        params.originalMenu.days_count,
       );
 
       console.log("✅ Enhanced menu generated and saved");
@@ -1102,11 +1450,11 @@ Generate a COMPLETE new menu in JSON format with the same structure as before, b
 
     const totalCalories = enhancedMeals.reduce(
       (sum, meal) => sum + meal.calories,
-      0
+      0,
     );
     const totalProtein = enhancedMeals.reduce(
       (sum, meal) => sum + meal.protein,
-      0
+      0,
     );
     const totalCarbs = enhancedMeals.reduce((sum, meal) => sum + meal.carbs, 0);
     const totalFat = enhancedMeals.reduce((sum, meal) => sum + meal.fat, 0);
@@ -1199,7 +1547,7 @@ Generate a COMPLETE new menu in JSON format with the same structure as before, b
     userId: string,
     menuId: string,
     mealId: string,
-    isFavorite: boolean
+    isFavorite: boolean,
   ) {
     try {
       // Save as user preference
@@ -1235,7 +1583,7 @@ Generate a COMPLETE new menu in JSON format with the same structure as before, b
     userId: string,
     menuId: string,
     mealId: string,
-    liked: boolean
+    liked: boolean,
   ) {
     try {
       await prisma.userMealPreference.upsert({
@@ -1298,12 +1646,22 @@ Generate a COMPLETE new menu in JSON format with the same structure as before, b
             const existing = ingredientMap.get(key);
             existing.quantity += ingredient.quantity;
           } else {
+            // Use stored cost or calculate from pricing utility
+            const ingredientCost =
+              ingredient.estimated_cost ||
+              estimateIngredientPrice(
+                ingredient.name,
+                ingredient.quantity || 100,
+                ingredient.unit || "g",
+                ingredient.category || "other",
+              ).estimated_price;
+
             ingredientMap.set(key, {
               name: ingredient.name,
               quantity: ingredient.quantity,
               unit: ingredient.unit,
               category: ingredient.category,
-              estimated_cost: ingredient.estimated_cost || 5,
+              estimated_cost: ingredientCost,
             });
           }
         });
@@ -1312,7 +1670,7 @@ Generate a COMPLETE new menu in JSON format with the same structure as before, b
       const items = Array.from(ingredientMap.values());
       const totalCost = items.reduce(
         (sum, item) => sum + item.estimated_cost,
-        0
+        0,
       );
 
       return {
@@ -1344,7 +1702,7 @@ Generate a COMPLETE new menu in JSON format with the same structure as before, b
 
   static async checkMenuCompletion(
     userId: string,
-    menuId: string
+    menuId: string,
   ): Promise<MenuCompletionSummary> {
     try {
       console.log("📊 Checking menu completion for:", { userId, menuId });
@@ -1380,8 +1738,8 @@ Generate a COMPLETE new menu in JSON format with the same structure as before, b
         mealCompletions.some(
           (completion) =>
             completion.day_number === meal.day_number &&
-            completion.meal_type === meal.meal_type
-        )
+            completion.meal_type === meal.meal_type,
+        ),
       ).length;
 
       const completionRate =
@@ -1389,11 +1747,11 @@ Generate a COMPLETE new menu in JSON format with the same structure as before, b
 
       const totalCalories = menu.meals.reduce(
         (sum, meal) => sum + meal.calories,
-        0
+        0,
       );
       const totalProtein = menu.meals.reduce(
         (sum, meal) => sum + meal.protein,
-        0
+        0,
       );
       const totalCarbs = menu.meals.reduce((sum, meal) => sum + meal.carbs, 0);
       const totalFat = menu.meals.reduce((sum, meal) => sum + meal.fat, 0);
@@ -1405,24 +1763,24 @@ Generate a COMPLETE new menu in JSON format with the same structure as before, b
         (_, dayIndex) => {
           const dayNumber = dayIndex + 1;
           const dayMeals = menu.meals.filter(
-            (meal) => meal.day_number === dayNumber
+            (meal) => meal.day_number === dayNumber,
           );
 
           const dayCompletedMeals = dayMeals.filter((meal) =>
             mealCompletions.some(
               (completion) =>
                 completion.day_number === meal.day_number &&
-                completion.meal_type === meal.meal_type
-            )
+                completion.meal_type === meal.meal_type,
+            ),
           ).length;
 
           const dayCalories = dayMeals.reduce(
             (sum, meal) => sum + meal.calories,
-            0
+            0,
           );
           const dayProtein = dayMeals.reduce(
             (sum, meal) => sum + meal.protein,
-            0
+            0,
           );
           const dayCarbs = dayMeals.reduce((sum, meal) => sum + meal.carbs, 0);
           const dayFat = dayMeals.reduce((sum, meal) => sum + meal.fat, 0);
@@ -1439,7 +1797,7 @@ Generate a COMPLETE new menu in JSON format with the same structure as before, b
             carbs: dayCarbs,
             fat: dayFat,
           };
-        }
+        },
       );
 
       const completionSummary: MenuCompletionSummary = {

@@ -261,7 +261,7 @@ router.get(
         if (
           user &&
           user.is_questionnaire_completed &&
-          (user.subscription_type === "GOLD" || user.subscription_type === "PLATINUM")
+          (user.subscription_type === "GOLD" || user.subscription_type === "PREMIUM")
         ) {
           console.log(`🚀 Generating first-time AI recommendations for GOLD/PLATINUM user: ${userId}`);
           try {

@@ -7,21 +7,44 @@ import { prisma } from "../../lib/database";
 
 const router = Router();
 
+// Daily goals cache for instant responses
+const dailyGoalsCache = new Map<string, { data: any; timestamp: number }>();
+const DAILY_GOALS_CACHE_TTL = 60000; // 60 seconds cache
+
 // GET /api/daily-goals - Get user's daily goals with optimization
 router.get("/", authenticateToken, async (req: AuthRequest, res) => {
   try {
     const userId = req.user.user_id;
-    console.log("📊 Enhanced daily goals request for user:", userId);
+
+    // Check cache first for instant response
+    const cacheKey = `${userId}_${new Date().toISOString().split("T")[0]}`;
+    const cached = dailyGoalsCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < DAILY_GOALS_CACHE_TTL) {
+      return res.json({
+        success: true,
+        data: cached.data,
+        cached: true,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     // Get user's daily goals
     const goals = await EnhancedDailyGoalsService.getUserDailyGoals(userId);
 
+    const responseData = {
+      ...goals,
+      date: new Date().toISOString().split("T")[0],
+    };
+
+    // Update cache (reuse the same cacheKey variable)
+    dailyGoalsCache.set(cacheKey, {
+      data: responseData,
+      timestamp: Date.now(),
+    });
+
     const response: ApiResponse = {
       success: true,
-      data: {
-        ...goals,
-        date: new Date().toISOString().split("T")[0],
-      },
+      data: responseData,
       timestamp: new Date().toISOString(),
     };
 
@@ -47,9 +70,8 @@ router.post("/generate", authenticateToken, async (req: AuthRequest, res) => {
     console.log("🔄 Manual daily goals generation for user:", userId);
 
     // Force create goals for this specific user
-    const goals = await EnhancedDailyGoalsService.forceCreateDailyGoalsForUser(
-      userId
-    );
+    const goals =
+      await EnhancedDailyGoalsService.forceCreateDailyGoalsForUser(userId);
 
     const response: ApiResponse = {
       success: true,
@@ -105,7 +127,7 @@ router.post(
 
       res.status(500).json(errorResponse);
     }
-  }
+  },
 );
 
 // POST /api/daily-goals/force-all - Force create goals for ALL users (testing)
@@ -147,7 +169,7 @@ router.get("/history", authenticateToken, async (req: AuthRequest, res) => {
     const { days = 30 } = req.query;
 
     console.log(
-      `📊 Getting daily goals history for user: ${userId}, days: ${days}`
+      `📊 Getting daily goals history for user: ${userId}, days: ${days}`,
     );
 
     const daysAgo = new Date(Date.now() - Number(days) * 24 * 60 * 60 * 1000);

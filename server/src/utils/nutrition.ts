@@ -1,9 +1,36 @@
 import { AnalysisStatus } from "@prisma/client";
+import { estimateIngredientPrice } from "./pricing";
 
 // Helper to determine if a meal is mandatory based on meal_period
 // Only snacks are non-mandatory
 export function isMealMandatory(mealPeriod?: string): boolean {
   return mealPeriod?.toLowerCase() !== "snack";
+}
+
+// Helper to calculate total estimated cost from ingredients
+function calculateTotalEstimatedCost(ingredients: any[]): number {
+  if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
+    return 0;
+  }
+
+  let total = 0;
+  for (const ing of ingredients) {
+    if (ing.estimated_cost && typeof ing.estimated_cost === 'number') {
+      total += ing.estimated_cost;
+    } else if (ing.name) {
+      // Calculate price if not already present
+      const quantity = ing.serving_size_g || ing.quantity || 100;
+      const priceEstimate = estimateIngredientPrice(
+        ing.name,
+        quantity,
+        'g',
+        ing.category || 'other'
+      );
+      total += priceEstimate.estimated_price;
+    }
+  }
+
+  return Math.round(total * 100) / 100;
 }
 
 export function mapMealDataToPrismaFields(
@@ -110,6 +137,11 @@ export function mapMealDataToPrismaFields(
     ? [mealData.ingredients]
     : [];
 
+  // Calculate estimated cost from ingredients or use provided value
+  const estimated_cost = mealData.estimated_cost
+    ? parseNumber(mealData.estimated_cost)
+    : calculateTotalEstimatedCost(ingredients);
+
   // Determine is_mandatory: use explicit value if provided, otherwise derive from meal_period
   const resolvedMealPeriod = mealPeriod || "other";
   const resolvedIsMandatory = is_mandatory !== undefined
@@ -160,6 +192,9 @@ export function mapMealDataToPrismaFields(
     health_risk_notes:
       mealData.health_risk_notes ?? mealData.healthNotes ?? null,
     ingredients: ingredients, // Save the extracted ingredients
+
+    // Estimated cost (calculated from ingredients)
+    estimated_cost,
 
     // JSON fields
     vitamins_json,
@@ -215,6 +250,7 @@ export function mapExistingMealToPrismaInput(
     cooking_method: originalMeal.cooking_method,
     health_risk_notes: originalMeal.health_risk_notes,
     ingredients: originalMeal.ingredients,
+    estimated_cost: originalMeal.estimated_cost,
     created_at: date,
     additives_json: {
       duplicatedFrom: originalMeal.meal_id,

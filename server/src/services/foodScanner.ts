@@ -3,6 +3,7 @@ import { openai } from "./openai";
 import axios from "axios";
 import { MealTrackingService } from "./mealTracking";
 import { isMealMandatory } from "../utils/nutrition";
+import { estimateProductPrice, PriceEstimate } from "../utils/pricing";
 
 interface ProductData {
   barcode?: string;
@@ -33,6 +34,10 @@ interface ProductData {
   image_url?: string;
   serving_size?: string;
   servings_per_container?: number;
+  // Price estimation
+  estimated_price?: number;
+  price_per_100g?: number;
+  price_confidence?: "high" | "medium" | "low";
 }
 
 interface UserAnalysis {
@@ -80,6 +85,12 @@ export class FoodScannerService {
         });
       }
 
+      // Calculate price estimate
+      const priceEstimate = this.calculateProductPrice(productData);
+      productData.estimated_price = priceEstimate.estimated_price;
+      productData.price_per_100g = priceEstimate.price_per_100g;
+      productData.price_confidence = priceEstimate.confidence;
+
       // Get user-specific analysis
       const userAnalysis = await this.analyzeProductForUser(
         productData,
@@ -94,6 +105,31 @@ export class FoodScannerService {
       console.error("💥 Barcode scan error:", error);
       throw error;
     }
+  }
+
+  /**
+   * Calculate estimated price for a product
+   */
+  private static calculateProductPrice(productData: ProductData): {
+    estimated_price: number;
+    price_per_100g: number;
+    confidence: "high" | "medium" | "low";
+    price_range: string;
+    currency: string;
+  } {
+    const priceEstimate = estimateProductPrice(
+      productData.name,
+      productData.category,
+      100, // Price per 100g
+    );
+
+    return {
+      estimated_price: priceEstimate.estimated_price,
+      price_per_100g: priceEstimate.price_per_100g, // ✅ Now this exists!
+      confidence: priceEstimate.confidence,
+      price_range: priceEstimate.price_range,
+      currency: priceEstimate.currency,
+    };
   }
 
   static async scanProductImage(
@@ -202,6 +238,12 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
         );
       }
 
+      // Calculate price estimate
+      const priceEstimate = this.calculateProductPrice(productData);
+      productData.estimated_price = priceEstimate.estimated_price;
+      productData.price_per_100g = priceEstimate.price_per_100g;
+      productData.price_confidence = priceEstimate.confidence;
+
       // Save to database if barcode was detected, or create a unique identifier for image scans
       const productId =
         productData.barcode ||
@@ -248,12 +290,29 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
       const nutritionPer100g = productData.nutrition_per_100g;
       const multiplier = quantity / 100;
 
+      // Calculate estimated cost for the quantity
+      let estimatedCost = 0;
+      if (productData.estimated_price) {
+        estimatedCost = Math.round(productData.estimated_price * multiplier * 100) / 100;
+      } else if (productData.price_per_100g) {
+        estimatedCost = Math.round(productData.price_per_100g * multiplier * 100) / 100;
+      } else {
+        // Fallback: calculate from product name and category
+        const priceEstimate = estimateProductPrice(
+          productData.name,
+          productData.category,
+          quantity,
+        );
+        estimatedCost = priceEstimate.estimated_price;
+      }
+
       const mealData = {
         meal_name: `${productData.name} (${quantity}g)`,
         calories: Math.round((nutritionPer100g.calories || 0) * multiplier),
         protein_g: Math.round((nutritionPer100g.protein || 0) * multiplier),
         carbs_g: Math.round((nutritionPer100g.carbs || 0) * multiplier),
         fats_g: Math.round((nutritionPer100g.fat || 0) * multiplier),
+        estimated_cost: estimatedCost,
         fiber_g: nutritionPer100g.fiber
           ? Math.round(nutritionPer100g.fiber * multiplier)
           : null,
@@ -313,6 +372,7 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
           is_mandatory: resolvedIsMandatory,
           upload_time: new Date(),
           created_at: new Date(),
+          // estimated_cost is already included in mealData spread
         },
       });
 
@@ -371,6 +431,10 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
           ingredients: product.ingredients as string[],
           allergens: product.allergens as string[],
           labels: product.labels as string[],
+
+          // Include estimated cost
+          estimated_cost: product.estimated_cost || 0,
+          estimatedCost: product.estimated_cost || 0,
         })),
         ...meals.map((meal) => ({
           // Original meal fields
@@ -417,6 +481,10 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
               ? meal.additives_json.health_score
               : undefined,
           image_url: meal.image_url,
+
+          // Include estimated cost
+          estimated_cost: meal.estimated_cost || 0,
+          estimatedCost: meal.estimated_cost || 0,
         })),
       ].sort(
         (a, b) =>
@@ -504,12 +572,22 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
             .filter((p: any) => p.product_name)
             .map((product: any) => {
               const nutriments = product.nutriments || {};
+              const category =
+                product.categories?.split(",")[0]?.trim() || "Unknown";
+              const productName = product.product_name || "Unknown Product";
+
+              // Calculate price estimate for each product
+              const priceEstimate = estimateProductPrice(
+                productName,
+                category,
+                100,
+              );
+
               return {
                 barcode: product.code || undefined,
-                name: product.product_name || "Unknown Product",
+                name: productName,
                 brand: product.brands || undefined,
-                category:
-                  product.categories?.split(",")[0]?.trim() || "Unknown",
+                category,
                 nutrition_per_100g: {
                   calories:
                     nutriments.energy_kcal_100g ||
@@ -542,6 +620,10 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
                 image_url:
                   product.image_url || product.image_front_url || undefined,
                 serving_size: product.serving_size || undefined,
+                // Price estimates
+                estimated_price: priceEstimate.estimated_price,
+                price_per_100g: priceEstimate.price_per_100g,
+                price_confidence: priceEstimate.confidence,
               };
             });
 
@@ -678,6 +760,17 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
     user_id: string,
   ): Promise<void> {
     try {
+      // Calculate price if not already present
+      let estimatedCost = productData.estimated_price || 0;
+      if (!estimatedCost && productData.name) {
+        const priceEstimate = estimateProductPrice(
+          productData.name,
+          productData.category,
+          100,
+        );
+        estimatedCost = priceEstimate.estimated_price;
+      }
+
       await prisma.foodProduct.upsert({
         where: { barcode },
         update: {
@@ -690,6 +783,7 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
           labels: productData.labels,
           health_score: productData.health_score,
           image_url: productData.image_url,
+          estimated_cost: estimatedCost,
           updated_at: new Date(),
         },
         create: {
@@ -703,6 +797,7 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
           labels: productData.labels,
           health_score: productData.health_score,
           image_url: productData.image_url,
+          estimated_cost: estimatedCost,
           user_id,
           created_at: new Date(),
         },

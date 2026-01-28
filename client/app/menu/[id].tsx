@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,9 @@ import {
   Modal,
   Share,
   Image,
+  Dimensions,
+  Platform,
+  Easing,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -30,15 +33,21 @@ import {
   ChevronDown,
   ChevronUp,
   Utensils,
-  DollarSign,
+  Wallet,
   Info,
   Check,
   Sparkles,
+  ShoppingCart,
+  Play,
+  Users,
+  Timer,
+  Leaf,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/src/services/api";
 import { DietaryIcons } from "@/components/menu/DietaryIcons";
-import { NutritionHabits } from "@/components/menu/NutritionHabits";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface Ingredient {
   ingredient_id: string;
@@ -86,6 +95,387 @@ interface MenuDetails {
   meals: Meal[];
 }
 
+// ==================== SKELETON LOADER ====================
+
+const SkeletonPulse = React.memo(({ style }: { style?: any }) => {
+  const pulseAnim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.3,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [pulseAnim]);
+
+  return <Animated.View style={[style, { opacity: pulseAnim }]} />;
+});
+
+// ==================== STAT CARD ====================
+
+const StatCard = React.memo(
+  ({
+    icon: Icon,
+    value,
+    label,
+    color,
+    bgColor,
+  }: {
+    icon: any;
+    value: string;
+    label: string;
+    color: string;
+    bgColor: string;
+  }) => {
+    const { colors } = useTheme();
+
+    return (
+      <View style={[styles.statCard, { backgroundColor: colors.card }]}>
+        <View style={[styles.statIconBg, { backgroundColor: bgColor }]}>
+          <Icon size={20} color={color} />
+        </View>
+        <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
+        <Text style={[styles.statLabel, { color: colors.icon }]}>{label}</Text>
+      </View>
+    );
+  }
+);
+
+// ==================== DAY SELECTOR ====================
+
+const DaySelector = React.memo(
+  ({
+    days,
+    selectedDay,
+    onSelectDay,
+    meals,
+    colors,
+    t,
+  }: {
+    days: number[];
+    selectedDay: number;
+    onSelectDay: (day: number) => void;
+    meals: Meal[];
+    colors: any;
+    t: any;
+  }) => {
+    const scrollViewRef = useRef<ScrollView>(null);
+
+    useEffect(() => {
+      const index = days.indexOf(selectedDay);
+      if (index > 0 && scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({
+          x: Math.max(0, (index - 1) * 85),
+          animated: true,
+        });
+      }
+    }, [selectedDay, days]);
+
+    return (
+      <View style={[styles.daySelectorWrapper, { backgroundColor: colors.surface }]}>
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.daySelectorContent}
+        >
+          {days.map((day) => {
+            const isSelected = selectedDay === day;
+            const dayMeals = meals.filter((m) => m.day_number === day);
+            const totalCalories = dayMeals.reduce((sum, m) => sum + m.calories, 0);
+
+            return (
+              <Pressable
+                key={day}
+                onPress={() => onSelectDay(day)}
+                style={[
+                  styles.dayTab,
+                  {
+                    backgroundColor: isSelected ? colors.emerald500 : colors.card,
+                    borderColor: isSelected ? colors.emerald500 : colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.dayTabLabel,
+                    { color: isSelected ? "rgba(255,255,255,0.8)" : colors.icon },
+                  ]}
+                >
+                  {t("menu_details.day")}
+                </Text>
+                <Text
+                  style={[
+                    styles.dayTabNumber,
+                    { color: isSelected ? "#ffffff" : colors.text },
+                  ]}
+                >
+                  {day}
+                </Text>
+                <Text
+                  style={[
+                    styles.dayTabCalories,
+                    { color: isSelected ? "rgba(255,255,255,0.9)" : colors.icon },
+                  ]}
+                >
+                  {Math.round(totalCalories)} {t("menu_details.kcal")}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  }
+);
+
+// ==================== MEAL CARD ====================
+
+const MealCard = React.memo(
+  ({
+    meal,
+    isExpanded,
+    onToggle,
+    colors,
+    t,
+  }: {
+    meal: Meal;
+    isExpanded: boolean;
+    onToggle: () => void;
+    colors: any;
+    t: any;
+  }) => {
+    const expandAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      Animated.timing(expandAnim, {
+        toValue: isExpanded ? 1 : 0,
+        duration: 250,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: false,
+      }).start();
+    }, [isExpanded, expandAnim]);
+
+    const getMealTypeConfig = useCallback((type: string) => {
+      const configs: Record<string, { emoji: string; color: string; label: string }> = {
+        BREAKFAST: { emoji: "🌅", color: "#F59E0B", label: t("menu_details.meal_types.BREAKFAST") },
+        LUNCH: { emoji: "☀️", color: "#10B981", label: t("menu_details.meal_types.LUNCH") },
+        DINNER: { emoji: "🌙", color: "#6366F1", label: t("menu_details.meal_types.DINNER") },
+        SNACK: { emoji: "🍎", color: "#EC4899", label: t("menu_details.meal_types.SNACK") },
+        MORNING_SNACK: { emoji: "🥐", color: "#F97316", label: t("menu_details.meal_types.MORNING_SNACK") },
+        AFTERNOON_SNACK: { emoji: "🍪", color: "#A855F7", label: t("menu_details.meal_types.AFTERNOON_SNACK") },
+      };
+      return configs[type] || { emoji: "🍽️", color: "#6B7280", label: type };
+    }, [t]);
+
+    const config = getMealTypeConfig(meal.meal_type);
+
+    return (
+      <Animated.View
+        style={[
+          styles.mealCard,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
+        {/* Header */}
+        <Pressable onPress={onToggle} style={styles.mealHeader}>
+          {/* Meal Image/Emoji */}
+          <View style={styles.mealImageContainer}>
+            {meal.image_url ? (
+              <Image source={{ uri: meal.image_url }} style={styles.mealImage} />
+            ) : (
+              <View
+                style={[styles.mealImagePlaceholder, { backgroundColor: config.color + "20" }]}
+              >
+                <Text style={styles.mealEmoji}>{config.emoji}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Meal Info */}
+          <View style={styles.mealInfo}>
+            <View style={styles.mealTypeRow}>
+              <View style={[styles.mealTypeBadge, { backgroundColor: config.color }]}>
+                <Text style={styles.mealTypeText}>{config.label}</Text>
+              </View>
+              {meal.prep_time_minutes && (
+                <View style={styles.prepTimeBadge}>
+                  <Timer size={12} color={colors.icon} />
+                  <Text style={[styles.prepTimeText, { color: colors.icon }]}>
+                    {meal.prep_time_minutes}{t("menu_details.min")}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <Text style={[styles.mealName, { color: colors.text }]} numberOfLines={2}>
+              {meal.name}
+            </Text>
+
+            <View style={styles.mealMetaRow}>
+              <View style={styles.mealMetaItem}>
+                <Flame size={14} color={colors.warning || "#f59e0b"} />
+                <Text style={[styles.mealMetaText, { color: colors.icon }]}>
+                  {Math.round(meal.calories)} {t("menu_details.cal")}
+                </Text>
+              </View>
+              <View style={styles.mealMetaItem}>
+                <Target size={14} color={colors.emerald500} />
+                <Text style={[styles.mealMetaText, { color: colors.icon }]}>
+                  {Math.round(meal.protein)}g {t("menu_details.protein")}
+                </Text>
+              </View>
+              {meal.dietary_tags && meal.dietary_tags.length > 0 && (
+                <DietaryIcons tags={meal.dietary_tags} size={14} />
+              )}
+            </View>
+          </View>
+
+          {/* Expand Icon */}
+          <View style={[styles.expandIconBg, { backgroundColor: colors.surface }]}>
+            {isExpanded ? (
+              <ChevronUp size={20} color={colors.icon} />
+            ) : (
+              <ChevronDown size={20} color={colors.icon} />
+            )}
+          </View>
+        </Pressable>
+
+        {/* Expanded Content */}
+        {isExpanded && (
+          <View style={[styles.expandedContent, { borderTopColor: colors.border }]}>
+            {/* Nutrition Grid */}
+            <View style={styles.nutritionSection}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {t("menu_details.nutrition_facts")}
+              </Text>
+              <View style={[styles.nutritionGrid, { backgroundColor: colors.surface }]}>
+                <View style={styles.nutritionItem}>
+                  <Text style={[styles.nutritionValue, { color: colors.emerald500 }]}>
+                    {Math.round(meal.calories)}
+                  </Text>
+                  <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
+                    {t("menu_details.calories")}
+                  </Text>
+                </View>
+                <View style={[styles.nutritionDivider, { backgroundColor: colors.border }]} />
+                <View style={styles.nutritionItem}>
+                  <Text style={[styles.nutritionValue, { color: colors.emerald500 }]}>
+                    {Math.round(meal.protein)}g
+                  </Text>
+                  <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
+                    {t("menu_details.protein")}
+                  </Text>
+                </View>
+                <View style={[styles.nutritionDivider, { backgroundColor: colors.border }]} />
+                <View style={styles.nutritionItem}>
+                  <Text style={[styles.nutritionValue, { color: "#f59e0b" }]}>
+                    {Math.round(meal.carbs)}g
+                  </Text>
+                  <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
+                    {t("menu_details.carbs")}
+                  </Text>
+                </View>
+                <View style={[styles.nutritionDivider, { backgroundColor: colors.border }]} />
+                <View style={styles.nutritionItem}>
+                  <Text style={[styles.nutritionValue, { color: colors.error || "#ef4444" }]}>
+                    {Math.round(meal.fat)}g
+                  </Text>
+                  <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
+                    {t("menu_details.fat")}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Ingredients */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <ShoppingCart size={18} color={colors.emerald500} />
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  {t("menu_details.ingredients")}
+                </Text>
+                <View style={[styles.ingredientCount, { backgroundColor: colors.emerald500 + "20" }]}>
+                  <Text style={[styles.ingredientCountText, { color: colors.emerald500 }]}>
+                    {meal.ingredients.length}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.ingredientsList}>
+                {meal.ingredients.map((ingredient) => (
+                  <View key={ingredient.ingredient_id} style={styles.ingredientItem}>
+                    <View style={[styles.ingredientDot, { backgroundColor: colors.emerald500 }]} />
+                    <Text style={[styles.ingredientText, { color: colors.text }]}>
+                      <Text style={styles.ingredientQuantity}>
+                        {ingredient.quantity} {ingredient.unit}
+                      </Text>{" "}
+                      {ingredient.name}
+                    </Text>
+                    {ingredient.estimated_cost && ingredient.estimated_cost > 0 && (
+                      <Text style={[styles.ingredientCost, { color: colors.icon }]}>
+                        ₪{ingredient.estimated_cost.toFixed(1)}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Cooking Method */}
+            {meal.cooking_method && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <ChefHat size={18} color={colors.emerald500} />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    {t("menu_details.cooking_method")}
+                  </Text>
+                </View>
+                <View style={[styles.cookingMethodBadge, { backgroundColor: colors.emerald500 + "15" }]}>
+                  <Text style={[styles.cookingMethodText, { color: colors.emerald500 }]}>
+                    {meal.cooking_method}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Instructions */}
+            {meal.instructions && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Info size={18} color="#f59e0b" />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    {t("menu_details.instructions")}
+                  </Text>
+                </View>
+                <View style={[styles.instructionsContainer, { backgroundColor: colors.surface }]}>
+                  <Text style={[styles.instructionsText, { color: colors.icon }]}>
+                    {meal.instructions}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+      </Animated.View>
+    );
+  }
+);
+
+// ==================== MAIN COMPONENT ====================
+
 export default function MenuDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
@@ -100,17 +490,29 @@ export default function MenuDetailsScreen() {
   const [showStartModal, setShowStartModal] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [fadeAnim] = useState(new Animated.Value(0));
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
     if (id) {
       loadMenuDetails();
     }
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
+
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 80,
+        friction: 12,
+      }),
+    ]).start();
   }, [id]);
 
   const loadMenuDetails = async () => {
@@ -124,7 +526,7 @@ export default function MenuDetailsScreen() {
       }
     } catch (error) {
       console.error("Error loading menu:", error);
-      Alert.alert(t("menu_details.error"), t("menu_details.failed_to_load"));
+      Alert.alert(t("common.error"), t("menu_details.failed_to_load"));
     } finally {
       setIsLoading(false);
     }
@@ -137,20 +539,16 @@ export default function MenuDetailsScreen() {
 
       if (response.data.success) {
         setShowStartModal(false);
-        Alert.alert(
-          t("menu_details.success"),
-          t("menu_details.menu_activated"),
-          [
-            {
-              text: t("menu_details.view_active_menu"),
-              onPress: () => router.push(`/menu/activeMenu?planId=${id}`),
-            },
-          ]
-        );
+        Alert.alert(t("common.success"), t("menu_details.menu_activated"), [
+          {
+            text: t("menu_details.view_active_menu"),
+            onPress: () => router.push(`/menu/activeMenu?planId=${id}`),
+          },
+        ]);
       }
     } catch (error) {
       console.error("Error starting menu:", error);
-      Alert.alert(t("menu_details.error"), t("menu_details.failed_to_start"));
+      Alert.alert(t("common.error"), t("menu_details.failed_to_start"));
     } finally {
       setIsStarting(false);
     }
@@ -177,137 +575,95 @@ export default function MenuDetailsScreen() {
     setExpandedMeal((prev) => (prev === mealId ? null : mealId));
   }, []);
 
-  const getMealTypeEmoji = useCallback((type: string) => {
-    const typeMap: Record<string, string> = {
-      BREAKFAST: "🌅",
-      LUNCH: "☀️",
-      DINNER: "🌙",
-      SNACK: "🍎",
-      MORNING_SNACK: "🥐",
-      AFTERNOON_SNACK: "🍪",
-    };
-    return typeMap[type] || "🍽️";
-  }, []);
-
-  const getMealTypeColor = useCallback((type: string) => {
-    const colorMap: Record<string, string> = {
-      BREAKFAST: "#F59E0B",
-      LUNCH: "#10B981",
-      DINNER: "#6366F1",
-      SNACK: "#EC4899",
-      MORNING_SNACK: "#F97316",
-      AFTERNOON_SNACK: "#A855F7",
-    };
-    return colorMap[type] || "#6B7280";
-  }, []);
-
-  const getMealTypeLabel = useCallback(
-    (type: string) => {
-      return t(`menu_details.meal_types.${type}`, type);
-    },
-    [t]
-  );
-
   const mealsForDay = useMemo(
     () => menu?.meals.filter((m) => m.day_number === selectedDay) || [],
     [menu, selectedDay]
   );
 
   const uniqueDays = useMemo(
-    () =>
-      [...new Set(menu?.meals.map((m) => m.day_number) || [])].sort(
-        (a, b) => a - b
-      ),
+    () => [...new Set(menu?.meals.map((m) => m.day_number) || [])].sort((a, b) => a - b),
     [menu]
   );
 
+  // Loading state with skeleton
   if (isLoading) {
     return (
-      <View
-        style={[
-          styles.loadingContainer,
-          { backgroundColor: colors.background },
-        ]}
-      >
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-          {t("menu_details.loading_menu")}
-        </Text>
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.loadingContainer}>
+          <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+            <Pressable onPress={() => router.back()} style={styles.headerButton}>
+              <ArrowLeft size={24} color={colors.text} />
+            </Pressable>
+            <SkeletonPulse style={[styles.skeletonHeaderTitle, { backgroundColor: colors.border }]} />
+            <View style={{ width: 40 }} />
+          </View>
+
+          <View style={styles.skeletonContent}>
+            <View style={styles.skeletonStatsRow}>
+              {[1, 2, 3, 4].map((i) => (
+                <SkeletonPulse
+                  key={i}
+                  style={[styles.skeletonStatCard, { backgroundColor: colors.border }]}
+                />
+              ))}
+            </View>
+            <SkeletonPulse style={[styles.skeletonDaySelector, { backgroundColor: colors.border }]} />
+            {[1, 2].map((i) => (
+              <SkeletonPulse
+                key={i}
+                style={[styles.skeletonMealCard, { backgroundColor: colors.border }]}
+              />
+            ))}
+          </View>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!menu) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
-      >
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.errorContainer}>
+          <ChefHat size={64} color={colors.icon} />
           <Text style={[styles.errorText, { color: colors.text }]}>
             {t("menu_details.menu_not_found")}
           </Text>
-          <Pressable onPress={() => router.back()}>
-            <Text style={[styles.errorButton, { color: colors.primary }]}>
-              {t("menu_details.go_back")}
-            </Text>
+          <Pressable
+            onPress={() => router.back()}
+            style={[styles.errorButton, { backgroundColor: colors.emerald500 }]}
+          >
+            <Text style={styles.errorButtonText}>{t("menu_details.go_back")}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
+  const avgCalPerDay = Math.round(menu.total_calories / menu.days_count);
+  const avgProteinPerDay = menu.total_protein ? Math.round(menu.total_protein / menu.days_count) : 0;
+
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-    >
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View
-        style={[
-          styles.header,
-          { backgroundColor: colors.card, borderBottomColor: colors.border },
-        ]}
-      >
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}>
           <ArrowLeft size={24} color={colors.text} />
         </Pressable>
 
         <View style={styles.headerCenter}>
-          <Text
-            style={[styles.headerTitle, { color: colors.text }]}
-            numberOfLines={1}
-          >
+          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
             {menu.title}
           </Text>
           <View style={styles.headerBadges}>
-            <View
-              style={[
-                styles.headerBadge,
-                { backgroundColor: colors.surfaceVariant },
-              ]}
-            >
-              <Calendar size={12} color={colors.textSecondary} />
-              <Text
-                style={[
-                  styles.headerBadgeText,
-                  { color: colors.textSecondary },
-                ]}
-              >
+            <View style={[styles.headerBadge, { backgroundColor: colors.surface }]}>
+              <Calendar size={12} color={colors.icon} />
+              <Text style={[styles.headerBadgeText, { color: colors.icon }]}>
                 {menu.days_count} {t("menu_details.days")}
               </Text>
             </View>
-            <View
-              style={[
-                styles.headerBadge,
-                { backgroundColor: colors.surfaceVariant },
-              ]}
-            >
-              <Utensils size={12} color={colors.textSecondary} />
-              <Text
-                style={[
-                  styles.headerBadgeText,
-                  { color: colors.textSecondary },
-                ]}
-              >
+            <View style={[styles.headerBadge, { backgroundColor: colors.surface }]}>
+              <Utensils size={12} color={colors.icon} />
+              <Text style={[styles.headerBadgeText, { color: colors.icon }]}>
                 {menu.meals.length} {t("menu_details.meals")}
               </Text>
             </View>
@@ -316,15 +672,12 @@ export default function MenuDetailsScreen() {
 
         <View style={styles.headerActions}>
           <Pressable onPress={handleShare} style={styles.headerIconButton}>
-            <Share2 size={20} color={colors.textSecondary} />
+            <Share2 size={20} color={colors.icon} />
           </Pressable>
-          <Pressable
-            onPress={() => setIsFavorite(!isFavorite)}
-            style={styles.headerIconButton}
-          >
+          <Pressable onPress={() => setIsFavorite(!isFavorite)} style={styles.headerIconButton}>
             <Heart
               size={20}
-              color={isFavorite ? colors.error : colors.textSecondary}
+              color={isFavorite ? colors.error : colors.icon}
               fill={isFavorite ? colors.error : "transparent"}
             />
           </Pressable>
@@ -332,172 +685,57 @@ export default function MenuDetailsScreen() {
       </View>
 
       {/* Stats Cards */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.statsScroll}
-        contentContainerStyle={styles.statsContainer}
-      >
-        <View
-          style={[
-            styles.statCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <View
-            style={[
-              styles.statIconContainer,
-              { backgroundColor: colors.primary + "20" },
-            ]}
-          >
-            <Flame size={24} color={colors.primary} />
-          </View>
-          <Text style={[styles.statValue, { color: colors.text }]}>
-            {Math.round(menu.total_calories / menu.days_count)}
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            {t("menu_details.avg_cal_day")}
-          </Text>
-        </View>
-
-        <View
-          style={[
-            styles.statCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <View
-            style={[
-              styles.statIconContainer,
-              { backgroundColor: colors.primary + "20" },
-            ]}
-          >
-            <Target size={24} color={colors.primary} />
-          </View>
-          <Text style={[styles.statValue, { color: colors.text }]}>
-            {menu.total_protein
-              ? Math.round(menu.total_protein / menu.days_count)
-              : 0}
-            g
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            {t("menu_details.protein_day")}
-          </Text>
-        </View>
-
-        <View
-          style={[
-            styles.statCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <View
-            style={[
-              styles.statIconContainer,
-              { backgroundColor: colors.warning + "20" },
-            ]}
-          >
-            <DollarSign size={24} color={colors.warning} />
-          </View>
-          <Text style={[styles.statValue, { color: colors.text }]}>
-            ₪{menu.estimated_cost || 0}
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            {t("menu_details.est_cost")}
-          </Text>
-        </View>
-
-        <View
-          style={[
-            styles.statCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <View
-            style={[
-              styles.statIconContainer,
-              { backgroundColor: colors.error + "20" },
-            ]}
-          >
-            <Clock size={24} color={colors.error} />
-          </View>
-          <Text style={[styles.statValue, { color: colors.text }]}>
-            {menu.prep_time_minutes || 30}
-            {t("menu_details.min")}
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            {t("menu_details.avg_prep")}
-          </Text>
-        </View>
-      </ScrollView>
-
-      {/* Day Selector */}
-      <View
+      <Animated.View
         style={[
-          styles.daySelectorContainer,
-          { backgroundColor: colors.surface, borderBottomColor: colors.border },
+          styles.statsContainer,
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
         ]}
       >
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.daySelector}
+          contentContainerStyle={styles.statsScrollContent}
         >
-          {uniqueDays.map((day) => {
-            const isSelected = selectedDay === day;
-            const dayMeals = menu.meals.filter((m) => m.day_number === day);
-            const totalCalories = dayMeals.reduce(
-              (sum, m) => sum + m.calories,
-              0
-            );
-
-            return (
-              <Pressable
-                key={day}
-                onPress={() => setSelectedDay(day)}
-                style={[
-                  styles.dayTab,
-                  {
-                    backgroundColor: isSelected
-                      ? colors.primary
-                      : colors.surfaceVariant,
-                    borderColor: isSelected ? colors.primary : colors.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.dayTabLabel,
-                    { color: isSelected ? "#ffffff" : colors.textSecondary },
-                  ]}
-                >
-                  {t("menu_details.day")}
-                </Text>
-                <Text
-                  style={[
-                    styles.dayTabNumber,
-                    { color: isSelected ? "#ffffff" : colors.text },
-                  ]}
-                >
-                  {day}
-                </Text>
-                <Text
-                  style={[
-                    styles.dayTabCalories,
-                    {
-                      color: isSelected
-                        ? "rgba(255,255,255,0.9)"
-                        : colors.textSecondary,
-                    },
-                  ]}
-                >
-                  {Math.round(totalCalories)} {t("menu_details.kcal")}
-                </Text>
-              </Pressable>
-            );
-          })}
+          <StatCard
+            icon={Flame}
+            value={`${avgCalPerDay}`}
+            label={t("menu_details.avg_cal_day")}
+            color="#f59e0b"
+            bgColor="#fef3c7"
+          />
+          <StatCard
+            icon={Target}
+            value={`${avgProteinPerDay}g`}
+            label={t("menu_details.protein_day")}
+            color="#10b981"
+            bgColor="#dcfce7"
+          />
+          <StatCard
+            icon={Wallet}
+            value={`₪${menu.estimated_cost || 0}`}
+            label={t("menu_details.est_cost")}
+            color="#6366f1"
+            bgColor="#e0e7ff"
+          />
+          <StatCard
+            icon={Timer}
+            value={`${menu.prep_time_minutes || 30}${t("menu_details.min")}`}
+            label={t("menu_details.avg_prep")}
+            color="#ec4899"
+            bgColor="#fce7f3"
+          />
         </ScrollView>
-      </View>
+      </Animated.View>
+
+      {/* Day Selector */}
+      <DaySelector
+        days={uniqueDays}
+        selectedDay={selectedDay}
+        onSelectDay={setSelectedDay}
+        meals={menu.meals}
+        colors={colors}
+        t={t}
+      />
 
       {/* Meals List */}
       <Animated.ScrollView
@@ -505,345 +743,18 @@ export default function MenuDetailsScreen() {
         contentContainerStyle={styles.mealsContainer}
         showsVerticalScrollIndicator={false}
       >
-        {mealsForDay.map((meal) => {
-          const isExpanded = expandedMeal === meal.meal_id;
-          const mealTypeColor = getMealTypeColor(meal.meal_type);
-          const mealTypeEmoji = getMealTypeEmoji(meal.meal_type);
+        {mealsForDay.map((meal) => (
+          <MealCard
+            key={meal.meal_id}
+            meal={meal}
+            isExpanded={expandedMeal === meal.meal_id}
+            onToggle={() => toggleMealExpanded(meal.meal_id)}
+            colors={colors}
+            t={t}
+          />
+        ))}
 
-          return (
-            <View
-              key={meal.meal_id}
-              style={[
-                styles.mealCard,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              {/* Meal Header */}
-              <Pressable
-                onPress={() => toggleMealExpanded(meal.meal_id)}
-                style={styles.mealHeader}
-              >
-                {/* Meal Image */}
-                <View style={styles.mealImageContainer}>
-                  {meal.image_url ? (
-                    <Image
-                      source={{ uri: meal.image_url }}
-                      style={styles.mealImage}
-                    />
-                  ) : (
-                    <View
-                      style={[
-                        styles.mealImagePlaceholder,
-                        { backgroundColor: mealTypeColor + "20" },
-                      ]}
-                    >
-                      <Text style={styles.mealImageEmoji}>{mealTypeEmoji}</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Meal Info */}
-                <View style={styles.mealInfo}>
-                  <View style={styles.mealTypeRow}>
-                    <View
-                      style={[
-                        styles.mealTypeBadge,
-                        { backgroundColor: mealTypeColor },
-                      ]}
-                    >
-                      <Text style={styles.mealTypeText}>
-                        {getMealTypeLabel(meal.meal_type)}
-                      </Text>
-                    </View>
-                    {meal.prep_time_minutes && (
-                      <View style={styles.prepTimeBadge}>
-                        <Clock size={12} color={colors.textSecondary} />
-                        <Text
-                          style={[
-                            styles.prepTimeText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {meal.prep_time_minutes}
-                          {t("menu_details.min")}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text
-                    style={[styles.mealName, { color: colors.text }]}
-                    numberOfLines={2}
-                  >
-                    {meal.name}
-                  </Text>
-                  <View style={styles.mealMetaRow}>
-                    <View style={styles.mealMetaItem}>
-                      <Flame size={14} color={colors.primary} />
-                      <Text
-                        style={[
-                          styles.mealMetaText,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        {Math.round(meal.calories)} {t("menu_details.cal")}
-                      </Text>
-                    </View>
-                    <View style={styles.mealMetaItem}>
-                      <Target size={14} color={colors.primary} />
-                      <Text
-                        style={[
-                          styles.mealMetaText,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        {Math.round(meal.protein)}g {t("menu_details.protein")}
-                      </Text>
-                    </View>
-                    {meal.dietary_tags && meal.dietary_tags.length > 0 && (
-                      <DietaryIcons tags={meal.dietary_tags} size={14} />
-                    )}
-                  </View>
-                </View>
-
-                {/* Expand Icon */}
-                <View style={styles.expandIconContainer}>
-                  {isExpanded ? (
-                    <ChevronUp size={22} color={colors.textSecondary} />
-                  ) : (
-                    <ChevronDown size={22} color={colors.textSecondary} />
-                  )}
-                </View>
-              </Pressable>
-
-              {/* Expanded Content */}
-              {isExpanded && (
-                <View style={styles.expandedContent}>
-                  {/* Nutrition Grid */}
-                  <View
-                    style={[
-                      styles.nutritionSection,
-                      { borderTopColor: colors.border },
-                    ]}
-                  >
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      {t("menu_details.nutrition_facts")}
-                    </Text>
-                    <View
-                      style={[
-                        styles.nutritionGrid,
-                        { backgroundColor: colors.surfaceVariant },
-                      ]}
-                    >
-                      <View style={styles.nutritionItem}>
-                        <Text
-                          style={[
-                            styles.nutritionValue,
-                            { color: colors.primary },
-                          ]}
-                        >
-                          {Math.round(meal.calories)}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.nutritionLabel,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {t("menu_details.calories")}
-                        </Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.nutritionDivider,
-                          { backgroundColor: colors.border },
-                        ]}
-                      />
-                      <View style={styles.nutritionItem}>
-                        <Text
-                          style={[
-                            styles.nutritionValue,
-                            { color: colors.primary },
-                          ]}
-                        >
-                          {Math.round(meal.protein)}g
-                        </Text>
-                        <Text
-                          style={[
-                            styles.nutritionLabel,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {t("menu_details.protein")}
-                        </Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.nutritionDivider,
-                          { backgroundColor: colors.border },
-                        ]}
-                      />
-                      <View style={styles.nutritionItem}>
-                        <Text
-                          style={[
-                            styles.nutritionValue,
-                            { color: colors.warning },
-                          ]}
-                        >
-                          {Math.round(meal.carbs)}g
-                        </Text>
-                        <Text
-                          style={[
-                            styles.nutritionLabel,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {t("menu_details.carbs")}
-                        </Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.nutritionDivider,
-                          { backgroundColor: colors.border },
-                        ]}
-                      />
-                      <View style={styles.nutritionItem}>
-                        <Text
-                          style={[
-                            styles.nutritionValue,
-                            { color: colors.error },
-                          ]}
-                        >
-                          {Math.round(meal.fat)}g
-                        </Text>
-                        <Text
-                          style={[
-                            styles.nutritionLabel,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {t("menu_details.fat")}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Ingredients */}
-                  <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                      <Sparkles size={18} color={colors.primary} />
-                      <Text
-                        style={[styles.sectionTitle, { color: colors.text }]}
-                      >
-                        {t("menu_details.ingredients")}
-                      </Text>
-                    </View>
-                    <View style={styles.ingredientsList}>
-                      {meal.ingredients.map((ingredient) => (
-                        <View
-                          key={ingredient.ingredient_id}
-                          style={styles.ingredientItem}
-                        >
-                          <View
-                            style={[
-                              styles.ingredientDot,
-                              { backgroundColor: colors.primary },
-                            ]}
-                          />
-                          <Text
-                            style={[
-                              styles.ingredientText,
-                              { color: colors.text },
-                            ]}
-                          >
-                            <Text style={styles.ingredientQuantity}>
-                              {ingredient.quantity} {ingredient.unit}
-                            </Text>{" "}
-                            {ingredient.name}
-                          </Text>
-                          {ingredient.estimated_cost && (
-                            <Text
-                              style={[
-                                styles.ingredientCost,
-                                { color: colors.textSecondary },
-                              ]}
-                            >
-                              ₪{ingredient.estimated_cost.toFixed(1)}
-                            </Text>
-                          )}
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Cooking Method */}
-                  {meal.cooking_method && (
-                    <View style={styles.section}>
-                      <View style={styles.sectionHeader}>
-                        <ChefHat size={18} color={colors.primary} />
-                        <Text
-                          style={[styles.sectionTitle, { color: colors.text }]}
-                        >
-                          {t("menu_details.cooking_method")}
-                        </Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.cookingMethodBadge,
-                          { backgroundColor: colors.primary + "15" },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.cookingMethodText,
-                            { color: colors.primary },
-                          ]}
-                        >
-                          {meal.cooking_method}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Instructions */}
-                  {meal.instructions && (
-                    <View style={styles.section}>
-                      <View style={styles.sectionHeader}>
-                        <Info size={18} color={colors.warning} />
-                        <Text
-                          style={[styles.sectionTitle, { color: colors.text }]}
-                        >
-                          {t("menu_details.instructions")}
-                        </Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.instructionsContainer,
-                          { backgroundColor: colors.surfaceVariant },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.instructionsText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {meal.instructions}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
-          );
-        })}
-
-        {/* Nutrition Habits Section */}
-        <View style={styles.habitsSection}>
-          <NutritionHabits />
-        </View>
-
-        {/* Bottom Spacing for FAB */}
+        {/* Bottom Spacing */}
         <View style={{ height: 120 }} />
       </Animated.ScrollView>
 
@@ -852,15 +763,18 @@ export default function MenuDetailsScreen() {
         <View style={styles.fabContainer}>
           <Pressable
             onPress={() => setShowStartModal(true)}
-            style={[styles.fab, { backgroundColor: colors.primary }]}
+            style={({ pressed }) => [
+              styles.fab,
+              { transform: [{ scale: pressed ? 0.96 : 1 }] },
+            ]}
           >
             <LinearGradient
-              colors={[colors.primary, colors.primary]}
+              colors={[colors.emerald500, colors.emerald600 || colors.emerald500]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.fabGradient}
             >
-              <Sparkles size={22} color="#ffffff" />
+              <Play size={22} color="#ffffff" />
               <Text style={styles.fabText}>{t("menu_details.start_menu")}</Text>
             </LinearGradient>
           </Pressable>
@@ -874,56 +788,37 @@ export default function MenuDetailsScreen() {
         animationType="fade"
         onRequestClose={() => setShowStartModal(false)}
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowStartModal(false)}
-        >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowStartModal(false)}>
           <Pressable onPress={(e) => e.stopPropagation()}>
             <View style={[styles.startModal, { backgroundColor: colors.card }]}>
               <View style={styles.modalHeader}>
-                <View
-                  style={[
-                    styles.modalIconContainer,
-                    { backgroundColor: colors.primary + "20" },
-                  ]}
-                >
-                  <Sparkles size={32} color={colors.primary} />
+                <View style={[styles.modalIconContainer, { backgroundColor: colors.emerald500 + "20" }]}>
+                  <Sparkles size={32} color={colors.emerald500} />
                 </View>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>
                   {t("menu_details.start_this_menu")}
                 </Text>
-                <Text
-                  style={[
-                    styles.modalSubtitle,
-                    { color: colors.textSecondary },
-                  ]}
-                >
+                <Text style={[styles.modalSubtitle, { color: colors.icon }]}>
                   {t("menu_details.activate_description")}
                 </Text>
               </View>
 
               <View style={styles.modalFeatures}>
                 <View style={styles.modalFeature}>
-                  <Check size={20} color={colors.success} />
-                  <Text
-                    style={[styles.modalFeatureText, { color: colors.text }]}
-                  >
+                  <Check size={20} color={colors.success || colors.emerald500} />
+                  <Text style={[styles.modalFeatureText, { color: colors.text }]}>
                     {t("menu_details.track_ingredients")}
                   </Text>
                 </View>
                 <View style={styles.modalFeature}>
-                  <Check size={20} color={colors.success} />
-                  <Text
-                    style={[styles.modalFeatureText, { color: colors.text }]}
-                  >
+                  <Check size={20} color={colors.success || colors.emerald500} />
+                  <Text style={[styles.modalFeatureText, { color: colors.text }]}>
                     {t("menu_details.daily_progress")}
                   </Text>
                 </View>
                 <View style={styles.modalFeature}>
-                  <Check size={20} color={colors.success} />
-                  <Text
-                    style={[styles.modalFeatureText, { color: colors.text }]}
-                  >
+                  <Check size={20} color={colors.success || colors.emerald500} />
+                  <Text style={[styles.modalFeatureText, { color: colors.text }]}>
                     {t("menu_details.completion_rewards")}
                   </Text>
                 </View>
@@ -932,14 +827,9 @@ export default function MenuDetailsScreen() {
               <View style={styles.modalActions}>
                 <Pressable
                   onPress={() => setShowStartModal(false)}
-                  style={[
-                    styles.modalButton,
-                    { backgroundColor: colors.surfaceVariant },
-                  ]}
+                  style={[styles.modalButton, { backgroundColor: colors.surface }]}
                 >
-                  <Text
-                    style={[styles.modalButtonText, { color: colors.text }]}
-                  >
+                  <Text style={[styles.modalButtonText, { color: colors.text }]}>
                     {t("menu_details.cancel")}
                   </Text>
                 </Pressable>
@@ -947,19 +837,14 @@ export default function MenuDetailsScreen() {
                 <Pressable
                   onPress={handleStartMenu}
                   disabled={isStarting}
-                  style={[
-                    styles.modalButton,
-                    { backgroundColor: colors.primary, flex: 1 },
-                  ]}
+                  style={[styles.modalButton, styles.modalPrimaryButton, { backgroundColor: colors.emerald500 }]}
                 >
                   {isStarting ? (
                     <ActivityIndicator size="small" color="#ffffff" />
                   ) : (
                     <>
                       <Sparkles size={18} color="#ffffff" />
-                      <Text
-                        style={[styles.modalButtonText, { color: "#ffffff" }]}
-                      >
+                      <Text style={[styles.modalButtonText, { color: "#ffffff" }]}>
                         {t("menu_details.start_now")}
                       </Text>
                     </>
@@ -974,35 +859,70 @@ export default function MenuDetailsScreen() {
   );
 }
 
+// ==================== STYLES ====================
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+
+  // Loading
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    fontWeight: "500",
+  skeletonContent: {
+    padding: 20,
   },
+  skeletonHeaderTitle: {
+    width: 150,
+    height: 24,
+    borderRadius: 8,
+  },
+  skeletonStatsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 20,
+  },
+  skeletonStatCard: {
+    width: 100,
+    height: 100,
+    borderRadius: 16,
+  },
+  skeletonDaySelector: {
+    height: 80,
+    borderRadius: 16,
+    marginBottom: 20,
+  },
+  skeletonMealCard: {
+    height: 120,
+    borderRadius: 18,
+    marginBottom: 14,
+  },
+
+  // Error
   errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
+    gap: 20,
   },
   errorText: {
     fontSize: 18,
     fontWeight: "600",
-    marginBottom: 16,
   },
   errorButton: {
-    fontSize: 16,
-    fontWeight: "600",
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 14,
   },
+  errorButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
+  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -1044,7 +964,7 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: "row",
-    gap: 8,
+    gap: 4,
   },
   headerIconButton: {
     width: 36,
@@ -1052,31 +972,31 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  statsScroll: {
-    maxHeight: 140,
-    marginTop: 16,
-  },
+
+  // Stats
   statsContainer: {
+    paddingVertical: 16,
+  },
+  statsScrollContent: {
     paddingHorizontal: 16,
     gap: 12,
   },
   statCard: {
-    width: 115,
-    padding: 16,
+    width: 105,
+    padding: 14,
     borderRadius: 18,
     alignItems: "center",
-    gap: 10,
-    borderWidth: 1,
+    gap: 8,
   },
-  statIconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  statIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
   },
   statValue: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: "800",
   },
   statLabel: {
@@ -1084,44 +1004,46 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
   },
-  daySelectorContainer: {
-    marginTop: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
+
+  // Day Selector
+  daySelectorWrapper: {
+    paddingVertical: 12,
   },
-  daySelector: {
+  daySelectorContent: {
     paddingHorizontal: 16,
     gap: 10,
   },
   dayTab: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     paddingVertical: 12,
     borderRadius: 16,
     alignItems: "center",
-    minWidth: 95,
-    gap: 4,
+    minWidth: 80,
     borderWidth: 1,
   },
   dayTabLabel: {
     fontSize: 10,
     fontWeight: "700",
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
     textTransform: "uppercase",
   },
   dayTabNumber: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: "800",
+    marginVertical: 2,
   },
   dayTabCalories: {
     fontSize: 11,
     fontWeight: "600",
   },
+
+  // Meals
   mealsScrollView: {
     flex: 1,
   },
   mealsContainer: {
     padding: 16,
-    gap: 16,
+    gap: 14,
   },
   mealCard: {
     borderRadius: 18,
@@ -1135,19 +1057,19 @@ const styles = StyleSheet.create({
   },
   mealImageContainer: {},
   mealImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   mealImagePlaceholder: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: "center",
     alignItems: "center",
   },
-  mealImageEmoji: {
-    fontSize: 34,
+  mealEmoji: {
+    fontSize: 28,
   },
   mealInfo: {
     flex: 1,
@@ -1180,9 +1102,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   mealName: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "700",
-    lineHeight: 24,
+    lineHeight: 22,
   },
   mealMetaRow: {
     flexDirection: "row",
@@ -1198,45 +1120,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
-  expandIconContainer: {
+  expandIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
   },
+
+  // Expanded Content
   expandedContent: {
     paddingHorizontal: 16,
     paddingBottom: 20,
     gap: 20,
+    borderTopWidth: 1,
+    paddingTop: 16,
   },
   nutritionSection: {
-    paddingTop: 20,
-    borderTopWidth: 1,
-    gap: 14,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  nutritionGrid: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingVertical: 16,
-    borderRadius: 12,
-  },
-  nutritionItem: {
-    alignItems: "center",
-    gap: 6,
-    flex: 1,
-  },
-  nutritionDivider: {
-    width: 1,
-    height: 32,
-  },
-  nutritionValue: {
-    fontSize: 20,
-    fontWeight: "800",
-  },
-  nutritionLabel: {
-    fontSize: 11,
-    fontWeight: "600",
+    gap: 12,
   },
   section: {
     gap: 12,
@@ -1246,13 +1148,49 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  ingredientCount: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  ingredientCountText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  nutritionGrid: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: 16,
+    borderRadius: 14,
+  },
+  nutritionItem: {
+    alignItems: "center",
+    gap: 4,
+    flex: 1,
+  },
+  nutritionDivider: {
+    width: 1,
+    height: 28,
+  },
+  nutritionValue: {
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  nutritionLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
   ingredientsList: {
-    gap: 12,
+    gap: 10,
   },
   ingredientItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
   },
   ingredientDot: {
     width: 6,
@@ -1273,31 +1211,38 @@ const styles = StyleSheet.create({
   },
   cookingMethodBadge: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 12,
+    alignSelf: "flex-start",
   },
   cookingMethodText: {
     fontSize: 14,
     fontWeight: "700",
-    textAlign: "center",
   },
   instructionsContainer: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   instructionsText: {
     fontSize: 14,
     lineHeight: 22,
   },
+
+  // FAB
   fabContainer: {
     position: "absolute",
-    bottom: 24,
+    bottom: Platform.select({ ios: 24, android: 20 }),
     right: 20,
     left: 20,
     alignItems: "flex-end",
   },
   fab: {
-    borderRadius: 32,
+    borderRadius: 28,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   fabGradient: {
     flexDirection: "row",
@@ -1305,13 +1250,15 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 16,
     paddingHorizontal: 28,
-    borderRadius: 32,
+    borderRadius: 28,
   },
   fabText: {
     fontSize: 16,
     fontWeight: "800",
     color: "#ffffff",
   },
+
+  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.6)",
@@ -1320,8 +1267,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   startModal: {
-    width: "100%",
-    maxWidth: 420,
+    width: SCREEN_WIDTH - 40,
+    maxWidth: 400,
     borderRadius: 24,
     padding: 28,
   },
@@ -1338,7 +1285,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: "800",
     textAlign: "center",
   },
@@ -1370,15 +1317,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     borderRadius: 14,
-    minWidth: 110,
+    minWidth: 100,
+  },
+  modalPrimaryButton: {
+    flex: 1,
   },
   modalButtonText: {
     fontSize: 16,
     fontWeight: "700",
-  },
-  habitsSection: {
-    marginTop: 8,
   },
 });

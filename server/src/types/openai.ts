@@ -1,4 +1,5 @@
 export interface Ingredient {
+  estimated_cost: number;
   name: string;
   calories: number;
   protein: number;
@@ -26,6 +27,7 @@ export interface Ingredient {
   vitamins_json?: any;
   micronutrients_json?: any;
   allergens_json?: any;
+  category?: string; // Add this line
 }
 
 export interface MealAnalysisResult {
