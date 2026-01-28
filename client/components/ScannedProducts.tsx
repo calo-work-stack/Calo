@@ -22,23 +22,19 @@ import {
   Flame,
   Activity,
   Droplets,
-  Leaf,
+  Wheat,
   Award,
-  TrendingUp,
-  Calendar,
-  Filter,
-  Grid,
+  Grid3x3,
   List,
 } from "lucide-react-native";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { api } from "@/src/services/api";
 import { ToastService } from "@/src/services/totastService";
-import { LinearGradient } from "expo-linear-gradient";
 
 interface NutritionData {
   calories: number;
@@ -77,7 +73,8 @@ interface Props {
 export default function MinimalProductGallery({ visible, onClose }: Props) {
   const { t } = useTranslation();
   const { language } = useLanguage();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
+
   const [products, setProducts] = useState<ScannedProduct[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -85,7 +82,6 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
     null,
   );
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [fadeAnim] = useState(new Animated.Value(0));
 
@@ -94,8 +90,8 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
       loadProducts();
       Animated.spring(fadeAnim, {
         toValue: 1,
-        tension: 50,
-        friction: 7,
+        tension: 60,
+        friction: 8,
         useNativeDriver: true,
       }).start();
     }
@@ -104,20 +100,12 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
   const loadProducts = async () => {
     setIsLoading(true);
     try {
-      console.log("🔍 Loading products from /food-scanner/history");
       const response = await api.get("/food-scanner/history");
-
-      console.log("📦 Response:", JSON.stringify(response.data, null, 2));
-
       if (response.data.success && response.data.data) {
-        console.log("✅ Products loaded:", response.data.data.length);
         setProducts(response.data.data);
-      } else {
-        setProducts([]);
       }
     } catch (error: any) {
-      console.error("❌ Error loading products:", error);
-      ToastService.handleError(error, "Load Products");
+      ToastService.handleError(error, t("errors.loadProducts"));
       setProducts([]);
     } finally {
       setIsLoading(false);
@@ -150,7 +138,7 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
   }, [products, searchQuery, selectedCategory]);
 
   const getScoreColor = (score?: number): string => {
-    if (!score) return "#999999";
+    if (!score) return colors.textTertiary;
     if (score >= 80) return "#10B981";
     if (score >= 60) return "#3B82F6";
     if (score >= 40) return "#F59E0B";
@@ -164,41 +152,51 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
       (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
     );
 
-    if (diffInDays === 0) return "Today";
-    if (diffInDays === 1) return "Yesterday";
-    if (diffInDays < 7) return `${diffInDays}d ago`;
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (diffInDays === 0) return t("date.today");
+    if (diffInDays === 1) return t("date.yesterday");
+    if (diffInDays < 7) return t("date.daysAgo", { count: diffInDays });
+    return date.toLocaleDateString(language, {
+      month: "short",
+      day: "numeric",
+    });
   };
 
-  const renderGridCard = (product: ScannedProduct, index: number) => {
+  const ProductCard = ({
+    product,
+    index,
+  }: {
+    product: ScannedProduct;
+    index: number;
+  }) => {
     const scoreColor = getScoreColor(product.health_score);
+    const isGrid = viewMode === "grid";
 
     return (
       <TouchableOpacity
-        key={`grid-${product.id}-${index}`}
+        key={`${viewMode}-${product.id}-${index}`}
         style={[
-          styles.gridCard,
-          { backgroundColor: colors.card, borderColor: colors.border },
+          isGrid ? styles.gridCard : styles.listCard,
+          { backgroundColor: colors.card, borderColor: colors.border + "30" },
         ]}
         onPress={() => setSelectedProduct(product)}
         activeOpacity={0.7}
       >
+        {/* Image Section */}
         <View
           style={[
-            styles.gridImageContainer,
+            isGrid ? styles.gridImage : styles.listImage,
             { backgroundColor: colors.surface },
           ]}
         >
           {product.image_url ? (
             <Image
               source={{ uri: product.image_url }}
-              style={styles.gridImage}
-              resizeMode="cover"
+              style={StyleSheet.absoluteFill}
             />
           ) : (
-            <View style={styles.gridImagePlaceholder}>
+            <View style={styles.imagePlaceholder}>
               <Package
-                size={32}
+                size={isGrid ? 32 : 24}
                 color={colors.textTertiary}
                 strokeWidth={1.5}
               />
@@ -206,140 +204,98 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
           )}
 
           {product.health_score && (
-            <View style={[styles.scoreChip, { backgroundColor: scoreColor }]}>
-              <Text style={styles.scoreChipText}>{product.health_score}</Text>
+            <View style={[styles.scoreBadge, { backgroundColor: scoreColor }]}>
+              <Text style={styles.scoreText}>{product.health_score}</Text>
             </View>
           )}
         </View>
 
-        <View style={styles.gridContent}>
-          <Text
-            style={[styles.gridBrand, { color: colors.textTertiary }]}
-            numberOfLines={1}
-          >
-            {product.brand || product.category}
-          </Text>
-          <Text
-            style={[styles.gridName, { color: colors.text }]}
-            numberOfLines={2}
-          >
-            {product.name || product.product_name}
-          </Text>
-
-          <View style={styles.gridStats}>
-            <View style={styles.gridStat}>
-              <Flame size={12} color={colors.textSecondary} />
-              <Text
-                style={[styles.gridStatText, { color: colors.textSecondary }]}
-              >
-                {product.nutrition_per_100g?.calories || 0}
-              </Text>
-            </View>
-            <View style={styles.gridStat}>
-              <Activity size={12} color={colors.textSecondary} />
-              <Text
-                style={[styles.gridStatText, { color: colors.textSecondary }]}
-              >
-                {product.nutrition_per_100g?.protein || 0}g
-              </Text>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderListCard = (product: ScannedProduct, index: number) => {
-    const scoreColor = getScoreColor(product.health_score);
-
-    return (
-      <TouchableOpacity
-        key={`list-${product.id}-${index}`}
-        style={[
-          styles.listCard,
-          { backgroundColor: colors.card, borderColor: colors.border },
-        ]}
-        onPress={() => setSelectedProduct(product)}
-        activeOpacity={0.7}
-      >
-        <View
-          style={[
-            styles.listImageContainer,
-            { backgroundColor: colors.surface },
-          ]}
-        >
-          {product.image_url ? (
-            <Image
-              source={{ uri: product.image_url }}
-              style={styles.listImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={styles.listImagePlaceholder}>
-              <Package
-                size={24}
-                color={colors.textTertiary}
-                strokeWidth={1.5}
-              />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.listContent}>
-          <View style={styles.listHeader}>
-            <View style={styles.listTitleContainer}>
-              <Text
-                style={[styles.listBrand, { color: colors.textTertiary }]}
-                numberOfLines={1}
-              >
-                {product.brand || product.category}
-              </Text>
-              <Text
-                style={[styles.listName, { color: colors.text }]}
-                numberOfLines={1}
-              >
-                {product.name || product.product_name}
-              </Text>
-            </View>
-
-            {product.health_score && (
-              <View style={[styles.listScore, { backgroundColor: scoreColor }]}>
-                <Text style={styles.listScoreText}>{product.health_score}</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.listFooter}>
-            <View style={styles.listStats}>
-              <Flame size={14} color={colors.textSecondary} />
-              <Text
-                style={[styles.listStatText, { color: colors.textSecondary }]}
-              >
-                {product.nutrition_per_100g?.calories || 0} cal
-              </Text>
-              <Text style={[styles.listDivider, { color: colors.border }]}>
-                •
-              </Text>
-              <Activity size={14} color={colors.textSecondary} />
-              <Text
-                style={[styles.listStatText, { color: colors.textSecondary }]}
-              >
-                {product.nutrition_per_100g?.protein || 0}g protein
-              </Text>
-            </View>
-
-            <Text style={[styles.listDate, { color: colors.textTertiary }]}>
-              {formatDate(product.created_at)}
+        {/* Content Section */}
+        <View style={isGrid ? styles.gridContent : styles.listContent}>
+          <View style={styles.contentTop}>
+            <Text
+              style={[styles.brandText, { color: colors.textTertiary }]}
+              numberOfLines={1}
+            >
+              {product.brand || product.category}
+            </Text>
+            <Text
+              style={[styles.nameText, { color: colors.text }]}
+              numberOfLines={isGrid ? 2 : 1}
+            >
+              {product.name || product.product_name}
             </Text>
           </View>
+
+          <View style={styles.contentBottom}>
+            <View style={styles.stats}>
+              <View style={styles.stat}>
+                <Flame size={14} color={colors.textSecondary} strokeWidth={2} />
+                <Text
+                  style={[styles.statText, { color: colors.textSecondary }]}
+                >
+                  {(product.nutrition_per_100g?.calories || 0).toFixed(1)}
+                </Text>
+              </View>
+              <View style={styles.stat}>
+                <Activity
+                  size={14}
+                  color={colors.textSecondary}
+                  strokeWidth={2}
+                />
+                <Text
+                  style={[styles.statText, { color: colors.textSecondary }]}
+                >
+                  {(product.nutrition_per_100g?.protein || 0).toFixed(1)}g
+                </Text>
+              </View>
+            </View>
+
+            {!isGrid && (
+              <Text style={[styles.dateText, { color: colors.textTertiary }]}>
+                {formatDate(product.created_at)}
+              </Text>
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     );
   };
 
-  const renderDetailModal = () => {
+  const DetailModal = () => {
     if (!selectedProduct) return null;
     const scoreColor = getScoreColor(selectedProduct.health_score);
+
+    const nutritionItems = [
+      {
+        icon: Flame,
+        label: t("statistics.calories"),
+        value: (selectedProduct.nutrition_per_100g?.calories || 0).toFixed(1),
+        unit: "",
+        color: "#EF4444",
+      },
+      {
+        icon: Activity,
+        label: t("statistics.protein"),
+        value: (selectedProduct.nutrition_per_100g?.protein || 0).toFixed(1),
+        unit: "g",
+        color: "#10B981",
+      },
+      {
+        icon: Droplets,
+        label: t("foodScanner.carbs"),
+        value: (selectedProduct.nutrition_per_100g?.carbs || 0).toFixed(1),
+        unit: "g",
+        color: "#3B82F6",
+      },
+      {
+        icon: Wheat,
+        label: t("foodScanner.fat"),
+        value: (selectedProduct.nutrition_per_100g?.fat || 0).toFixed(1),
+        unit: "g",
+        color: "#F59E0B",
+      },
+    ];
 
     return (
       <Modal
@@ -354,267 +310,374 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
             { backgroundColor: colors.background },
           ]}
         >
-          {/* Simple Header */}
-          <View
-            style={[
-              styles.modalHeader,
-              {
-                backgroundColor: colors.card,
-                borderBottomColor: colors.border,
-              },
-            ]}
-          >
-            <TouchableOpacity onPress={() => setSelectedProduct(null)}>
-              <View style={styles.modalCloseBtn}>
-                <X size={24} color={colors.text} strokeWidth={2} />
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            style={styles.modalScroll}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Product Hero */}
+          <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+            {/* Premium Hero Section */}
             <View style={[styles.modalHero, { backgroundColor: colors.card }]}>
-              {selectedProduct.image_url ? (
-                <Image
-                  source={{ uri: selectedProduct.image_url }}
-                  style={styles.modalImage}
-                  resizeMode="cover"
-                />
-              ) : (
+              {/* Close Button */}
+              <TouchableOpacity
+                onPress={() => setSelectedProduct(null)}
+                style={[styles.modalClose, { backgroundColor: colors.surface }]}
+              >
+                <X size={22} color={colors.text} strokeWidth={2.5} />
+              </TouchableOpacity>
+
+              {/* Product Image with Floating Score */}
+              <View style={styles.modalImageSection}>
                 <View
                   style={[
-                    styles.modalImagePlaceholder,
+                    styles.modalImageWrapper,
                     { backgroundColor: colors.surface },
                   ]}
                 >
-                  <Package
-                    size={64}
-                    color={colors.textTertiary}
-                    strokeWidth={1.5}
-                  />
+                  {selectedProduct.image_url ? (
+                    <Image
+                      source={{ uri: selectedProduct.image_url }}
+                      style={styles.modalProductImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Package
+                      size={80}
+                      color={colors.textTertiary}
+                      strokeWidth={1.5}
+                    />
+                  )}
                 </View>
-              )}
 
-              <View style={styles.modalProductInfo}>
-                <Text
-                  style={[styles.modalBrand, { color: colors.textTertiary }]}
-                >
-                  {selectedProduct.brand || selectedProduct.category}
-                </Text>
-                <Text style={[styles.modalName, { color: colors.text }]}>
-                  {selectedProduct.name || selectedProduct.product_name}
-                </Text>
-
+                {/* Floating Health Score Badge */}
                 {selectedProduct.health_score && (
-                  <View style={styles.modalScoreContainer}>
-                    <View
-                      style={[
-                        styles.modalScoreBadge,
-                        { backgroundColor: scoreColor },
-                      ]}
-                    >
-                      <Text style={styles.modalScoreValue}>
-                        {selectedProduct.health_score}
-                      </Text>
-                      <Text style={styles.modalScoreLabel}>Health Score</Text>
-                    </View>
-                  </View>
-                )}
-              </View>
-            </View>
-
-            {/* Nutrition Grid */}
-            <View
-              style={[
-                styles.modalSection,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <Text style={[styles.modalSectionTitle, { color: colors.text }]}>
-                Nutrition per 100g
-              </Text>
-
-              <View style={styles.nutritionGrid}>
-                {[
-                  {
-                    icon: Flame,
-                    label: "Calories",
-                    value: selectedProduct.nutrition_per_100g?.calories || 0,
-                    unit: "",
-                    color: "#EF4444",
-                  },
-                  {
-                    icon: Activity,
-                    label: "Protein",
-                    value: selectedProduct.nutrition_per_100g?.protein || 0,
-                    unit: "g",
-                    color: "#10B981",
-                  },
-                  {
-                    icon: Droplets,
-                    label: "Carbs",
-                    value: selectedProduct.nutrition_per_100g?.carbs || 0,
-                    unit: "g",
-                    color: "#3B82F6",
-                  },
-                  {
-                    icon: Leaf,
-                    label: "Fat",
-                    value: selectedProduct.nutrition_per_100g?.fat || 0,
-                    unit: "g",
-                    color: "#F59E0B",
-                  },
-                ].map((item, index) => (
                   <View
-                    key={index}
                     style={[
-                      styles.nutritionCard,
-                      { backgroundColor: colors.surface },
+                      styles.floatingScore,
+                      { backgroundColor: colors.card },
                     ]}
                   >
-                    <item.icon size={20} color={item.color} strokeWidth={2} />
-                    <Text
-                      style={[styles.nutritionValue, { color: colors.text }]}
+                    <View
+                      style={[styles.scoreRing, { borderColor: scoreColor }]}
                     >
-                      {item.value}
-                      <Text
-                        style={[
-                          styles.nutritionUnit,
-                          { color: colors.textTertiary },
-                        ]}
-                      >
-                        {item.unit}
+                      <Text style={[styles.scoreNumber, { color: scoreColor }]}>
+                        {selectedProduct.health_score}
                       </Text>
-                    </Text>
+                    </View>
                     <Text
                       style={[
-                        styles.nutritionLabel,
+                        styles.scoreText,
                         { color: colors.textSecondary },
                       ]}
                     >
-                      {item.label}
+                      {t("foodScanner.healthScore")}
                     </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Product Info */}
+              <View style={styles.modalProductInfo}>
+                <Text style={[styles.modalCategory, { color: colors.primary }]}>
+                  {selectedProduct.brand || selectedProduct.category}
+                </Text>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>
+                  {selectedProduct.name || selectedProduct.product_name}
+                </Text>
+
+                {/* Quick Stats Bar */}
+                <View
+                  style={[
+                    styles.quickStats,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <View style={styles.quickStat}>
+                    <Flame size={16} color="#EF4444" strokeWidth={2.5} />
+                    <Text
+                      style={[styles.quickStatValue, { color: colors.text }]}
+                    >
+                      {(
+                        selectedProduct.nutrition_per_100g?.calories || 0
+                      ).toFixed(1)}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.quickStatLabel,
+                        { color: colors.textTertiary },
+                      ]}
+                    >
+                      cal
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.quickStatDivider,
+                      { backgroundColor: colors.border },
+                    ]}
+                  />
+                  <View style={styles.quickStat}>
+                    <Activity size={16} color="#10B981" strokeWidth={2.5} />
+                    <Text
+                      style={[styles.quickStatValue, { color: colors.text }]}
+                    >
+                      {(
+                        selectedProduct.nutrition_per_100g?.protein || 0
+                      ).toFixed(1)}
+                      g
+                    </Text>
+                    <Text
+                      style={[
+                        styles.quickStatLabel,
+                        { color: colors.textTertiary },
+                      ]}
+                    >
+                      protein
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.quickStatDivider,
+                      { backgroundColor: colors.border },
+                    ]}
+                  />
+                  <View style={styles.quickStat}>
+                    <Droplets size={16} color="#3B82F6" strokeWidth={2.5} />
+                    <Text
+                      style={[styles.quickStatValue, { color: colors.text }]}
+                    >
+                      {(selectedProduct.nutrition_per_100g?.carbs || 0).toFixed(
+                        1,
+                      )}
+                      g
+                    </Text>
+                    <Text
+                      style={[
+                        styles.quickStatLabel,
+                        { color: colors.textTertiary },
+                      ]}
+                    >
+                      carbs
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* Nutrition Details - Card Grid */}
+            <View style={styles.contentSection}>
+              <Text style={[styles.contentTitle, { color: colors.text }]}>
+                {t("foodScanner.nutritionValues")}
+              </Text>
+
+              <View style={styles.nutritionCards}>
+                {nutritionItems.map((item, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.nutritionBox,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: item.color + "20",
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.nutritionIconCircle,
+                        { backgroundColor: item.color + "15" },
+                      ]}
+                    >
+                      <item.icon
+                        size={20}
+                        color={item.color}
+                        strokeWidth={2.5}
+                      />
+                    </View>
+                    <View style={styles.nutritionData}>
+                      <Text
+                        style={[styles.nutritionAmount, { color: colors.text }]}
+                      >
+                        {item.value}
+                        <Text
+                          style={[
+                            styles.nutritionMetric,
+                            { color: colors.textTertiary },
+                          ]}
+                        >
+                          {item.unit}
+                        </Text>
+                      </Text>
+                      <Text
+                        style={[
+                          styles.nutritionName,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </View>
                   </View>
                 ))}
               </View>
 
-              {/* Extra Nutrition */}
-              {(selectedProduct.nutrition_per_100g?.fiber ||
-                selectedProduct.nutrition_per_100g?.sugar) && (
+              {/* Additional Nutrition */}
+              {(selectedProduct.nutrition_per_100g?.fiber !== undefined ||
+                selectedProduct.nutrition_per_100g?.sugar !== undefined ||
+                selectedProduct.nutrition_per_100g?.sodium !== undefined) && (
                 <View
                   style={[
-                    styles.extraNutrition,
-                    { borderTopColor: colors.border },
+                    styles.additionalNutrition,
+                    { backgroundColor: colors.card },
                   ]}
                 >
-                  {selectedProduct.nutrition_per_100g?.fiber !== undefined && (
-                    <View style={styles.extraRow}>
-                      <Text
-                        style={[
-                          styles.extraLabel,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        Fiber
-                      </Text>
-                      <Text style={[styles.extraValue, { color: colors.text }]}>
-                        {selectedProduct.nutrition_per_100g.fiber}g
-                      </Text>
-                    </View>
-                  )}
-                  {selectedProduct.nutrition_per_100g?.sugar !== undefined && (
-                    <View style={styles.extraRow}>
-                      <Text
-                        style={[
-                          styles.extraLabel,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        Sugar
-                      </Text>
-                      <Text style={[styles.extraValue, { color: colors.text }]}>
-                        {selectedProduct.nutrition_per_100g.sugar}g
-                      </Text>
-                    </View>
-                  )}
+                  <Text
+                    style={[styles.additionalTitle, { color: colors.text }]}
+                  >
+                    {t("foodScanner.additionalInfo")}
+                  </Text>
+                  <View style={styles.additionalGrid}>
+                    {selectedProduct.nutrition_per_100g?.fiber !==
+                      undefined && (
+                      <View style={styles.additionalItem}>
+                        <Text
+                          style={[
+                            styles.additionalLabel,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {t("foodScanner.fibers")}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.additionalValue,
+                            { color: colors.text },
+                          ]}
+                        >
+                          {selectedProduct.nutrition_per_100g.fiber.toFixed(1)}g
+                        </Text>
+                      </View>
+                    )}
+                    {selectedProduct.nutrition_per_100g?.sugar !==
+                      undefined && (
+                      <View style={styles.additionalItem}>
+                        <Text
+                          style={[
+                            styles.additionalLabel,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {t("foodScanner.sugar")}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.additionalValue,
+                            { color: colors.text },
+                          ]}
+                        >
+                          {selectedProduct.nutrition_per_100g.sugar.toFixed(1)}g
+                        </Text>
+                      </View>
+                    )}
+                    {selectedProduct.nutrition_per_100g?.sodium !==
+                      undefined && (
+                      <View style={styles.additionalItem}>
+                        <Text
+                          style={[
+                            styles.additionalLabel,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {t("foodScanner.sodium")}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.additionalValue,
+                            { color: colors.text },
+                          ]}
+                        >
+                          {selectedProduct.nutrition_per_100g.sodium.toFixed(1)}
+                          mg
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
               )}
             </View>
 
             {/* Ingredients */}
-            {selectedProduct.ingredients &&
-              selectedProduct.ingredients.length > 0 && (
+            {selectedProduct.ingredients?.length > 0 && (
+              <View style={styles.contentSection}>
+                <Text style={[styles.contentTitle, { color: colors.text }]}>
+                  {t("foodScanner.ingredientsIdentified")}
+                </Text>
                 <View
                   style={[
-                    styles.modalSection,
-                    {
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                    },
+                    styles.ingredientsBox,
+                    { backgroundColor: colors.card },
                   ]}
                 >
                   <Text
-                    style={[styles.modalSectionTitle, { color: colors.text }]}
-                  >
-                    Ingredients
-                  </Text>
-                  <Text
                     style={[
-                      styles.ingredientsText,
+                      styles.ingredientsContent,
                       { color: colors.textSecondary },
                     ]}
                   >
                     {selectedProduct.ingredients.join(", ")}
                   </Text>
                 </View>
-              )}
+              </View>
+            )}
 
-            {/* Allergens */}
-            {selectedProduct.allergens &&
-              selectedProduct.allergens.length > 0 && (
-                <View style={[styles.modalSection, styles.allergenSection]}>
-                  <View style={styles.allergenHeader}>
-                    <AlertTriangle size={20} color="#EF4444" strokeWidth={2} />
-                    <Text style={styles.allergenTitle}>Contains Allergens</Text>
+            {/* Allergens Warning */}
+            {selectedProduct.allergens?.length > 0 && (
+              <View style={styles.contentSection}>
+                <View
+                  style={[styles.warningCard, { backgroundColor: "#FEF2F2" }]}
+                >
+                  <View style={styles.warningHeader}>
+                    <View style={styles.warningIconBox}>
+                      <AlertTriangle
+                        size={20}
+                        color="#DC2626"
+                        strokeWidth={2.5}
+                      />
+                    </View>
+                    <Text style={styles.warningTitle}>
+                      {t("foodScanner.allergens")}
+                    </Text>
                   </View>
-                  <View style={styles.allergenList}>
+                  <View style={styles.warningContent}>
                     {selectedProduct.allergens.map((allergen, index) => (
-                      <Text key={index} style={styles.allergenItem}>
-                        • {allergen}
-                      </Text>
+                      <View key={index} style={styles.warningTag}>
+                        <Text style={styles.warningTagText}>{allergen}</Text>
+                      </View>
                     ))}
                   </View>
                 </View>
-              )}
+              </View>
+            )}
 
-            {/* Labels */}
-            {selectedProduct.labels && selectedProduct.labels.length > 0 && (
-              <View
-                style={[
-                  styles.modalSection,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                ]}
-              >
-                <Text
-                  style={[styles.modalSectionTitle, { color: colors.text }]}
-                >
-                  Certifications
+            {/* Certifications */}
+            {selectedProduct.labels?.length > 0 && (
+              <View style={styles.contentSection}>
+                <Text style={[styles.contentTitle, { color: colors.text }]}>
+                  {t("foodScanner.certifications")}
                 </Text>
-                <View style={styles.labelsList}>
+                <View style={styles.certificationsGrid}>
                   {selectedProduct.labels.map((label, index) => (
-                    <View key={index} style={styles.labelChip}>
-                      <CheckCircle2 size={14} color="#10B981" strokeWidth={2} />
-                      <Text style={styles.labelText}>{label}</Text>
+                    <View key={index} style={styles.certBadge}>
+                      <View style={styles.certIcon}>
+                        <CheckCircle2
+                          size={16}
+                          color="#10B981"
+                          strokeWidth={2.5}
+                        />
+                      </View>
+                      <Text style={styles.certLabel}>{label}</Text>
                     </View>
                   ))}
                 </View>
               </View>
             )}
 
-            <View style={{ height: 40 }} />
+            <View style={{ height: 50 }} />
           </ScrollView>
         </View>
       </Modal>
@@ -629,87 +692,86 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
       onRequestClose={onClose}
     >
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Minimalist Header */}
+        {/* Header */}
         <View
           style={[
             styles.header,
-            { backgroundColor: colors.card, borderBottomColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderBottomColor: colors.border + "20",
+            },
           ]}
         >
           <View style={styles.headerTop}>
-            <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-              <X size={24} color={colors.text} strokeWidth={2} />
+            <TouchableOpacity onPress={onClose} style={styles.headerButton}>
+              <X size={24} color={colors.text} strokeWidth={2.5} />
             </TouchableOpacity>
 
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
-              Products
+            <Text style={[styles.title, { color: colors.text }]}>
+              {t("loading.history")}
             </Text>
 
             <TouchableOpacity
               onPress={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
-              style={styles.viewToggle}
+              style={styles.headerButton}
             >
               {viewMode === "grid" ? (
-                <List size={24} color={colors.text} strokeWidth={2} />
+                <List size={24} color={colors.text} strokeWidth={2.5} />
               ) : (
-                <Grid size={24} color={colors.text} strokeWidth={2} />
+                <Grid3x3 size={24} color={colors.text} strokeWidth={2.5} />
               )}
             </TouchableOpacity>
           </View>
 
-          {/* Clean Search */}
-          <View
-            style={[
-              styles.searchBar,
-              { backgroundColor: colors.surfaceVariant },
-            ]}
-          >
-            <Search size={20} color={colors.textTertiary} strokeWidth={2} />
+          {/* Search */}
+          <View style={[styles.searchBar, { backgroundColor: colors.surface }]}>
+            <Search size={20} color={colors.textTertiary} strokeWidth={2.5} />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search products..."
+              placeholder={t("foodScanner.searchProducts")}
               placeholderTextColor={colors.textTertiary}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <X size={18} color={colors.textSecondary} strokeWidth={2} />
+                <X size={18} color={colors.textSecondary} strokeWidth={2.5} />
               </TouchableOpacity>
             )}
           </View>
 
-          {/* Category Pills */}
+          {/* Categories */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesScroll}
+            contentContainerStyle={styles.categories}
           >
             {categories.map((cat) => (
               <TouchableOpacity
                 key={cat}
                 style={[
-                  styles.categoryPill,
+                  styles.categoryChip,
                   {
                     backgroundColor:
                       selectedCategory === cat
                         ? colors.primary
                         : colors.surface,
                   },
-                  selectedCategory === cat && styles.categoryPillActive,
                 ]}
                 onPress={() => setSelectedCategory(cat)}
               >
                 <Text
                   style={[
-                    styles.categoryPillText,
+                    styles.categoryText,
                     {
-                      color: selectedCategory === cat ? "#FFFFFF" : colors.text,
+                      color:
+                        selectedCategory === cat
+                          ? colors.onPrimary
+                          : colors.text,
                     },
-                    selectedCategory === cat && styles.categoryPillTextActive,
                   ]}
                 >
-                  {cat === "all" ? "All" : cat}
+                  {cat === "all" ? t("common.all") : cat}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -718,20 +780,13 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
 
         {/* Content */}
         {isLoading ? (
-          <View style={styles.loadingContainer}>
+          <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : filteredProducts.length === 0 ? (
-          <View style={styles.emptyContainer}>
+          <View style={styles.centerContainer}>
             <View
-              style={[
-                styles.emptyIconContainer,
-                {
-                  backgroundColor: isDark
-                    ? "rgba(255,255,255,0.05)"
-                    : "rgba(0,0,0,0.03)",
-                },
-              ]}
+              style={[styles.emptyIcon, { backgroundColor: colors.surface }]}
             >
               <Package
                 size={48}
@@ -740,39 +795,40 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
               />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              {searchQuery ? "No results found" : "No products yet"}
-            </Text>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               {searchQuery
-                ? "Try a different search term"
-                : "Start scanning to build your collection"}
+                ? t("common.noResults")
+                : t("foodScanner.noProducts")}
+            </Text>
+            <Text
+              style={[styles.emptySubtitle, { color: colors.textSecondary }]}
+            >
+              {searchQuery
+                ? t("common.tryDifferentSearch")
+                : t("foodScanner.startScanning")}
             </Text>
           </View>
         ) : (
           <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-            {viewMode === "grid" ? (
-              <ScrollView
-                contentContainerStyle={styles.gridContainer}
-                showsVerticalScrollIndicator={false}
-              >
-                {filteredProducts.map((product, index) =>
-                  renderGridCard(product, index),
-                )}
-              </ScrollView>
-            ) : (
-              <ScrollView
-                contentContainerStyle={styles.listContainer}
-                showsVerticalScrollIndicator={false}
-              >
-                {filteredProducts.map((product, index) =>
-                  renderListCard(product, index),
-                )}
-              </ScrollView>
-            )}
+            <ScrollView
+              contentContainerStyle={
+                viewMode === "grid"
+                  ? styles.gridContainer
+                  : styles.listContainer
+              }
+              showsVerticalScrollIndicator={false}
+            >
+              {filteredProducts.map((product, index) => (
+                <ProductCard
+                  key={`${product.id}-${index}`}
+                  product={product}
+                  index={index}
+                />
+              ))}
+            </ScrollView>
           </Animated.View>
         )}
 
-        {renderDetailModal()}
+        <DetailModal />
       </View>
     </Modal>
   );
@@ -781,110 +837,84 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFA",
   },
   header: {
-    backgroundColor: "#FFFFFF",
     paddingTop: Platform.OS === "ios" ? 50 : 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
   },
   headerTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    letterSpacing: -0.5,
-  },
-  viewToggle: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
+  title: {
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: -0.4,
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F5F5",
     marginHorizontal: 20,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
     gap: 12,
     marginBottom: 16,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: "#1A1A1A",
     fontWeight: "500",
   },
-  categoriesScroll: {
+  categories: {
     paddingHorizontal: 20,
     gap: 10,
   },
-  categoryPill: {
-    paddingHorizontal: 18,
+  categoryChip: {
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: "#F5F5F5",
+    borderRadius: 16,
   },
-  categoryPillActive: {
-    backgroundColor: "#1A1A1A",
-  },
-  categoryPillText: {
+  categoryText: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#666666",
+    fontWeight: "700",
+    letterSpacing: -0.2,
   },
-  categoryPillTextActive: {
-    color: "#FFFFFF",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyContainer: {
+  centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
-    gap: 12,
   },
-  emptyIconContainer: {
+  emptyIcon: {
     width: 96,
     height: 96,
     borderRadius: 48,
-    alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
+    alignItems: "center",
+    marginBottom: 20,
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    marginTop: 4,
-    letterSpacing: -0.3,
+    fontWeight: "800",
+    letterSpacing: -0.4,
+    marginBottom: 8,
   },
-  emptyText: {
+  emptySubtitle: {
     fontSize: 15,
-    color: "#666666",
-    textAlign: "center",
     fontWeight: "500",
+    textAlign: "center",
   },
   gridContainer: {
     padding: 20,
@@ -894,28 +924,45 @@ const styles = StyleSheet.create({
   },
   gridCard: {
     width: (width - 56) / 2,
-    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  gridImageContainer: {
-    position: "relative",
-    height: 140,
-    backgroundColor: "#F5F5F5",
   },
   gridImage: {
-    width: "100%",
-    height: "100%",
+    height: 140,
+    position: "relative",
   },
-  gridImagePlaceholder: {
-    width: "100%",
-    height: "100%",
+  gridContent: {
+    padding: 14,
+    gap: 10,
+  },
+  listContainer: {
+    padding: 20,
+    gap: 12,
+  },
+  listCard: {
+    flexDirection: "row",
+    borderRadius: 20,
+    padding: 14,
+    gap: 14,
+    borderWidth: 1,
+  },
+  listImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    position: "relative",
+  },
+  listContent: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  imagePlaceholder: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
   },
-  scoreChip: {
+  scoreBadge: {
     position: "absolute",
     top: 10,
     right: 10,
@@ -925,341 +972,326 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  scoreChipText: {
+  scoreText: {
     fontSize: 13,
     fontWeight: "800",
     color: "#FFFFFF",
   },
-  gridContent: {
-    padding: 14,
+  contentTop: {
+    gap: 4,
   },
-  gridBrand: {
+  brandText: {
     fontSize: 11,
-    fontWeight: "600",
-    color: "#999999",
+    fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    marginBottom: 4,
   },
-  gridName: {
+  nameText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A1A",
-    lineHeight: 20,
-    marginBottom: 10,
-    minHeight: 40,
     letterSpacing: -0.3,
+    lineHeight: 20,
   },
-  gridStats: {
+  contentBottom: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  stats: {
     flexDirection: "row",
     gap: 12,
   },
-  gridStat: {
+  stat: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
   },
-  gridStatText: {
+  statText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#666666",
   },
-  listContainer: {
-    padding: 20,
-    gap: 14,
-  },
-  listCard: {
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 14,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  listImageContainer: {
-    width: 85,
-    height: 85,
-    borderRadius: 14,
-    backgroundColor: "#F5F5F5",
-    overflow: "hidden",
-  },
-  listImage: {
-    width: "100%",
-    height: "100%",
-  },
-  listImagePlaceholder: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  listContent: {
-    flex: 1,
-    justifyContent: "space-between",
-  },
-  listHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 8,
-  },
-  listTitleContainer: {
-    flex: 1,
-  },
-  listBrand: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#999999",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  listName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    letterSpacing: -0.3,
-  },
-  listScore: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  listScoreText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#FFFFFF",
-  },
-  listFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  listStats: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  listStatText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#666666",
-  },
-  listDivider: {
-    fontSize: 12,
-    color: "#CCCCCC",
-  },
-  listDate: {
+  dateText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#999999",
   },
 
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: "#FAFAFA",
-  },
-  modalHeader: {
-    paddingTop: Platform.OS === "ios" ? 50 : 20,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
-  },
-  modalCloseBtn: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-  },
-  modalScroll: {
-    flex: 1,
   },
   modalHero: {
-    backgroundColor: "#FFFFFF",
-    padding: 24,
-    alignItems: "center",
-    marginBottom: 16,
+    paddingTop: Platform.OS === "ios" ? 60 : 30,
+    paddingBottom: 32,
+    position: "relative",
   },
-  modalImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 24,
-    marginBottom: 24,
-  },
-  modalImagePlaceholder: {
-    width: 200,
-    height: 200,
-    borderRadius: 24,
-    backgroundColor: "#F5F5F5",
+  modalClose: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 60 : 30,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 24,
+    zIndex: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  modalProductInfo: {
+  modalImageSection: {
+    alignItems: "center",
+    marginBottom: 24,
+    position: "relative",
+  },
+  modalImageWrapper: {
+    width: 200,
+    height: 200,
+    borderRadius: 32,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  modalProductImage: {
     width: "100%",
+    height: "100%",
+  },
+  floatingScore: {
+    position: "absolute",
+    bottom: -20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  scoreRing: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 3,
+    justifyContent: "center",
     alignItems: "center",
   },
-  modalBrand: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#999999",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  modalName: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#1A1A1A",
-    textAlign: "center",
-    marginBottom: 24,
+  scoreNumber: {
+    fontSize: 20,
+    fontWeight: "900",
     letterSpacing: -0.5,
   },
-  modalScoreContainer: {
-    width: "100%",
-  },
-  modalScoreBadge: {
-    alignSelf: "center",
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 20,
+  modalProductInfo: {
+    paddingHorizontal: 24,
     alignItems: "center",
-    gap: 4,
+    gap: 12,
   },
-  modalScoreValue: {
-    fontSize: 32,
-    fontWeight: "900",
-    color: "#FFFFFF",
-  },
-  modalScoreLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#FFFFFF",
-    opacity: 0.9,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  modalSection: {
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 24,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  modalSectionTitle: {
-    fontSize: 18,
+  modalCategory: {
+    fontSize: 13,
     fontWeight: "800",
-    color: "#1A1A1A",
-    marginBottom: 20,
+    textTransform: "uppercase",
+    letterSpacing: 1.5,
+  },
+  modalTitle: {
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: -0.7,
+    textAlign: "center",
+    lineHeight: 34,
+  },
+  quickStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 20,
+    gap: 16,
+    marginTop: 8,
+  },
+  quickStat: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
+    justifyContent: "center",
+  },
+  quickStatValue: {
+    fontSize: 16,
+    fontWeight: "800",
     letterSpacing: -0.3,
   },
-  nutritionGrid: {
+  quickStatLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  quickStatDivider: {
+    width: 1,
+    height: 24,
+  },
+  contentSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  contentTitle: {
+    fontSize: 20,
+    fontWeight: "900",
+    letterSpacing: -0.5,
+    marginBottom: 16,
+  },
+  nutritionCards: {
+    gap: 12,
+  },
+  nutritionBox: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 14,
-  },
-  nutritionCard: {
-    width: (width - 92) / 2,
-    backgroundColor: "#F5F5F5",
-    padding: 20,
-    borderRadius: 16,
     alignItems: "center",
-    gap: 10,
+    padding: 18,
+    borderRadius: 20,
+    gap: 16,
+    borderWidth: 2,
   },
-  nutritionValue: {
+  nutritionIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  nutritionData: {
+    flex: 1,
+  },
+  nutritionAmount: {
     fontSize: 26,
-    fontWeight: "800",
-    color: "#1A1A1A",
+    fontWeight: "900",
+    letterSpacing: -0.7,
+    marginBottom: 2,
   },
-  nutritionUnit: {
+  nutritionMetric: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#999999",
+    fontWeight: "700",
   },
-  nutritionLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#666666",
+  nutritionName: {
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: -0.2,
   },
-  extraNutrition: {
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#E0E0E0",
+  additionalNutrition: {
+    marginTop: 16,
+    padding: 20,
+    borderRadius: 20,
+  },
+  additionalTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+    marginBottom: 16,
+  },
+  additionalGrid: {
     gap: 14,
   },
-  extraRow: {
+  additionalItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  extraLabel: {
+  additionalLabel: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#666666",
   },
-  extraValue: {
-    fontSize: 15,
+  additionalValue: {
+    fontSize: 16,
     fontWeight: "800",
-    color: "#1A1A1A",
+    letterSpacing: -0.3,
   },
-  ingredientsText: {
+  ingredientsBox: {
+    padding: 20,
+    borderRadius: 20,
+  },
+  ingredientsContent: {
     fontSize: 15,
-    lineHeight: 24,
-    color: "#666666",
+    lineHeight: 26,
     fontWeight: "500",
   },
-  allergenSection: {
-    backgroundColor: "#FEF2F2",
-    borderColor: "#FCA5A5",
+  warningCard: {
+    padding: 20,
+    borderRadius: 20,
     borderWidth: 2,
+    borderColor: "#FCA5A5",
   },
-  allergenHeader: {
+  warningHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 14,
+    gap: 12,
+    marginBottom: 16,
   },
-  allergenTitle: {
-    fontSize: 17,
-    fontWeight: "800",
+  warningIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FEE2E2",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  warningTitle: {
+    fontSize: 18,
+    fontWeight: "900",
     color: "#DC2626",
+    letterSpacing: -0.4,
   },
-  allergenList: {
-    gap: 10,
-  },
-  allergenItem: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#DC2626",
-    lineHeight: 22,
-  },
-  labelsList: {
+  warningContent: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
   },
-  labelChip: {
+  warningTag: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: "#FEE2E2",
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+  },
+  warningTagText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#DC2626",
+  },
+  certificationsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  certBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
     backgroundColor: "#F0FDF4",
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: "#BBF7D0",
   },
-  labelText: {
-    fontSize: 13,
-    fontWeight: "700",
+  certIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#DCFCE7",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  certLabel: {
+    fontSize: 14,
+    fontWeight: "800",
     color: "#166534",
+    letterSpacing: -0.2,
   },
 });

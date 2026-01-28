@@ -7,7 +7,14 @@ import {
   ScrollView,
   TouchableOpacity,
 } from "react-native";
-import { ArrowLeft, History, Plus, ShoppingCart, Wallet } from "lucide-react-native";
+import {
+  ArrowLeft,
+  History,
+  Plus,
+  ShoppingCart,
+  Wallet,
+  TrendingUp,
+} from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/context/ThemeContext";
 import { ScanResult, PriceEstimate } from "@/src/types/statistics";
@@ -36,90 +43,168 @@ export default function ProductDetails({
   const { t } = useTranslation();
   const { colors } = useTheme();
 
+  const calories = Math.round(
+    (scanResult.product.nutrition_per_100g.calories * quantity) / 100,
+  );
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
+      showsVerticalScrollIndicator={false}
     >
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.surface }]}
+          style={[styles.iconButton, { backgroundColor: colors.surface }]}
           onPress={onBack}
+          activeOpacity={0.7}
         >
-          <ArrowLeft size={24} color={colors.text} />
+          <ArrowLeft size={22} color={colors.text} strokeWidth={2.5} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {t("foodScanner.details")}
-        </Text>
+
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t("foodScanner.details")}
+          </Text>
+        </View>
+
         <TouchableOpacity
-          style={[styles.historyButton, { backgroundColor: colors.surface }]}
+          style={[styles.iconButton, { backgroundColor: colors.surface }]}
           onPress={onShowHistory}
+          activeOpacity={0.7}
         >
-          <History size={24} color={colors.textSecondary} />
+          <History size={22} color={colors.textSecondary} strokeWidth={2.5} />
         </TouchableOpacity>
       </View>
 
-      {/* Product Card */}
-      <View style={[styles.productCard, { backgroundColor: colors.surface }]}>
-        <Image
-          source={{
-            uri:
-              scanResult.product.image_url || "https://via.placeholder.com/120",
-          }}
-          style={styles.productImage}
-        />
-        <View style={styles.productInfo}>
+      {/* Hero Product Card */}
+      <View style={[styles.heroCard, { backgroundColor: colors.surface }]}>
+        <View style={styles.imageContainer}>
+          <Image
+            source={{
+              uri:
+                scanResult.product.image_url ||
+                "https://via.placeholder.com/120",
+            }}
+            style={styles.productImage}
+          />
+          <View
+            style={[styles.imageBadge, { backgroundColor: colors.primary }]}
+          >
+            <Text style={[styles.imageBadgeText, { color: colors.onPrimary }]}>
+              {quantity}g
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.productContent}>
           <Text style={[styles.productName, { color: colors.text }]}>
             {scanResult.product.name}
           </Text>
-          <Text
-            style={[styles.productCalories, { color: colors.textSecondary }]}
-          >
-            {Math.round(
-              (scanResult.product.nutrition_per_100g.calories * quantity) / 100,
-            )}{" "}
-            {t("foodScanner.kcal")}
-          </Text>
-          <Text style={[styles.productWeight, { color: colors.textTertiary }]}>
-            {quantity}g
-          </Text>
+
+          <View style={styles.caloriesRow}>
+            <View
+              style={[
+                styles.caloriesCard,
+                { backgroundColor: colors.primary + "15" },
+              ]}
+            >
+              <Text style={[styles.caloriesNumber, { color: colors.primary }]}>
+                {calories}
+              </Text>
+              <Text style={[styles.caloriesLabel, { color: colors.primary }]}>
+                {t("foodScanner.kcal")}
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.metaInfo,
+                { backgroundColor: colors.border + "20" },
+              ]}
+            >
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                Per serving
+              </Text>
+            </View>
+          </View>
         </View>
       </View>
 
       {/* Estimated Price Section */}
       {priceEstimate && priceEstimate.estimated_price > 0 && (
-        <View style={[styles.priceSection, { backgroundColor: colors.surface }]}>
-          <View style={styles.priceSectionHeader}>
-            <View style={[styles.priceIconContainer, { backgroundColor: colors.primary + "20" }]}>
-              <Wallet size={20} color={colors.primary} />
+        <View style={[styles.priceCard, { backgroundColor: colors.surface }]}>
+          <View style={styles.priceHeader}>
+            <View style={styles.priceHeaderLeft}>
+              <View
+                style={[styles.priceIconBox, { backgroundColor: "#10B98115" }]}
+              >
+                <Wallet size={20} color="#10B981" strokeWidth={2.5} />
+              </View>
+              <View>
+                <Text style={[styles.priceTitle, { color: colors.text }]}>
+                  {t("foodScanner.estimatedCost")}
+                </Text>
+                {priceEstimate.confidence && (
+                  <View style={styles.confidenceRow}>
+                    <View
+                      style={[
+                        styles.confidenceDot,
+                        {
+                          backgroundColor:
+                            priceEstimate.confidence === "high"
+                              ? "#10B981"
+                              : priceEstimate.confidence === "medium"
+                                ? "#F59E0B"
+                                : "#EF4444",
+                        },
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.confidenceLabel,
+                        {
+                          color:
+                            priceEstimate.confidence === "high"
+                              ? "#10B981"
+                              : priceEstimate.confidence === "medium"
+                                ? "#F59E0B"
+                                : "#EF4444",
+                        },
+                      ]}
+                    >
+                      {t(`foodScanner.confidence.${priceEstimate.confidence}`)}{" "}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
-            <Text style={[styles.priceSectionTitle, { color: colors.text }]}>
-              {t("foodScanner.estimatedCost")}
-            </Text>
           </View>
-          <View style={styles.priceContent}>
-            <Text style={[styles.priceValue, { color: colors.primary }]}>
+
+          <View style={styles.priceValueContainer}>
+            <Text style={[styles.priceValue, { color: "#10B981" }]}>
               {priceEstimate.price_range}
             </Text>
-            {priceEstimate.confidence && (
-              <View style={[styles.confidenceBadge, {
-                backgroundColor: priceEstimate.confidence === 'high' ? '#10B98120' :
-                                 priceEstimate.confidence === 'medium' ? '#F59E0B20' : '#EF444420'
-              }]}>
-                <Text style={[styles.confidenceText, {
-                  color: priceEstimate.confidence === 'high' ? '#10B981' :
-                         priceEstimate.confidence === 'medium' ? '#F59E0B' : '#EF4444'
-                }]}>
-                  {t(`foodScanner.confidence.${priceEstimate.confidence}`)}
+            {priceEstimate.market_context && (
+              <View
+                style={[
+                  styles.contextBox,
+                  { backgroundColor: colors.border + "20" },
+                ]}
+              >
+                <TrendingUp
+                  size={14}
+                  color={colors.textSecondary}
+                  strokeWidth={2}
+                />
+                <Text
+                  style={[styles.contextText, { color: colors.textSecondary }]}
+                >
+                  {priceEstimate.market_context}
                 </Text>
               </View>
             )}
           </View>
-          {priceEstimate.market_context && (
-            <Text style={[styles.marketContext, { color: colors.textSecondary }]}>
-              {priceEstimate.market_context}
-            </Text>
-          )}
         </View>
       )}
 
@@ -135,30 +220,37 @@ export default function ProductDetails({
       {/* Ingredients */}
       {scanResult.product.ingredients.length > 0 && (
         <View
-          style={[
-            styles.ingredientsSection,
-            { backgroundColor: colors.surface },
-          ]}
+          style={[styles.ingredientsCard, { backgroundColor: colors.surface }]}
         >
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             {t("foodScanner.ingredientsIdentified")}
           </Text>
+
           <View style={styles.ingredientsList}>
             {scanResult.product.ingredients
               .slice(0, 2)
               .map((ingredient, index) => (
-                <View key={index} style={styles.ingredientItem}>
-                  <Image
-                    source={{ uri: "https://via.placeholder.com/40" }}
-                    style={styles.ingredientImage}
-                  />
-                  <View style={styles.ingredientInfo}>
-                    <Text
-                      style={[styles.ingredientName, { color: colors.text }]}
-                    >
-                      {ingredient}
-                    </Text>
+                <View
+                  key={index}
+                  style={[
+                    styles.ingredientItem,
+                    { backgroundColor: colors.border + "15" },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.ingredientImageBox,
+                      { backgroundColor: colors.background },
+                    ]}
+                  >
+                    <Image
+                      source={{ uri: "https://via.placeholder.com/40" }}
+                      style={styles.ingredientImage}
+                    />
                   </View>
+                  <Text style={[styles.ingredientName, { color: colors.text }]}>
+                    {ingredient}
+                  </Text>
                 </View>
               ))}
           </View>
@@ -166,26 +258,35 @@ export default function ProductDetails({
       )}
 
       {/* Action Buttons */}
-      <View style={styles.actionButtons}>
+      <View style={styles.actionSection}>
         <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: colors.primary }]}
+          style={[styles.primaryButton, { backgroundColor: colors.primary }]}
           onPress={onAddToMeal}
+          activeOpacity={0.8}
         >
-          <Plus size={20} color={colors.onPrimary} />
-          <Text style={[styles.addButtonText, { color: colors.onPrimary }]}>
+          <View
+            style={[
+              styles.buttonIconBox,
+              { backgroundColor: colors.onPrimary + "20" },
+            ]}
+          >
+            <Plus size={20} color={colors.onPrimary} strokeWidth={2.5} />
+          </View>
+          <Text style={[styles.primaryButtonText, { color: colors.onPrimary }]}>
             {t("foodScanner.addToMeal")}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.shopButton, { backgroundColor: colors.surface }]}
+          style={[styles.secondaryButton, { backgroundColor: colors.surface }]}
           onPress={onAddToShoppingList}
+          activeOpacity={0.8}
         >
-          <ShoppingCart size={20} color={colors.textSecondary} />
+          <ShoppingCart size={22} color={colors.text} strokeWidth={2.5} />
         </TouchableOpacity>
       </View>
 
-      <View style={{ height: 100 }} />
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
@@ -198,146 +299,271 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
   },
-  backButton: {
-    borderRadius: 12,
-    padding: 8,
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  historyButton: {
-    borderRadius: 12,
-    padding: 8,
+  headerCenter: {
+    flex: 1,
+    alignItems: "center",
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.3,
   },
-  productCard: {
+  heroCard: {
     margin: 20,
-    borderRadius: 20,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
+    borderRadius: 28,
+    padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  imageContainer: {
+    alignSelf: "center",
+    position: "relative",
+    marginBottom: 20,
   },
   productImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 14,
-    marginRight: 14,
+    width: 120,
+    height: 120,
+    borderRadius: 24,
   },
-  productInfo: {
-    flex: 1,
+  imageBadge: {
+    position: "absolute",
+    bottom: -8,
+    right: -8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  imageBadgeText: {
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  productContent: {
+    gap: 16,
   },
   productName: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+    textAlign: "center",
+    lineHeight: 30,
   },
-  productCalories: {
-    fontSize: 14,
-    marginTop: 4,
+  caloriesRow: {
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "center",
   },
-  productWeight: {
-    fontSize: 13,
-  },
-  priceSection: {
-    margin: 20,
-    marginTop: 12,
+  caloriesCard: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 16,
-    padding: 16,
   },
-  priceSectionHeader: {
+  caloriesNumber: {
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  caloriesLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
+  metaInfo: {
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+  },
+  metaText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  priceCard: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  priceHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+  priceHeaderLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
+    gap: 12,
   },
-  priceIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  priceIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
   },
-  priceSectionTitle: {
+  priceTitle: {
     fontSize: 16,
     fontWeight: "700",
+    letterSpacing: -0.2,
+    marginBottom: 4,
   },
-  priceContent: {
+  confidenceRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 6,
   },
-  priceValue: {
-    fontSize: 24,
-    fontWeight: "800",
+  confidenceDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  confidenceBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  confidenceText: {
+  confidenceLabel: {
     fontSize: 12,
     fontWeight: "600",
   },
-  marketContext: {
-    fontSize: 12,
-    marginTop: 8,
-    fontStyle: "italic",
+  priceValueContainer: {
+    gap: 12,
   },
-  ingredientsSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+  priceValue: {
+    fontSize: 32,
+    fontWeight: "900",
+    letterSpacing: -0.8,
+  },
+  contextBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    alignSelf: "flex-start",
+  },
+  contextText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  ingredientsCard: {
+    marginHorizontal: 20,
     marginTop: 12,
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 12,
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+    marginBottom: 16,
   },
   ingredientsList: {
-    gap: 12,
+    gap: 10,
   },
   ingredientItem: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
+    padding: 12,
+    borderRadius: 16,
+  },
+  ingredientImageBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
   },
   ingredientImage: {
     width: 40,
     height: 40,
     borderRadius: 8,
-    marginRight: 12,
-  },
-  ingredientInfo: {
-    flex: 1,
   },
   ingredientName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
+    letterSpacing: -0.2,
+    flex: 1,
   },
-  actionButtons: {
+  actionSection: {
     flexDirection: "row",
     gap: 12,
-    padding: 20,
+    paddingHorizontal: 20,
+    marginTop: 24,
   },
-  addButton: {
+  primaryButton: {
     flex: 1,
-    borderRadius: 16,
-    paddingVertical: 16,
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 18,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  addButtonText: {
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  shopButton: {
-    width: 56,
-    height: 56,
+  buttonIconBox: {
+    width: 32,
+    height: 32,
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
+  },
+  primaryButtonText: {
+    fontSize: 17,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  secondaryButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
 });
