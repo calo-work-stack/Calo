@@ -26,7 +26,6 @@ import { HealthInsights } from "@/components/camera/HealthInsights";
 import { MealType } from "@/components/camera/MealTypeSelector";
 import { AnalysisData } from "@/src/types/camera";
 import { CameraErrorBoundary } from "@/components/camera/CameraErrorBoundary";
-import { estimateTotalPrice } from "@/src/utils/pricing";
 
 function CameraScreenContent() {
   const { t } = useTranslation();
@@ -255,20 +254,31 @@ function CameraScreenContent() {
     return data?.name || data?.meal_name || "Analyzed Meal";
   };
 
+  /**
+   * Calculate estimated price using AI pricing from backend
+   * The backend returns estimated_cost for each ingredient
+   */
   const calculateEstimatedPrice = (data: AnalysisData | undefined): number => {
-    if (!data?.ingredients || data.ingredients.length === 0) return 0;
+    if (!data) return 0;
+
+    // First check if the analysis data has a total estimated_price from the backend
+    if (data.estimated_price && data.estimated_price > 0) {
+      return Math.round(data.estimated_price * 100) / 100;
+    }
+
+    // Otherwise, sum up the estimated_cost from each ingredient
+    if (!data.ingredients || data.ingredients.length === 0) return 0;
 
     try {
-      const ingredientsForPricing = data.ingredients.map((ing: any) => ({
-        name: ing.name || "",
-        quantity: ing.quantity || ing.grams || 100,
-        unit: ing.unit || "g",
-        category: ing.category || "other",
-      }));
-
-      return estimateTotalPrice(ingredientsForPricing);
+      let totalPrice = 0;
+      for (const ing of data.ingredients) {
+        if (ing.estimated_cost && ing.estimated_cost > 0) {
+          totalPrice += ing.estimated_cost;
+        }
+      }
+      return Math.round(totalPrice * 100) / 100;
     } catch (error) {
-      console.warn("Error calculating price:", error);
+      console.warn("Error calculating price from AI data:", error);
       return 0;
     }
   };

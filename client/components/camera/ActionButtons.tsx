@@ -61,18 +61,18 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={["#10B981", "#059669"]}
+            colors={[colors.success, colors.success]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.primaryGradient}
           >
             {isPosting ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={colors.onPrimary} />
             ) : (
               <>
-                <CheckCircle2 size={24} color="#FFFFFF" />
-                <Text style={styles.primaryText}>
-                  {t("camera.saveMeal") || "Save Meal"}
+                <CheckCircle2 size={24} color={colors.onPrimary} />
+                <Text style={[styles.primaryText, { color: colors.onPrimary }]}>
+                  {t("camera.saveMeal")}
                 </Text>
               </>
             )}
@@ -81,31 +81,29 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 
         <View style={styles.secondaryButtons}>
           <TouchableOpacity
-            style={[styles.secondaryButton, styles.reanalyzeButton]}
+            style={[styles.secondaryButton, styles.reanalyzeButton, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}
             onPress={handleReanalyzePress}
             disabled={isUpdating}
             activeOpacity={0.7}
           >
             {isUpdating ? (
-              <ActivityIndicator size="small" color="#3B82F6" />
+              <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <RefreshCw size={20} color="#3B82F6" />
+              <RefreshCw size={20} color={colors.primary} />
             )}
-            <Text style={[styles.secondaryText, { color: "#3B82F6" }]}>
-              {isUpdating
-                ? t("common.updating") || "Updating..."
-                : t("camera.reanalyze") || "Re-analyze"}
+            <Text style={[styles.secondaryText, { color: colors.primary }]}>
+              {isUpdating ? t("common.updating") : t("camera.reanalyze")}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.secondaryButton, styles.deleteButton]}
+            style={[styles.secondaryButton, styles.deleteButton, { backgroundColor: colors.error + "15", borderColor: colors.error + "30" }]}
             onPress={onDelete}
             activeOpacity={0.7}
           >
-            <Trash2 size={20} color="#EF4444" />
-            <Text style={[styles.secondaryText, { color: "#EF4444" }]}>
-              {t("common.delete") || "Delete"}
+            <Trash2 size={20} color={colors.error} />
+            <Text style={[styles.secondaryText, { color: colors.error }]}>
+              {t("common.delete")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -121,39 +119,43 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.modalOverlay}
         >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Re-analyze Meal</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {t("camera.reanalyzeMeal")}
+              </Text>
               <TouchableOpacity onPress={() => setShowReanalyzeModal(false)}>
-                <X size={24} color="#6B7280" />
+                <X size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.modalBody}>
               <View style={styles.inputHeader}>
-                <MessageSquare size={18} color="#10B981" />
-                <Text style={styles.inputLabel}>
-                  Additional information (Optional)
+                <MessageSquare size={18} color={colors.success} />
+                <Text style={[styles.inputLabel, { color: colors.text }]}>
+                  {t("camera.additionalInfoOptional")}
                 </Text>
               </View>
               <TextInput
-                style={styles.messageInput}
+                style={[styles.messageInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                 value={reanalyzeMessage}
                 onChangeText={setReanalyzeMessage}
-                placeholder="Add details to improve analysis..."
-                placeholderTextColor="#9CA3AF"
+                placeholder={t("camera.addDetailsPlaceholder")}
+                placeholderTextColor={colors.textTertiary}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
               />
             </View>
 
-            <View style={styles.modalActions}>
+            <View style={[styles.modalActions, { borderTopColor: colors.border }]}>
               <TouchableOpacity
-                style={styles.modalCancelButton}
+                style={[styles.modalCancelButton, { backgroundColor: colors.border }]}
                 onPress={() => setShowReanalyzeModal(false)}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={[styles.modalCancelText, { color: colors.textSecondary }]}>
+                  {t("common.cancel")}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -161,13 +163,15 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 onPress={handleConfirmReanalyze}
               >
                 <LinearGradient
-                  colors={["#3B82F6", "#2563EB"]}
+                  colors={[colors.primary, colors.primary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.modalConfirmGradient}
                 >
-                  <RefreshCw size={20} color="#FFFFFF" />
-                  <Text style={styles.modalConfirmText}>Re-analyze</Text>
+                  <RefreshCw size={20} color={colors.onPrimary} />
+                  <Text style={[styles.modalConfirmText, { color: colors.onPrimary }]}>
+                    {t("camera.reanalyze")}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -199,7 +203,6 @@ const styles = StyleSheet.create({
   primaryText: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#FFFFFF",
     letterSpacing: 0.3,
   },
   secondaryButtons: {
@@ -214,19 +217,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 14,
-    backgroundColor: "#FFFFFF",
     gap: 8,
-  },
-  reanalyzeButton: {
-    backgroundColor: "#EFF6FF",
     borderWidth: 1,
-    borderColor: "#DBEAFE",
   },
-  deleteButton: {
-    backgroundColor: "#FEF2F2",
-    borderWidth: 1,
-    borderColor: "#FEE2E2",
-  },
+  reanalyzeButton: {},
+  deleteButton: {},
   secondaryText: {
     fontSize: 15,
     fontWeight: "600",
@@ -239,7 +234,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 24,
     width: "90%",
     maxWidth: 400,
@@ -250,12 +244,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#1F2937",
   },
   modalBody: {
     padding: 20,
@@ -269,18 +261,14 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#374151",
   },
   messageInput: {
-    backgroundColor: "#F9FAFB",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
     minHeight: 100,
-    color: "#1F2937",
     textAlignVertical: "top",
   },
   modalActions: {
@@ -288,19 +276,16 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: "#F3F4F6",
   },
   modalCancelButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: "#F3F4F6",
     alignItems: "center",
   },
   modalCancelText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#6B7280",
   },
   modalConfirmButton: {
     flex: 1,
@@ -317,6 +302,5 @@ const styles = StyleSheet.create({
   modalConfirmText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#FFFFFF",
   },
 });

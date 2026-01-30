@@ -85,16 +85,16 @@ export default function NutritionBars({
     isWarning?: boolean,
   ) => {
     if (isWarning) {
-      if (value >= highThreshold) return "#EF4444";
-      if (midThreshold && value >= midThreshold) return "#F59E0B";
-      return "#10B981";
+      if (value >= highThreshold) return colors.error;
+      if (midThreshold && value >= midThreshold) return colors.warning;
+      return colors.success;
     } else {
       if (midThreshold !== undefined) {
-        if (value >= highThreshold) return "#10B981";
-        if (value >= midThreshold) return "#3B82F6";
+        if (value >= highThreshold) return colors.success;
+        if (value >= midThreshold) return colors.info || colors.primary;
         return colors.textTertiary;
       }
-      return value >= highThreshold ? "#3B82F6" : "#8B5CF6";
+      return value >= highThreshold ? colors.info || colors.primary : colors.primary;
     }
   };
 
@@ -108,7 +108,7 @@ export default function NutritionBars({
           style={[styles.badge, { backgroundColor: colors.primary + "15" }]}
         >
           <Text style={[styles.badgeText, { color: colors.primary }]}>
-            per {quantity}g
+            {t("foodScanner.perQuantity", { quantity })}
           </Text>
         </View>
       </View>
@@ -180,7 +180,7 @@ export default function NutritionBars({
 
       <View style={[styles.footer, { borderTopColor: colors.border + "30" }]}>
         <Text style={[styles.footerText, { color: colors.textTertiary }]}>
-          Values based on a {quantity}g serving
+          {t("foodScanner.valuesBasedOnServing", { quantity })}
         </Text>
       </View>
     </View>

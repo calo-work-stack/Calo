@@ -1,5 +1,9 @@
 import { prisma } from "../lib/database";
-import { OpenAIService } from "./openai";
+import {
+  OpenAIService,
+  IngredientForPricing,
+  MealPriceEstimate,
+} from "./openai";
 import { UserContextService, ComprehensiveUserContext } from "./userContext";
 import {
   estimateIngredientPrice,
@@ -88,13 +92,83 @@ export class RecommendedMenuService {
   }
 
   /**
-   * Calculate total cost from menu meals and their ingredients
+   * Calculate total cost from menu meals using AI pricing
+   * This is the primary method - uses AI for accurate Israeli market prices
    */
-  static calculateMenuCost(meals: any[]): {
+  static async calculateMenuCostWithAI(meals: any[]): Promise<{
     totalCost: number;
     dailyCosts: Map<number, number>;
+    mealCosts: Map<string, number>;
+  }> {
+    const dailyCosts = new Map<number, number>();
+    const mealCosts = new Map<string, number>();
+    let totalCost = 0;
+
+    try {
+      // Prepare meals for AI pricing
+      const mealsForPricing = meals.map((meal) => ({
+        name: meal.name || "Unknown Meal",
+        ingredients: (meal.ingredients || []).map((ing: any) => ({
+          name: ing.name,
+          quantity: ing.quantity || 100,
+          unit: ing.unit || "g",
+          category: ing.category || "other",
+        })),
+      }));
+
+      // Get AI-based cost estimates
+      const aiCostResult = await OpenAIService.estimateMenuCostWithAI(
+        mealsForPricing
+      );
+
+      // Process results
+      for (const meal of meals) {
+        const dayNumber = meal.day_number || 1;
+        const mealCost =
+          aiCostResult.mealCosts.get(meal.name) ||
+          (meal.ingredients?.length || 0) * 5;
+
+        totalCost += mealCost;
+        mealCosts.set(meal.name, mealCost);
+        dailyCosts.set(dayNumber, (dailyCosts.get(dayNumber) || 0) + mealCost);
+
+        // Update ingredient costs from AI
+        if (meal.ingredients && Array.isArray(meal.ingredients)) {
+          for (const ingredient of meal.ingredients) {
+            const aiCost = aiCostResult.ingredientCosts.get(
+              ingredient.name.toLowerCase()
+            );
+            if (aiCost !== undefined) {
+              ingredient.estimated_cost = aiCost;
+            }
+          }
+        }
+      }
+
+      console.log(`💰 AI Menu cost calculated: ₪${totalCost.toFixed(2)}`);
+      return {
+        totalCost: Math.round(totalCost * 100) / 100,
+        dailyCosts,
+        mealCosts,
+      };
+    } catch (error) {
+      console.error("❌ AI menu cost calculation failed, using fallback:", error);
+      // Fallback to local pricing
+      return this.calculateMenuCostFallback(meals);
+    }
+  }
+
+  /**
+   * Fallback cost calculation using local pricing utility
+   * Used when AI is not available
+   */
+  static calculateMenuCostFallback(meals: any[]): {
+    totalCost: number;
+    dailyCosts: Map<number, number>;
+    mealCosts: Map<string, number>;
   } {
     const dailyCosts = new Map<number, number>();
+    const mealCosts = new Map<string, number>();
     let totalCost = 0;
 
     for (const meal of meals) {
@@ -112,14 +186,35 @@ export class RecommendedMenuService {
               ingredient.category || "other",
             ).estimated_price;
           mealCost += cost;
+          ingredient.estimated_cost = cost;
         }
       }
 
       totalCost += mealCost;
+      mealCosts.set(meal.name, mealCost);
       dailyCosts.set(dayNumber, (dailyCosts.get(dayNumber) || 0) + mealCost);
     }
 
-    return { totalCost: Math.round(totalCost * 100) / 100, dailyCosts };
+    return {
+      totalCost: Math.round(totalCost * 100) / 100,
+      dailyCosts,
+      mealCosts,
+    };
+  }
+
+  /**
+   * Synchronous cost calculation (for backwards compatibility)
+   * @deprecated Use calculateMenuCostWithAI for accurate AI-based pricing
+   */
+  static calculateMenuCost(meals: any[]): {
+    totalCost: number;
+    dailyCosts: Map<number, number>;
+  } {
+    const result = this.calculateMenuCostFallback(meals);
+    return {
+      totalCost: result.totalCost,
+      dailyCosts: result.dailyCosts,
+    };
   }
 
   /**
@@ -1007,15 +1102,16 @@ Return the same JSON structure as before with meals that specifically address th
     const totalCarbs = meals.reduce((sum, meal) => sum + meal.carbs, 0);
     const totalFat = meals.reduce((sum, meal) => sum + meal.fat, 0);
 
-    // Calculate actual estimated cost from ingredients
-    const { totalCost, dailyCosts } = this.calculateMenuCost(meals);
+    // Calculate actual estimated cost from ingredients using AI
+    const { totalCost, dailyCosts, mealCosts } =
+      await this.calculateMenuCostWithAI(meals);
     const dailyBudget =
       params.budget || (await this.getUserDailyBudget(params.userId));
     const totalBudget = dailyBudget * days;
 
     // Log budget status
     console.log(
-      `💰 Menu cost: ₪${totalCost.toFixed(2)} / Budget: ₪${totalBudget.toFixed(2)}`,
+      `💰 AI Menu cost: ₪${totalCost.toFixed(2)} / Budget: ₪${totalBudget.toFixed(2)}`,
     );
     if (totalCost > totalBudget) {
       console.warn(
@@ -1176,11 +1272,30 @@ Return the same JSON structure as before with meals that specifically address th
           },
         });
 
-        // Save ingredients
+        // Save ingredients with AI-estimated costs
         if (meal.ingredients && Array.isArray(meal.ingredients)) {
+          // Get AI pricing for all ingredients in this meal
+          let ingredientCostsMap = new Map<string, number>();
+          try {
+            const mealPriceEstimate = await OpenAIService.estimateMealPriceWithAI(
+              meal.ingredients.map((ing: any) => ({
+                name: ing.name,
+                quantity: ing.quantity || 100,
+                unit: ing.unit || "g",
+                category: ing.category || "other",
+              }))
+            );
+            for (const ic of mealPriceEstimate.ingredient_costs) {
+              ingredientCostsMap.set(ic.name.toLowerCase(), ic.estimated_cost);
+            }
+          } catch (error) {
+            console.warn("⚠️ AI ingredient pricing failed, using fallback");
+          }
+
           const ingredientPromises = meal.ingredients.map((ingredient: any) => {
-            // Use AI-provided cost or calculate from pricing utility
+            // Use AI-estimated cost, then fall back to local pricing
             const ingredientCost =
+              ingredientCostsMap.get(ingredient.name.toLowerCase()) ||
               ingredient.estimated_cost ||
               estimateIngredientPrice(
                 ingredient.name,
@@ -1646,30 +1761,57 @@ Generate a COMPLETE new menu in JSON format with the same structure as before, b
             const existing = ingredientMap.get(key);
             existing.quantity += ingredient.quantity;
           } else {
-            // Use stored cost or calculate from pricing utility
-            const ingredientCost =
-              ingredient.estimated_cost ||
-              estimateIngredientPrice(
-                ingredient.name,
-                ingredient.quantity || 100,
-                ingredient.unit || "g",
-                ingredient.category || "other",
-              ).estimated_price;
-
             ingredientMap.set(key, {
               name: ingredient.name,
               quantity: ingredient.quantity,
               unit: ingredient.unit,
               category: ingredient.category,
-              estimated_cost: ingredientCost,
+              estimated_cost: ingredient.estimated_cost || 0,
             });
           }
         });
       });
 
+      // Get AI pricing for all aggregated ingredients
+      const ingredientsForPricing = Array.from(ingredientMap.values()).map(
+        (item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          category: item.category,
+        })
+      );
+
+      try {
+        const aiPriceEstimate = await OpenAIService.estimateMealPriceWithAI(
+          ingredientsForPricing
+        );
+        // Update costs with AI estimates
+        for (const ic of aiPriceEstimate.ingredient_costs) {
+          const key = ic.name.toLowerCase();
+          if (ingredientMap.has(key)) {
+            ingredientMap.get(key).estimated_cost = ic.estimated_cost;
+          }
+        }
+        console.log(`💰 AI shopping list pricing complete`);
+      } catch (error) {
+        console.warn("⚠️ AI shopping list pricing failed, using stored costs");
+        // Fall back to stored costs or local pricing
+        for (const [key, item] of ingredientMap.entries()) {
+          if (!item.estimated_cost || item.estimated_cost === 0) {
+            item.estimated_cost = estimateIngredientPrice(
+              item.name,
+              item.quantity || 100,
+              item.unit || "g",
+              item.category || "other"
+            ).estimated_price;
+          }
+        }
+      }
+
       const items = Array.from(ingredientMap.values());
       const totalCost = items.reduce(
-        (sum, item) => sum + item.estimated_cost,
+        (sum, item) => sum + (item.estimated_cost || 0),
         0,
       );
 

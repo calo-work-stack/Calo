@@ -15,7 +15,7 @@ import {
 import { Heart, ArrowLeft, Share2, Flame } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import Svg, { Circle } from "react-native-svg";
 
 const { width, height } = Dimensions.get("window");
@@ -46,11 +46,11 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   estimatedPrice,
   onBack,
 }) => {
+  const { t } = useTranslation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
-  console.log(imageUri, mealName, nutrition, estimatedPrice, onBack);
 
   // Progress animations for circular charts
   const proteinProgress = useRef(new Animated.Value(0)).current;

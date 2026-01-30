@@ -9,6 +9,7 @@ import { clearStatisticsCache } from "./statistics";
 import { errorMessageIncludes, getErrorMessage } from "../utils/errorUtils";
 import { MealTrackingService } from "./mealTracking";
 import { estimateIngredientPrice } from "../utils/pricing";
+import { IngredientForPricing } from "./openai";
 
 // Cache for frequently accessed data
 const userStatsCache = new Map<string, { data: any; timestamp: number }>();
@@ -211,17 +212,11 @@ export class NutritionService {
     });
 
     // Enhanced ingredient mapping with better error handling
-    const ingredients = (analysis.ingredients || []).map(
+    // First, map ingredients without pricing
+    const ingredientsWithoutPricing = (analysis.ingredients || []).map(
       (ingredient, index) => {
         // Ensure ingredient is an object with proper structure
         if (typeof ingredient === "string") {
-          // Estimate price for string ingredients
-          const priceEstimate = estimateIngredientPrice(
-            ingredient,
-            100,
-            "g",
-            "other",
-          );
           return {
             name: ingredient,
             calories: 0,
@@ -231,19 +226,12 @@ export class NutritionService {
             fiber: 0,
             sugar: 0,
             sodium_mg: 0,
-            estimated_cost: priceEstimate.estimated_price,
+            serving_size_g: 100,
+            category: "other",
           };
         }
 
-        // Estimate price for structured ingredients
         const servingSize = Number(ingredient.serving_size_g || 100);
-        const priceEstimate = estimateIngredientPrice(
-          ingredient.name || `Item ${index + 1}`,
-          servingSize,
-          "g",
-          (ingredient as any).category || "other", // Type-safe fallback
-        );
-
         return {
           name: ingredient.name || `Item ${index + 1}`,
           calories: Number(ingredient.calories || 0),
@@ -273,11 +261,59 @@ export class NutritionService {
           vitamins_json: ingredient.vitamins_json || {},
           micronutrients_json: ingredient.micronutrients_json || {},
           allergens_json: ingredient.allergens_json || {},
-          estimated_cost:
-            ingredient.estimated_cost || priceEstimate.estimated_price,
+          category: (ingredient as any).category || "other",
         };
       },
     );
+
+    // Call AI pricing for all ingredients at once (more efficient)
+    let aiPriceEstimate;
+    try {
+      const ingredientsForPricing: IngredientForPricing[] = ingredientsWithoutPricing.map((ing) => ({
+        name: ing.name,
+        quantity: ing.serving_size_g,
+        unit: "g",
+        category: ing.category,
+      }));
+
+      console.log("💰 Requesting AI price estimation for", ingredientsForPricing.length, "ingredients");
+      aiPriceEstimate = await OpenAIService.estimateMealPriceWithAI(ingredientsForPricing);
+      console.log("💰 AI meal price estimate:", aiPriceEstimate.total_estimated_cost, "₪");
+    } catch (priceError) {
+      console.warn("⚠️ AI price estimation failed, using fallback:", priceError);
+      aiPriceEstimate = null;
+    }
+
+    // Map AI prices back to ingredients (or use local fallback)
+    const ingredients = ingredientsWithoutPricing.map((ing, index) => {
+      let estimated_cost = 0;
+
+      // Try to get AI price first
+      if (aiPriceEstimate?.ingredient_costs) {
+        const aiPrice = aiPriceEstimate.ingredient_costs.find(
+          (ic) => ic.name.toLowerCase() === ing.name.toLowerCase()
+        );
+        if (aiPrice) {
+          estimated_cost = aiPrice.estimated_cost;
+        }
+      }
+
+      // Fallback to local pricing if AI price not found
+      if (estimated_cost === 0) {
+        const localPriceEstimate = estimateIngredientPrice(
+          ing.name,
+          ing.serving_size_g,
+          "g",
+          ing.category,
+        );
+        estimated_cost = localPriceEstimate.estimated_price;
+      }
+
+      return {
+        ...ing,
+        estimated_cost,
+      };
+    });
 
     const mappedMeal = mapMealDataToPrismaFields(
       analysis,
@@ -305,7 +341,13 @@ export class NutritionService {
     // Including it causes response to be several MB and leads to timeout/hanging
     const { image_url, ...mappedMealWithoutImage } = mappedMeal;
 
-    // ✅ CORRECT CODE - PRESERVES NUTRITION DATA
+    // Calculate total estimated price from ingredients
+    const totalEstimatedPrice = ingredients.reduce(
+      (sum, ing) => sum + (ing.estimated_cost || 0),
+      0
+    );
+
+    // ✅ CORRECT CODE - PRESERVES NUTRITION DATA + AI PRICING
     const responseData = {
       ingredients,
       healthScore: (analysis.confidence || 75).toString(),
@@ -313,6 +355,7 @@ export class NutritionService {
         analysis.healthNotes ||
         analysis.recommendations ||
         "Meal analysis completed successfully.",
+      estimated_price: Math.round(totalEstimatedPrice * 100) / 100, // Total meal price from AI
       ...mappedMealWithoutImage, // Spread LAST to include all nutrition fields
     };
 
@@ -322,6 +365,7 @@ export class NutritionService {
       protein_g: responseData.protein_g,
       carbs_g: responseData.carbs_g,
       fats_g: responseData.fats_g,
+      estimated_price: responseData.estimated_price,
     });
 
     return {

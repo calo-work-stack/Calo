@@ -11,7 +11,15 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { X, Search, Package, ArrowLeft, Flame } from "lucide-react-native";
+import {
+  X,
+  Search,
+  Package,
+  ChevronRight,
+  Flame,
+  Wallet,
+  Sparkles,
+} from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/context/ThemeContext";
 
@@ -39,6 +47,17 @@ export default function ProductSearchModal({
   const { t } = useTranslation();
   const { colors } = useTheme();
 
+  const getConfidenceColor = (confidence?: string) => {
+    switch (confidence) {
+      case "high":
+        return colors.success || "#10B981";
+      case "medium":
+        return colors.warning || "#F59E0B";
+      default:
+        return colors.textSecondary;
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -51,13 +70,19 @@ export default function ProductSearchModal({
       >
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={onClose}>
-            <X size={24} color={colors.text} />
+          <TouchableOpacity
+            onPress={onClose}
+            style={[styles.closeButton, { backgroundColor: colors.surface }]}
+          >
+            <X size={20} color={colors.text} strokeWidth={2.5} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.text }]}>
-            {t("foodScanner.searchProducts")}
-          </Text>
-          <View style={{ width: 24 }} />
+          <View style={styles.headerTitleContainer}>
+            <Sparkles size={18} color={colors.primary} strokeWidth={2.5} />
+            <Text style={[styles.title, { color: colors.text }]}>
+              {t("foodScanner.searchProducts")}
+            </Text>
+          </View>
+          <View style={{ width: 40 }} />
         </View>
 
         {/* Search Input */}
@@ -65,10 +90,17 @@ export default function ProductSearchModal({
           <View
             style={[
               styles.searchInputContainer,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              {
+                backgroundColor: colors.surface,
+                borderColor: searchQuery ? colors.primary : colors.border,
+              },
             ]}
           >
-            <Search size={20} color={colors.textSecondary} />
+            <Search
+              size={20}
+              color={searchQuery ? colors.primary : colors.textSecondary}
+              strokeWidth={2}
+            />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
               placeholder={t("foodScanner.searchPlaceholder")}
@@ -80,114 +112,157 @@ export default function ProductSearchModal({
               autoFocus
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => onSearchQueryChange("")}>
-                <X size={18} color={colors.textSecondary} />
+              <TouchableOpacity
+                onPress={() => onSearchQueryChange("")}
+                style={[styles.clearButton, { backgroundColor: colors.border }]}
+              >
+                <X size={14} color={colors.textSecondary} strokeWidth={2.5} />
               </TouchableOpacity>
             )}
           </View>
           <TouchableOpacity
-            style={[styles.searchButton, { backgroundColor: colors.primary }]}
+            style={[
+              styles.searchButton,
+              { backgroundColor: colors.primary },
+              isSearching && { opacity: 0.7 },
+            ]}
             onPress={onSearch}
             disabled={isSearching}
           >
             {isSearching ? (
               <ActivityIndicator size="small" color={colors.onPrimary} />
             ) : (
-              <Text
-                style={[styles.searchButtonText, { color: colors.onPrimary }]}
-              >
-                {t("foodScanner.search")}
-              </Text>
+              <Search size={22} color={colors.onPrimary} strokeWidth={2.5} />
             )}
           </TouchableOpacity>
         </View>
 
         {/* Search Results */}
-        <ScrollView style={styles.resultsContainer}>
+        <ScrollView
+          style={styles.resultsContainer}
+          contentContainerStyle={styles.resultsContent}
+          showsVerticalScrollIndicator={false}
+        >
           {isSearching ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text
-                style={[styles.loadingText, { color: colors.textSecondary }]}
-              >
-                {t("foodScanner.searching")}
-              </Text>
+              <View style={[styles.loadingBox, { backgroundColor: colors.surface }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={[styles.loadingText, { color: colors.text }]}>
+                  {t("foodScanner.searching")}
+                </Text>
+              </View>
             </View>
           ) : searchResults.length > 0 ? (
-            searchResults.map((product, index) => (
-              <TouchableOpacity
-                key={`${product.barcode || index}`}
-                style={[styles.resultItem, { backgroundColor: colors.surface }]}
-                onPress={() => onSelectProduct(product)}
-                activeOpacity={0.7}
-              >
-                {product.image_url ? (
-                  <Image
-                    source={{ uri: product.image_url }}
-                    style={styles.resultImage}
-                  />
-                ) : (
-                  <View
-                    style={[
-                      styles.resultImagePlaceholder,
-                      { backgroundColor: colors.border },
-                    ]}
-                  >
-                    <Package size={24} color={colors.textTertiary} />
-                  </View>
-                )}
-                <View style={styles.resultInfo}>
-                  <Text
-                    style={[styles.resultName, { color: colors.text }]}
-                    numberOfLines={2}
-                  >
-                    {product.name}
+            <>
+              <View style={styles.resultsHeader}>
+                <Text style={[styles.resultsCount, { color: colors.textSecondary }]}>
+                  {searchResults.length} {t("foodScanner.noResults").includes("found") ? "" : "products"}
+                </Text>
+                <View style={[styles.aiPricingBadge, { backgroundColor: colors.primary + "15" }]}>
+                  <Sparkles size={12} color={colors.primary} strokeWidth={2.5} />
+                  <Text style={[styles.aiPricingText, { color: colors.primary }]}>
+                    {t("foodScanner.aiPriceEstimate")}
                   </Text>
-                  {product.brand && (
-                    <Text
-                      style={[
-                        styles.resultBrand,
-                        { color: colors.textSecondary },
-                      ]}
+                </View>
+              </View>
+              {searchResults.map((product, index) => (
+                <TouchableOpacity
+                  key={`${product.barcode || index}`}
+                  style={[
+                    styles.resultItem,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                  ]}
+                  onPress={() => onSelectProduct(product)}
+                  activeOpacity={0.7}
+                >
+                  {product.image_url ? (
+                    <Image
+                      source={{ uri: product.image_url }}
+                      style={styles.resultImage}
+                    />
+                  ) : (
+                    <View
+                      style={[styles.resultImagePlaceholder, { backgroundColor: colors.border }]}
                     >
-                      {product.brand}
-                    </Text>
+                      <Package size={24} color={colors.textTertiary} strokeWidth={1.5} />
+                    </View>
                   )}
-                  <View style={styles.resultNutrition}>
-                    <View style={styles.nutritionItem}>
-                      <Flame size={12} color={colors.warning} />
+
+                  <View style={styles.resultInfo}>
+                    <Text
+                      style={[styles.resultName, { color: colors.text }]}
+                      numberOfLines={2}
+                    >
+                      {product.name}
+                    </Text>
+                    {product.brand && (
                       <Text
-                        style={[
-                          styles.nutritionItemText,
-                          { color: colors.textSecondary },
-                        ]}
+                        style={[styles.resultBrand, { color: colors.textSecondary }]}
+                        numberOfLines={1}
                       >
-                        {product.nutrition_per_100g?.calories || 0}{" "}
-                        {t("foodScanner.kcal")}
+                        {product.brand}
                       </Text>
+                    )}
+
+                    <View style={styles.resultMeta}>
+                      <View style={[styles.metaBadge, { backgroundColor: colors.warning + "15" }]}>
+                        <Flame size={12} color={colors.warning} strokeWidth={2.5} />
+                        <Text style={[styles.metaText, { color: colors.warning }]}>
+                          {product.nutrition_per_100g?.calories || 0} {t("foodScanner.kcal")}
+                        </Text>
+                      </View>
+
+                      {product.estimated_price > 0 && (
+                        <View
+                          style={[
+                            styles.metaBadge,
+                            { backgroundColor: getConfidenceColor(product.price_confidence) + "15" },
+                          ]}
+                        >
+                          <Wallet
+                            size={12}
+                            color={getConfidenceColor(product.price_confidence)}
+                            strokeWidth={2.5}
+                          />
+                          <Text
+                            style={[
+                              styles.metaText,
+                              { color: getConfidenceColor(product.price_confidence) },
+                            ]}
+                          >
+                            ₪{product.estimated_price?.toFixed(0)}/100g
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   </View>
-                </View>
-                <ArrowLeft
-                  size={20}
-                  color={colors.textTertiary}
-                  style={{ transform: [{ rotate: "180deg" }] }}
-                />
-              </TouchableOpacity>
-            ))
+
+                  <View style={[styles.arrowContainer, { backgroundColor: colors.border }]}>
+                    <ChevronRight size={18} color={colors.textSecondary} strokeWidth={2.5} />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </>
           ) : searchQuery.length > 0 && !isSearching ? (
             <View style={styles.emptyResults}>
-              <Package size={48} color={colors.muted} />
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              <View style={[styles.emptyIconBox, { backgroundColor: colors.surface }]}>
+                <Package size={40} color={colors.textTertiary} strokeWidth={1.5} />
+              </View>
+              <Text style={[styles.emptyText, { color: colors.text }]}>
                 {t("foodScanner.noResultsFound")}
               </Text>
-              <Text style={[styles.emptyHint, { color: colors.textTertiary }]}>
+              <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>
                 {t("foodScanner.tryDifferentKeywords")}
               </Text>
             </View>
           ) : (
             <View style={styles.searchHint}>
-              <Search size={48} color={colors.muted} />
+              <View style={[styles.hintIconBox, { backgroundColor: colors.primary + "15" }]}>
+                <Search size={32} color={colors.primary} strokeWidth={1.5} />
+              </View>
+              <Text style={[styles.hintTitle, { color: colors.text }]}>
+                {t("foodScanner.searchProducts")}
+              </Text>
               <Text style={[styles.hintText, { color: colors.textSecondary }]}>
                 {t("foodScanner.searchHint")}
               </Text>
@@ -211,14 +286,27 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   title: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   searchContainer: {
     flexDirection: "row",
-    padding: 16,
-    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 12,
   },
   searchInputContainer: {
     flex: 1,
@@ -234,45 +322,84 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
   },
-  searchButton: {
-    borderRadius: 14,
-    paddingHorizontal: 20,
+  clearButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     justifyContent: "center",
+    alignItems: "center",
   },
-  searchButtonText: {
-    fontWeight: "700",
-    fontSize: 15,
+  searchButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
   },
   resultsContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+  },
+  resultsContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  resultsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  resultsCount: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  aiPricingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  aiPricingText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 60,
+    paddingVertical: 80,
+  },
+  loadingBox: {
+    padding: 32,
+    borderRadius: 20,
+    alignItems: "center",
+    gap: 12,
   },
   loadingText: {
-    marginTop: 12,
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 8,
   },
   resultItem: {
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     marginBottom: 10,
     gap: 12,
+    borderWidth: 1,
   },
   resultImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
+    width: 64,
+    height: 64,
+    borderRadius: 12,
   },
   resultImagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
+    width: 64,
+    height: 64,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -283,48 +410,84 @@ const styles = StyleSheet.create({
   resultName: {
     fontSize: 15,
     fontWeight: "600",
+    lineHeight: 20,
   },
   resultBrand: {
     fontSize: 13,
   },
-  resultNutrition: {
+  resultMeta: {
     flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
     marginTop: 4,
   },
-  nutritionItem: {
+  metaBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
-  nutritionItemText: {
+  metaText: {
     fontSize: 12,
+    fontWeight: "600",
+  },
+  arrowContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyResults: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 60,
+    paddingVertical: 80,
     gap: 12,
   },
+  emptyIconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
   emptyText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "600",
     textAlign: "center",
   },
   emptyHint: {
     fontSize: 14,
     textAlign: "center",
+    paddingHorizontal: 40,
   },
   searchHint: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 60,
-    gap: 16,
+    gap: 12,
+  },
+  hintIconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  hintTitle: {
+    fontSize: 18,
+    fontWeight: "700",
   },
   hintText: {
-    fontSize: 15,
+    fontSize: 14,
     textAlign: "center",
     paddingHorizontal: 40,
+    lineHeight: 20,
   },
 });

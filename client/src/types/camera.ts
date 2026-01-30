@@ -16,6 +16,9 @@ export interface Ingredient {
   sodium_mg?: number;
   sodium?: number;
   estimated_portion_g?: number;
+  // AI-calculated pricing
+  estimated_cost?: number;
+  category?: string;
 }
 
 export interface AnalysisData {
@@ -52,4 +55,6 @@ export interface AnalysisData {
   confidence?: number;
   servingSize?: string;
   healthNotes?: string;
+  // AI-calculated total meal price
+  estimated_price?: number;
 }

@@ -16,6 +16,21 @@ export interface ValidationResult {
   originalValue: string;
   reason?: string;
   suggestion?: string;
+  isFittingContext?: boolean;
+  contextFeedback?: string;
+}
+
+/**
+ * Context-aware validation result for checking if responses fit the user's situation
+ */
+export interface ContextValidationResult {
+  isAppropriate: boolean;
+  fitsUserGoal: boolean;
+  fitsUserHealth: boolean;
+  fitsUserDiet: boolean;
+  overallScore: number; // 0-100
+  feedback: string;
+  suggestions?: string[];
 }
 
 /**
@@ -403,10 +418,399 @@ Is this input appropriate for a health/nutrition app questionnaire?`;
     // This ensures the main request is not blocked
     setImmediate(async () => {
       try {
+        // Run standard field validation
         await this.validateQuestionnaireAsync(userId, questionnaireData);
+
+        // Run context-aware validation for all open text fields
+        await this.validateContextFitting(userId, questionnaireData);
+
+        // Specifically validate secondary goal if present
+        if (questionnaireData.secondary_goal) {
+          const mainGoal = questionnaireData.main_goal || "";
+          const secondaryGoal = questionnaireData.secondary_goal;
+
+          const secondaryValidation = await this.validateSecondaryGoal(
+            userId,
+            mainGoal,
+            secondaryGoal,
+            {
+              age: questionnaireData.age,
+              weight: questionnaireData.weight_kg,
+              targetWeight: questionnaireData.target_weight_kg,
+              medicalConditions: questionnaireData.medical_conditions || [],
+            }
+          );
+
+          if (!secondaryValidation.isValid || !secondaryValidation.isFittingContext) {
+            console.warn(
+              `⚠️ Secondary goal validation issue for user ${userId}:`,
+              secondaryValidation.reason
+            );
+          }
+        }
+
+        console.log(`✅ Complete questionnaire validation finished for user ${userId}`);
       } catch (error) {
         console.error("Background questionnaire validation failed:", error);
       }
     });
+  }
+
+  /**
+   * Validate that open text responses and secondary goals fit the user's context
+   * This performs a holistic check to ensure responses are appropriate for the user's situation
+   */
+  static async validateContextFitting(
+    userId: string,
+    questionnaireData: Record<string, any>
+  ): Promise<ContextValidationResult> {
+    console.log(`🔍 Starting context-aware validation for user: ${userId}`);
+
+    const defaultResult: ContextValidationResult = {
+      isAppropriate: true,
+      fitsUserGoal: true,
+      fitsUserHealth: true,
+      fitsUserDiet: true,
+      overallScore: 80,
+      feedback: "Responses appear appropriate for your situation.",
+    };
+
+    if (!openai || !process.env.OPENAI_API_KEY) {
+      console.log("⚠️ No OpenAI API key for context validation");
+      return defaultResult;
+    }
+
+    try {
+      // Extract key context fields
+      const userContext = {
+        mainGoal: questionnaireData.main_goal || "",
+        secondaryGoal: questionnaireData.secondary_goal || "",
+        mainGoalText: this.arrayToString(questionnaireData.main_goal_text),
+        specificGoal: this.arrayToString(questionnaireData.specific_goal),
+        specialPersonalGoal: this.arrayToString(questionnaireData.special_personal_goal),
+        mostImportantOutcome: this.arrayToString(questionnaireData.most_important_outcome),
+        age: questionnaireData.age || 0,
+        gender: questionnaireData.gender || "",
+        weight: questionnaireData.weight_kg || 0,
+        targetWeight: questionnaireData.target_weight_kg || 0,
+        activityLevel: questionnaireData.physical_activity_level || "",
+        medicalConditions: this.arrayToString(questionnaireData.medical_conditions_text),
+        dietaryStyle: questionnaireData.dietary_style || "",
+        allergies: this.arrayToString(questionnaireData.allergies_text),
+        healthGoals: this.arrayToString(questionnaireData.health_goals),
+        dislikedFoods: this.arrayToString(questionnaireData.disliked_foods),
+        likedFoods: this.arrayToString(questionnaireData.liked_foods),
+      };
+
+      const result = await this.aiContextValidation(userContext);
+
+      // Handle inappropriate responses
+      if (!result.isAppropriate || result.overallScore < 60) {
+        await this.handleInappropriateContext(userId, userContext, result);
+      }
+
+      return result;
+    } catch (error) {
+      console.error("❌ Context validation failed:", error);
+      return defaultResult;
+    }
+  }
+
+  /**
+   * AI-powered context validation to check if responses fit the user's situation
+   */
+  private static async aiContextValidation(
+    userContext: Record<string, any>
+  ): Promise<ContextValidationResult> {
+    const systemPrompt = `You are a nutrition and health questionnaire validator for the Calo app.
+Your job is to check if the user's open-text responses and goals are:
+1. Appropriate and realistic for their situation (age, weight, health conditions)
+2. Consistent with each other (goals don't contradict)
+3. Safe and achievable
+4. Fitting their stated dietary preferences and restrictions
+
+VALIDATION RULES:
+- Secondary goals should complement the main goal, not contradict it
+- Weight loss goals for underweight users are inappropriate
+- Extreme goals (lose 20kg in 1 month) are unrealistic
+- Goals should consider medical conditions
+- Food preferences should be consistent with dietary style
+- Personal goals should be health-related and appropriate
+
+Return JSON only:
+{
+  "isAppropriate": boolean,
+  "fitsUserGoal": boolean,
+  "fitsUserHealth": boolean,
+  "fitsUserDiet": boolean,
+  "overallScore": 0-100,
+  "feedback": "explanation for user",
+  "suggestions": ["suggestion1", "suggestion2"] // only if issues found
+}`;
+
+    const userPrompt = `Validate this user's questionnaire responses for consistency and appropriateness:
+
+USER PROFILE:
+- Age: ${userContext.age}
+- Gender: ${userContext.gender}
+- Current Weight: ${userContext.weight}kg
+- Target Weight: ${userContext.targetWeight}kg
+- Activity Level: ${userContext.activityLevel}
+- Medical Conditions: ${userContext.medicalConditions || "None specified"}
+
+GOALS:
+- Main Goal: ${userContext.mainGoal}
+- Main Goal Description: ${userContext.mainGoalText || "Not specified"}
+- Secondary Goal: ${userContext.secondaryGoal || "Not specified"}
+- Specific Goals: ${userContext.specificGoal || "Not specified"}
+- Special Personal Goal: ${userContext.specialPersonalGoal || "Not specified"}
+- Most Important Outcome: ${userContext.mostImportantOutcome || "Not specified"}
+
+DIETARY PREFERENCES:
+- Dietary Style: ${userContext.dietaryStyle || "Not specified"}
+- Allergies: ${userContext.allergies || "None"}
+- Health Goals: ${userContext.healthGoals || "Not specified"}
+- Liked Foods: ${userContext.likedFoods || "Not specified"}
+- Disliked Foods: ${userContext.dislikedFoods || "Not specified"}
+
+Are these responses appropriate and fitting for this user's situation? Check for contradictions, unrealistic goals, or inappropriate content.`;
+
+    try {
+      const response = await openai!.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_completion_tokens: 500,
+        temperature: 0.3,
+        response_format: { type: "json_object" },
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error("No response from OpenAI");
+      }
+
+      const parsed = JSON.parse(content);
+      console.log(`✅ Context validation complete. Score: ${parsed.overallScore}`);
+
+      return {
+        isAppropriate: Boolean(parsed.isAppropriate),
+        fitsUserGoal: Boolean(parsed.fitsUserGoal),
+        fitsUserHealth: Boolean(parsed.fitsUserHealth),
+        fitsUserDiet: Boolean(parsed.fitsUserDiet),
+        overallScore: Math.min(100, Math.max(0, Number(parsed.overallScore) || 80)),
+        feedback: parsed.feedback || "Responses validated.",
+        suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : undefined,
+      };
+    } catch (error) {
+      console.error("❌ AI context validation error:", error);
+      return {
+        isAppropriate: true,
+        fitsUserGoal: true,
+        fitsUserHealth: true,
+        fitsUserDiet: true,
+        overallScore: 75,
+        feedback: "Unable to fully validate responses. Please review your goals.",
+      };
+    }
+  }
+
+  /**
+   * Handle cases where user responses don't fit their context
+   */
+  private static async handleInappropriateContext(
+    userId: string,
+    userContext: Record<string, any>,
+    validationResult: ContextValidationResult
+  ): Promise<void> {
+    console.warn(
+      `⚠️ Context validation issues detected for user ${userId}:`,
+      {
+        score: validationResult.overallScore,
+        feedback: validationResult.feedback,
+      }
+    );
+
+    // Store validation feedback for the user (could be shown in the app)
+    try {
+      // Log for analytics/review
+      console.log(`📊 Context validation feedback for ${userId}:`, {
+        fitsGoal: validationResult.fitsUserGoal,
+        fitsHealth: validationResult.fitsUserHealth,
+        fitsDiet: validationResult.fitsUserDiet,
+        suggestions: validationResult.suggestions,
+      });
+
+      // If score is very low, the responses might need manual review
+      if (validationResult.overallScore < 40) {
+        console.warn(
+          `🚨 User ${userId} questionnaire may need review - low context score`
+        );
+      }
+    } catch (error) {
+      console.error("Failed to handle inappropriate context:", error);
+    }
+  }
+
+  /**
+   * Validate secondary goal specifically
+   */
+  static async validateSecondaryGoal(
+    userId: string,
+    mainGoal: string,
+    secondaryGoal: string,
+    userProfile: {
+      age?: number;
+      weight?: number;
+      targetWeight?: number;
+      medicalConditions?: string[];
+    }
+  ): Promise<ValidationResult> {
+    console.log(`🎯 Validating secondary goal for user: ${userId}`);
+
+    if (!secondaryGoal || secondaryGoal.trim().length < 3) {
+      return {
+        isValid: true,
+        fieldName: "secondary_goal",
+        originalValue: secondaryGoal,
+        isFittingContext: true,
+      };
+    }
+
+    if (!openai || !process.env.OPENAI_API_KEY) {
+      return this.ruleBasedSecondaryGoalValidation(mainGoal, secondaryGoal, userProfile);
+    }
+
+    try {
+      const prompt = `Validate if this secondary health goal is appropriate:
+Main Goal: ${mainGoal}
+Secondary Goal: ${secondaryGoal}
+User Age: ${userProfile.age || "Unknown"}
+User Weight: ${userProfile.weight || "Unknown"}kg
+Target Weight: ${userProfile.targetWeight || "Unknown"}kg
+Medical Conditions: ${userProfile.medicalConditions?.join(", ") || "None"}
+
+Is the secondary goal:
+1. Compatible with the main goal?
+2. Safe for this user's profile?
+3. Realistic and appropriate?
+
+Return JSON: {"isValid": boolean, "isFitting": boolean, "reason": "string if invalid", "suggestion": "alternative if needed"}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "Health goal validator. Return JSON only. Be strict about safety but supportive of realistic goals.",
+          },
+          { role: "user", content: prompt },
+        ],
+        max_completion_tokens: 200,
+        temperature: 0.3,
+        response_format: { type: "json_object" },
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error("No response");
+      }
+
+      const parsed = JSON.parse(content);
+      return {
+        isValid: Boolean(parsed.isValid),
+        fieldName: "secondary_goal",
+        originalValue: secondaryGoal,
+        reason: parsed.reason,
+        suggestion: parsed.suggestion,
+        isFittingContext: Boolean(parsed.isFitting),
+        contextFeedback: parsed.reason,
+      };
+    } catch (error) {
+      console.error("❌ Secondary goal validation failed:", error);
+      return this.ruleBasedSecondaryGoalValidation(mainGoal, secondaryGoal, userProfile);
+    }
+  }
+
+  /**
+   * Rule-based fallback for secondary goal validation
+   */
+  private static ruleBasedSecondaryGoalValidation(
+    mainGoal: string,
+    secondaryGoal: string,
+    userProfile: { age?: number; weight?: number; targetWeight?: number; medicalConditions?: string[] }
+  ): ValidationResult {
+    const lowerMain = mainGoal.toLowerCase();
+    const lowerSecondary = secondaryGoal.toLowerCase();
+
+    // Check for contradicting goals
+    const contradictions = [
+      { main: "weight_loss", secondary: ["gain weight", "bulk up", "increase mass"] },
+      { main: "weight_gain", secondary: ["lose weight", "cut fat", "slim down"] },
+      { main: "lose_weight", secondary: ["gain weight", "bulk up", "increase mass"] },
+      { main: "gain_muscle", secondary: ["lose muscle", "stop exercising"] },
+    ];
+
+    for (const rule of contradictions) {
+      if (lowerMain.includes(rule.main)) {
+        for (const conflict of rule.secondary) {
+          if (lowerSecondary.includes(conflict)) {
+            return {
+              isValid: false,
+              fieldName: "secondary_goal",
+              originalValue: secondaryGoal,
+              reason: `Secondary goal "${secondaryGoal}" contradicts your main goal of ${mainGoal}`,
+              suggestion: "Please choose a secondary goal that complements your main goal",
+              isFittingContext: false,
+            };
+          }
+        }
+      }
+    }
+
+    // Check for extreme/unsafe goals
+    const unsafePatterns = [
+      /lose\s*(\d+)\s*kg/i,
+      /gain\s*(\d+)\s*kg/i,
+    ];
+
+    for (const pattern of unsafePatterns) {
+      const match = secondaryGoal.match(pattern);
+      if (match) {
+        const amount = parseInt(match[1]);
+        if (amount > 10) {
+          return {
+            isValid: false,
+            fieldName: "secondary_goal",
+            originalValue: secondaryGoal,
+            reason: `A goal to change ${amount}kg is quite ambitious and may not be realistic in a short timeframe`,
+            suggestion: "Consider setting a more gradual goal (e.g., 2-4kg per month)",
+            isFittingContext: false,
+          };
+        }
+      }
+    }
+
+    return {
+      isValid: true,
+      fieldName: "secondary_goal",
+      originalValue: secondaryGoal,
+      isFittingContext: true,
+    };
+  }
+
+  /**
+   * Helper to convert array fields to string for validation
+   */
+  private static arrayToString(value: any): string {
+    if (Array.isArray(value)) {
+      return value.filter(Boolean).join(", ");
+    }
+    if (typeof value === "string") {
+      return value;
+    }
+    return "";
   }
 }

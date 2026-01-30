@@ -1,0 +1,122 @@
+{
+  "fried": {
+    "name_en": "fried",
+    "name_he": "מטוגן",
+    "aliases_he": ["טיגון", "מטוגנת", "מטוגנים", "מטוגנות", "טגון", "טוגן"],
+    "aliases_en": ["deep fried", "pan fried", "deep-fried", "pan-fried"],
+    "modifiers_per_100g": {
+      "calories": 90,
+      "fats_g": 10,
+      "sodium_mg": 50
+    }
+  },
+  "sauteed": {
+    "name_en": "sautéed",
+    "name_he": "מוקפץ",
+    "aliases_he": ["קפיצה", "מוקפצת", "מוקפצים", "קיפוץ", "הקפצה"],
+    "aliases_en": ["stir fried", "stir-fried", "sauted"],
+    "modifiers_per_100g": {
+      "calories": 45,
+      "fats_g": 5,
+      "sodium_mg": 25
+    }
+  },
+  "baked": {
+    "name_en": "baked",
+    "name_he": "אפוי",
+    "aliases_he": ["אפויה", "אפויים", "אפויות", "אפייה", "בתנור"],
+    "aliases_en": ["oven baked", "roasted", "oven-baked"],
+    "modifiers_per_100g": {
+      "calories": 10,
+      "fats_g": 1
+    }
+  },
+  "grilled": {
+    "name_en": "grilled",
+    "name_he": "צלוי",
+    "aliases_he": ["צלויה", "צלויים", "צלויות", "על האש", "גריל", "צליה"],
+    "aliases_en": ["barbecued", "bbq", "chargrilled"],
+    "modifiers_per_100g": {
+      "calories": 5,
+      "fats_g": 0.5
+    }
+  },
+  "boiled": {
+    "name_en": "boiled",
+    "name_he": "מבושל",
+    "aliases_he": ["מבושלת", "מבושלים", "מבושלות", "בישול", "רותח"],
+    "aliases_en": ["cooked in water", "poached"],
+    "modifiers_per_100g": {}
+  },
+  "steamed": {
+    "name_en": "steamed",
+    "name_he": "מאודה",
+    "aliases_he": ["באידוי", "מאודים", "מאודות", "אידוי"],
+    "aliases_en": ["steam cooked"],
+    "modifiers_per_100g": {}
+  },
+  "raw": {
+    "name_en": "raw",
+    "name_he": "נא",
+    "aliases_he": ["טרי", "טריה", "טריים", "טריות", "גולמי", "ללא בישול"],
+    "aliases_en": ["fresh", "uncooked"],
+    "modifiers_per_100g": {}
+  },
+  "smoked": {
+    "name_en": "smoked",
+    "name_he": "מעושן",
+    "aliases_he": ["מעושנת", "מעושנים", "מעושנות", "עישון"],
+    "aliases_en": [],
+    "modifiers_per_100g": {
+      "sodium_mg": 200
+    }
+  },
+  "pickled": {
+    "name_en": "pickled",
+    "name_he": "כבוש",
+    "aliases_he": ["כבושה", "כבושים", "כבושות", "חמוצים", "במלח"],
+    "aliases_en": ["preserved", "fermented"],
+    "modifiers_per_100g": {
+      "sodium_mg": 500
+    }
+  },
+  "breaded": {
+    "name_en": "breaded",
+    "name_he": "בציפוי",
+    "aliases_he": ["מצופה", "בפירורי לחם", "פריך"],
+    "aliases_en": ["crusted", "coated"],
+    "modifiers_per_100g": {
+      "calories": 50,
+      "carbs_g": 10,
+      "fats_g": 2
+    }
+  },
+  "stuffed": {
+    "name_en": "stuffed",
+    "name_he": "ממולא",
+    "aliases_he": ["ממולאת", "ממולאים", "ממולאות", "מילוי"],
+    "aliases_en": ["filled"],
+    "modifiers_per_100g": {
+      "calories": 30,
+      "carbs_g": 5,
+      "fats_g": 2
+    }
+  },
+  "mashed": {
+    "name_en": "mashed",
+    "name_he": "מרוסק",
+    "aliases_he": ["מרוסקת", "מרוסקים", "פירה"],
+    "aliases_en": ["pureed"],
+    "modifiers_per_100g": {
+      "calories": 20,
+      "fats_g": 2
+    }
+  },
+  "dried": {
+    "name_en": "dried",
+    "name_he": "מיובש",
+    "aliases_he": ["מיובשת", "מיובשים", "מיובשות", "יבש"],
+    "aliases_en": ["dehydrated"],
+    "modifiers_per_100g": {}
+  }
+}

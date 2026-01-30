@@ -1,5 +1,5 @@
 import { prisma } from "../lib/database";
-import { openai } from "./openai";
+import { openai, OpenAIService } from "./openai";
 import axios from "axios";
 import { MealTrackingService } from "./mealTracking";
 import { isMealMandatory } from "../utils/nutrition";
@@ -85,8 +85,8 @@ export class FoodScannerService {
         });
       }
 
-      // Calculate price estimate
-      const priceEstimate = this.calculateProductPrice(productData);
+      // Calculate price estimate using AI
+      const priceEstimate = await this.calculateProductPriceWithAI(productData);
       productData.estimated_price = priceEstimate.estimated_price;
       productData.price_per_100g = priceEstimate.price_per_100g;
       productData.price_confidence = priceEstimate.confidence;
@@ -108,7 +108,54 @@ export class FoodScannerService {
   }
 
   /**
-   * Calculate estimated price for a product
+   * Calculate estimated price for a product using AI
+   */
+  private static async calculateProductPriceWithAI(productData: ProductData): Promise<{
+    estimated_price: number;
+    price_per_100g: number;
+    confidence: "high" | "medium" | "low";
+    price_range: string;
+    currency: string;
+  }> {
+    try {
+      // Use AI for price estimation
+      const aiPriceEstimate = await OpenAIService.estimateProductPriceWithAI(
+        productData.name,
+        productData.category,
+        100 // Price per 100g
+      );
+
+      console.log(`💰 AI product price estimate: ₪${aiPriceEstimate.estimated_price}`);
+
+      return {
+        estimated_price: aiPriceEstimate.estimated_price,
+        price_per_100g: aiPriceEstimate.price_per_100g,
+        confidence: aiPriceEstimate.confidence,
+        price_range: aiPriceEstimate.price_range,
+        currency: aiPriceEstimate.currency,
+      };
+    } catch (error) {
+      console.warn("⚠️ AI price estimation failed, using fallback");
+      // Fallback to local pricing
+      const priceEstimate = estimateProductPrice(
+        productData.name,
+        productData.category,
+        100
+      );
+
+      return {
+        estimated_price: priceEstimate.estimated_price,
+        price_per_100g: priceEstimate.price_per_100g,
+        confidence: priceEstimate.confidence,
+        price_range: priceEstimate.price_range,
+        currency: priceEstimate.currency,
+      };
+    }
+  }
+
+  /**
+   * Calculate estimated price for a product (sync fallback)
+   * @deprecated Use calculateProductPriceWithAI for AI-based pricing
    */
   private static calculateProductPrice(productData: ProductData): {
     estimated_price: number;
@@ -125,7 +172,7 @@ export class FoodScannerService {
 
     return {
       estimated_price: priceEstimate.estimated_price,
-      price_per_100g: priceEstimate.price_per_100g, // ✅ Now this exists!
+      price_per_100g: priceEstimate.price_per_100g,
       confidence: priceEstimate.confidence,
       price_range: priceEstimate.price_range,
       currency: priceEstimate.currency,
@@ -238,8 +285,8 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
         );
       }
 
-      // Calculate price estimate
-      const priceEstimate = this.calculateProductPrice(productData);
+      // Calculate price estimate using AI
+      const priceEstimate = await this.calculateProductPriceWithAI(productData);
       productData.estimated_price = priceEstimate.estimated_price;
       productData.price_per_100g = priceEstimate.price_per_100g;
       productData.price_confidence = priceEstimate.confidence;
@@ -290,20 +337,31 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
       const nutritionPer100g = productData.nutrition_per_100g;
       const multiplier = quantity / 100;
 
-      // Calculate estimated cost for the quantity
+      // Calculate estimated cost for the quantity using AI
       let estimatedCost = 0;
       if (productData.estimated_price) {
         estimatedCost = Math.round(productData.estimated_price * multiplier * 100) / 100;
       } else if (productData.price_per_100g) {
         estimatedCost = Math.round(productData.price_per_100g * multiplier * 100) / 100;
       } else {
-        // Fallback: calculate from product name and category
-        const priceEstimate = estimateProductPrice(
-          productData.name,
-          productData.category,
-          quantity,
-        );
-        estimatedCost = priceEstimate.estimated_price;
+        // Use AI for price estimation
+        try {
+          const aiPriceEstimate = await OpenAIService.estimateProductPriceWithAI(
+            productData.name,
+            productData.category,
+            quantity
+          );
+          estimatedCost = aiPriceEstimate.estimated_price;
+          console.log(`💰 AI meal cost estimate: ₪${estimatedCost}`);
+        } catch (error) {
+          // Fallback to local pricing
+          const priceEstimate = estimateProductPrice(
+            productData.name,
+            productData.category,
+            quantity
+          );
+          estimatedCost = priceEstimate.estimated_price;
+        }
       }
 
       const mealData = {
@@ -568,64 +626,84 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
         );
 
         if (response.data.products && response.data.products.length > 0) {
-          const products: ProductData[] = response.data.products
-            .filter((p: any) => p.product_name)
-            .map((product: any) => {
-              const nutriments = product.nutriments || {};
-              const category =
-                product.categories?.split(",")[0]?.trim() || "Unknown";
-              const productName = product.product_name || "Unknown Product";
+          const rawProducts = response.data.products.filter(
+            (p: any) => p.product_name
+          );
 
-              // Calculate price estimate for each product
-              const priceEstimate = estimateProductPrice(
-                productName,
-                category,
-                100,
-              );
+          // Build product data without prices first
+          const products: ProductData[] = rawProducts.map((product: any) => {
+            const nutriments = product.nutriments || {};
+            const category =
+              product.categories?.split(",")[0]?.trim() || "Unknown";
+            const productName = product.product_name || "Unknown Product";
 
-              return {
-                barcode: product.code || undefined,
-                name: productName,
-                brand: product.brands || undefined,
-                category,
-                nutrition_per_100g: {
-                  calories:
-                    nutriments.energy_kcal_100g ||
-                    nutriments["energy-kcal_100g"] ||
-                    nutriments.energy_100g ||
-                    0,
-                  protein: nutriments.proteins_100g || 0,
-                  carbs: nutriments.carbohydrates_100g || 0,
-                  fat: nutriments.fat_100g || 0,
-                  fiber: nutriments.fiber_100g || undefined,
-                  sugar: nutriments.sugars_100g || undefined,
-                  sodium: nutriments.sodium_100g
-                    ? nutriments.sodium_100g * 1000
-                    : undefined,
-                  saturated_fat: nutriments.saturated_fat_100g || undefined,
-                },
-                ingredients:
-                  product.ingredients_text
-                    ?.split(",")
-                    .map((i: string) => i.trim()) || [],
-                allergens:
-                  product.allergens_tags?.map((a: string) =>
-                    a.replace("en:", ""),
-                  ) || [],
-                labels:
-                  product.labels_tags?.map((l: string) =>
-                    l.replace("en:", ""),
-                  ) || [],
-                health_score: product.nutriscore_score || undefined,
-                image_url:
-                  product.image_url || product.image_front_url || undefined,
-                serving_size: product.serving_size || undefined,
-                // Price estimates
-                estimated_price: priceEstimate.estimated_price,
-                price_per_100g: priceEstimate.price_per_100g,
-                price_confidence: priceEstimate.confidence,
-              };
-            });
+            return {
+              barcode: product.code || undefined,
+              name: productName,
+              brand: product.brands || undefined,
+              category,
+              nutrition_per_100g: {
+                calories:
+                  nutriments.energy_kcal_100g ||
+                  nutriments["energy-kcal_100g"] ||
+                  nutriments.energy_100g ||
+                  0,
+                protein: nutriments.proteins_100g || 0,
+                carbs: nutriments.carbohydrates_100g || 0,
+                fat: nutriments.fat_100g || 0,
+                fiber: nutriments.fiber_100g || undefined,
+                sugar: nutriments.sugars_100g || undefined,
+                sodium: nutriments.sodium_100g
+                  ? nutriments.sodium_100g * 1000
+                  : undefined,
+                saturated_fat: nutriments.saturated_fat_100g || undefined,
+              },
+              ingredients:
+                product.ingredients_text
+                  ?.split(",")
+                  .map((i: string) => i.trim()) || [],
+              allergens:
+                product.allergens_tags?.map((a: string) =>
+                  a.replace("en:", ""),
+                ) || [],
+              labels:
+                product.labels_tags?.map((l: string) => l.replace("en:", "")) ||
+                [],
+              health_score: product.nutriscore_score || undefined,
+              image_url:
+                product.image_url || product.image_front_url || undefined,
+              serving_size: product.serving_size || undefined,
+              // Price estimates will be filled below
+              estimated_price: 0,
+              price_per_100g: 0,
+              price_confidence: "low" as const,
+            };
+          });
+
+          // Get AI pricing for ALL products using efficient batch pricing
+          try {
+            const productsForPricing = products.map((prod) => ({
+              name: prod.name,
+              category: prod.category,
+            }));
+
+            // Use batch pricing - much more efficient than individual calls
+            const priceMap = await OpenAIService.batchEstimateProductPrices(productsForPricing);
+
+            // Apply prices to products
+            for (const prod of products) {
+              const aiPrice = priceMap.get(prod.name);
+              if (aiPrice) {
+                prod.estimated_price = aiPrice.estimated_price;
+                prod.price_per_100g = aiPrice.price_per_100g;
+                prod.price_confidence = aiPrice.confidence;
+              }
+            }
+            console.log(`💰 AI batch pricing complete for ${products.length} products`);
+          } catch (error) {
+            console.warn("⚠️ AI batch pricing failed:", error);
+            // Products will have default 0 prices - frontend should handle this
+          }
 
           console.log(
             `✅ Found ${products.length} products for query: ${query}`,
@@ -760,15 +838,26 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
     user_id: string,
   ): Promise<void> {
     try {
-      // Calculate price if not already present
+      // Calculate price using AI if not already present
       let estimatedCost = productData.estimated_price || 0;
       if (!estimatedCost && productData.name) {
-        const priceEstimate = estimateProductPrice(
-          productData.name,
-          productData.category,
-          100,
-        );
-        estimatedCost = priceEstimate.estimated_price;
+        try {
+          const aiPriceEstimate = await OpenAIService.estimateProductPriceWithAI(
+            productData.name,
+            productData.category,
+            100
+          );
+          estimatedCost = aiPriceEstimate.estimated_price;
+          console.log(`💰 AI product save price: ₪${estimatedCost}`);
+        } catch (error) {
+          // Fallback to local pricing
+          const priceEstimate = estimateProductPrice(
+            productData.name,
+            productData.category,
+            100
+          );
+          estimatedCost = priceEstimate.estimated_price;
+        }
       }
 
       await prisma.foodProduct.upsert({

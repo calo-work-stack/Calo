@@ -124,7 +124,7 @@ export default function ProductDetails({
               ]}
             >
               <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                Per serving
+                {t("foodScanner.perServing")}
               </Text>
             </View>
           </View>
@@ -137,9 +137,9 @@ export default function ProductDetails({
           <View style={styles.priceHeader}>
             <View style={styles.priceHeaderLeft}>
               <View
-                style={[styles.priceIconBox, { backgroundColor: "#10B98115" }]}
+                style={[styles.priceIconBox, { backgroundColor: colors.success + "15" }]}
               >
-                <Wallet size={20} color="#10B981" strokeWidth={2.5} />
+                <Wallet size={20} color={colors.success} strokeWidth={2.5} />
               </View>
               <View>
                 <Text style={[styles.priceTitle, { color: colors.text }]}>
@@ -153,10 +153,10 @@ export default function ProductDetails({
                         {
                           backgroundColor:
                             priceEstimate.confidence === "high"
-                              ? "#10B981"
+                              ? colors.success
                               : priceEstimate.confidence === "medium"
-                                ? "#F59E0B"
-                                : "#EF4444",
+                                ? colors.warning
+                                : colors.error,
                         },
                       ]}
                     />
@@ -166,10 +166,10 @@ export default function ProductDetails({
                         {
                           color:
                             priceEstimate.confidence === "high"
-                              ? "#10B981"
+                              ? colors.success
                               : priceEstimate.confidence === "medium"
-                                ? "#F59E0B"
-                                : "#EF4444",
+                                ? colors.warning
+                                : colors.error,
                         },
                       ]}
                     >
@@ -182,7 +182,7 @@ export default function ProductDetails({
           </View>
 
           <View style={styles.priceValueContainer}>
-            <Text style={[styles.priceValue, { color: "#10B981" }]}>
+            <Text style={[styles.priceValue, { color: colors.success }]}>
               {priceEstimate.price_range}
             </Text>
             {priceEstimate.market_context && (

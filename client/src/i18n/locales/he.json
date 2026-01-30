@@ -833,6 +833,22 @@
       "pm": "אחה״צ",
       "mealsRemaining": "נותרו {{remaining}}/{{limit}} ארוחות",
       "limitReached": "הגעת למגבלה ({{used}}/{{limit}})"
+    },
+    "healthInsights": "תובנות בריאותיות",
+    "aiRecommendations": "המלצות מבוססות AI",
+    "nutritionalAnalysis": "ניתוח תזונתי",
+    "additionalInfo": "מידע נוסף",
+    "reanalyzeMeal": "נתח ארוחה מחדש",
+    "additionalInfoOptional": "מידע נוסף (אופציונלי)",
+    "addDetailsPlaceholder": "הוסף פרטים לשיפור הניתוח...",
+    "imagePreview": {
+      "title": "תמונה נבחרה",
+      "retake": "צלם מחדש",
+      "remove": "הסר תמונה",
+      "analyze": "נתח ארוחה זו",
+      "analyzing": "מנתח...",
+      "tapToAnalyze": "לחץ לניתוח הארוחה",
+      "improveAccuracy": "הוסף פרטים לשיפור הדיוק"
     }
   },
   "foodScanner": {
@@ -882,6 +898,10 @@
     "addToMeal": "הוסף לארוחה",
     "nutritionValues": "ערכים תזונתיים",
     "ingredientsIdentified": "מרכיבים שזוהו",
+    "healthHighlights": "נקודות בריאות",
+    "perServing": "למנה",
+    "perQuantity": "ל-{{quantity}} גרם",
+    "valuesBasedOnServing": "ערכים מבוססים על מנה של {{quantity}} גרם",
     "richInProteins": "עשיר בחלבונים",
     "richInVitaminsMinerals": "עשיר בויטמינים ומינרלים",
     "richInAntiOxidants": "עשיר בנוגדי חמצון",
@@ -921,7 +941,8 @@
     "snack": "חטיף",
     "meal": "ארוחה",
     "snackHint": "חטיפים לא נספרים במגבלת הארוחות היומית",
-    "mealHint": "ארוחות נספרות במגבלה היומית שלך"
+    "mealHint": "ארוחות נספרות במגבלה היומית שלך",
+    "aiPriceEstimate": "מחיר מבוסס AI לשוק הישראלי"
   },
   "profile": {
     "title": "פרופיל",

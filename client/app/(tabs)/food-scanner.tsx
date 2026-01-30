@@ -181,46 +181,41 @@ export default function FoodScannerScreen() {
     }
   };
 
-  const estimatePrice = async (
+  /**
+   * Build PriceEstimate from backend AI pricing data
+   * The backend returns AI-calculated prices in the product data
+   */
+  const buildPriceEstimateFromProduct = (
     productData: ProductData,
-  ): Promise<PriceEstimate | null> => {
-    try {
-      setLoadingText(t("foodScanner.estimatingPrice"));
-      const basePrice = getBasePriceByCategory(productData.category);
-      const sizeMultiplier = quantity > 100 ? 1.5 : 1;
-      const estimatedPrice = Math.round(basePrice * sizeMultiplier);
+    quantityGrams: number,
+  ): PriceEstimate | null => {
+    // Check if backend provided AI pricing (use explicit checks for 0)
+    const hasPrice = productData.estimated_price !== undefined && productData.estimated_price > 0;
+    const hasPricePer100g = productData.price_per_100g !== undefined && productData.price_per_100g > 0;
+
+    if (hasPrice || hasPricePer100g) {
+      // Use price_per_100g if available, otherwise use estimated_price as base
+      const basePricePer100g = hasPricePer100g
+        ? productData.price_per_100g!
+        : productData.estimated_price!;
+
+      // Calculate price for the specific quantity
+      const priceForQuantity = Math.round((basePricePer100g * quantityGrams) / 100);
+      const lowPrice = Math.round(priceForQuantity * 0.85);
+      const highPrice = Math.round(priceForQuantity * 1.15);
 
       return {
-        estimated_price: estimatedPrice,
-        price_range: `${estimatedPrice - 2}-${estimatedPrice + 5} ${t(
-          "common.shekels",
-        )}`,
+        estimated_price: priceForQuantity > 0 ? priceForQuantity : productData.estimated_price!,
+        price_range: productData.price_range || `₪${lowPrice}-${highPrice}`,
         currency: "ILS",
-        confidence: "medium",
-        market_context: "Estimated based on category and size",
+        confidence: productData.price_confidence || "medium",
+        market_context: t("foodScanner.aiPriceEstimate"),
       };
-    } catch (error) {
-      console.error("Price estimation error:", error);
-      ToastService.handleError(error, "Price Estimation");
     }
-    return null;
-  };
 
-  const getBasePriceByCategory = (category: string): number => {
-    const lowerCategory = category.toLowerCase();
-    if (lowerCategory.includes("dairy") || lowerCategory.includes("milk"))
-      return 8;
-    if (lowerCategory.includes("meat") || lowerCategory.includes("protein"))
-      return 25;
-    if (lowerCategory.includes("vegetable") || lowerCategory.includes("fruit"))
-      return 6;
-    if (lowerCategory.includes("snack") || lowerCategory.includes("candy"))
-      return 5;
-    if (lowerCategory.includes("beverage") || lowerCategory.includes("drink"))
-      return 4;
-    if (lowerCategory.includes("bread") || lowerCategory.includes("bakery"))
-      return 7;
-    return 10;
+    // No AI pricing available from backend
+    console.warn("⚠️ No AI pricing received from backend for:", productData.name);
+    return null;
   };
 
   const handleBarcodeSearch = async () => {
@@ -242,7 +237,8 @@ export default function FoodScannerScreen() {
 
       if (response.data.success) {
         setScanResult(response.data.data);
-        const price = await estimatePrice(response.data.data.product);
+        // Use AI pricing from backend response
+        const price = buildPriceEstimateFromProduct(response.data.data.product, quantity);
         setPriceEstimate(price);
         animateResultAppearance();
         setShowResults(true);
@@ -275,7 +271,8 @@ export default function FoodScannerScreen() {
 
       if (response.data.success && response.data.data) {
         setScanResult(response.data.data);
-        const price = await estimatePrice(response.data.data.product);
+        // Use AI pricing from backend response
+        const price = buildPriceEstimateFromProduct(response.data.data.product, quantity);
         setPriceEstimate(price);
         animateResultAppearance();
         setShowResults(true);
@@ -325,7 +322,8 @@ export default function FoodScannerScreen() {
 
           if (response.data.success && response.data.data) {
             setScanResult(response.data.data);
-            const price = await estimatePrice(response.data.data.product);
+            // Use AI pricing from backend response
+            const price = buildPriceEstimateFromProduct(response.data.data.product, quantity);
             setPriceEstimate(price);
             animateResultAppearance();
             setShowResults(true);
@@ -504,7 +502,8 @@ export default function FoodScannerScreen() {
       };
 
       setScanResult(scanData);
-      const price = await estimatePrice(scanData.product);
+      // Use AI pricing from backend response - search results include AI pricing
+      const price = buildPriceEstimateFromProduct(scanData.product, quantity);
       setPriceEstimate(price);
       setShowManualSearch(false);
       setSearchQuery("");

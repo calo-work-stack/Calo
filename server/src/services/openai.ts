@@ -8,6 +8,58 @@ import {
 import { extractCleanJSON } from "../utils/openai";
 import { getErrorMessage, errorMessageIncludesAny } from "../utils/errorUtils";
 
+// AI Price Estimation Interfaces
+export interface AIPriceEstimate {
+  estimated_price: number;
+  price_per_100g: number;
+  currency: string;
+  confidence: "high" | "medium" | "low";
+  price_range: string;
+}
+
+export interface IngredientForPricing {
+  name: string;
+  quantity?: number;
+  unit?: string;
+  category?: string;
+}
+
+export interface MealPriceEstimate {
+  total_estimated_cost: number;
+  ingredient_costs: Array<{
+    name: string;
+    estimated_cost: number;
+  }>;
+  currency: string;
+  confidence: "high" | "medium" | "low";
+}
+
+// Price cache for faster API responses (5 minute TTL)
+const priceCache = new Map<string, { price: AIPriceEstimate; timestamp: number }>();
+const PRICE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCachedPrice(key: string): AIPriceEstimate | null {
+  const cached = priceCache.get(key);
+  if (cached && Date.now() - cached.timestamp < PRICE_CACHE_TTL) {
+    return cached.price;
+  }
+  priceCache.delete(key);
+  return null;
+}
+
+function setCachedPrice(key: string, price: AIPriceEstimate): void {
+  priceCache.set(key, { price, timestamp: Date.now() });
+  // Clean old entries periodically
+  if (priceCache.size > 500) {
+    const now = Date.now();
+    for (const [k, v] of priceCache.entries()) {
+      if (now - v.timestamp > PRICE_CACHE_TTL) {
+        priceCache.delete(k);
+      }
+    }
+  }
+}
+
 export const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
@@ -2267,5 +2319,402 @@ Provide breakfast, lunch, dinner with ingredients and nutrition. Return JSON.`;
     }
 
     return cleaned;
+  }
+
+  /**
+   * Estimate price for a single ingredient using AI
+   * Uses Israeli market prices in Shekels (₪)
+   */
+  static async estimateIngredientPriceWithAI(
+    ingredient: IngredientForPricing
+  ): Promise<AIPriceEstimate> {
+    const defaultEstimate: AIPriceEstimate = {
+      estimated_price: 5,
+      price_per_100g: 3,
+      currency: "ILS",
+      confidence: "low",
+      price_range: "₪3-8",
+    };
+
+    if (!process.env.OPENAI_API_KEY || !this.openai) {
+      console.log("⚠️ No OpenAI API key for price estimation, using default");
+      return defaultEstimate;
+    }
+
+    try {
+      const prompt = `Estimate Israeli supermarket price for: ${ingredient.name}
+Quantity: ${ingredient.quantity || 100}${ingredient.unit || "g"}
+Category: ${ingredient.category || "food"}
+
+Return JSON only: {"estimated_price":number,"price_per_100g":number,"confidence":"high"|"medium"|"low","price_range":"₪X-Y"}
+Prices in Israeli Shekels (₪). Be realistic based on 2024 Israeli market prices.`;
+
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "Israeli supermarket price estimator. Return JSON only. All prices in Shekels (₪/ILS).",
+          },
+          { role: "user", content: prompt },
+        ],
+        max_completion_tokens: 150,
+        temperature: 0.3,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) return defaultEstimate;
+
+      const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+
+      return {
+        estimated_price: Math.max(0, Number(parsed.estimated_price) || 5),
+        price_per_100g: Math.max(0, Number(parsed.price_per_100g) || 3),
+        currency: "ILS",
+        confidence: parsed.confidence || "medium",
+        price_range: parsed.price_range || `₪${Math.round(parsed.estimated_price * 0.85)}-${Math.round(parsed.estimated_price * 1.15)}`,
+      };
+    } catch (error) {
+      console.error("❌ AI price estimation failed:", error);
+      return defaultEstimate;
+    }
+  }
+
+  /**
+   * Estimate total price for a meal with multiple ingredients using AI
+   * Batched request for efficiency
+   */
+  static async estimateMealPriceWithAI(
+    ingredients: IngredientForPricing[]
+  ): Promise<MealPriceEstimate> {
+    const defaultEstimate: MealPriceEstimate = {
+      total_estimated_cost: ingredients.length * 5,
+      ingredient_costs: ingredients.map((ing) => ({
+        name: ing.name,
+        estimated_cost: 5,
+      })),
+      currency: "ILS",
+      confidence: "low",
+    };
+
+    if (!ingredients || ingredients.length === 0) {
+      return { ...defaultEstimate, total_estimated_cost: 0, ingredient_costs: [] };
+    }
+
+    if (!process.env.OPENAI_API_KEY || !this.openai) {
+      console.log("⚠️ No OpenAI API key for meal price estimation, using default");
+      return defaultEstimate;
+    }
+
+    try {
+      const ingredientsList = ingredients
+        .map((ing) => `- ${ing.name}: ${ing.quantity || 100}${ing.unit || "g"} (${ing.category || "food"})`)
+        .join("\n");
+
+      const prompt = `Estimate Israeli supermarket prices for these meal ingredients:
+${ingredientsList}
+
+Return JSON only:
+{
+  "total_estimated_cost": number,
+  "ingredient_costs": [{"name": "ingredient name", "estimated_cost": number}],
+  "confidence": "high"|"medium"|"low"
+}
+All prices in Israeli Shekels (₪). Base on 2024 Israeli market prices.`;
+
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "Israeli supermarket price estimator for meal ingredients. Return JSON only. All prices in Shekels (₪/ILS). Be accurate and realistic.",
+          },
+          { role: "user", content: prompt },
+        ],
+        max_completion_tokens: 500,
+        temperature: 0.3,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) return defaultEstimate;
+
+      const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+
+      return {
+        total_estimated_cost: Math.max(0, Number(parsed.total_estimated_cost) || 0),
+        ingredient_costs: Array.isArray(parsed.ingredient_costs)
+          ? parsed.ingredient_costs.map((ic: any) => ({
+              name: ic.name || "Unknown",
+              estimated_cost: Math.max(0, Number(ic.estimated_cost) || 0),
+            }))
+          : defaultEstimate.ingredient_costs,
+        currency: "ILS",
+        confidence: parsed.confidence || "medium",
+      };
+    } catch (error) {
+      console.error("❌ AI meal price estimation failed:", error);
+      return defaultEstimate;
+    }
+  }
+
+  /**
+   * Estimate price for a product (from food scanner) using AI with caching
+   */
+  static async estimateProductPriceWithAI(
+    productName: string,
+    category: string,
+    quantityGrams: number = 100
+  ): Promise<AIPriceEstimate> {
+    // Check cache first
+    const cacheKey = `product:${productName.toLowerCase()}:${category.toLowerCase()}`;
+    const cached = getCachedPrice(cacheKey);
+    if (cached) {
+      console.log(`💰 Cache hit for product: ${productName}`);
+      // Adjust for quantity
+      const adjustedPrice = (cached.price_per_100g * quantityGrams) / 100;
+      return {
+        ...cached,
+        estimated_price: Math.round(adjustedPrice * 100) / 100,
+      };
+    }
+
+    const result = await this.estimateIngredientPriceWithAI({
+      name: productName,
+      quantity: quantityGrams,
+      unit: "g",
+      category,
+    });
+
+    // Cache the result
+    setCachedPrice(cacheKey, result);
+    return result;
+  }
+
+  /**
+   * Batch estimate prices for multiple products - more efficient
+   * Uses a single AI call to price multiple products at once
+   */
+  static async batchEstimateProductPrices(
+    products: Array<{ name: string; category: string }>
+  ): Promise<Map<string, AIPriceEstimate>> {
+    const results = new Map<string, AIPriceEstimate>();
+    const uncachedProducts: Array<{ name: string; category: string; index: number }> = [];
+
+    // Check cache first
+    for (let i = 0; i < products.length; i++) {
+      const prod = products[i];
+      const cacheKey = `product:${prod.name.toLowerCase()}:${prod.category.toLowerCase()}`;
+      const cached = getCachedPrice(cacheKey);
+      if (cached) {
+        results.set(prod.name, cached);
+      } else {
+        uncachedProducts.push({ ...prod, index: i });
+      }
+    }
+
+    console.log(`💰 Batch pricing: ${results.size} cached, ${uncachedProducts.length} need AI`);
+
+    if (uncachedProducts.length === 0) {
+      return results;
+    }
+
+    // Default estimate for fallback
+    const defaultEstimate: AIPriceEstimate = {
+      estimated_price: 10,
+      price_per_100g: 10,
+      currency: "ILS",
+      confidence: "low",
+      price_range: "₪8-15",
+    };
+
+    if (!process.env.OPENAI_API_KEY || !this.openai) {
+      for (const prod of uncachedProducts) {
+        results.set(prod.name, defaultEstimate);
+      }
+      return results;
+    }
+
+    try {
+      // Batch up to 20 products per AI call
+      const batchSize = 20;
+      for (let i = 0; i < uncachedProducts.length; i += batchSize) {
+        const batch = uncachedProducts.slice(i, i + batchSize);
+        const productList = batch
+          .map((p, idx) => `${idx + 1}. ${p.name} (${p.category})`)
+          .join("\n");
+
+        const prompt = `Estimate Israeli supermarket prices (per 100g) for these products:
+${productList}
+
+Return JSON array only: [{"name":"product name","price_per_100g":number,"confidence":"high"|"medium"|"low"}]
+Prices in Israeli Shekels (₪). Base on 2024 Israeli market prices. Be realistic.`;
+
+        const response = await this.openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: "Israeli supermarket price estimator. Return JSON array only. All prices in Shekels (₪/ILS) per 100g.",
+            },
+            { role: "user", content: prompt },
+          ],
+          max_completion_tokens: 800,
+          temperature: 0.3,
+        });
+
+        const content = response.choices[0]?.message?.content;
+        if (content) {
+          const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+          const parsed = JSON.parse(cleaned);
+
+          if (Array.isArray(parsed)) {
+            for (const item of parsed) {
+              const matchingProd = batch.find(
+                (p) => p.name.toLowerCase() === item.name?.toLowerCase()
+              );
+              if (matchingProd || item.name) {
+                const price_per_100g = Math.max(0, Number(item.price_per_100g) || 10);
+                const priceEstimate: AIPriceEstimate = {
+                  estimated_price: price_per_100g,
+                  price_per_100g,
+                  currency: "ILS",
+                  confidence: item.confidence || "medium",
+                  price_range: `₪${Math.round(price_per_100g * 0.85)}-${Math.round(price_per_100g * 1.15)}`,
+                };
+
+                const prodName = matchingProd?.name || item.name;
+                results.set(prodName, priceEstimate);
+
+                // Cache the result
+                const prod = batch.find((p) => p.name === prodName);
+                if (prod) {
+                  const cacheKey = `product:${prod.name.toLowerCase()}:${prod.category.toLowerCase()}`;
+                  setCachedPrice(cacheKey, priceEstimate);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Fill in any missing products with defaults
+      for (const prod of uncachedProducts) {
+        if (!results.has(prod.name)) {
+          results.set(prod.name, defaultEstimate);
+        }
+      }
+
+      console.log(`💰 Batch AI pricing complete for ${uncachedProducts.length} products`);
+    } catch (error) {
+      console.error("❌ Batch product pricing failed:", error);
+      for (const prod of uncachedProducts) {
+        if (!results.has(prod.name)) {
+          results.set(prod.name, defaultEstimate);
+        }
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Batch estimate prices for menu generation - more efficient
+   * Returns a map of ingredient name -> estimated cost
+   */
+  static async estimateMenuCostWithAI(
+    meals: Array<{
+      name: string;
+      ingredients: IngredientForPricing[];
+    }>
+  ): Promise<{
+    totalCost: number;
+    mealCosts: Map<string, number>;
+    ingredientCosts: Map<string, number>;
+  }> {
+    const defaultResult = {
+      totalCost: meals.length * 20,
+      mealCosts: new Map(meals.map((m) => [m.name, 20])),
+      ingredientCosts: new Map<string, number>(),
+    };
+
+    if (!process.env.OPENAI_API_KEY || !this.openai) {
+      console.log("⚠️ No OpenAI API key for menu cost estimation");
+      return defaultResult;
+    }
+
+    try {
+      // Collect all unique ingredients
+      const allIngredients = new Map<string, IngredientForPricing>();
+      for (const meal of meals) {
+        for (const ing of meal.ingredients || []) {
+          const key = ing.name.toLowerCase();
+          if (!allIngredients.has(key)) {
+            allIngredients.set(key, ing);
+          }
+        }
+      }
+
+      const ingredientsList = Array.from(allIngredients.values())
+        .slice(0, 50) // Limit to 50 ingredients for API limits
+        .map((ing) => `${ing.name}: ${ing.quantity || 100}${ing.unit || "g"}`)
+        .join(", ");
+
+      const prompt = `Estimate Israeli supermarket prices for these ingredients:
+${ingredientsList}
+
+Return JSON: {"ingredients": {"ingredient_name": price_in_shekels}, "confidence": "high"|"medium"|"low"}
+All prices in Israeli Shekels (₪). Based on 2024 Israeli market.`;
+
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "Israeli supermarket price estimator. Return JSON only. Prices in Shekels (₪).",
+          },
+          { role: "user", content: prompt },
+        ],
+        max_completion_tokens: 800,
+        temperature: 0.3,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) return defaultResult;
+
+      const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+
+      const ingredientCosts = new Map<string, number>();
+      if (parsed.ingredients && typeof parsed.ingredients === "object") {
+        for (const [name, price] of Object.entries(parsed.ingredients)) {
+          ingredientCosts.set(name.toLowerCase(), Number(price) || 5);
+        }
+      }
+
+      // Calculate meal costs
+      const mealCosts = new Map<string, number>();
+      let totalCost = 0;
+
+      for (const meal of meals) {
+        let mealCost = 0;
+        for (const ing of meal.ingredients || []) {
+          const cost = ingredientCosts.get(ing.name.toLowerCase()) || 5;
+          mealCost += cost;
+        }
+        mealCosts.set(meal.name, Math.round(mealCost * 100) / 100);
+        totalCost += mealCost;
+      }
+
+      return {
+        totalCost: Math.round(totalCost * 100) / 100,
+        mealCosts,
+        ingredientCosts,
+      };
+    } catch (error) {
+      console.error("❌ AI menu cost estimation failed:", error);
+      return defaultResult;
+    }
   }
 }

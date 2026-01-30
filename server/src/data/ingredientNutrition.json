@@ -1,0 +1,1698 @@
+{
+  "eggplant": {
+    "name_en": "eggplant",
+    "name_he": "חציל",
+    "aliases_he": ["חצילים", "חציל סגול"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 25,
+      "protein_g": 1.0,
+      "carbs_g": 6.0,
+      "fats_g": 0.2,
+      "fiber_g": 3.0,
+      "sugar_g": 3.5,
+      "sodium_mg": 2
+    },
+    "piece_weight_g": 300
+  },
+  "tomato": {
+    "name_en": "tomato",
+    "name_he": "עגבנייה",
+    "aliases_he": ["עגבניה", "עגבניות", "עגבנייות"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 18,
+      "protein_g": 0.9,
+      "carbs_g": 3.9,
+      "fats_g": 0.2,
+      "fiber_g": 1.2,
+      "sugar_g": 2.6,
+      "sodium_mg": 5
+    },
+    "piece_weight_g": 150
+  },
+  "cucumber": {
+    "name_en": "cucumber",
+    "name_he": "מלפפון",
+    "aliases_he": ["מלפפונים"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 16,
+      "protein_g": 0.7,
+      "carbs_g": 3.6,
+      "fats_g": 0.1,
+      "fiber_g": 0.5,
+      "sugar_g": 1.7,
+      "sodium_mg": 2
+    },
+    "piece_weight_g": 200
+  },
+  "onion": {
+    "name_en": "onion",
+    "name_he": "בצל",
+    "aliases_he": ["בצלים"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 40,
+      "protein_g": 1.1,
+      "carbs_g": 9.3,
+      "fats_g": 0.1,
+      "fiber_g": 1.7,
+      "sugar_g": 4.2,
+      "sodium_mg": 4
+    },
+    "piece_weight_g": 150
+  },
+  "garlic": {
+    "name_en": "garlic",
+    "name_he": "שום",
+    "aliases_he": ["שיני שום"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 149,
+      "protein_g": 6.4,
+      "carbs_g": 33.1,
+      "fats_g": 0.5,
+      "fiber_g": 2.1,
+      "sugar_g": 1.0,
+      "sodium_mg": 17
+    },
+    "piece_weight_g": 5
+  },
+  "potato": {
+    "name_en": "potato",
+    "name_he": "תפוח אדמה",
+    "aliases_he": ["תפוחי אדמה", "טטא"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 77,
+      "protein_g": 2.0,
+      "carbs_g": 17.5,
+      "fats_g": 0.1,
+      "fiber_g": 2.2,
+      "sugar_g": 0.8,
+      "sodium_mg": 6
+    },
+    "piece_weight_g": 170
+  },
+  "sweet_potato": {
+    "name_en": "sweet potato",
+    "name_he": "בטטה",
+    "aliases_he": ["בטטות"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 86,
+      "protein_g": 1.6,
+      "carbs_g": 20.1,
+      "fats_g": 0.1,
+      "fiber_g": 3.0,
+      "sugar_g": 4.2,
+      "sodium_mg": 55
+    },
+    "piece_weight_g": 200
+  },
+  "carrot": {
+    "name_en": "carrot",
+    "name_he": "גזר",
+    "aliases_he": ["גזרים"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 41,
+      "protein_g": 0.9,
+      "carbs_g": 9.6,
+      "fats_g": 0.2,
+      "fiber_g": 2.8,
+      "sugar_g": 4.7,
+      "sodium_mg": 69
+    },
+    "piece_weight_g": 70
+  },
+  "bell_pepper": {
+    "name_en": "bell pepper",
+    "name_he": "פלפל",
+    "aliases_he": ["פלפלים", "גמבה", "פלפל צבעוני"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 31,
+      "protein_g": 1.0,
+      "carbs_g": 6.0,
+      "fats_g": 0.3,
+      "fiber_g": 2.1,
+      "sugar_g": 4.2,
+      "sodium_mg": 4
+    },
+    "piece_weight_g": 120
+  },
+  "zucchini": {
+    "name_en": "zucchini",
+    "name_he": "קישוא",
+    "aliases_he": ["קישואים", "קישוא ירוק"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 17,
+      "protein_g": 1.2,
+      "carbs_g": 3.1,
+      "fats_g": 0.3,
+      "fiber_g": 1.0,
+      "sugar_g": 2.5,
+      "sodium_mg": 8
+    },
+    "piece_weight_g": 200
+  },
+  "cabbage": {
+    "name_en": "cabbage",
+    "name_he": "כרוב",
+    "aliases_he": ["כרוב לבן"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 25,
+      "protein_g": 1.3,
+      "carbs_g": 5.8,
+      "fats_g": 0.1,
+      "fiber_g": 2.5,
+      "sugar_g": 3.2,
+      "sodium_mg": 18
+    },
+    "piece_weight_g": 900
+  },
+  "lettuce": {
+    "name_en": "lettuce",
+    "name_he": "חסה",
+    "aliases_he": ["עלי חסה"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 15,
+      "protein_g": 1.4,
+      "carbs_g": 2.9,
+      "fats_g": 0.2,
+      "fiber_g": 1.3,
+      "sugar_g": 0.8,
+      "sodium_mg": 28
+    },
+    "piece_weight_g": 300
+  },
+  "spinach": {
+    "name_en": "spinach",
+    "name_he": "תרד",
+    "aliases_he": ["עלי תרד"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 23,
+      "protein_g": 2.9,
+      "carbs_g": 3.6,
+      "fats_g": 0.4,
+      "fiber_g": 2.2,
+      "sugar_g": 0.4,
+      "sodium_mg": 79
+    },
+    "piece_weight_g": 30
+  },
+  "broccoli": {
+    "name_en": "broccoli",
+    "name_he": "ברוקולי",
+    "aliases_he": [],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 34,
+      "protein_g": 2.8,
+      "carbs_g": 7.0,
+      "fats_g": 0.4,
+      "fiber_g": 2.6,
+      "sugar_g": 1.7,
+      "sodium_mg": 33
+    },
+    "piece_weight_g": 600
+  },
+  "cauliflower": {
+    "name_en": "cauliflower",
+    "name_he": "כרובית",
+    "aliases_he": [],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 25,
+      "protein_g": 1.9,
+      "carbs_g": 5.0,
+      "fats_g": 0.3,
+      "fiber_g": 2.0,
+      "sugar_g": 1.9,
+      "sodium_mg": 30
+    },
+    "piece_weight_g": 600
+  },
+  "mushroom": {
+    "name_en": "mushroom",
+    "name_he": "פטריות",
+    "aliases_he": ["פטרייה", "שמפיניון"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 22,
+      "protein_g": 3.1,
+      "carbs_g": 3.3,
+      "fats_g": 0.3,
+      "fiber_g": 1.0,
+      "sugar_g": 2.0,
+      "sodium_mg": 5
+    },
+    "piece_weight_g": 15
+  },
+  "avocado": {
+    "name_en": "avocado",
+    "name_he": "אבוקדו",
+    "aliases_he": [],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 160,
+      "protein_g": 2.0,
+      "carbs_g": 8.5,
+      "fats_g": 14.7,
+      "fiber_g": 6.7,
+      "sugar_g": 0.7,
+      "sodium_mg": 7
+    },
+    "piece_weight_g": 200
+  },
+  "apple": {
+    "name_en": "apple",
+    "name_he": "תפוח",
+    "aliases_he": ["תפוחים"],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 52,
+      "protein_g": 0.3,
+      "carbs_g": 13.8,
+      "fats_g": 0.2,
+      "fiber_g": 2.4,
+      "sugar_g": 10.4,
+      "sodium_mg": 1
+    },
+    "piece_weight_g": 180
+  },
+  "banana": {
+    "name_en": "banana",
+    "name_he": "בננה",
+    "aliases_he": ["בננות"],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 89,
+      "protein_g": 1.1,
+      "carbs_g": 22.8,
+      "fats_g": 0.3,
+      "fiber_g": 2.6,
+      "sugar_g": 12.2,
+      "sodium_mg": 1
+    },
+    "piece_weight_g": 120
+  },
+  "orange": {
+    "name_en": "orange",
+    "name_he": "תפוז",
+    "aliases_he": ["תפוזים"],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 47,
+      "protein_g": 0.9,
+      "carbs_g": 11.8,
+      "fats_g": 0.1,
+      "fiber_g": 2.4,
+      "sugar_g": 9.4,
+      "sodium_mg": 0
+    },
+    "piece_weight_g": 150
+  },
+  "grapefruit": {
+    "name_en": "grapefruit",
+    "name_he": "אשכולית",
+    "aliases_he": ["אשכוליות"],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 42,
+      "protein_g": 0.8,
+      "carbs_g": 10.7,
+      "fats_g": 0.1,
+      "fiber_g": 1.6,
+      "sugar_g": 7.0,
+      "sodium_mg": 0
+    },
+    "piece_weight_g": 230
+  },
+  "lemon": {
+    "name_en": "lemon",
+    "name_he": "לימון",
+    "aliases_he": ["לימונים"],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 29,
+      "protein_g": 1.1,
+      "carbs_g": 9.3,
+      "fats_g": 0.3,
+      "fiber_g": 2.8,
+      "sugar_g": 2.5,
+      "sodium_mg": 2
+    },
+    "piece_weight_g": 60
+  },
+  "strawberry": {
+    "name_en": "strawberry",
+    "name_he": "תות",
+    "aliases_he": ["תותים", "תות שדה"],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 32,
+      "protein_g": 0.7,
+      "carbs_g": 7.7,
+      "fats_g": 0.3,
+      "fiber_g": 2.0,
+      "sugar_g": 4.9,
+      "sodium_mg": 1
+    },
+    "piece_weight_g": 12
+  },
+  "watermelon": {
+    "name_en": "watermelon",
+    "name_he": "אבטיח",
+    "aliases_he": [],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 30,
+      "protein_g": 0.6,
+      "carbs_g": 7.6,
+      "fats_g": 0.2,
+      "fiber_g": 0.4,
+      "sugar_g": 6.2,
+      "sodium_mg": 1
+    },
+    "piece_weight_g": 280
+  },
+  "melon": {
+    "name_en": "melon",
+    "name_he": "מלון",
+    "aliases_he": [],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 34,
+      "protein_g": 0.8,
+      "carbs_g": 8.2,
+      "fats_g": 0.2,
+      "fiber_g": 0.9,
+      "sugar_g": 7.9,
+      "sodium_mg": 16
+    },
+    "piece_weight_g": 150
+  },
+  "grapes": {
+    "name_en": "grapes",
+    "name_he": "ענבים",
+    "aliases_he": ["ענב"],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 69,
+      "protein_g": 0.7,
+      "carbs_g": 18.1,
+      "fats_g": 0.2,
+      "fiber_g": 0.9,
+      "sugar_g": 15.5,
+      "sodium_mg": 2
+    },
+    "piece_weight_g": 5
+  },
+  "mango": {
+    "name_en": "mango",
+    "name_he": "מנגו",
+    "aliases_he": [],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 60,
+      "protein_g": 0.8,
+      "carbs_g": 15.0,
+      "fats_g": 0.4,
+      "fiber_g": 1.6,
+      "sugar_g": 13.7,
+      "sodium_mg": 1
+    },
+    "piece_weight_g": 200
+  },
+  "dates": {
+    "name_en": "dates",
+    "name_he": "תמרים",
+    "aliases_he": ["תמר"],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 277,
+      "protein_g": 1.8,
+      "carbs_g": 75.0,
+      "fats_g": 0.2,
+      "fiber_g": 6.7,
+      "sugar_g": 66.5,
+      "sodium_mg": 1
+    },
+    "piece_weight_g": 25
+  },
+  "chicken_breast": {
+    "name_en": "chicken breast",
+    "name_he": "חזה עוף",
+    "aliases_he": ["חזה", "עוף"],
+    "category": "proteins",
+    "per_100g": {
+      "calories": 165,
+      "protein_g": 31.0,
+      "carbs_g": 0.0,
+      "fats_g": 3.6,
+      "fiber_g": 0.0,
+      "sugar_g": 0.0,
+      "sodium_mg": 74
+    },
+    "piece_weight_g": 175
+  },
+  "chicken_thigh": {
+    "name_en": "chicken thigh",
+    "name_he": "ירך עוף",
+    "aliases_he": ["ירכי עוף", "ירכיים"],
+    "category": "proteins",
+    "per_100g": {
+      "calories": 209,
+      "protein_g": 26.0,
+      "carbs_g": 0.0,
+      "fats_g": 10.9,
+      "fiber_g": 0.0,
+      "sugar_g": 0.0,
+      "sodium_mg": 84
+    },
+    "piece_weight_g": 120
+  },
+  "turkey_breast": {
+    "name_en": "turkey breast",
+    "name_he": "חזה הודו",
+    "aliases_he": ["הודו"],
+    "category": "proteins",
+    "per_100g": {
+      "calories": 135,
+      "protein_g": 30.0,
+      "carbs_g": 0.0,
+      "fats_g": 0.7,
+      "fiber_g": 0.0,
+      "sugar_g": 0.0,
+      "sodium_mg": 54
+    },
+    "piece_weight_g": 170
+  },
+  "ground_beef": {
+    "name_en": "ground beef",
+    "name_he": "בשר טחון",
+    "aliases_he": ["בקר טחון", "טחון"],
+    "category": "proteins",
+    "per_100g": {
+      "calories": 250,
+      "protein_g": 26.0,
+      "carbs_g": 0.0,
+      "fats_g": 15.0,
+      "fiber_g": 0.0,
+      "sugar_g": 0.0,
+      "sodium_mg": 75
+    },
+    "piece_weight_g": 100
+  },
+  "beef_steak": {
+    "name_en": "beef steak",
+    "name_he": "סטייק בקר",
+    "aliases_he": ["סטייק", "אנטריקוט"],
+    "category": "proteins",
+    "per_100g": {
+      "calories": 271,
+      "protein_g": 26.0,
+      "carbs_g": 0.0,
+      "fats_g": 18.0,
+      "fiber_g": 0.0,
+      "sugar_g": 0.0,
+      "sodium_mg": 54
+    },
+    "piece_weight_g": 225
+  },
+  "salmon": {
+    "name_en": "salmon",
+    "name_he": "סלמון",
+    "aliases_he": ["דג סלמון"],
+    "category": "proteins",
+    "per_100g": {
+      "calories": 208,
+      "protein_g": 20.0,
+      "carbs_g": 0.0,
+      "fats_g": 13.0,
+      "fiber_g": 0.0,
+      "sugar_g": 0.0,
+      "sodium_mg": 59
+    },
+    "piece_weight_g": 150
+  },
+  "tuna": {
+    "name_en": "tuna",
+    "name_he": "טונה",
+    "aliases_he": ["דג טונה"],
+    "category": "proteins",
+    "per_100g": {
+      "calories": 132,
+      "protein_g": 28.0,
+      "carbs_g": 0.0,
+      "fats_g": 1.0,
+      "fiber_g": 0.0,
+      "sugar_g": 0.0,
+      "sodium_mg": 47
+    },
+    "piece_weight_g": 150
+  },
+  "canned_tuna": {
+    "name_en": "canned tuna",
+    "name_he": "טונה משומרת",
+    "aliases_he": ["קופסת טונה"],
+    "category": "proteins",
+    "per_100g": {
+      "calories": 116,
+      "protein_g": 25.5,
+      "carbs_g": 0.0,
+      "fats_g": 0.8,
+      "fiber_g": 0.0,
+      "sugar_g": 0.0,
+      "sodium_mg": 338
+    },
+    "piece_weight_g": 160
+  },
+  "tilapia": {
+    "name_en": "tilapia",
+    "name_he": "טילאפיה",
+    "aliases_he": ["דג אמנון"],
+    "category": "proteins",
+    "per_100g": {
+      "calories": 96,
+      "protein_g": 20.0,
+      "carbs_g": 0.0,
+      "fats_g": 1.7,
+      "fiber_g": 0.0,
+      "sugar_g": 0.0,
+      "sodium_mg": 52
+    },
+    "piece_weight_g": 115
+  },
+  "egg": {
+    "name_en": "egg",
+    "name_he": "ביצה",
+    "aliases_he": ["ביצים"],
+    "category": "proteins",
+    "per_100g": {
+      "calories": 155,
+      "protein_g": 13.0,
+      "carbs_g": 1.1,
+      "fats_g": 11.0,
+      "fiber_g": 0.0,
+      "sugar_g": 1.1,
+      "sodium_mg": 124
+    },
+    "piece_weight_g": 50
+  },
+  "tofu": {
+    "name_en": "tofu",
+    "name_he": "טופו",
+    "aliases_he": ["גבינת סויה"],
+    "category": "proteins",
+    "per_100g": {
+      "calories": 76,
+      "protein_g": 8.0,
+      "carbs_g": 1.9,
+      "fats_g": 4.8,
+      "fiber_g": 0.3,
+      "sugar_g": 0.6,
+      "sodium_mg": 7
+    },
+    "piece_weight_g": 120
+  },
+  "chickpeas": {
+    "name_en": "chickpeas",
+    "name_he": "חומוס",
+    "aliases_he": ["גרגירי חומוס"],
+    "category": "legumes",
+    "per_100g": {
+      "calories": 164,
+      "protein_g": 8.9,
+      "carbs_g": 27.4,
+      "fats_g": 2.6,
+      "fiber_g": 7.6,
+      "sugar_g": 4.8,
+      "sodium_mg": 7
+    },
+    "piece_weight_g": 200
+  },
+  "lentils": {
+    "name_en": "lentils",
+    "name_he": "עדשים",
+    "aliases_he": ["עדשה"],
+    "category": "legumes",
+    "per_100g": {
+      "calories": 116,
+      "protein_g": 9.0,
+      "carbs_g": 20.0,
+      "fats_g": 0.4,
+      "fiber_g": 7.9,
+      "sugar_g": 1.8,
+      "sodium_mg": 2
+    },
+    "piece_weight_g": 200
+  },
+  "white_beans": {
+    "name_en": "white beans",
+    "name_he": "שעועית לבנה",
+    "aliases_he": ["פאסוליה"],
+    "category": "legumes",
+    "per_100g": {
+      "calories": 139,
+      "protein_g": 9.7,
+      "carbs_g": 25.0,
+      "fats_g": 0.5,
+      "fiber_g": 10.5,
+      "sugar_g": 0.3,
+      "sodium_mg": 6
+    },
+    "piece_weight_g": 200
+  },
+  "rice": {
+    "name_en": "rice",
+    "name_he": "אורז",
+    "aliases_he": ["אורז לבן"],
+    "category": "grains",
+    "per_100g": {
+      "calories": 130,
+      "protein_g": 2.7,
+      "carbs_g": 28.2,
+      "fats_g": 0.3,
+      "fiber_g": 0.4,
+      "sugar_g": 0.0,
+      "sodium_mg": 1
+    },
+    "piece_weight_g": 150
+  },
+  "brown_rice": {
+    "name_en": "brown rice",
+    "name_he": "אורז מלא",
+    "aliases_he": ["אורז חום"],
+    "category": "grains",
+    "per_100g": {
+      "calories": 111,
+      "protein_g": 2.6,
+      "carbs_g": 23.0,
+      "fats_g": 0.9,
+      "fiber_g": 1.8,
+      "sugar_g": 0.4,
+      "sodium_mg": 5
+    },
+    "piece_weight_g": 150
+  },
+  "pasta": {
+    "name_en": "pasta",
+    "name_he": "פסטה",
+    "aliases_he": ["פסטות", "ספגטי", "פנה"],
+    "category": "grains",
+    "per_100g": {
+      "calories": 131,
+      "protein_g": 5.0,
+      "carbs_g": 25.0,
+      "fats_g": 1.1,
+      "fiber_g": 1.8,
+      "sugar_g": 0.6,
+      "sodium_mg": 1
+    },
+    "piece_weight_g": 150
+  },
+  "couscous": {
+    "name_en": "couscous",
+    "name_he": "קוסקוס",
+    "aliases_he": [],
+    "category": "grains",
+    "per_100g": {
+      "calories": 112,
+      "protein_g": 3.8,
+      "carbs_g": 23.2,
+      "fats_g": 0.2,
+      "fiber_g": 1.4,
+      "sugar_g": 0.1,
+      "sodium_mg": 5
+    },
+    "piece_weight_g": 150
+  },
+  "bulgur": {
+    "name_en": "bulgur",
+    "name_he": "בורגול",
+    "aliases_he": [],
+    "category": "grains",
+    "per_100g": {
+      "calories": 83,
+      "protein_g": 3.1,
+      "carbs_g": 18.6,
+      "fats_g": 0.2,
+      "fiber_g": 4.5,
+      "sugar_g": 0.1,
+      "sodium_mg": 5
+    },
+    "piece_weight_g": 150
+  },
+  "quinoa": {
+    "name_en": "quinoa",
+    "name_he": "קינואה",
+    "aliases_he": [],
+    "category": "grains",
+    "per_100g": {
+      "calories": 120,
+      "protein_g": 4.4,
+      "carbs_g": 21.3,
+      "fats_g": 1.9,
+      "fiber_g": 2.8,
+      "sugar_g": 0.9,
+      "sodium_mg": 7
+    },
+    "piece_weight_g": 150
+  },
+  "bread": {
+    "name_en": "bread",
+    "name_he": "לחם",
+    "aliases_he": ["לחם לבן", "פרוסת לחם"],
+    "category": "grains",
+    "per_100g": {
+      "calories": 265,
+      "protein_g": 9.0,
+      "carbs_g": 49.0,
+      "fats_g": 3.2,
+      "fiber_g": 2.7,
+      "sugar_g": 5.0,
+      "sodium_mg": 491
+    },
+    "piece_weight_g": 30
+  },
+  "whole_wheat_bread": {
+    "name_en": "whole wheat bread",
+    "name_he": "לחם מלא",
+    "aliases_he": ["לחם מקמח מלא", "לחם שיפון"],
+    "category": "grains",
+    "per_100g": {
+      "calories": 247,
+      "protein_g": 13.0,
+      "carbs_g": 41.0,
+      "fats_g": 3.4,
+      "fiber_g": 6.0,
+      "sugar_g": 6.0,
+      "sodium_mg": 450
+    },
+    "piece_weight_g": 30
+  },
+  "pita": {
+    "name_en": "pita",
+    "name_he": "פיתה",
+    "aliases_he": ["פיתות"],
+    "category": "grains",
+    "per_100g": {
+      "calories": 275,
+      "protein_g": 9.1,
+      "carbs_g": 55.7,
+      "fats_g": 1.2,
+      "fiber_g": 2.2,
+      "sugar_g": 1.3,
+      "sodium_mg": 536
+    },
+    "piece_weight_g": 60
+  },
+  "oats": {
+    "name_en": "oats",
+    "name_he": "שיבולת שועל",
+    "aliases_he": ["קוואקר"],
+    "category": "grains",
+    "per_100g": {
+      "calories": 389,
+      "protein_g": 16.9,
+      "carbs_g": 66.3,
+      "fats_g": 6.9,
+      "fiber_g": 10.6,
+      "sugar_g": 0.0,
+      "sodium_mg": 2
+    },
+    "piece_weight_g": 40
+  },
+  "milk": {
+    "name_en": "milk",
+    "name_he": "חלב",
+    "aliases_he": ["חלב רגיל"],
+    "category": "dairy",
+    "per_100g": {
+      "calories": 61,
+      "protein_g": 3.2,
+      "carbs_g": 4.8,
+      "fats_g": 3.3,
+      "fiber_g": 0.0,
+      "sugar_g": 5.0,
+      "sodium_mg": 43
+    },
+    "piece_weight_g": 250
+  },
+  "skim_milk": {
+    "name_en": "skim milk",
+    "name_he": "חלב דל שומן",
+    "aliases_he": ["חלב 1%", "חלב רזה"],
+    "category": "dairy",
+    "per_100g": {
+      "calories": 35,
+      "protein_g": 3.4,
+      "carbs_g": 5.0,
+      "fats_g": 0.1,
+      "fiber_g": 0.0,
+      "sugar_g": 5.1,
+      "sodium_mg": 42
+    },
+    "piece_weight_g": 250
+  },
+  "cottage_cheese": {
+    "name_en": "cottage cheese",
+    "name_he": "גבינת קוטג",
+    "aliases_he": ["קוטג"],
+    "category": "dairy",
+    "per_100g": {
+      "calories": 98,
+      "protein_g": 11.1,
+      "carbs_g": 3.4,
+      "fats_g": 4.3,
+      "fiber_g": 0.0,
+      "sugar_g": 2.7,
+      "sodium_mg": 364
+    },
+    "piece_weight_g": 250
+  },
+  "greek_yogurt": {
+    "name_en": "greek yogurt",
+    "name_he": "יוגורט יווני",
+    "aliases_he": ["יוגורט"],
+    "category": "dairy",
+    "per_100g": {
+      "calories": 97,
+      "protein_g": 9.0,
+      "carbs_g": 3.6,
+      "fats_g": 5.0,
+      "fiber_g": 0.0,
+      "sugar_g": 3.2,
+      "sodium_mg": 36
+    },
+    "piece_weight_g": 200
+  },
+  "feta_cheese": {
+    "name_en": "feta cheese",
+    "name_he": "גבינה בולגרית",
+    "aliases_he": ["פטה", "גבינה לבנה"],
+    "category": "dairy",
+    "per_100g": {
+      "calories": 264,
+      "protein_g": 14.2,
+      "carbs_g": 4.1,
+      "fats_g": 21.3,
+      "fiber_g": 0.0,
+      "sugar_g": 4.1,
+      "sodium_mg": 917
+    },
+    "piece_weight_g": 30
+  },
+  "mozzarella": {
+    "name_en": "mozzarella",
+    "name_he": "מוצרלה",
+    "aliases_he": ["גבינת מוצרלה"],
+    "category": "dairy",
+    "per_100g": {
+      "calories": 280,
+      "protein_g": 28.0,
+      "carbs_g": 3.1,
+      "fats_g": 17.0,
+      "fiber_g": 0.0,
+      "sugar_g": 1.0,
+      "sodium_mg": 627
+    },
+    "piece_weight_g": 30
+  },
+  "yellow_cheese": {
+    "name_en": "yellow cheese",
+    "name_he": "גבינה צהובה",
+    "aliases_he": ["צהובה", "עמק"],
+    "category": "dairy",
+    "per_100g": {
+      "calories": 402,
+      "protein_g": 25.0,
+      "carbs_g": 1.3,
+      "fats_g": 33.0,
+      "fiber_g": 0.0,
+      "sugar_g": 0.5,
+      "sodium_mg": 621
+    },
+    "piece_weight_g": 20
+  },
+  "labane": {
+    "name_en": "labane",
+    "name_he": "לבנה",
+    "aliases_he": ["לבנה גבינה"],
+    "category": "dairy",
+    "per_100g": {
+      "calories": 92,
+      "protein_g": 6.2,
+      "carbs_g": 3.6,
+      "fats_g": 5.8,
+      "fiber_g": 0.0,
+      "sugar_g": 3.6,
+      "sodium_mg": 50
+    },
+    "piece_weight_g": 200
+  },
+  "butter": {
+    "name_en": "butter",
+    "name_he": "חמאה",
+    "aliases_he": [],
+    "category": "dairy",
+    "per_100g": {
+      "calories": 717,
+      "protein_g": 0.9,
+      "carbs_g": 0.1,
+      "fats_g": 81.0,
+      "fiber_g": 0.0,
+      "sugar_g": 0.1,
+      "sodium_mg": 714
+    },
+    "piece_weight_g": 15
+  },
+  "olive_oil": {
+    "name_en": "olive oil",
+    "name_he": "שמן זית",
+    "aliases_he": [],
+    "category": "oils",
+    "per_100g": {
+      "calories": 884,
+      "protein_g": 0.0,
+      "carbs_g": 0.0,
+      "fats_g": 100.0,
+      "fiber_g": 0.0,
+      "sugar_g": 0.0,
+      "sodium_mg": 2
+    },
+    "piece_weight_g": 14
+  },
+  "vegetable_oil": {
+    "name_en": "vegetable oil",
+    "name_he": "שמן צמחי",
+    "aliases_he": ["שמן קנולה", "שמן חמניות"],
+    "category": "oils",
+    "per_100g": {
+      "calories": 884,
+      "protein_g": 0.0,
+      "carbs_g": 0.0,
+      "fats_g": 100.0,
+      "fiber_g": 0.0,
+      "sugar_g": 0.0,
+      "sodium_mg": 0
+    },
+    "piece_weight_g": 14
+  },
+  "hummus": {
+    "name_en": "hummus",
+    "name_he": "חומוס ממרח",
+    "aliases_he": ["ממרח חומוס"],
+    "category": "spreads",
+    "per_100g": {
+      "calories": 166,
+      "protein_g": 7.9,
+      "carbs_g": 14.3,
+      "fats_g": 9.6,
+      "fiber_g": 6.0,
+      "sugar_g": 0.3,
+      "sodium_mg": 379
+    },
+    "piece_weight_g": 30
+  },
+  "tahini": {
+    "name_en": "tahini",
+    "name_he": "טחינה",
+    "aliases_he": [],
+    "category": "spreads",
+    "per_100g": {
+      "calories": 595,
+      "protein_g": 17.0,
+      "carbs_g": 21.2,
+      "fats_g": 53.8,
+      "fiber_g": 9.3,
+      "sugar_g": 0.5,
+      "sodium_mg": 115
+    },
+    "piece_weight_g": 30
+  },
+  "peanut_butter": {
+    "name_en": "peanut butter",
+    "name_he": "חמאת בוטנים",
+    "aliases_he": [],
+    "category": "spreads",
+    "per_100g": {
+      "calories": 588,
+      "protein_g": 25.1,
+      "carbs_g": 19.6,
+      "fats_g": 50.4,
+      "fiber_g": 6.0,
+      "sugar_g": 9.2,
+      "sodium_mg": 459
+    },
+    "piece_weight_g": 32
+  },
+  "almonds": {
+    "name_en": "almonds",
+    "name_he": "שקדים",
+    "aliases_he": ["שקד"],
+    "category": "nuts",
+    "per_100g": {
+      "calories": 579,
+      "protein_g": 21.2,
+      "carbs_g": 21.6,
+      "fats_g": 49.9,
+      "fiber_g": 12.5,
+      "sugar_g": 4.4,
+      "sodium_mg": 1
+    },
+    "piece_weight_g": 1.2
+  },
+  "walnuts": {
+    "name_en": "walnuts",
+    "name_he": "אגוזי מלך",
+    "aliases_he": ["אגוז מלך"],
+    "category": "nuts",
+    "per_100g": {
+      "calories": 654,
+      "protein_g": 15.2,
+      "carbs_g": 13.7,
+      "fats_g": 65.2,
+      "fiber_g": 6.7,
+      "sugar_g": 2.6,
+      "sodium_mg": 2
+    },
+    "piece_weight_g": 4
+  },
+  "peanuts": {
+    "name_en": "peanuts",
+    "name_he": "בוטנים",
+    "aliases_he": ["בוטן"],
+    "category": "nuts",
+    "per_100g": {
+      "calories": 567,
+      "protein_g": 25.8,
+      "carbs_g": 16.1,
+      "fats_g": 49.2,
+      "fiber_g": 8.5,
+      "sugar_g": 4.7,
+      "sodium_mg": 18
+    },
+    "piece_weight_g": 1
+  },
+  "cashews": {
+    "name_en": "cashews",
+    "name_he": "קשיו",
+    "aliases_he": [],
+    "category": "nuts",
+    "per_100g": {
+      "calories": 553,
+      "protein_g": 18.2,
+      "carbs_g": 30.2,
+      "fats_g": 43.9,
+      "fiber_g": 3.3,
+      "sugar_g": 5.9,
+      "sodium_mg": 12
+    },
+    "piece_weight_g": 1.5
+  },
+  "honey": {
+    "name_en": "honey",
+    "name_he": "דבש",
+    "aliases_he": [],
+    "category": "sweeteners",
+    "per_100g": {
+      "calories": 304,
+      "protein_g": 0.3,
+      "carbs_g": 82.4,
+      "fats_g": 0.0,
+      "fiber_g": 0.2,
+      "sugar_g": 82.1,
+      "sodium_mg": 4
+    },
+    "piece_weight_g": 21
+  },
+  "sugar": {
+    "name_en": "sugar",
+    "name_he": "סוכר",
+    "aliases_he": ["סוכר לבן"],
+    "category": "sweeteners",
+    "per_100g": {
+      "calories": 387,
+      "protein_g": 0.0,
+      "carbs_g": 100.0,
+      "fats_g": 0.0,
+      "fiber_g": 0.0,
+      "sugar_g": 99.8,
+      "sodium_mg": 1
+    },
+    "piece_weight_g": 5
+  },
+  "salt": {
+    "name_en": "salt",
+    "name_he": "מלח",
+    "aliases_he": [],
+    "category": "seasonings",
+    "per_100g": {
+      "calories": 0,
+      "protein_g": 0.0,
+      "carbs_g": 0.0,
+      "fats_g": 0.0,
+      "fiber_g": 0.0,
+      "sugar_g": 0.0,
+      "sodium_mg": 38758
+    },
+    "piece_weight_g": 1
+  },
+  "black_pepper": {
+    "name_en": "black pepper",
+    "name_he": "פלפל שחור",
+    "aliases_he": [],
+    "category": "seasonings",
+    "per_100g": {
+      "calories": 251,
+      "protein_g": 10.4,
+      "carbs_g": 63.9,
+      "fats_g": 3.3,
+      "fiber_g": 25.3,
+      "sugar_g": 0.6,
+      "sodium_mg": 20
+    },
+    "piece_weight_g": 2
+  },
+  "cumin": {
+    "name_en": "cumin",
+    "name_he": "כמון",
+    "aliases_he": [],
+    "category": "seasonings",
+    "per_100g": {
+      "calories": 375,
+      "protein_g": 17.8,
+      "carbs_g": 44.2,
+      "fats_g": 22.3,
+      "fiber_g": 10.5,
+      "sugar_g": 2.3,
+      "sodium_mg": 168
+    },
+    "piece_weight_g": 2
+  },
+  "paprika": {
+    "name_en": "paprika",
+    "name_he": "פפריקה",
+    "aliases_he": [],
+    "category": "seasonings",
+    "per_100g": {
+      "calories": 282,
+      "protein_g": 14.1,
+      "carbs_g": 53.9,
+      "fats_g": 12.9,
+      "fiber_g": 34.9,
+      "sugar_g": 10.3,
+      "sodium_mg": 68
+    },
+    "piece_weight_g": 2
+  },
+  "turmeric": {
+    "name_en": "turmeric",
+    "name_he": "כורכום",
+    "aliases_he": [],
+    "category": "seasonings",
+    "per_100g": {
+      "calories": 354,
+      "protein_g": 7.8,
+      "carbs_g": 64.9,
+      "fats_g": 9.9,
+      "fiber_g": 21.1,
+      "sugar_g": 3.2,
+      "sodium_mg": 38
+    },
+    "piece_weight_g": 2
+  },
+  "parsley": {
+    "name_en": "parsley",
+    "name_he": "פטרוזיליה",
+    "aliases_he": [],
+    "category": "herbs",
+    "per_100g": {
+      "calories": 36,
+      "protein_g": 3.0,
+      "carbs_g": 6.3,
+      "fats_g": 0.8,
+      "fiber_g": 3.3,
+      "sugar_g": 0.9,
+      "sodium_mg": 56
+    },
+    "piece_weight_g": 5
+  },
+  "cilantro": {
+    "name_en": "cilantro",
+    "name_he": "כוסברה",
+    "aliases_he": [],
+    "category": "herbs",
+    "per_100g": {
+      "calories": 23,
+      "protein_g": 2.1,
+      "carbs_g": 3.7,
+      "fats_g": 0.5,
+      "fiber_g": 2.8,
+      "sugar_g": 0.9,
+      "sodium_mg": 46
+    },
+    "piece_weight_g": 5
+  },
+  "mint": {
+    "name_en": "mint",
+    "name_he": "נענע",
+    "aliases_he": [],
+    "category": "herbs",
+    "per_100g": {
+      "calories": 70,
+      "protein_g": 3.8,
+      "carbs_g": 14.9,
+      "fats_g": 0.9,
+      "fiber_g": 8.0,
+      "sugar_g": 0.0,
+      "sodium_mg": 31
+    },
+    "piece_weight_g": 3
+  },
+  "dill": {
+    "name_en": "dill",
+    "name_he": "שמיר",
+    "aliases_he": [],
+    "category": "herbs",
+    "per_100g": {
+      "calories": 43,
+      "protein_g": 3.5,
+      "carbs_g": 7.0,
+      "fats_g": 1.1,
+      "fiber_g": 2.1,
+      "sugar_g": 0.0,
+      "sodium_mg": 61
+    },
+    "piece_weight_g": 5
+  },
+  "schnitzel": {
+    "name_en": "schnitzel",
+    "name_he": "שניצל",
+    "aliases_he": ["שניצלים"],
+    "category": "prepared",
+    "per_100g": {
+      "calories": 297,
+      "protein_g": 18.0,
+      "carbs_g": 17.0,
+      "fats_g": 18.0,
+      "fiber_g": 1.0,
+      "sugar_g": 1.0,
+      "sodium_mg": 450
+    },
+    "piece_weight_g": 125
+  },
+  "falafel": {
+    "name_en": "falafel",
+    "name_he": "פלאפל",
+    "aliases_he": ["כדורי פלאפל"],
+    "category": "prepared",
+    "per_100g": {
+      "calories": 333,
+      "protein_g": 13.3,
+      "carbs_g": 31.8,
+      "fats_g": 17.8,
+      "fiber_g": 4.9,
+      "sugar_g": 0.3,
+      "sodium_mg": 294
+    },
+    "piece_weight_g": 17
+  },
+  "shawarma": {
+    "name_en": "shawarma",
+    "name_he": "שווארמה",
+    "aliases_he": [],
+    "category": "prepared",
+    "per_100g": {
+      "calories": 200,
+      "protein_g": 18.0,
+      "carbs_g": 3.0,
+      "fats_g": 13.0,
+      "fiber_g": 0.5,
+      "sugar_g": 1.0,
+      "sodium_mg": 500
+    },
+    "piece_weight_g": 150
+  },
+  "kebab": {
+    "name_en": "kebab",
+    "name_he": "קבב",
+    "aliases_he": ["קבבים"],
+    "category": "prepared",
+    "per_100g": {
+      "calories": 260,
+      "protein_g": 16.0,
+      "carbs_g": 8.0,
+      "fats_g": 18.0,
+      "fiber_g": 1.0,
+      "sugar_g": 2.0,
+      "sodium_mg": 580
+    },
+    "piece_weight_g": 80
+  },
+  "french_fries": {
+    "name_en": "french fries",
+    "name_he": "צ'יפס",
+    "aliases_he": ["צי'פס", "טוגנים"],
+    "category": "prepared",
+    "per_100g": {
+      "calories": 312,
+      "protein_g": 3.4,
+      "carbs_g": 41.4,
+      "fats_g": 15.0,
+      "fiber_g": 3.8,
+      "sugar_g": 0.3,
+      "sodium_mg": 210
+    },
+    "piece_weight_g": 150
+  },
+  "pizza": {
+    "name_en": "pizza",
+    "name_he": "פיצה",
+    "aliases_he": ["משולש פיצה"],
+    "category": "prepared",
+    "per_100g": {
+      "calories": 266,
+      "protein_g": 11.4,
+      "carbs_g": 33.0,
+      "fats_g": 10.4,
+      "fiber_g": 2.3,
+      "sugar_g": 3.6,
+      "sodium_mg": 598
+    },
+    "piece_weight_g": 110
+  },
+  "matza": {
+    "name_en": "matza",
+    "name_he": "מצה",
+    "aliases_he": ["מצות"],
+    "category": "grains",
+    "per_100g": {
+      "calories": 371,
+      "protein_g": 10.1,
+      "carbs_g": 78.6,
+      "fats_g": 1.1,
+      "fiber_g": 3.0,
+      "sugar_g": 0.8,
+      "sodium_mg": 6
+    },
+    "piece_weight_g": 33
+  },
+  "challah": {
+    "name_en": "challah",
+    "name_he": "חלה",
+    "aliases_he": ["חלות"],
+    "category": "grains",
+    "per_100g": {
+      "calories": 299,
+      "protein_g": 9.0,
+      "carbs_g": 52.0,
+      "fats_g": 6.0,
+      "fiber_g": 2.0,
+      "sugar_g": 6.0,
+      "sodium_mg": 405
+    },
+    "piece_weight_g": 50
+  },
+  "halva": {
+    "name_en": "halva",
+    "name_he": "חלווה",
+    "aliases_he": [],
+    "category": "sweets",
+    "per_100g": {
+      "calories": 469,
+      "protein_g": 12.5,
+      "carbs_g": 60.4,
+      "fats_g": 21.3,
+      "fiber_g": 4.7,
+      "sugar_g": 45.0,
+      "sodium_mg": 115
+    },
+    "piece_weight_g": 30
+  },
+  "baklava": {
+    "name_en": "baklava",
+    "name_he": "בקלאווה",
+    "aliases_he": [],
+    "category": "sweets",
+    "per_100g": {
+      "calories": 428,
+      "protein_g": 6.0,
+      "carbs_g": 46.1,
+      "fats_g": 25.4,
+      "fiber_g": 2.2,
+      "sugar_g": 29.1,
+      "sodium_mg": 232
+    },
+    "piece_weight_g": 50
+  },
+  "corn": {
+    "name_en": "corn",
+    "name_he": "תירס",
+    "aliases_he": ["קלח תירס"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 86,
+      "protein_g": 3.3,
+      "carbs_g": 19.0,
+      "fats_g": 1.2,
+      "fiber_g": 2.7,
+      "sugar_g": 3.2,
+      "sodium_mg": 15
+    },
+    "piece_weight_g": 150
+  },
+  "celery": {
+    "name_en": "celery",
+    "name_he": "סלרי",
+    "aliases_he": [],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 16,
+      "protein_g": 0.7,
+      "carbs_g": 3.0,
+      "fats_g": 0.2,
+      "fiber_g": 1.6,
+      "sugar_g": 1.8,
+      "sodium_mg": 80
+    },
+    "piece_weight_g": 40
+  },
+  "radish": {
+    "name_en": "radish",
+    "name_he": "צנון",
+    "aliases_he": ["צנונית"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 16,
+      "protein_g": 0.7,
+      "carbs_g": 3.4,
+      "fats_g": 0.1,
+      "fiber_g": 1.6,
+      "sugar_g": 1.9,
+      "sodium_mg": 39
+    },
+    "piece_weight_g": 15
+  },
+  "beet": {
+    "name_en": "beet",
+    "name_he": "סלק",
+    "aliases_he": ["סלק אדום"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 43,
+      "protein_g": 1.6,
+      "carbs_g": 9.6,
+      "fats_g": 0.2,
+      "fiber_g": 2.8,
+      "sugar_g": 6.8,
+      "sodium_mg": 78
+    },
+    "piece_weight_g": 80
+  },
+  "green_beans": {
+    "name_en": "green beans",
+    "name_he": "שעועית ירוקה",
+    "aliases_he": ["שעועית שלולית"],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 31,
+      "protein_g": 1.8,
+      "carbs_g": 7.0,
+      "fats_g": 0.1,
+      "fiber_g": 3.4,
+      "sugar_g": 1.4,
+      "sodium_mg": 6
+    },
+    "piece_weight_g": 100
+  },
+  "pumpkin": {
+    "name_en": "pumpkin",
+    "name_he": "דלעת",
+    "aliases_he": [],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 26,
+      "protein_g": 1.0,
+      "carbs_g": 6.5,
+      "fats_g": 0.1,
+      "fiber_g": 0.5,
+      "sugar_g": 2.8,
+      "sodium_mg": 1
+    },
+    "piece_weight_g": 200
+  },
+  "asparagus": {
+    "name_en": "asparagus",
+    "name_he": "אספרגוס",
+    "aliases_he": [],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 20,
+      "protein_g": 2.2,
+      "carbs_g": 3.9,
+      "fats_g": 0.1,
+      "fiber_g": 2.1,
+      "sugar_g": 1.9,
+      "sodium_mg": 2
+    },
+    "piece_weight_g": 20
+  },
+  "artichoke": {
+    "name_en": "artichoke",
+    "name_he": "ארטישוק",
+    "aliases_he": [],
+    "category": "vegetables",
+    "per_100g": {
+      "calories": 47,
+      "protein_g": 3.3,
+      "carbs_g": 10.5,
+      "fats_g": 0.2,
+      "fiber_g": 5.4,
+      "sugar_g": 1.0,
+      "sodium_mg": 94
+    },
+    "piece_weight_g": 120
+  },
+  "peach": {
+    "name_en": "peach",
+    "name_he": "אפרסק",
+    "aliases_he": ["אפרסקים"],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 39,
+      "protein_g": 0.9,
+      "carbs_g": 9.5,
+      "fats_g": 0.3,
+      "fiber_g": 1.5,
+      "sugar_g": 8.4,
+      "sodium_mg": 0
+    },
+    "piece_weight_g": 150
+  },
+  "pear": {
+    "name_en": "pear",
+    "name_he": "אגס",
+    "aliases_he": ["אגסים"],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 57,
+      "protein_g": 0.4,
+      "carbs_g": 15.2,
+      "fats_g": 0.1,
+      "fiber_g": 3.1,
+      "sugar_g": 9.8,
+      "sodium_mg": 1
+    },
+    "piece_weight_g": 180
+  },
+  "plum": {
+    "name_en": "plum",
+    "name_he": "שזיף",
+    "aliases_he": ["שזיפים"],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 46,
+      "protein_g": 0.7,
+      "carbs_g": 11.4,
+      "fats_g": 0.3,
+      "fiber_g": 1.4,
+      "sugar_g": 9.9,
+      "sodium_mg": 0
+    },
+    "piece_weight_g": 65
+  },
+  "pomegranate": {
+    "name_en": "pomegranate",
+    "name_he": "רימון",
+    "aliases_he": [],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 83,
+      "protein_g": 1.7,
+      "carbs_g": 18.7,
+      "fats_g": 1.2,
+      "fiber_g": 4.0,
+      "sugar_g": 13.7,
+      "sodium_mg": 3
+    },
+    "piece_weight_g": 280
+  },
+  "fig": {
+    "name_en": "fig",
+    "name_he": "תאנה",
+    "aliases_he": ["תאנים"],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 74,
+      "protein_g": 0.8,
+      "carbs_g": 19.2,
+      "fats_g": 0.3,
+      "fiber_g": 2.9,
+      "sugar_g": 16.3,
+      "sodium_mg": 1
+    },
+    "piece_weight_g": 50
+  },
+  "kiwi": {
+    "name_en": "kiwi",
+    "name_he": "קיווי",
+    "aliases_he": [],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 61,
+      "protein_g": 1.1,
+      "carbs_g": 14.7,
+      "fats_g": 0.5,
+      "fiber_g": 3.0,
+      "sugar_g": 9.0,
+      "sodium_mg": 3
+    },
+    "piece_weight_g": 75
+  },
+  "cherry": {
+    "name_en": "cherry",
+    "name_he": "דובדבן",
+    "aliases_he": ["דובדבנים"],
+    "category": "fruits",
+    "per_100g": {
+      "calories": 63,
+      "protein_g": 1.1,
+      "carbs_g": 16.0,
+      "fats_g": 0.2,
+      "fiber_g": 2.1,
+      "sugar_g": 12.8,
+      "sodium_mg": 0
+    },
+    "piece_weight_g": 8
+  }
+}

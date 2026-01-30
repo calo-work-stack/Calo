@@ -40,15 +40,15 @@ export default function HealthIndicators({ nutrition }: HealthIndicatorsProps) {
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }]}>
       <Text style={[styles.title, { color: colors.text }]}>
-        Health Highlights
+        {t("foodScanner.healthHighlights")}
       </Text>
 
       <View style={styles.indicatorsGrid}>
         {nutritionIndicators.map(
           (indicator: NutritionIndicator, index: number) => {
             const isPositive = indicator.color === "success";
-            const bgColor = isPositive ? "#10B98115" : "#F59E0B15";
-            const iconColor = isPositive ? "#10B981" : "#F59E0B";
+            const bgColor = isPositive ? colors.success + "15" : colors.warning + "15";
+            const iconColor = isPositive ? colors.success : colors.warning;
             const icon = isPositive ? "✓" : "⚠";
 
             return (

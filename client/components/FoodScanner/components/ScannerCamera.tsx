@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -8,10 +8,13 @@ import {
   Dimensions,
 } from "react-native";
 import { CameraView } from "expo-camera";
-import { QrCode, Camera as CameraIcon } from "lucide-react-native";
+import { QrCode, Camera as CameraIcon, Sparkles } from "lucide-react-native";
 import { useTheme } from "@/src/context/ThemeContext";
+import { useTranslation } from "react-i18next";
 
 const { width } = Dimensions.get("window");
+const SCANNER_SIZE = width - 48;
+const FRAME_SIZE = 220;
 
 interface ScannerCameraProps {
   scanMode: "barcode" | "image";
@@ -29,37 +32,127 @@ export default function ScannerCamera({
   pulseAnimation,
 }: ScannerCameraProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const scanLineTranslateY = scanLineAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: [-100, 100],
+    outputRange: [-FRAME_SIZE / 2 + 20, FRAME_SIZE / 2 - 20],
   });
 
-  return (
-    <View style={styles.cameraWrapper}>
-      {scanMode === "image" ? (
-        <TouchableOpacity style={styles.cameraView} onPress={onImageScan}>
-          <View style={styles.cameraOverlay}>
-            <View style={[styles.scanFrame, { borderColor: colors.glass }]}>
-              <Animated.View
-                style={[
-                  styles.scanLine,
-                  {
-                    backgroundColor: colors.emerald100,
-                    transform: [{ translateY: scanLineTranslateY }],
-                  },
-                ]}
-              />
-            </View>
+  const renderCorner = (position: "tl" | "tr" | "bl" | "br") => {
+    const cornerStyles: Record<string, object> = {
+      tl: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3 },
+      tr: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3 },
+      bl: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3 },
+      br: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3 },
+    };
+    return (
+      <View
+        style={[
+          styles.cornerBracket,
+          cornerStyles[position],
+          { borderColor: colors.primary },
+        ]}
+      />
+    );
+  };
 
+  const renderOverlay = () => (
+    <View style={styles.cameraOverlay}>
+      {/* Top overlay */}
+      <View
+        style={[styles.overlayTop, { backgroundColor: "rgba(0,0,0,0.6)" }]}
+      />
+
+      {/* Middle row */}
+      <View style={styles.overlayMiddle}>
+        <View
+          style={[styles.overlaySide, { backgroundColor: "rgba(0,0,0,0.6)" }]}
+        />
+
+        {/* Scan frame */}
+        <View style={styles.scanFrameContainer}>
+          <View style={styles.scanFrame}>
+            {renderCorner("tl")}
+            {renderCorner("tr")}
+            {renderCorner("bl")}
+            {renderCorner("br")}
+
+            {/* Scan line */}
             <Animated.View
               style={[
-                styles.scanIcon,
+                styles.scanLine,
+                {
+                  backgroundColor: colors.primary,
+                  transform: [{ translateY: scanLineTranslateY }],
+                },
+              ]}
+            />
+
+            {/* Center icon */}
+            <Animated.View
+              style={[
+                styles.centerGlow,
                 { transform: [{ scale: pulseAnimation }] },
               ]}
             >
-              <CameraIcon size={40} color={colors.onPrimary} />
+              <View
+                style={[
+                  styles.glowCircle,
+                  {
+                    backgroundColor: colors.primary + "20",
+                    borderColor: colors.primary + "40",
+                  },
+                ]}
+              >
+                {scanMode === "barcode" ? (
+                  <QrCode size={28} color={colors.primary} strokeWidth={2} />
+                ) : (
+                  <CameraIcon size={28} color={colors.primary} strokeWidth={2} />
+                )}
+              </View>
             </Animated.View>
+          </View>
+        </View>
+
+        <View
+          style={[styles.overlaySide, { backgroundColor: "rgba(0,0,0,0.6)" }]}
+        />
+      </View>
+
+      {/* Bottom overlay with instructions */}
+      <View
+        style={[styles.overlayBottom, { backgroundColor: "rgba(0,0,0,0.7)" }]}
+      >
+        <View style={styles.instructionContainer}>
+          <View
+            style={[styles.aiIndicator, { backgroundColor: colors.primary + "20" }]}
+          >
+            <Sparkles size={14} color={colors.primary} strokeWidth={2.5} />
+            <Text style={[styles.aiIndicatorText, { color: colors.primary }]}>
+              {t("foodScanner.aiPriceEstimate")}
+            </Text>
+          </View>
+          <Text style={[styles.instructionText, { color: colors.onPrimary }]}>
+            {scanMode === "barcode"
+              ? t("foodScanner.alignFood")
+              : t("foodScanner.alignFood")}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={[styles.cameraWrapper, { backgroundColor: colors.surface }]}>
+      {scanMode === "image" ? (
+        <TouchableOpacity
+          style={styles.cameraView}
+          onPress={onImageScan}
+          activeOpacity={0.9}
+        >
+          <View style={[styles.placeholderCamera, { backgroundColor: colors.border }]}>
+            {renderOverlay()}
           </View>
         </TouchableOpacity>
       ) : (
@@ -70,28 +163,7 @@ export default function ScannerCamera({
             barcodeTypes: ["ean13", "ean8", "upc_a", "code128", "code39"],
           }}
         >
-          <View style={styles.cameraOverlay}>
-            <View style={[styles.scanFrame, { borderColor: colors.glass }]}>
-              <Animated.View
-                style={[
-                  styles.scanLine,
-                  {
-                    backgroundColor: colors.success,
-                    transform: [{ translateY: scanLineTranslateY }],
-                  },
-                ]}
-              />
-            </View>
-
-            <Animated.View
-              style={[
-                styles.scanIcon,
-                { transform: [{ scale: pulseAnimation }] },
-              ]}
-            >
-              <QrCode size={40} color={colors.onPrimary} />
-            </Animated.View>
-          </View>
+          {renderOverlay()}
         </CameraView>
       )}
     </View>
@@ -100,36 +172,93 @@ export default function ScannerCamera({
 
 const styles = StyleSheet.create({
   cameraWrapper: {
-    width: width -12 ,
-    height: width - 12,
-    borderRadius: 28,
+    width: SCANNER_SIZE,
+    height: SCANNER_SIZE,
+    borderRadius: 24,
     overflow: "hidden",
   },
   cameraView: {
     flex: 1,
   },
+  placeholderCamera: {
+    flex: 1,
+  },
   cameraOverlay: {
     flex: 1,
+  },
+  overlayTop: {
+    height: (SCANNER_SIZE - FRAME_SIZE) / 2,
+  },
+  overlayMiddle: {
+    flexDirection: "row",
+    height: FRAME_SIZE,
+  },
+  overlaySide: {
+    width: (SCANNER_SIZE - FRAME_SIZE) / 2,
+  },
+  scanFrameContainer: {
+    width: FRAME_SIZE,
+    height: FRAME_SIZE,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.35)",
   },
   scanFrame: {
-    width: 260,
-    height: 260,
-    borderRadius: 24,
-    borderWidth: 1,
+    width: FRAME_SIZE,
+    height: FRAME_SIZE,
+    position: "relative",
+  },
+  cornerBracket: {
+    position: "absolute",
+    width: 28,
+    height: 28,
   },
   scanLine: {
     position: "absolute",
-    left: 16,
-    right: 16,
-    top: 100,
+    left: 20,
+    right: 20,
     height: 2,
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
+    borderRadius: 1,
   },
-  scanIcon: {
-    marginTop: 28,
+  centerGlow: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    marginTop: -28,
+    marginLeft: -28,
+  },
+  glowCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  overlayBottom: {
+    flex: 1,
+    justifyContent: "flex-start",
+    paddingTop: 20,
+  },
+  instructionContainer: {
+    alignItems: "center",
+    gap: 8,
+  },
+  aiIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  aiIndicatorText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  instructionText: {
+    fontSize: 14,
+    fontWeight: "500",
+    textAlign: "center",
+    paddingHorizontal: 24,
   },
 });

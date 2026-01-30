@@ -37,73 +37,89 @@ export const NutritionOverview: React.FC<NutritionOverviewProps> = ({
   const fatPercent =
     totalMacros > 0 ? Math.round((nutrition.fat / totalMacros) * 100) : 0;
 
+  const proteinColor = colors.info || colors.primary;
+  const carbsColor = colors.warning;
+  const fatColor = colors.error;
+
   return (
     <View style={styles.container}>
-      <LinearGradient colors={["#FFFFFF", "#F8FAFC"]} style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.surface }]}>
         <View style={styles.header}>
           <View style={styles.mealInfo}>
-            <Text style={styles.mealName}>{mealName}</Text>
-            <Text style={styles.analysisLabel}>Nutritional Analysis</Text>
+            <Text style={[styles.mealName, { color: colors.text }]}>{mealName}</Text>
+            <Text style={[styles.analysisLabel, { color: colors.textSecondary }]}>
+              {t("camera.nutritionalAnalysis")}
+            </Text>
           </View>
-          <View style={styles.badge}>
-            <Award size={16} color="#10B981" />
+          <View style={[styles.badge, { backgroundColor: colors.success + "15" }]}>
+            <Award size={16} color={colors.success} />
           </View>
         </View>
 
         <View style={styles.calorieSection}>
           <LinearGradient
-            colors={["#10B981", "#059669"]}
+            colors={[colors.success, colors.success]}
             style={styles.calorieCard}
           >
-            <Flame size={32} color="#FFFFFF" />
+            <Flame size={32} color={colors.onPrimary} />
             <View style={styles.calorieInfo}>
-              <Text style={styles.calorieValue}>{nutrition.calories}</Text>
-              <Text style={styles.calorieLabel}>calories</Text>
+              <Text style={[styles.calorieValue, { color: colors.onPrimary }]}>
+                {nutrition.calories}
+              </Text>
+              <Text style={[styles.calorieLabel, { color: colors.onPrimary + "CC" }]}>
+                {t("statistics.calories")}
+              </Text>
             </View>
           </LinearGradient>
         </View>
 
         <View style={styles.macrosGrid}>
-          <View style={[styles.macroCard, styles.proteinCard]}>
-            <View
-              style={[styles.macroIndicator, { backgroundColor: "#3B82F6" }]}
-            />
+          <View style={[styles.macroCard, { backgroundColor: proteinColor + "15" }]}>
+            <View style={[styles.macroIndicator, { backgroundColor: proteinColor }]} />
             <View style={styles.macroContent}>
-              <Text style={styles.macroValue}>{nutrition.protein}g</Text>
-              <Text style={styles.macroLabel}>Protein</Text>
+              <Text style={[styles.macroValue, { color: colors.text }]}>
+                {nutrition.protein}g
+              </Text>
+              <Text style={[styles.macroLabel, { color: colors.textSecondary }]}>
+                {t("statistics.protein")}
+              </Text>
             </View>
-            <View style={styles.percentBadge}>
-              <Text style={[styles.percentText, { color: "#3B82F6" }]}>
+            <View style={[styles.percentBadge, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.percentText, { color: proteinColor }]}>
                 {proteinPercent}%
               </Text>
             </View>
           </View>
 
-          <View style={[styles.macroCard, styles.carbsCard]}>
-            <View
-              style={[styles.macroIndicator, { backgroundColor: "#F59E0B" }]}
-            />
+          <View style={[styles.macroCard, { backgroundColor: carbsColor + "15" }]}>
+            <View style={[styles.macroIndicator, { backgroundColor: carbsColor }]} />
             <View style={styles.macroContent}>
-              <Text style={styles.macroValue}>{nutrition.carbs}g</Text>
-              <Text style={styles.macroLabel}>Carbs</Text>
+              <Text style={[styles.macroValue, { color: colors.text }]}>
+                {nutrition.carbs}g
+              </Text>
+              <Text style={[styles.macroLabel, { color: colors.textSecondary }]}>
+                {t("foodScanner.carbs")}
+              </Text>
             </View>
-            <View style={styles.percentBadge}>
-              <Text style={[styles.percentText, { color: "#F59E0B" }]}>
+            <View style={[styles.percentBadge, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.percentText, { color: carbsColor }]}>
                 {carbsPercent}%
               </Text>
             </View>
           </View>
 
-          <View style={[styles.macroCard, styles.fatCard]}>
-            <View
-              style={[styles.macroIndicator, { backgroundColor: "#EF4444" }]}
-            />
+          <View style={[styles.macroCard, { backgroundColor: fatColor + "15" }]}>
+            <View style={[styles.macroIndicator, { backgroundColor: fatColor }]} />
             <View style={styles.macroContent}>
-              <Text style={styles.macroValue}>{nutrition.fat}g</Text>
-              <Text style={styles.macroLabel}>Fat</Text>
+              <Text style={[styles.macroValue, { color: colors.text }]}>
+                {nutrition.fat}g
+              </Text>
+              <Text style={[styles.macroLabel, { color: colors.textSecondary }]}>
+                {t("foodScanner.fat")}
+              </Text>
             </View>
-            <View style={styles.percentBadge}>
-              <Text style={[styles.percentText, { color: "#EF4444" }]}>
+            <View style={[styles.percentBadge, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.percentText, { color: fatColor }]}>
                 {fatPercent}%
               </Text>
             </View>
@@ -114,30 +130,44 @@ export const NutritionOverview: React.FC<NutritionOverviewProps> = ({
           nutrition.sugar > 0 ||
           nutrition.sodium > 0) && (
           <View style={styles.micronutrientsSection}>
-            <Text style={styles.sectionTitle}>Additional Info</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {t("camera.additionalInfo")}
+            </Text>
             <View style={styles.microGrid}>
               {nutrition.fiber > 0 && (
-                <View style={styles.microItem}>
-                  <Text style={styles.microValue}>{nutrition.fiber}g</Text>
-                  <Text style={styles.microLabel}>Fiber</Text>
+                <View style={[styles.microItem, { backgroundColor: colors.background }]}>
+                  <Text style={[styles.microValue, { color: colors.text }]}>
+                    {nutrition.fiber}g
+                  </Text>
+                  <Text style={[styles.microLabel, { color: colors.textSecondary }]}>
+                    {t("foodScanner.fibers")}
+                  </Text>
                 </View>
               )}
               {nutrition.sugar > 0 && (
-                <View style={styles.microItem}>
-                  <Text style={styles.microValue}>{nutrition.sugar}g</Text>
-                  <Text style={styles.microLabel}>Sugar</Text>
+                <View style={[styles.microItem, { backgroundColor: colors.background }]}>
+                  <Text style={[styles.microValue, { color: colors.text }]}>
+                    {nutrition.sugar}g
+                  </Text>
+                  <Text style={[styles.microLabel, { color: colors.textSecondary }]}>
+                    {t("foodScanner.sugar")}
+                  </Text>
                 </View>
               )}
               {nutrition.sodium > 0 && (
-                <View style={styles.microItem}>
-                  <Text style={styles.microValue}>{nutrition.sodium}mg</Text>
-                  <Text style={styles.microLabel}>Sodium</Text>
+                <View style={[styles.microItem, { backgroundColor: colors.background }]}>
+                  <Text style={[styles.microValue, { color: colors.text }]}>
+                    {nutrition.sodium}mg
+                  </Text>
+                  <Text style={[styles.microLabel, { color: colors.textSecondary }]}>
+                    {t("foodScanner.sodium")}
+                  </Text>
                 </View>
               )}
             </View>
           </View>
         )}
-      </LinearGradient>
+      </View>
     </View>
   );
 };
@@ -167,20 +197,17 @@ const styles = StyleSheet.create({
   mealName: {
     fontSize: 26,
     fontWeight: "900",
-    color: "#1A2744",
     marginBottom: 6,
     letterSpacing: -0.8,
   },
   analysisLabel: {
     fontSize: 14,
-    color: "#6B7E99",
     fontWeight: "500",
   },
   badge: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#ECFDF5",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -201,12 +228,10 @@ const styles = StyleSheet.create({
   calorieValue: {
     fontSize: 40,
     fontWeight: "900",
-    color: "#FFFFFF",
     letterSpacing: -1.2,
   },
   calorieLabel: {
     fontSize: 16,
-    color: "rgba(255, 255, 255, 0.8)",
     fontWeight: "600",
     marginTop: 2,
   },
@@ -220,17 +245,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 16,
-    backgroundColor: "#F8FAFC",
     gap: 16,
-  },
-  proteinCard: {
-    backgroundColor: "#EFF6FF",
-  },
-  carbsCard: {
-    backgroundColor: "#FFFBEB",
-  },
-  fatCard: {
-    backgroundColor: "#FEF2F2",
   },
   macroIndicator: {
     width: 4,
@@ -243,20 +258,17 @@ const styles = StyleSheet.create({
   macroValue: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#1A2744",
     marginBottom: 2,
     letterSpacing: -0.3,
   },
   macroLabel: {
     fontSize: 13,
-    color: "#6B7E99",
     fontWeight: "500",
   },
   percentBadge: {
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 12,
-    backgroundColor: "#FFFFFF",
   },
   percentText: {
     fontSize: 13,
@@ -268,7 +280,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1A2744",
     marginBottom: 14,
   },
   microGrid: {
@@ -277,7 +288,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   microItem: {
-    backgroundColor: "#F8FAFC",
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
@@ -286,12 +296,10 @@ const styles = StyleSheet.create({
   microValue: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1A2744",
     marginBottom: 4,
   },
   microLabel: {
     fontSize: 12,
-    color: "#6B7E99",
     fontWeight: "500",
   },
 });

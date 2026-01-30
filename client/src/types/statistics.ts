@@ -170,6 +170,11 @@ export interface ProductData {
   image_url?: string;
   serving_size?: string;
   servings_per_container?: number;
+  // AI-calculated pricing from backend
+  estimated_price?: number;
+  price_per_100g?: number;
+  price_confidence?: "high" | "medium" | "low";
+  price_range?: string;
 }
 
 export interface UserAnalysis {

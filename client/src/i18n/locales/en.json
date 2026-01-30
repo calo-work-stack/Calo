@@ -591,7 +591,9 @@
       "retake": "Retake Photo",
       "remove": "Remove Image",
       "analyze": "Analyze This Meal",
-      "analyzing": "Analyzing..."
+      "analyzing": "Analyzing...",
+      "tapToAnalyze": "Tap to analyze this meal",
+      "improveAccuracy": "Add details to improve accuracy"
     },
     "results": {
       "title": "Analysis Results",
@@ -608,7 +610,14 @@
       "macronutrients": "Macronutrients",
       "swipeToExplore": "Swipe to explore",
       "ofTotalMacros": "of total macros"
-    }
+    },
+    "healthInsights": "Health Insights",
+    "aiRecommendations": "AI-powered recommendations",
+    "nutritionalAnalysis": "Nutritional Analysis",
+    "additionalInfo": "Additional Info",
+    "reanalyzeMeal": "Re-analyze Meal",
+    "additionalInfoOptional": "Additional information (Optional)",
+    "addDetailsPlaceholder": "Add details to improve analysis..."
   },
   "shopping": {
     "from_meal_analysis": "From Meal Analysis",
@@ -664,6 +673,10 @@
     "addToMeal": "Add to Meal",
     "nutritionValues": "Nutrition values",
     "ingredientsIdentified": "Ingredients Identified",
+    "healthHighlights": "Health Highlights",
+    "perServing": "Per serving",
+    "perQuantity": "per {{quantity}}g",
+    "valuesBasedOnServing": "Values based on a {{quantity}}g serving",
     "richInProteins": "Rich in proteins",
     "richInVitaminsMinerals": "Rich in Vitamins & Minerals",
     "richInAntiOxidants": "Rich in Anti Oxidants",
@@ -703,7 +716,8 @@
     "snack": "Snack",
     "meal": "Meal",
     "snackHint": "Snacks don't count toward your daily meal limit",
-    "mealHint": "Meals count toward your daily limit"
+    "mealHint": "Meals count toward your daily limit",
+    "aiPriceEstimate": "AI-based Israeli market price"
   },
   "profile": {
     "title": "Profile",
