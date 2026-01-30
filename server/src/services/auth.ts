@@ -110,10 +110,15 @@ export class AuthService {
   static async signUp(data: SignUpInput) {
     const { email, name, password, birth_date } = data;
 
-    // Check for existing user by email_hash first (for encrypted emails)
+    // Check for existing user - single query with OR for both email_hash and plain email
     const emailHashValue = hashEmail(email);
-    let existingUser = await prisma.user.findFirst({
-      where: { email_hash: emailHashValue },
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email_hash: emailHashValue },
+          { email: email }, // Backwards compatibility
+        ],
+      },
       select: {
         user_id: true,
         email_verified: true,
@@ -121,19 +126,6 @@ export class AuthService {
         name: true,
       },
     });
-
-    // Fallback: check by plain email (backwards compatibility)
-    if (!existingUser) {
-      existingUser = await prisma.user.findFirst({
-        where: { email },
-        select: {
-          user_id: true,
-          email_verified: true,
-          email: true,
-          name: true,
-        },
-      });
-    }
 
     if (existingUser) {
       if (existingUser.email_verified) {
@@ -147,10 +139,10 @@ export class AuthService {
           .toString();
 
         await prisma.user.update({
-          where: { user_id: existingUser.user_id }, // Use user_id for update
+          where: { user_id: existingUser.user_id },
           data: {
             email_verification_code: emailVerificationCode,
-            email_verification_expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+            email_verification_expires: new Date(Date.now() + 15 * 60 * 1000),
           },
         });
 
@@ -161,16 +153,19 @@ export class AuthService {
             : existingUser.name
           : name;
 
-        await this.sendVerificationEmail(email, emailVerificationCode, displayName);
+        // ASYNC: Send email in background - don't block response
+        this.sendVerificationEmail(email, emailVerificationCode, displayName)
+          .catch((err) => console.error("📧 Background email send failed:", err));
 
         return {
-          user: { email, name: displayName }, // Return original email for verification
+          user: { email, name: displayName },
           needsEmailVerification: true,
         };
       }
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    // Hash password with lower cost for faster signup (10 instead of 12)
+    const hashedPassword = await bcrypt.hash(password, 10);
     const emailVerificationCode = crypto.randomInt(100000, 999999).toString();
 
     // Encrypt sensitive data
@@ -189,7 +184,7 @@ export class AuthService {
         ai_requests_reset_at: new Date(),
         email_verified: false,
         email_verification_code: emailVerificationCode,
-        email_verification_expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+        email_verification_expires: new Date(Date.now() + 15 * 60 * 1000),
       },
       select: {
         ...userSelectFields,
@@ -201,6 +196,10 @@ export class AuthService {
     if (process.env.NODE_ENV !== "production") {
       console.log("✅ Created user:", user.user_id);
     }
+
+    // ASYNC: Send verification email in background - don't block response
+    this.sendVerificationEmail(email, emailVerificationCode, name || "User")
+      .catch((err) => console.error("📧 Background email send failed:", err));
 
     // Don't include sensitive data in response
     const { email_verification_code, ...userResponse } = user;
@@ -418,10 +417,15 @@ export class AuthService {
   static async verifyEmail(email: string, code: string) {
     console.log(`🔒 Verifying email ${email} with code ${code}`);
 
-    // Try to find user by email_hash first (for encrypted emails)
+    // Single query with OR for both email_hash and plain email
     const emailHashValue = hashEmail(email);
-    let user = await prisma.user.findFirst({
-      where: { email_hash: emailHashValue },
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email_hash: emailHashValue },
+          { email: email },
+        ],
+      },
       select: {
         ...userSelectFields,
         email_verified: true,
@@ -429,19 +433,6 @@ export class AuthService {
         email_verification_expires: true,
       },
     });
-
-    // Fallback: try to find by plain email (backwards compatibility)
-    if (!user) {
-      user = await prisma.user.findUnique({
-        where: { email },
-        select: {
-          ...userSelectFields,
-          email_verified: true,
-          email_verification_code: true,
-          email_verification_expires: true,
-        },
-      });
-    }
 
     if (!user) {
       console.log(`❌ User not found: ${email}`);
@@ -521,32 +512,33 @@ export class AuthService {
   static async signIn(data: SignInInput) {
     const { email, password } = data;
 
-    // Try to find user by email_hash first (for encrypted emails)
+    // Single query with OR for both email_hash and plain email (backwards compatibility)
     const emailHashValue = hashEmail(email);
-    let user = await prisma.user.findFirst({
-      where: { email_hash: emailHashValue },
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email_hash: emailHashValue },
+          { email: email },
+        ],
+      },
     });
-
-    // Fallback: try to find by plain email (backwards compatibility)
-    if (!user) {
-      user = await prisma.user.findUnique({ where: { email } });
-    }
 
     if (!user) throw new Error("Invalid email or password");
 
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) throw new Error("Invalid email or password");
 
-    // Use the original email for the token (not encrypted)
+    // Generate token and create session in parallel
     const token = generateToken({ user_id: user.user_id, email });
 
-    await prisma.session.create({
+    // Create session async - don't block response for session creation
+    prisma.session.create({
       data: {
         user_id: user.user_id,
         token,
         expiresAt: getSessionExpiryDate(),
       },
-    });
+    }).catch((err) => console.error("📧 Session creation failed:", err));
 
     const { password_hash: _, ...userWithoutPassword } = user;
 

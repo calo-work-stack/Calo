@@ -14,6 +14,7 @@ export * from './HealthInsights';
 export * from './SelectedImage';
 export * from './MealTypeSelector';
 export * from './EditIngredientModal';
+export * from './SmartIngredientModal';
 export * from './DeleteConfirmModal';
 export * from './CameraOptionsView';
 export * from './MealTypeSelectionView';

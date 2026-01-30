@@ -222,6 +222,43 @@
     "secondaryGoalTooLong": "מטרה משנית חייבת להכיל פחות מ-200 תווים",
     "secondaryGoalInvalid": "אנא הזינו תיאור תקין למטרה המשנית"
   },
+  "smartIngredient": {
+    "addIngredient": "הוסף מרכיב",
+    "editIngredient": "ערוך מרכיב",
+    "ingredientName": "שם המרכיב",
+    "inputPlaceholder": "הקלד שם מרכיב (לדוגמה: חציל מטוגן)",
+    "quantity": "כמות",
+    "unit": "יחידה",
+    "preparation": "אופן הכנה",
+    "selectUnit": "בחר יחידה",
+    "selectPreparation": "בחר אופן הכנה",
+    "none": "ללא",
+    "select": "בחר",
+    "nutritionPreview": "תצוגה מקדימה של ערכים תזונתיים",
+    "estimated": "ערכים משוערים",
+    "units": {
+      "g": "גרם",
+      "tsp": "כפית",
+      "tbsp": "כף",
+      "cup": "כוס",
+      "piece": "יחידה"
+    },
+    "preparations": {
+      "raw": "נא",
+      "fried": "מטוגן",
+      "sauteed": "מוקפץ",
+      "baked": "אפוי",
+      "grilled": "צלוי",
+      "boiled": "מבושל",
+      "steamed": "מאודה",
+      "smoked": "מעושן",
+      "pickled": "כבוש",
+      "breaded": "בציפוי",
+      "stuffed": "ממולא",
+      "mashed": "מרוסק",
+      "dried": "מיובש"
+    }
+  },
   "common": {
     "save": "שמור",
     "cancel": "בטל",
@@ -1790,6 +1827,7 @@
       "password_placeholder": "צור סיסמה",
       "confirm_password_label": "אימות סיסמה",
       "confirm_password_placeholder": "הזן שוב את הסיסמה",
+      "lang_preferance": "שפה מועדפת",
       "agree_text": "אני מסכים ל",
       "terms_of_service": "תנאי השימוש",
       "privacy_policy": "מדיניות הפרטיות",

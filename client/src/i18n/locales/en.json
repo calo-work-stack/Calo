@@ -1562,6 +1562,7 @@
       "password_placeholder": "Create a password",
       "confirm_password_label": "Confirm Password",
       "confirm_password_placeholder": "Re-enter your password",
+      "lang_preferance": "Language Preference",
       "agree_text": "I agree to the",
       "terms_of_service": "Terms of Service",
       "privacy_policy": "Privacy Policy",
@@ -1819,6 +1820,43 @@
     "full_health_tracking": "Full health tracking",
     "personal_nutrition": "Personal nutrition consulting",
     "priority_support": "Priority support"
+  },
+  "smartIngredient": {
+    "addIngredient": "Add Ingredient",
+    "editIngredient": "Edit Ingredient",
+    "ingredientName": "Ingredient Name",
+    "inputPlaceholder": "Type ingredient name (e.g., fried eggplant)",
+    "quantity": "Quantity",
+    "unit": "Unit",
+    "preparation": "Preparation",
+    "selectUnit": "Select Unit",
+    "selectPreparation": "Select Preparation",
+    "none": "None",
+    "select": "Select",
+    "nutritionPreview": "Nutrition Preview",
+    "estimated": "Estimated values",
+    "units": {
+      "g": "grams",
+      "tsp": "teaspoon",
+      "tbsp": "tablespoon",
+      "cup": "cup",
+      "piece": "piece"
+    },
+    "preparations": {
+      "raw": "Raw",
+      "fried": "Fried",
+      "sauteed": "Sautéed",
+      "baked": "Baked",
+      "grilled": "Grilled",
+      "boiled": "Boiled",
+      "steamed": "Steamed",
+      "smoked": "Smoked",
+      "pickled": "Pickled",
+      "breaded": "Breaded",
+      "stuffed": "Stuffed",
+      "mashed": "Mashed",
+      "dried": "Dried"
+    }
   },
   "common": {
     "all": "All",

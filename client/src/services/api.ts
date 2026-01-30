@@ -279,32 +279,91 @@ const api = createApiInstance();
 
 // ==================== API SERVICES ====================
 
+// Auth-specific retry logic with exponential backoff
+const authRetry = async <T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 2,
+  baseDelay: number = 1000,
+): Promise<T> => {
+  let lastError: any;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      // Don't retry on 4xx errors (client errors)
+      if (error.response?.status >= 400 && error.response?.status < 500) {
+        throw error;
+      }
+      // Only retry on network errors or 5xx
+      if (attempt < maxRetries) {
+        const delay = baseDelay * Math.pow(2, attempt);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastError;
+};
+
+// Auth timeout - longer than regular API calls
+const AUTH_TIMEOUT = 20000; // 20 seconds for auth operations
+
 export const authAPI = {
   async signUp(data: SignUpData): Promise<any> {
-    const response = await api.post("/auth/signup", data);
-    if (!response.data.success) {
-      throw new APIError(response.data.error || "Signup failed");
-    }
-    return response.data;
+    return authRetry(async () => {
+      const response = await api.post("/auth/signup", data, {
+        timeout: AUTH_TIMEOUT,
+      });
+      if (!response.data.success) {
+        throw new APIError(response.data.error || "Signup failed");
+      }
+      return response.data;
+    });
   },
 
   async signIn(data: SignInData): Promise<any> {
-    const response = await api.post("/auth/signin", data);
-    if (response.data.success && response.data.token) {
-      // Store token without awaiting
-      setStoredToken(response.data.token);
-      return response.data;
-    }
-    throw new APIError(response.data.error || "Signin failed");
+    return authRetry(async () => {
+      const response = await api.post("/auth/signin", data, {
+        timeout: AUTH_TIMEOUT,
+      });
+      if (response.data.success && response.data.token) {
+        // Store token without awaiting for speed
+        setStoredToken(response.data.token);
+        return response.data;
+      }
+      throw new APIError(response.data.error || "Signin failed");
+    });
   },
 
   async verifyEmail(email: string, code: string): Promise<any> {
-    const response = await api.post("/auth/verify-email", { email, code });
-    if (response.data.success && response.data.token) {
-      setStoredToken(response.data.token);
+    return authRetry(async () => {
+      const response = await api.post(
+        "/auth/verify-email",
+        { email, code },
+        { timeout: AUTH_TIMEOUT },
+      );
+      if (response.data.success && response.data.token) {
+        setStoredToken(response.data.token);
+        return response.data;
+      }
+      throw new APIError(response.data.error || "Email verification failed");
+    });
+  },
+
+  async resendVerification(email: string): Promise<any> {
+    return authRetry(async () => {
+      const response = await api.post(
+        "/auth/resend-verification",
+        { email },
+        { timeout: AUTH_TIMEOUT },
+      );
+      if (!response.data.success) {
+        throw new APIError(
+          response.data.error || "Failed to resend verification",
+        );
+      }
       return response.data;
-    }
-    throw new APIError(response.data.error || "Email verification failed");
+    });
   },
 
   signOut: async (): Promise<void> => {

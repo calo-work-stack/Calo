@@ -13,7 +13,7 @@ import { useIngredientEditor } from "@/hooks/camera/useIngredientEditor";
 import { useCameraAnimations } from "@/hooks/camera/useCameraAnimations";
 import { useMealsRemaining } from "@/hooks/useMealsRemaining";
 import {
-  EditIngredientModal,
+  SmartIngredientModal,
   DeleteConfirmModal,
   CameraOptionsView,
   MealTypeSelectionView,
@@ -75,7 +75,6 @@ function CameraScreenContent() {
     editingIndex,
     startEdit,
     startAdd,
-    updateField,
     save: saveIngredient,
     remove: removeIngredient,
     cancel: cancelEdit,
@@ -402,13 +401,12 @@ function CameraScreenContent() {
           </View>
         </ScrollView>
 
-        <EditIngredientModal
+        <SmartIngredientModal
           visible={showEditModal}
           ingredient={editingIngredient}
           isEditing={editingIndex >= 0}
           onClose={cancelEdit}
           onSave={saveIngredient}
-          onUpdateField={updateField}
         />
 
         <DeleteConfirmModal

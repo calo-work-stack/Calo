@@ -56,8 +56,11 @@ export function useIngredientEditor() {
     });
   };
 
-  const save = () => {
-    if (!editingIngredient || !editingIngredient.name.trim()) {
+  const save = (ingredientToSave?: Ingredient) => {
+    // Use passed ingredient or fall back to editingIngredient (for legacy support)
+    const ingredient = ingredientToSave || editingIngredient;
+
+    if (!ingredient || !ingredient.name.trim()) {
       Alert.alert("Error", "Ingredient name is required");
       return false;
     }
@@ -66,11 +69,11 @@ export function useIngredientEditor() {
       dispatch(
         updateSingleIngredient({
           index: editingIndex,
-          ingredient: editingIngredient,
+          ingredient: ingredient,
         })
       );
     } else {
-      dispatch(addIngredientToPendingMeal(editingIngredient));
+      dispatch(addIngredientToPendingMeal(ingredient));
     }
 
     triggerHaptic();
