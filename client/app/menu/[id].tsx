@@ -42,10 +42,13 @@ import {
   Users,
   Timer,
   Leaf,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/src/services/api";
 import { DietaryIcons } from "@/components/menu/DietaryIcons";
+import { DaysRemainingBadge, GoalProgressRingCompact, getGoalStatus, getStatusColor } from "@/components/menu";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -76,6 +79,12 @@ interface Meal {
   dietary_tags?: string[];
 }
 
+// Helper function to calculate meal cost from ingredients
+const calculateMealCost = (meal: Meal): number => {
+  if (!meal.ingredients || meal.ingredients.length === 0) return 0;
+  return meal.ingredients.reduce((sum, ing) => sum + (ing.estimated_cost || 0), 0);
+};
+
 interface MenuDetails {
   menu_id: string;
   title: string;
@@ -93,6 +102,15 @@ interface MenuDetails {
   start_date?: string;
   end_date?: string;
   meals: Meal[];
+  daily_calorie_target?: number;
+}
+
+interface DayGoalInfo {
+  day: number;
+  caloriesActual: number;
+  caloriesTarget: number;
+  status: "met" | "over" | "under" | "pending";
+  variance: number;
 }
 
 // ==================== SKELETON LOADER ====================
@@ -164,6 +182,8 @@ const DaySelector = React.memo(
     meals,
     colors,
     t,
+    dayGoals,
+    dailyTarget,
   }: {
     days: number[];
     selectedDay: number;
@@ -171,6 +191,8 @@ const DaySelector = React.memo(
     meals: Meal[];
     colors: any;
     t: any;
+    dayGoals?: DayGoalInfo[];
+    dailyTarget?: number;
   }) => {
     const scrollViewRef = useRef<ScrollView>(null);
 
@@ -184,6 +206,25 @@ const DaySelector = React.memo(
       }
     }, [selectedDay, days]);
 
+    const getDayGoalStatus = (day: number) => {
+      if (!dayGoals) return null;
+      return dayGoals.find((g) => g.day === day);
+    };
+
+    const getGoalIndicatorColor = (goalInfo: DayGoalInfo | null | undefined) => {
+      if (!goalInfo || goalInfo.status === "pending") return null;
+      switch (goalInfo.status) {
+        case "met":
+          return colors.emerald500;
+        case "over":
+          return colors.error || "#ef4444";
+        case "under":
+          return colors.warning || "#f59e0b";
+        default:
+          return null;
+      }
+    };
+
     return (
       <View style={[styles.daySelectorWrapper, { backgroundColor: colors.surface }]}>
         <ScrollView
@@ -196,6 +237,9 @@ const DaySelector = React.memo(
             const isSelected = selectedDay === day;
             const dayMeals = meals.filter((m) => m.day_number === day);
             const totalCalories = dayMeals.reduce((sum, m) => sum + m.calories, 0);
+            const dayCost = dayMeals.reduce((sum, m) => sum + calculateMealCost(m), 0);
+            const goalInfo = getDayGoalStatus(day);
+            const indicatorColor = getGoalIndicatorColor(goalInfo);
 
             return (
               <Pressable
@@ -209,6 +253,19 @@ const DaySelector = React.memo(
                   },
                 ]}
               >
+                {/* Goal status indicator */}
+                {indicatorColor && !isSelected && (
+                  <View
+                    style={[
+                      styles.goalIndicator,
+                      { backgroundColor: indicatorColor },
+                    ]}
+                  >
+                    {goalInfo?.status === "met" && (
+                      <Check size={8} color="#ffffff" strokeWidth={3} />
+                    )}
+                  </View>
+                )}
                 <Text
                   style={[
                     styles.dayTabLabel,
@@ -233,10 +290,101 @@ const DaySelector = React.memo(
                 >
                   {Math.round(totalCalories)} {t("menu_details.kcal")}
                 </Text>
+                {dayCost > 0 && (
+                  <Text
+                    style={[
+                      styles.dayTabCost,
+                      { color: isSelected ? "rgba(255,255,255,0.8)" : colors.icon },
+                    ]}
+                  >
+                    ₪{dayCost.toFixed(0)}
+                  </Text>
+                )}
               </Pressable>
             );
           })}
         </ScrollView>
+      </View>
+    );
+  }
+);
+
+// ==================== DAY SUMMARY CARD ====================
+
+const DaySummaryCard = React.memo(
+  ({
+    dayNumber,
+    meals,
+    dailyTarget,
+    colors,
+    t,
+  }: {
+    dayNumber: number;
+    meals: Meal[];
+    dailyTarget: number;
+    colors: any;
+    t: any;
+  }) => {
+    const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
+    const variance = totalCalories - dailyTarget;
+    const status = getGoalStatus(totalCalories, dailyTarget);
+    const statusColor = getStatusColor(status, colors);
+
+    const getStatusIcon = () => {
+      switch (status) {
+        case "met":
+          return <Check size={16} color={statusColor} strokeWidth={3} />;
+        case "over":
+          return <TrendingUp size={16} color={statusColor} />;
+        case "under":
+          return <TrendingDown size={16} color={statusColor} />;
+      }
+    };
+
+    const getStatusLabel = () => {
+      switch (status) {
+        case "met":
+          return t("menu.goals_met", "Goal Met");
+        case "over":
+          return t("menu.goals_over", "Over Goal");
+        case "under":
+          return t("menu.goals_under", "Under Goal");
+      }
+    };
+
+    return (
+      <View style={[styles.daySummaryCard, { backgroundColor: colors.card }]}>
+        <View style={styles.daySummaryHeader}>
+          <Text style={[styles.daySummaryTitle, { color: colors.text }]}>
+            {t("menu.day_summary", "Day {{day}} Summary", { day: dayNumber })}
+          </Text>
+        </View>
+        <View style={styles.daySummaryContent}>
+          <View style={styles.daySummaryRow}>
+            <Text style={[styles.daySummaryLabel, { color: colors.icon }]}>
+              {t("menu.goal", "Goal")}:
+            </Text>
+            <Text style={[styles.daySummaryValue, { color: colors.text }]}>
+              {dailyTarget} {t("menu.kcal", "kcal")}
+            </Text>
+          </View>
+          <View style={styles.daySummaryRow}>
+            <Text style={[styles.daySummaryLabel, { color: colors.icon }]}>
+              {t("menu.actual", "Actual")}:
+            </Text>
+            <View style={styles.daySummaryActual}>
+              <Text style={[styles.daySummaryValue, { color: colors.text }]}>
+                {Math.round(totalCalories)} {t("menu.kcal", "kcal")}
+              </Text>
+              <View style={[styles.varianceBadge, { backgroundColor: statusColor + "20" }]}>
+                {getStatusIcon()}
+                <Text style={[styles.varianceText, { color: statusColor }]}>
+                  {variance > 0 ? "+" : ""}{variance}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
       </View>
     );
   }
@@ -338,6 +486,14 @@ const MealCard = React.memo(
                   {Math.round(meal.protein)}g {t("menu_details.protein")}
                 </Text>
               </View>
+              {calculateMealCost(meal) > 0 && (
+                <View style={styles.mealMetaItem}>
+                  <Wallet size={14} color="#6366f1" />
+                  <Text style={[styles.mealMetaText, { color: colors.icon }]}>
+                    ₪{calculateMealCost(meal).toFixed(0)}
+                  </Text>
+                </View>
+              )}
               {meal.dietary_tags && meal.dietary_tags.length > 0 && (
                 <DietaryIcons tags={meal.dietary_tags} size={14} />
               )}
@@ -413,25 +569,41 @@ const MealCard = React.memo(
                     {meal.ingredients.length}
                   </Text>
                 </View>
-              </View>
-              <View style={styles.ingredientsList}>
-                {meal.ingredients.map((ingredient) => (
-                  <View key={ingredient.ingredient_id} style={styles.ingredientItem}>
-                    <View style={[styles.ingredientDot, { backgroundColor: colors.emerald500 }]} />
-                    <Text style={[styles.ingredientText, { color: colors.text }]}>
-                      <Text style={styles.ingredientQuantity}>
-                        {ingredient.quantity} {ingredient.unit}
-                      </Text>{" "}
-                      {ingredient.name}
+                {calculateMealCost(meal) > 0 && (
+                  <View style={[styles.mealCostBadge, { backgroundColor: "#6366f1" + "20" }]}>
+                    <Wallet size={12} color="#6366f1" />
+                    <Text style={[styles.mealCostText, { color: "#6366f1" }]}>
+                      ₪{calculateMealCost(meal).toFixed(1)}
                     </Text>
-                    {ingredient.estimated_cost && ingredient.estimated_cost > 0 && (
-                      <Text style={[styles.ingredientCost, { color: colors.icon }]}>
-                        ₪{ingredient.estimated_cost.toFixed(1)}
-                      </Text>
-                    )}
                   </View>
-                ))}
+                )}
               </View>
+              {meal.ingredients.length === 0 ? (
+                <View style={[styles.emptyIngredientsContainer, { backgroundColor: colors.surface }]}>
+                  <Text style={[styles.emptyIngredientsText, { color: colors.icon }]}>
+                    {t("menu_details.ingredients")} {t("active_menu.remaining", { count: 0 })}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.ingredientsList}>
+                  {meal.ingredients.map((ingredient) => (
+                    <View key={ingredient.ingredient_id} style={styles.ingredientItem}>
+                      <View style={[styles.ingredientDot, { backgroundColor: colors.emerald500 }]} />
+                      <Text style={[styles.ingredientText, { color: colors.text }]}>
+                        <Text style={styles.ingredientQuantity}>
+                          {ingredient.quantity} {ingredient.unit}
+                        </Text>{" "}
+                        {ingredient.name}
+                      </Text>
+                      {ingredient.estimated_cost && ingredient.estimated_cost > 0 && (
+                        <Text style={[styles.ingredientCost, { color: colors.icon }]}>
+                          ₪{ingredient.estimated_cost.toFixed(1)}
+                        </Text>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
 
             {/* Cooking Method */}
@@ -661,12 +833,14 @@ export default function MenuDetailsScreen() {
                 {menu.days_count} {t("menu_details.days")}
               </Text>
             </View>
-            <View style={[styles.headerBadge, { backgroundColor: colors.surface }]}>
-              <Utensils size={12} color={colors.icon} />
-              <Text style={[styles.headerBadgeText, { color: colors.icon }]}>
-                {menu.meals.length} {t("menu_details.meals")}
-              </Text>
-            </View>
+            {menu.is_active && menu.start_date && menu.end_date && (
+              <DaysRemainingBadge
+                startDate={menu.start_date}
+                endDate={menu.end_date}
+                variant="compact"
+                showIcon={true}
+              />
+            )}
           </View>
         </View>
 
@@ -735,6 +909,7 @@ export default function MenuDetailsScreen() {
         meals={menu.meals}
         colors={colors}
         t={t}
+        dailyTarget={menu.daily_calorie_target || Math.round(menu.total_calories / menu.days_count)}
       />
 
       {/* Meals List */}
@@ -743,6 +918,15 @@ export default function MenuDetailsScreen() {
         contentContainerStyle={styles.mealsContainer}
         showsVerticalScrollIndicator={false}
       >
+        {/* Day Summary Card */}
+        <DaySummaryCard
+          dayNumber={selectedDay}
+          meals={mealsForDay}
+          dailyTarget={menu.daily_calorie_target || Math.round(menu.total_calories / menu.days_count)}
+          colors={colors}
+          t={t}
+        />
+
         {mealsForDay.map((meal) => (
           <MealCard
             key={meal.meal_id}
@@ -1036,6 +1220,68 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
   },
+  dayTabCost: {
+    fontSize: 10,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  goalIndicator: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  // Day Summary Card
+  daySummaryCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 14,
+  },
+  daySummaryHeader: {
+    marginBottom: 12,
+  },
+  daySummaryTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  daySummaryContent: {
+    gap: 8,
+  },
+  daySummaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  daySummaryLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  daySummaryValue: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  daySummaryActual: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  varianceBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  varianceText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
 
   // Meals
   mealsScrollView: {
@@ -1208,6 +1454,28 @@ const styles = StyleSheet.create({
   ingredientCost: {
     fontSize: 12,
     fontWeight: "600",
+  },
+  mealCostBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: "auto",
+  },
+  mealCostText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  emptyIngredientsContainer: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  emptyIngredientsText: {
+    fontSize: 13,
+    fontStyle: "italic",
   },
   cookingMethodBadge: {
     paddingHorizontal: 16,

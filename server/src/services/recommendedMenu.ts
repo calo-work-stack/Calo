@@ -1345,6 +1345,244 @@ Return the same JSON structure as before with meals that specifically address th
     }
   }
 
+  /**
+   * Get AI-generated meal alternatives for a given meal
+   */
+  static async getMealAlternatives(
+    originalMeal: any,
+    questionnaire: any,
+    count: number = 3,
+  ): Promise<any[]> {
+    try {
+      console.log("🔄 Generating meal alternatives for:", originalMeal.name);
+
+      // Try AI-based generation first
+      if (process.env.OPENAI_API_KEY) {
+        try {
+          const prompt = `Generate ${count} alternative meals to replace "${originalMeal.name}" (${originalMeal.meal_type}).
+
+Original Meal Nutrition:
+- Calories: ${originalMeal.calories}
+- Protein: ${originalMeal.protein}g
+- Carbs: ${originalMeal.carbs}g
+- Fat: ${originalMeal.fat}g
+
+User Preferences:
+- Dietary Style: ${questionnaire?.dietary_style || "Balanced"}
+- Allergies: ${questionnaire?.allergies?.join(", ") || "None"}
+- Dislikes: ${questionnaire?.disliked_foods?.join(", ") || "None"}
+- Likes: ${questionnaire?.liked_foods?.join(", ") || "None"}
+
+Requirements:
+1. Each alternative should have SIMILAR nutritional values (within 15% of original)
+2. One option should be higher in protein
+3. One option should be quicker to prepare
+4. One option should be a comfort food version
+5. Respect allergies and dietary restrictions STRICTLY
+
+Return JSON array with ${count} meals:
+[
+  {
+    "meal_id": "alt_1",
+    "name": "Meal name",
+    "calories": number,
+    "protein": number,
+    "carbs": number,
+    "fat": number,
+    "prep_time_minutes": number,
+    "cooking_method": "method",
+    "match_reason": "Similar nutrition" | "Higher protein" | "Quick preparation" | "Comfort option",
+    "ingredients": [{"name": "ingredient", "quantity": number, "unit": "g/ml/piece"}]
+  }
+]`;
+
+          const aiResponse = await OpenAIService.generateText(prompt, 1500);
+          const parsed = this.parseAIAlternativesResponse(aiResponse);
+          if (parsed && parsed.length > 0) {
+            return parsed.map((alt: any, index: number) => ({
+              ...alt,
+              meal_id: `alt_${Date.now()}_${index}`,
+            }));
+          }
+        } catch (aiError) {
+          console.warn("⚠️ AI alternatives generation failed, using fallback");
+        }
+      }
+
+      // Fallback: Generate alternatives based on meal type
+      return this.generateFallbackAlternatives(originalMeal, count);
+    } catch (error) {
+      console.error("💥 Error generating meal alternatives:", error);
+      return this.generateFallbackAlternatives(originalMeal, count);
+    }
+  }
+
+  private static parseAIAlternativesResponse(response: string): any[] | null {
+    try {
+      let cleaned = response.trim();
+      if (cleaned.includes("```json")) {
+        cleaned = cleaned.replace(/```json\s*/g, "").replace(/```\s*/g, "");
+      }
+
+      const jsonStart = cleaned.indexOf("[");
+      const jsonEnd = cleaned.lastIndexOf("]");
+
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+      }
+
+      return JSON.parse(cleaned);
+    } catch (error) {
+      console.error("Failed to parse AI alternatives response:", error);
+      return null;
+    }
+  }
+
+  private static generateFallbackAlternatives(
+    originalMeal: any,
+    count: number,
+  ): any[] {
+    const mealType = originalMeal.meal_type?.toUpperCase() || "LUNCH";
+
+    const alternativeTemplates: Record<string, any[]> = {
+      BREAKFAST: [
+        {
+          name: "Overnight Oats with Berries",
+          calories: Math.round(originalMeal.calories * 0.95),
+          protein: Math.round(originalMeal.protein * 0.9),
+          carbs: Math.round(originalMeal.carbs * 1.1),
+          fat: Math.round(originalMeal.fat * 0.85),
+          prep_time_minutes: 5,
+          cooking_method: "No-cook",
+          match_reason: "Similar nutrition",
+        },
+        {
+          name: "High-Protein Omelet",
+          calories: Math.round(originalMeal.calories * 0.85),
+          protein: Math.round(originalMeal.protein * 1.3),
+          carbs: Math.round(originalMeal.carbs * 0.5),
+          fat: Math.round(originalMeal.fat * 1.1),
+          prep_time_minutes: 12,
+          cooking_method: "Pan-frying",
+          match_reason: "Higher protein",
+        },
+        {
+          name: "Protein Smoothie Bowl",
+          calories: Math.round(originalMeal.calories * 1.05),
+          protein: Math.round(originalMeal.protein * 1.1),
+          carbs: Math.round(originalMeal.carbs * 1.2),
+          fat: Math.round(originalMeal.fat * 0.7),
+          prep_time_minutes: 8,
+          cooking_method: "Blending",
+          match_reason: "Quick preparation",
+        },
+      ],
+      LUNCH: [
+        {
+          name: "Mediterranean Grain Bowl",
+          calories: Math.round(originalMeal.calories * 0.95),
+          protein: Math.round(originalMeal.protein * 0.95),
+          carbs: Math.round(originalMeal.carbs * 1.05),
+          fat: Math.round(originalMeal.fat * 0.9),
+          prep_time_minutes: 20,
+          cooking_method: "Assembly",
+          match_reason: "Similar nutrition",
+        },
+        {
+          name: "Grilled Chicken Protein Bowl",
+          calories: Math.round(originalMeal.calories * 1.0),
+          protein: Math.round(originalMeal.protein * 1.25),
+          carbs: Math.round(originalMeal.carbs * 0.85),
+          fat: Math.round(originalMeal.fat * 0.95),
+          prep_time_minutes: 25,
+          cooking_method: "Grilling",
+          match_reason: "Higher protein",
+        },
+        {
+          name: "Quick Wrap & Soup Combo",
+          calories: Math.round(originalMeal.calories * 0.9),
+          protein: Math.round(originalMeal.protein * 0.9),
+          carbs: Math.round(originalMeal.carbs * 0.95),
+          fat: Math.round(originalMeal.fat * 0.85),
+          prep_time_minutes: 10,
+          cooking_method: "Quick assembly",
+          match_reason: "Quick preparation",
+        },
+      ],
+      DINNER: [
+        {
+          name: "Baked Fish with Vegetables",
+          calories: Math.round(originalMeal.calories * 0.9),
+          protein: Math.round(originalMeal.protein * 1.1),
+          carbs: Math.round(originalMeal.carbs * 0.7),
+          fat: Math.round(originalMeal.fat * 0.85),
+          prep_time_minutes: 35,
+          cooking_method: "Baking",
+          match_reason: "Similar nutrition",
+        },
+        {
+          name: "Lean Beef Stir-Fry",
+          calories: Math.round(originalMeal.calories * 0.95),
+          protein: Math.round(originalMeal.protein * 1.2),
+          carbs: Math.round(originalMeal.carbs * 0.9),
+          fat: Math.round(originalMeal.fat * 0.95),
+          prep_time_minutes: 25,
+          cooking_method: "Stir-frying",
+          match_reason: "Higher protein",
+        },
+        {
+          name: "One-Pan Sheet Dinner",
+          calories: Math.round(originalMeal.calories * 1.0),
+          protein: Math.round(originalMeal.protein * 0.95),
+          carbs: Math.round(originalMeal.carbs * 1.05),
+          fat: Math.round(originalMeal.fat * 1.05),
+          prep_time_minutes: 15,
+          cooking_method: "Sheet pan roasting",
+          match_reason: "Quick preparation",
+        },
+      ],
+      SNACK: [
+        {
+          name: "Greek Yogurt with Nuts",
+          calories: Math.round(originalMeal.calories * 0.95),
+          protein: Math.round(originalMeal.protein * 1.2),
+          carbs: Math.round(originalMeal.carbs * 0.8),
+          fat: Math.round(originalMeal.fat * 1.1),
+          prep_time_minutes: 2,
+          cooking_method: "No-cook",
+          match_reason: "Higher protein",
+        },
+        {
+          name: "Fruit & Cottage Cheese",
+          calories: Math.round(originalMeal.calories * 0.9),
+          protein: Math.round(originalMeal.protein * 1.1),
+          carbs: Math.round(originalMeal.carbs * 1.1),
+          fat: Math.round(originalMeal.fat * 0.7),
+          prep_time_minutes: 3,
+          cooking_method: "No-cook",
+          match_reason: "Similar nutrition",
+        },
+        {
+          name: "Protein Energy Bites",
+          calories: Math.round(originalMeal.calories * 1.05),
+          protein: Math.round(originalMeal.protein * 1.0),
+          carbs: Math.round(originalMeal.carbs * 1.1),
+          fat: Math.round(originalMeal.fat * 0.9),
+          prep_time_minutes: 0,
+          cooking_method: "Grab & go",
+          match_reason: "Quick preparation",
+        },
+      ],
+    };
+
+    const templates = alternativeTemplates[mealType] || alternativeTemplates.LUNCH;
+    return templates.slice(0, count).map((alt, index) => ({
+      ...alt,
+      meal_id: `alt_${Date.now()}_${index}`,
+      ingredients: [],
+    }));
+  }
+
   static async replaceMeal(
     userId: string,
     menuId: string,

@@ -55,6 +55,8 @@ import {
   LayoutGrid,
   List,
   SortAsc,
+  Crown,
+  Percent,
 } from "lucide-react-native";
 import { api } from "@/src/services/api";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -122,7 +124,8 @@ const FilterSortModal = React.memo(
       }
     }, [visible, slideAnim]);
 
-    if (!visible) return null;
+    // Return empty fragment instead of null to avoid hooks issues
+    if (!visible) return <></>;
 
     return (
       <Modal
@@ -295,6 +298,7 @@ const MenuCard = React.memo(
     onView,
     onDelete,
     index,
+    userSubscription,
   }: any) => {
     const scaleAnim = useRef(new Animated.Value(0.95)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -324,6 +328,11 @@ const MenuCard = React.memo(
     const avgProteinPerDay = Math.round(
       (menu.total_protein || 0) / (menu.days_count || 1),
     );
+
+    // Check if menu is premium/gold exclusive
+    const isPremiumMenu = menu.tier === "GOLD" || menu.tier === "PREMIUM";
+    const isNewMenu = menu.created_at &&
+      (new Date().getTime() - new Date(menu.created_at).getTime()) < 24 * 60 * 60 * 1000;
 
     const getDifficultyConfig = (level: number) => {
       if (level <= 2)
@@ -366,16 +375,33 @@ const MenuCard = React.memo(
           style={styles.cardGradient}
         >
           <View style={styles.cardTopRow}>
-            <View
-              style={[
-                styles.menuIconBg,
-                { backgroundColor: colors.emerald500 },
-              ]}
-            >
-              <ChefHat size={24} color="#ffffff" />
+            <View style={styles.cardTopLeft}>
+              <View
+                style={[
+                  styles.menuIconBg,
+                  { backgroundColor: colors.emerald500 },
+                ]}
+              >
+                <ChefHat size={24} color="#ffffff" />
+              </View>
+              {/* Fresh/New indicator */}
+              {isNewMenu && (
+                <View style={[styles.freshBadge, { backgroundColor: "#8b5cf6" }]}>
+                  <Sparkles size={10} color="#ffffff" />
+                  <Text style={styles.freshBadgeText}>
+                    {t("menu.fresh", "Fresh")}
+                  </Text>
+                </View>
+              )}
             </View>
 
             <View style={styles.cardBadges}>
+              {/* Tier Badge */}
+              {isPremiumMenu && (
+                <View style={[styles.tierBadge, { backgroundColor: "#f59e0b" }]}>
+                  <Crown size={12} color="#ffffff" />
+                </View>
+              )}
               <View
                 style={[
                   styles.daysBadge,
@@ -448,7 +474,7 @@ const MenuCard = React.memo(
                   {avgProteinPerDay}g
                 </Text>
                 <Text style={[styles.statLabel, { color: colors.icon }]}>
-                  {t("foodScannner.protein")}
+                  {t("foodScanner.protein", "Protein")}
                 </Text>
               </View>
             </View>
@@ -862,6 +888,9 @@ export default function RecommendedMenusScreen() {
     ]).start();
   }, [loadAllData, fadeAnim, headerAnim]);
 
+  // Track if we've already checked for redirect on initial load
+  const hasCheckedRedirect = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
       api
@@ -879,14 +908,22 @@ export default function RecommendedMenusScreen() {
             };
             setActivePlanData(planData);
             setHasActivePlan(true);
+
+            // Auto-redirect to activeMenu on first visit if there's an active plan
+            if (!hasCheckedRedirect.current) {
+              hasCheckedRedirect.current = true;
+              router.replace(`/menu/activeMenu?planId=${response.data.planId}`);
+            }
           } else {
             setActivePlanData(null);
             setHasActivePlan(false);
+            hasCheckedRedirect.current = true;
           }
         })
         .catch(() => {
           setActivePlanData(null);
           setHasActivePlan(false);
+          hasCheckedRedirect.current = true;
         });
     }, [t]),
   );
@@ -1131,9 +1168,17 @@ export default function RecommendedMenusScreen() {
         ]}
       >
         <View style={styles.headerTop}>
-          <Text style={[styles.pageTitle, { color: colors.text }]}>
-            {t("menus.recommended_menus")}
-          </Text>
+          <View style={styles.headerTitleSection}>
+            <Text style={[styles.pageTitle, { color: colors.text }]}>
+              {t("menus.recommended_menus")}
+            </Text>
+            <View style={styles.headerSubtitleRow}>
+              <RefreshCw size={12} color={colors.icon} />
+              <Text style={[styles.headerSubtitle, { color: colors.icon }]}>
+                {t("menu.updated_daily", "Updated daily at 6:00 AM")}
+              </Text>
+            </View>
+          </View>
           <TouchableOpacity
             style={[styles.createBtn, { backgroundColor: colors.emerald500 }]}
             onPress={() => setShowEnhancedCreation(true)}
@@ -1362,13 +1407,26 @@ const styles = StyleSheet.create({
   headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 16,
+  },
+  headerTitleSection: {
+    flex: 1,
   },
   pageTitle: {
     fontSize: isSmallDevice ? 28 : 32,
     fontWeight: "900",
     letterSpacing: -1,
+  },
+  headerSubtitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 4,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: "500",
   },
   createBtn: {
     width: 44,
@@ -1539,6 +1597,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
   },
+  cardTopLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   menuIconBg: {
     width: 48,
     height: 48,
@@ -1546,9 +1609,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  freshBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    gap: 4,
+  },
+  freshBadgeText: {
+    color: "#ffffff",
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  tierBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   cardBadges: {
     flexDirection: "row",
     gap: 8,
+    alignItems: "center",
   },
   daysBadge: {
     flexDirection: "row",
@@ -1588,7 +1673,7 @@ const styles = StyleSheet.create({
   menuCategory: {
     fontSize: 14,
     fontWeight: "500",
-    marginBottom: 16,
+    marginBottom: 14,
   },
   statsRow: {
     flexDirection: "row",

@@ -26,7 +26,7 @@ import {
   CalculatedNutrition,
 } from "@/src/services/ingredientAPI";
 
-const { width: screenWidth } = Dimensions.get("window");
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 interface SmartIngredientModalProps {
   visible: boolean;
@@ -56,7 +56,7 @@ export function SmartIngredientModal({
   const [parsedIngredient, setParsedIngredient] =
     useState<ParsedIngredient | null>(null);
   const [searchResults, setSearchResults] = useState<IngredientSearchResult[]>(
-    []
+    [],
   );
   const [calculatedNutrition, setCalculatedNutrition] =
     useState<CalculatedNutrition | null>(null);
@@ -150,7 +150,7 @@ export function SmartIngredientModal({
         }
       }, 300);
     },
-    [language]
+    [language],
   );
 
   // Parse full input with AI
@@ -171,7 +171,7 @@ export function SmartIngredientModal({
           (u) =>
             u.key === parsed.unit ||
             u.name_en.toLowerCase() === parsed.unit.toLowerCase() ||
-            u.name_he === parsed.unit
+            u.name_he === parsed.unit,
         );
         if (matchedUnit) {
           setSelectedUnit(matchedUnit);
@@ -179,7 +179,7 @@ export function SmartIngredientModal({
       }
       if (parsed.preparation_method) {
         const matchedPrep = preparations.find(
-          (p) => p.key === parsed.preparation_method
+          (p) => p.key === parsed.preparation_method,
         );
         if (matchedPrep) {
           setSelectedPreparation(matchedPrep);
@@ -220,10 +220,10 @@ export function SmartIngredientModal({
         result.key,
         parseFloat(quantity) || 100,
         selectedUnit?.key || "g",
-        selectedPreparation?.key || null
+        selectedPreparation?.key || null,
       );
     },
-    [language, quantity, selectedUnit, selectedPreparation]
+    [language, quantity, selectedUnit, selectedPreparation],
   );
 
   // Recalculate nutrition when parameters change
@@ -233,7 +233,7 @@ export function SmartIngredientModal({
       qty: number,
       unit: string,
       prep: string | null,
-      estimatedNutrition?: any
+      estimatedNutrition?: any,
     ) => {
       if (!ingredientKey && !estimatedNutrition) return;
 
@@ -253,7 +253,7 @@ export function SmartIngredientModal({
         setIsCalculating(false);
       }
     },
-    []
+    [],
   );
 
   // Recalculate when quantity, unit, or preparation changes
@@ -262,14 +262,17 @@ export function SmartIngredientModal({
       clearTimeout(calculateTimeoutRef.current);
     }
 
-    if (parsedIngredient?.ingredient_key || parsedIngredient?.estimated_nutrition) {
+    if (
+      parsedIngredient?.ingredient_key ||
+      parsedIngredient?.estimated_nutrition
+    ) {
       calculateTimeoutRef.current = setTimeout(() => {
         recalculateNutrition(
           parsedIngredient.ingredient_key,
           parseFloat(quantity) || 100,
           selectedUnit?.key || "g",
           selectedPreparation?.key || null,
-          parsedIngredient.estimated_nutrition
+          parsedIngredient.estimated_nutrition,
         );
       }, 300);
     }
@@ -328,32 +331,46 @@ export function SmartIngredientModal({
         activeOpacity={1}
         onPress={() => setShowUnitPicker(false)}
       >
-        <View style={styles.pickerContainer}>
-          <Text style={styles.pickerTitle}>{t("smartIngredient.selectUnit")}</Text>
-          {units.map((unit) => (
-            <TouchableOpacity
-              key={unit.key}
-              style={[
-                styles.pickerOption,
-                selectedUnit?.key === unit.key && styles.pickerOptionSelected,
-              ]}
-              onPress={() => {
-                setSelectedUnit(unit);
-                setShowUnitPicker(false);
-              }}
-            >
-              <Text
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.pickerContainer}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <View style={styles.pickerHeader}>
+            <Text style={styles.pickerTitle}>
+              {t("smartIngredient.selectUnit")}
+            </Text>
+          </View>
+          <ScrollView
+            style={styles.pickerScrollView}
+            contentContainerStyle={styles.pickerScrollContent}
+            showsVerticalScrollIndicator={true}
+          >
+            {units.map((unit) => (
+              <TouchableOpacity
+                key={unit.key}
                 style={[
-                  styles.pickerOptionText,
-                  selectedUnit?.key === unit.key &&
-                    styles.pickerOptionTextSelected,
+                  styles.pickerOption,
+                  selectedUnit?.key === unit.key && styles.pickerOptionSelected,
                 ]}
+                onPress={() => {
+                  setSelectedUnit(unit);
+                  setShowUnitPicker(false);
+                }}
               >
-                {language === "he" ? unit.name_he : unit.name_en}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+                <Text
+                  style={[
+                    styles.pickerOptionText,
+                    selectedUnit?.key === unit.key &&
+                      styles.pickerOptionTextSelected,
+                  ]}
+                >
+                  {language === "he" ? unit.name_he : unit.name_en}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
   );
@@ -371,54 +388,66 @@ export function SmartIngredientModal({
         activeOpacity={1}
         onPress={() => setShowPrepPicker(false)}
       >
-        <View style={styles.pickerContainer}>
-          <Text style={styles.pickerTitle}>
-            {t("smartIngredient.selectPreparation")}
-          </Text>
-          <TouchableOpacity
-            style={[
-              styles.pickerOption,
-              !selectedPreparation && styles.pickerOptionSelected,
-            ]}
-            onPress={() => {
-              setSelectedPreparation(null);
-              setShowPrepPicker(false);
-            }}
-          >
-            <Text
-              style={[
-                styles.pickerOptionText,
-                !selectedPreparation && styles.pickerOptionTextSelected,
-              ]}
-            >
-              {t("smartIngredient.none")}
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.pickerContainer}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <View style={styles.pickerHeader}>
+            <Text style={styles.pickerTitle}>
+              {t("smartIngredient.selectPreparation")}
             </Text>
-          </TouchableOpacity>
-          {preparations.map((prep) => (
+          </View>
+          <ScrollView
+            style={styles.pickerScrollView}
+            contentContainerStyle={styles.pickerScrollContent}
+            showsVerticalScrollIndicator={true}
+          >
             <TouchableOpacity
-              key={prep.key}
               style={[
                 styles.pickerOption,
-                selectedPreparation?.key === prep.key &&
-                  styles.pickerOptionSelected,
+                !selectedPreparation && styles.pickerOptionSelected,
               ]}
               onPress={() => {
-                setSelectedPreparation(prep);
+                setSelectedPreparation(null);
                 setShowPrepPicker(false);
               }}
             >
               <Text
                 style={[
                   styles.pickerOptionText,
-                  selectedPreparation?.key === prep.key &&
-                    styles.pickerOptionTextSelected,
+                  !selectedPreparation && styles.pickerOptionTextSelected,
                 ]}
               >
-                {language === "he" ? prep.name_he : prep.name_en}
+                {t("smartIngredient.none")}
               </Text>
             </TouchableOpacity>
-          ))}
-        </View>
+            {preparations.map((prep) => (
+              <TouchableOpacity
+                key={prep.key}
+                style={[
+                  styles.pickerOption,
+                  selectedPreparation?.key === prep.key &&
+                    styles.pickerOptionSelected,
+                ]}
+                onPress={() => {
+                  setSelectedPreparation(prep);
+                  setShowPrepPicker(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.pickerOptionText,
+                    selectedPreparation?.key === prep.key &&
+                      styles.pickerOptionTextSelected,
+                  ]}
+                >
+                  {language === "he" ? prep.name_he : prep.name_en}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
   );
@@ -440,25 +469,33 @@ export function SmartIngredientModal({
               <Text style={styles.nutritionValue}>
                 {Math.round(calculatedNutrition.calories)}
               </Text>
-              <Text style={styles.nutritionLabel}>{t("home.nutrition.calories")}</Text>
+              <Text style={styles.nutritionLabel}>
+                {t("home.nutrition.calories")}
+              </Text>
             </View>
             <View style={styles.nutritionItem}>
               <Text style={styles.nutritionValue}>
                 {calculatedNutrition.protein_g.toFixed(1)}g
               </Text>
-              <Text style={styles.nutritionLabel}>{t("home.nutrition.protein")}</Text>
+              <Text style={styles.nutritionLabel}>
+                {t("home.nutrition.protein")}
+              </Text>
             </View>
             <View style={styles.nutritionItem}>
               <Text style={styles.nutritionValue}>
                 {calculatedNutrition.carbs_g.toFixed(1)}g
               </Text>
-              <Text style={styles.nutritionLabel}>{t("home.nutrition.carbs")}</Text>
+              <Text style={styles.nutritionLabel}>
+                {t("home.nutrition.carbs")}
+              </Text>
             </View>
             <View style={styles.nutritionItem}>
               <Text style={styles.nutritionValue}>
                 {calculatedNutrition.fats_g.toFixed(1)}g
               </Text>
-              <Text style={styles.nutritionLabel}>{t("home.nutrition.fat")}</Text>
+              <Text style={styles.nutritionLabel}>
+                {t("home.nutrition.fat")}
+              </Text>
             </View>
           </View>
         ) : null}
@@ -654,7 +691,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
     width: screenWidth - 32,
-    maxHeight: "85%",
+    maxHeight: screenHeight * 0.85,
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.3,
@@ -678,7 +715,7 @@ const styles = StyleSheet.create({
   modalBody: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    maxHeight: 400,
+    maxHeight: screenHeight * 0.5,
   },
   inputGroup: {
     marginBottom: 16,
@@ -728,6 +765,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
     zIndex: 100,
+    maxHeight: 200,
   },
   suggestionItem: {
     paddingHorizontal: 16,
@@ -859,44 +897,67 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFFFFF",
   },
-  // Picker styles
+  // Picker styles - FIXED FOR SCROLLING
   pickerOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
+    padding: 32,
   },
   pickerContainer: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 20,
     width: screenWidth - 64,
-    maxHeight: "60%",
+    maxHeight: screenHeight * 0.7,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  pickerHeader: {
+    padding: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
   },
   pickerTitle: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 18,
+    fontWeight: "700",
     color: "#1F2937",
-    marginBottom: 16,
     textAlign: "center",
   },
+  pickerScrollView: {
+    flexGrow: 0,
+  },
+  pickerScrollContent: {
+    padding: 20,
+    paddingBottom: 24,
+  },
   pickerOption: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    marginBottom: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 10,
     backgroundColor: "#F9FAFB",
+    borderWidth: 2,
+    borderColor: "transparent",
   },
   pickerOptionSelected: {
     backgroundColor: "#DCFCE7",
+    borderColor: "#10B981",
   },
   pickerOptionText: {
     fontSize: 16,
     color: "#374151",
     textAlign: "center",
+    fontWeight: "500",
   },
   pickerOptionTextSelected: {
     color: "#166534",
-    fontWeight: "600",
+    fontWeight: "700",
   },
 });

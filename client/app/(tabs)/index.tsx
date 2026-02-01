@@ -46,6 +46,7 @@ import CircularCaloriesProgress from "@/components/index/CircularCaloriesProgres
 import ShoppingList from "@/components/ShoppingList";
 import { initializeStorageCleanup } from "@/src/utils/databaseCleanup";
 import WaterIntakeCard from "@/components/index/WaterIntake";
+import ActiveMenuCard from "@/components/index/ActiveMenuCard";
 import { DailyGoals } from "@/src/types";
 
 const { width } = Dimensions.get("window");
@@ -675,6 +676,9 @@ const HomeScreen = React.memo(() => {
               </View>
             </LinearGradient>
           </View>
+
+          {/* Active Menu Card */}
+          <ActiveMenuCard />
 
           {/* Progress Section with Enhanced Design */}
           <View style={styles.progressSection}>

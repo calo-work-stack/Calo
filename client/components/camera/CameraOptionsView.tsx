@@ -41,29 +41,12 @@ export function CameraOptionsView({
         <View style={[styles.mealTypeBadge, { backgroundColor: colors.surface }]}>
           <Text style={styles.mealTypeIcon}>{selectedMealType.icon}</Text>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {selectedMealType.label}
+            {selectedMealType.labelKey}
           </Text>
         </View>
 
         <View style={styles.backButton} />
       </View>
-
-      {/* AI Features Banner */}
-      <View style={[styles.aiBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <View style={[styles.aiIconBox, { backgroundColor: colors.primary + "15" }]}>
-          <Sparkles size={20} color={colors.primary} strokeWidth={2.5} />
-        </View>
-        <View style={styles.aiBannerText}>
-          <Text style={[styles.aiBannerTitle, { color: colors.text }]}>
-            {t("camera.aiAnalysis", "AI-Powered Analysis")}
-          </Text>
-          <Text style={[styles.aiBannerSubtitle, { color: colors.textSecondary }]}>
-            {t("camera.getNutritionInfo")}
-          </Text>
-        </View>
-      </View>
-
-      {/* Content Area */}
       <View style={styles.content}>
         <View style={styles.titleSection}>
           <Text style={[styles.mainTitle, { color: colors.text }]}>
@@ -82,7 +65,7 @@ export function CameraOptionsView({
             <Camera size={28} color={colors.onPrimary} strokeWidth={2} />
           </View>
           <Text style={[styles.primaryText, { color: colors.onPrimary }]}>
-            {t("camera.takePhoto")}
+            {t("camera.take_photo")}
           </Text>
         </TouchableOpacity>
 
@@ -105,16 +88,9 @@ export function CameraOptionsView({
             <ImageIcon size={24} color={colors.primary} strokeWidth={2} />
           </View>
           <Text style={[styles.secondaryText, { color: colors.primary }]}>
-            {t("camera.chooseFromGallery")}
+            {t("camera.choose_from_gallery")}
           </Text>
         </TouchableOpacity>
-      </View>
-
-      {/* Footer hint */}
-      <View style={styles.footer}>
-        <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-          {t("camera.getNutritionInfo")}
-        </Text>
       </View>
     </View>
   );
@@ -128,8 +104,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 60,
-    paddingBottom: 16,
+    paddingTop: 20,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
   },
@@ -154,34 +129,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 15,
     fontWeight: "600",
-  },
-  aiBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 20,
-    marginTop: 20,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 14,
-  },
-  aiIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  aiBannerText: {
-    flex: 1,
-  },
-  aiBannerTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 2,
-  },
-  aiBannerSubtitle: {
-    fontSize: 13,
   },
   content: {
     flex: 1,

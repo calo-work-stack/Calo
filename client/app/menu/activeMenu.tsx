@@ -36,10 +36,24 @@ import {
   Trophy,
   Sparkles,
   TrendingUp,
+  Check,
+  RefreshCw,
+  SkipForward,
 } from "lucide-react-native";
 import { api } from "@/src/services/api";
 import { DietaryIcons } from "@/components/menu/DietaryIcons";
 import { LinearGradient } from "expo-linear-gradient";
+import {
+  GoalProgressRing,
+  DaysRemainingBadge,
+  DayProgressRow,
+  StreakBadge,
+  calculateStreak,
+  MealSwapModal,
+  DailyTipsCard,
+  WeeklySummaryCard,
+} from "@/components/menu";
+import type { DayProgress } from "@/components/menu";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -63,12 +77,15 @@ interface Meal {
   instructions: string;
   image_url?: string;
   dietary_tags?: string[];
+  is_logged?: boolean;
 }
 
 interface DayMeals {
   day: number;
   date: string;
   meals: Meal[];
+  caloriesTarget?: number;
+  caloriesActual?: number;
 }
 
 interface MealPlan {
@@ -79,6 +96,7 @@ interface MealPlan {
   end_date: string;
   days: DayMeals[];
   status: string;
+  daily_calorie_target?: number;
 }
 
 // ==================== SKELETON LOADER ====================
@@ -110,73 +128,157 @@ const SkeletonPulse = React.memo(({ style }: { style?: any }) => {
   return <Animated.View style={[style, { opacity: pulseAnim }]} />;
 });
 
-// ==================== PROGRESS HEADER ====================
+// ==================== PROGRESS SUMMARY CARD ====================
 
-const ProgressHeader = React.memo(
+const ProgressSummaryCard = React.memo(
   ({
     plan,
     selectedDay,
     totalDays,
     completionRate,
+    streak,
+    weeklyVariance,
+    dayProgressData,
     colors,
     t,
+    onDayPress,
   }: {
     plan: MealPlan;
     selectedDay: number;
     totalDays: number;
     completionRate: number;
+    streak: number;
+    weeklyVariance: number;
+    dayProgressData: DayProgress[];
+    colors: any;
+    t: any;
+    onDayPress: (day: number) => void;
+  }) => {
+    const dailyTarget = plan.daily_calorie_target || 2000;
+    const todayData = dayProgressData[selectedDay];
+    const caloriesActual = todayData?.caloriesActual || 0;
+
+    return (
+      <View style={[styles.summaryCard, { backgroundColor: colors.card }]}>
+        {/* Header Row */}
+        <View style={styles.summaryHeader}>
+          <View style={styles.summaryHeaderLeft}>
+            <Text style={[styles.summaryTitle, { color: colors.text }]}>
+              {plan.name}
+            </Text>
+            <Text style={[styles.summarySubtitle, { color: colors.icon }]}>
+              {t("menu.day_of", "Day {{current}} of {{total}}", {
+                current: selectedDay + 1,
+                total: totalDays,
+              })}
+            </Text>
+          </View>
+          <DaysRemainingBadge
+            startDate={plan.start_date}
+            endDate={plan.end_date}
+            variant="compact"
+          />
+        </View>
+
+        {/* Compact Stats Row */}
+        <View style={styles.compactStatsRow}>
+          <View style={styles.compactStatItem}>
+            <GoalProgressRing
+              actual={caloriesActual}
+              target={dailyTarget}
+              size={56}
+              strokeWidth={5}
+              showVariance={false}
+            />
+            <View style={styles.compactStatText}>
+              <Text style={[styles.compactStatValue, { color: colors.text }]}>
+                {Math.round(caloriesActual)}
+              </Text>
+              <Text style={[styles.compactStatLabel, { color: colors.icon }]}>
+                / {dailyTarget} {t("menu.kcal", "kcal")}
+              </Text>
+            </View>
+          </View>
+
+          {streak > 0 && (
+            <View style={styles.compactStatItem}>
+              <StreakBadge streak={streak} showLabel={false} />
+              <Text style={[styles.compactStatLabel, { color: colors.icon }]}>
+                {t("menu.day_streak", "day streak")}
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.compactStatItem}>
+            <View style={[styles.varianceChip, {
+              backgroundColor: weeklyVariance <= 0 ? colors.emerald500 + "15" : (colors.error || "#ef4444") + "15"
+            }]}>
+              <Text style={[styles.varianceChipText, {
+                color: weeklyVariance <= 0 ? colors.emerald500 : colors.error || "#ef4444"
+              }]}>
+                {weeklyVariance > 0 ? "+" : ""}{weeklyVariance}
+              </Text>
+            </View>
+            <Text style={[styles.compactStatLabel, { color: colors.icon }]}>
+              {t("menu.weekly_variance", "weekly")}
+            </Text>
+          </View>
+        </View>
+
+        {/* Day Progress Row */}
+        <DayProgressRow
+          days={dayProgressData}
+          currentDay={selectedDay + 1}
+          onDayPress={(day) => onDayPress(day - 1)}
+          compact={true}
+        />
+      </View>
+    );
+  }
+);
+
+// ==================== TODAY'S MEALS SECTION ====================
+
+const TodaysMealsSection = React.memo(
+  ({
+    meals,
+    expandedMeals,
+    onToggleMeal,
+    checkedIngredients,
+    onToggleIngredient,
+    onSwapMeal,
+    colors,
+    t,
+  }: {
+    meals: Meal[];
+    expandedMeals: Set<string>;
+    onToggleMeal: (mealId: string) => void;
+    checkedIngredients: Set<string>;
+    onToggleIngredient: (ingredientId: string, mealId: string) => void;
+    onSwapMeal?: (meal: Meal) => void;
     colors: any;
     t: any;
   }) => {
-    const progressAnim = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-      Animated.timing(progressAnim, {
-        toValue: completionRate,
-        duration: 800,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: false,
-      }).start();
-    }, [completionRate, progressAnim]);
-
-    const progressWidth = progressAnim.interpolate({
-      inputRange: [0, 100],
-      outputRange: ["0%", "100%"],
-    });
-
     return (
-      <LinearGradient
-        colors={[colors.emerald500, colors.emerald600 || colors.emerald500]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.progressHeader}
-      >
-        <View style={styles.progressHeaderContent}>
-          <View style={styles.progressHeaderLeft}>
-            <View style={styles.progressBadge}>
-              <Sparkles size={14} color="#ffffff" />
-              <Text style={styles.progressBadgeText}>
-                {t("active_menu.day_of", { current: selectedDay + 1, total: totalDays })}
-              </Text>
-            </View>
-            <Text style={styles.progressTitle}>{plan.name}</Text>
-            <Text style={styles.progressSubtitle}>
-              {t("active_menu.keep_going")}
-            </Text>
-          </View>
+      <View style={styles.todaysMealsSection}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          {t("menu.today_meals", "Today's Meals")}
+        </Text>
 
-          <View style={styles.progressCircle}>
-            <Text style={styles.progressCircleValue}>{Math.round(completionRate)}%</Text>
-            <Text style={styles.progressCircleLabel}>{t("active_menu.done")}</Text>
-          </View>
-        </View>
-
-        <View style={styles.progressBarContainer}>
-          <View style={styles.progressBarBg}>
-            <Animated.View style={[styles.progressBarFill, { width: progressWidth }]} />
-          </View>
-        </View>
-      </LinearGradient>
+        {meals.map((meal) => (
+          <ActiveMealCard
+            key={meal.meal_id}
+            meal={meal}
+            isExpanded={expandedMeals.has(meal.meal_id)}
+            onToggle={() => onToggleMeal(meal.meal_id)}
+            checkedIngredients={checkedIngredients}
+            onToggleIngredient={onToggleIngredient}
+            onSwapMeal={onSwapMeal}
+            colors={colors}
+            t={t}
+          />
+        ))}
+      </View>
     );
   }
 );
@@ -279,6 +381,7 @@ const ActiveMealCard = React.memo(
     onToggle,
     checkedIngredients,
     onToggleIngredient,
+    onSwapMeal,
     colors,
     t,
   }: {
@@ -287,15 +390,16 @@ const ActiveMealCard = React.memo(
     onToggle: () => void;
     checkedIngredients: Set<string>;
     onToggleIngredient: (ingredientId: string, mealId: string) => void;
+    onSwapMeal?: (meal: Meal) => void;
     colors: any;
     t: any;
   }) => {
     const getMealTypeConfig = useCallback((type: string) => {
       const configs: Record<string, { emoji: string; color: string; label: string }> = {
-        breakfast: { emoji: "🌅", color: "#F59E0B", label: t("active_menu.meal_types.breakfast") },
-        lunch: { emoji: "☀️", color: "#10B981", label: t("active_menu.meal_types.lunch") },
-        dinner: { emoji: "🌙", color: "#6366F1", label: t("active_menu.meal_types.dinner") },
-        snack: { emoji: "🍎", color: "#EC4899", label: t("active_menu.meal_types.snack") },
+        breakfast: { emoji: "🍳", color: "#F59E0B", label: t("active_menu.meal_types.breakfast", "Breakfast") },
+        lunch: { emoji: "🥗", color: "#10B981", label: t("active_menu.meal_types.lunch", "Lunch") },
+        dinner: { emoji: "🍲", color: "#6366F1", label: t("active_menu.meal_types.dinner", "Dinner") },
+        snack: { emoji: "🍎", color: "#EC4899", label: t("active_menu.meal_types.snack", "Snack") },
       };
       return configs[type.toLowerCase()] || { emoji: "🍽️", color: "#6B7280", label: type };
     }, [t]);
@@ -306,6 +410,7 @@ const ActiveMealCard = React.memo(
       checkedIngredients.has(ing.ingredient_id)
     ).length;
     const mealProgress = ingredientCount > 0 ? (checkedCount / ingredientCount) * 100 : 0;
+    const isLogged = meal.is_logged || mealProgress === 100;
 
     return (
       <View
@@ -326,18 +431,38 @@ const ActiveMealCard = React.memo(
               </View>
             )}
 
-            {/* Mini progress indicator */}
-            {mealProgress > 0 && (
-              <View style={[styles.miniProgressBadge, { backgroundColor: colors.emerald500 }]}>
-                <Text style={styles.miniProgressText}>{Math.round(mealProgress)}%</Text>
+            {/* Status indicator */}
+            {isLogged ? (
+              <View style={[styles.statusBadge, { backgroundColor: colors.emerald500 }]}>
+                <Check size={10} color="#ffffff" strokeWidth={3} />
               </View>
-            )}
+            ) : mealProgress > 0 ? (
+              <View style={[styles.statusBadge, { backgroundColor: colors.warning || "#f59e0b" }]}>
+                <Text style={styles.statusBadgeText}>{Math.round(mealProgress)}%</Text>
+              </View>
+            ) : null}
           </View>
 
           {/* Meal Info */}
           <View style={styles.mealInfo}>
-            <View style={[styles.mealTypeBadge, { backgroundColor: config.color }]}>
-              <Text style={styles.mealTypeText}>{config.label}</Text>
+            <View style={styles.mealTypeRow}>
+              <View style={[styles.mealTypeBadge, { backgroundColor: config.color }]}>
+                <Text style={styles.mealTypeText}>{config.label}</Text>
+              </View>
+              <Text
+                style={[
+                  styles.mealStatusText,
+                  {
+                    color: isLogged
+                      ? colors.emerald500
+                      : colors.icon,
+                  },
+                ]}
+              >
+                {isLogged
+                  ? t("menu.logged", "Logged")
+                  : t("menu.pending", "Pending")}
+              </Text>
             </View>
             <Text style={[styles.mealName, { color: colors.text }]} numberOfLines={1}>
               {meal.name}
@@ -345,11 +470,12 @@ const ActiveMealCard = React.memo(
             <View style={styles.mealMeta}>
               <Flame size={14} color={colors.warning || "#f59e0b"} />
               <Text style={[styles.mealMetaText, { color: colors.icon }]}>
-                {meal.calories} {t("active_menu.cal")}
+                {meal.calories} {t("menu.kcal", "kcal")}
               </Text>
               <Text style={[styles.mealMetaDot, { color: colors.icon }]}>•</Text>
+              <Target size={14} color={colors.emerald500} />
               <Text style={[styles.mealMetaText, { color: colors.icon }]}>
-                {checkedCount}/{ingredientCount} {t("active_menu.checked")}
+                {meal.protein}g {t("menu.protein", "protein")}
               </Text>
               {meal.dietary_tags && meal.dietary_tags.length > 0 && (
                 <DietaryIcons tags={meal.dietary_tags} size={14} style={{ marginLeft: 6 }} />
@@ -357,13 +483,26 @@ const ActiveMealCard = React.memo(
             </View>
           </View>
 
-          {/* Expand Icon */}
-          <View style={[styles.expandIconBg, { backgroundColor: colors.surface }]}>
-            {isExpanded ? (
-              <ChevronUp size={20} color={colors.icon} />
-            ) : (
-              <ChevronDown size={20} color={colors.icon} />
+          {/* Action Buttons */}
+          <View style={styles.mealActions}>
+            {/* Swap Button */}
+            {onSwapMeal && !isLogged && (
+              <Pressable
+                onPress={() => onSwapMeal(meal)}
+                style={[styles.swapButton, { backgroundColor: colors.emerald500 + "15" }]}
+              >
+                <RefreshCw size={16} color={colors.emerald500} />
+              </Pressable>
             )}
+
+            {/* Expand Icon */}
+            <View style={[styles.expandIconBg, { backgroundColor: colors.surface }]}>
+              {isExpanded ? (
+                <ChevronUp size={20} color={colors.icon} />
+              ) : (
+                <ChevronDown size={20} color={colors.icon} />
+              )}
+            </View>
           </View>
         </Pressable>
 
@@ -377,7 +516,7 @@ const ActiveMealCard = React.memo(
                   {meal.protein}g
                 </Text>
                 <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
-                  {t("active_menu.protein")}
+                  {t("menu.protein", "Protein")}
                 </Text>
               </View>
               <View style={[styles.nutritionDivider, { backgroundColor: colors.border }]} />
@@ -386,7 +525,7 @@ const ActiveMealCard = React.memo(
                   {meal.carbs}g
                 </Text>
                 <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
-                  {t("active_menu.carbs")}
+                  {t("menu.carbs", "Carbs")}
                 </Text>
               </View>
               <View style={[styles.nutritionDivider, { backgroundColor: colors.border }]} />
@@ -395,7 +534,7 @@ const ActiveMealCard = React.memo(
                   {meal.fat}g
                 </Text>
                 <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
-                  {t("active_menu.fat")}
+                  {t("menu.fat", "Fat")}
                 </Text>
               </View>
             </View>
@@ -404,7 +543,7 @@ const ActiveMealCard = React.memo(
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <ChefHat size={18} color={colors.emerald500} />
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                <Text style={[styles.ingredientsSectionTitle, { color: colors.text }]}>
                   {t("active_menu.ingredients")}
                 </Text>
                 <View style={[styles.checkedBadge, { backgroundColor: colors.emerald500 + "20" }]}>
@@ -449,7 +588,7 @@ const ActiveMealCard = React.memo(
             {/* Instructions */}
             {meal.instructions && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                <Text style={[styles.ingredientsSectionTitle, { color: colors.text }]}>
                   {t("active_menu.instructions")}
                 </Text>
                 <View style={[styles.instructionsContainer, { backgroundColor: colors.surface }]}>
@@ -486,8 +625,28 @@ export default function ActiveMenu() {
   const [feedback, setFeedback] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
+  // Meal swap state
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [selectedMealForSwap, setSelectedMealForSwap] = useState<Meal | null>(null);
+
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Calculate current day index based on start_date
+  const getCurrentDayIndex = useCallback((startDate: string, totalDays: number): number => {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const diffTime = today.getTime() - start.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    // Clamp to valid range (0 to totalDays-1)
+    if (diffDays < 0) return 0;
+    if (diffDays >= totalDays) return totalDays - 1;
+    return diffDays;
+  }, []);
 
   useEffect(() => {
     loadMealPlan();
@@ -501,9 +660,12 @@ export default function ActiveMenu() {
 
   useEffect(() => {
     if (mealPlan) {
+      // Set current day based on actual date
+      const currentDayIdx = getCurrentDayIndex(mealPlan.start_date, mealPlan.days.length);
+      setSelectedDay(currentDayIdx);
       checkMenuCompletion();
     }
-  }, [mealPlan]);
+  }, [mealPlan, getCurrentDayIndex]);
 
   const loadMealPlan = async () => {
     try {
@@ -573,6 +735,18 @@ export default function ActiveMenu() {
       }
       return newSet;
     });
+  }, []);
+
+  const handleOpenSwapModal = useCallback((meal: Meal) => {
+    setSelectedMealForSwap(meal);
+    setShowSwapModal(true);
+  }, []);
+
+  const handleMealSwapped = useCallback((newMeal: any) => {
+    // Refresh the meal plan to get updated data
+    loadMealPlan();
+    setShowSwapModal(false);
+    setSelectedMealForSwap(null);
   }, []);
 
   const toggleIngredientCheck = useCallback(
@@ -654,6 +828,79 @@ export default function ActiveMenu() {
     return totalIngredients > 0 ? (checkedCount / totalIngredients) * 100 : 0;
   }, [mealPlan, checkedIngredients]);
 
+  // Calculate day progress data
+  const dayProgressData: DayProgress[] = useMemo(() => {
+    if (!mealPlan) return [];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dailyTarget = mealPlan.daily_calorie_target || 2000;
+
+    return mealPlan.days.map((day, index) => {
+      const dayDate = new Date(day.date);
+      dayDate.setHours(0, 0, 0, 0);
+
+      // Calculate actual calories for this day
+      let dayCheckedIngredients = 0;
+      let dayTotalIngredients = 0;
+      let caloriesActual = 0;
+
+      day.meals.forEach((meal) => {
+        dayTotalIngredients += meal.ingredients.length;
+        const mealChecked = meal.ingredients.filter((ing) =>
+          checkedIngredients.has(ing.ingredient_id)
+        ).length;
+        dayCheckedIngredients += mealChecked;
+
+        // If meal is mostly checked, count its calories
+        if (meal.ingredients.length > 0 && mealChecked / meal.ingredients.length >= 0.5) {
+          caloriesActual += meal.calories;
+        }
+      });
+
+      const dayProgress = dayTotalIngredients > 0
+        ? (dayCheckedIngredients / dayTotalIngredients) * 100
+        : 0;
+
+      let status: DayProgress["status"] = "pending";
+      if (dayDate < today) {
+        status = "completed";
+      } else if (dayDate.getTime() === today.getTime()) {
+        status = "in_progress";
+      }
+
+      // Goal is met if within 10% of target
+      const variance = Math.abs(caloriesActual - dailyTarget);
+      const goalMet = status === "completed" && variance <= dailyTarget * 0.1;
+
+      return {
+        day: index + 1,
+        date: day.date,
+        status,
+        caloriesActual,
+        caloriesTarget: dailyTarget,
+        goalMet,
+      };
+    });
+  }, [mealPlan, checkedIngredients]);
+
+  // Calculate streak
+  const streak = useMemo(() => calculateStreak(dayProgressData), [dayProgressData]);
+
+  // Calculate weekly variance
+  const weeklyVariance = useMemo(() => {
+    if (!dayProgressData.length) return 0;
+
+    const completedDays = dayProgressData.filter((d) => d.status === "completed");
+    if (!completedDays.length) return 0;
+
+    const totalVariance = completedDays.reduce((sum, day) => {
+      return sum + ((day.caloriesActual || 0) - (day.caloriesTarget || 2000));
+    }, 0);
+
+    return Math.round(totalVariance);
+  }, [dayProgressData]);
+
   const currentDay = useMemo(
     () => (mealPlan ? mealPlan.days[selectedDay] : null),
     [mealPlan, selectedDay]
@@ -673,7 +920,7 @@ export default function ActiveMenu() {
           </View>
 
           <View style={styles.skeletonContent}>
-            <SkeletonPulse style={[styles.skeletonProgressHeader, { backgroundColor: colors.border }]} />
+            <SkeletonPulse style={[styles.skeletonSummaryCard, { backgroundColor: colors.border }]} />
             <SkeletonPulse style={[styles.skeletonDayTabs, { backgroundColor: colors.border }]} />
             {[1, 2].map((i) => (
               <SkeletonPulse key={i} style={[styles.skeletonMealCard, { backgroundColor: colors.border }]} />
@@ -690,13 +937,16 @@ export default function ActiveMenu() {
         <View style={styles.errorContainer}>
           <ChefHat size={64} color={colors.icon} />
           <Text style={[styles.errorText, { color: colors.text }]}>
-            {t("active_menu.menu_not_found")}
+            {t("active_menu.no_active_menu")}
+          </Text>
+          <Text style={[styles.errorSubtext, { color: colors.icon }]}>
+            {t("active_menu.start_a_menu")}
           </Text>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => router.push("/(tabs)/recommended-menus")}
             style={[styles.errorButton, { backgroundColor: colors.emerald500 }]}
           >
-            <Text style={styles.errorButtonText}>{t("active_menu.go_back")}</Text>
+            <Text style={styles.errorButtonText}>{t("active_menu.browse_menus")}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -718,59 +968,103 @@ export default function ActiveMenu() {
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Progress Header */}
-      <ProgressHeader
-        plan={mealPlan}
-        selectedDay={selectedDay}
-        totalDays={mealPlan.days.length}
-        completionRate={completionRate}
-        colors={colors}
-        t={t}
-      />
-
-      {/* Day Tabs */}
-      <View style={[styles.dayTabsWrapper, { backgroundColor: colors.surface }]}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.dayTabsContent}
-        >
-          {mealPlan.days.map((day, index) => (
-            <DayTab
-              key={day.day}
-              day={day}
-              index={index}
-              isSelected={selectedDay === index}
-              onSelect={() => setSelectedDay(index)}
-              language={language}
-              colors={colors}
-            />
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Meals List */}
       <Animated.ScrollView
-        style={[styles.mealsScrollView, { opacity: fadeAnim }]}
-        contentContainerStyle={styles.mealsContainer}
+        style={[styles.scrollView, { opacity: fadeAnim }]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {currentDay?.meals.map((meal) => (
-          <ActiveMealCard
-            key={meal.meal_id}
-            meal={meal}
-            isExpanded={expandedMeals.has(meal.meal_id)}
-            onToggle={() => toggleMealExpanded(meal.meal_id)}
+        {/* Progress Summary Card */}
+        <ProgressSummaryCard
+          plan={mealPlan}
+          selectedDay={selectedDay}
+          totalDays={mealPlan.days.length}
+          completionRate={completionRate}
+          streak={streak}
+          weeklyVariance={weeklyVariance}
+          dayProgressData={dayProgressData}
+          colors={colors}
+          t={t}
+          onDayPress={setSelectedDay}
+        />
+
+        {/* Day Tabs */}
+        <View style={[styles.dayTabsWrapper, { backgroundColor: colors.surface }]}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.dayTabsContent}
+          >
+            {mealPlan.days.map((day, index) => (
+              <DayTab
+                key={day.day}
+                day={day}
+                index={index}
+                isSelected={selectedDay === index}
+                onSelect={() => setSelectedDay(index)}
+                language={language}
+                colors={colors}
+              />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Weekly Summary Card */}
+        <WeeklySummaryCard
+          days={dayProgressData}
+          streak={streak}
+          onViewJourney={() => {
+            // TODO: Navigate to journey screen when implemented
+          }}
+        />
+
+        {/* Daily Tips Card */}
+        <DailyTipsCard
+          dayProgress={{
+            caloriesActual: dayProgressData[selectedDay]?.caloriesActual || 0,
+            caloriesTarget: mealPlan?.daily_calorie_target || 2000,
+          }}
+          streak={streak}
+          completionRate={completionRate}
+          compact={true}
+        />
+
+        {/* Today's Meals Section */}
+        {currentDay && (
+          <TodaysMealsSection
+            meals={currentDay.meals}
+            expandedMeals={expandedMeals}
+            onToggleMeal={toggleMealExpanded}
             checkedIngredients={checkedIngredients}
             onToggleIngredient={toggleIngredientCheck}
+            onSwapMeal={handleOpenSwapModal}
             colors={colors}
             t={t}
           />
-        ))}
+        )}
 
         {/* Bottom Spacing */}
         <View style={{ height: 40 }} />
       </Animated.ScrollView>
+
+      {/* Meal Swap Modal */}
+      <MealSwapModal
+        visible={showSwapModal}
+        onClose={() => {
+          setShowSwapModal(false);
+          setSelectedMealForSwap(null);
+        }}
+        onSwap={handleMealSwapped}
+        menuId={planId as string}
+        originalMeal={selectedMealForSwap ? {
+          meal_id: selectedMealForSwap.meal_id,
+          name: selectedMealForSwap.name,
+          meal_type: selectedMealForSwap.meal_type,
+          calories: selectedMealForSwap.calories,
+          protein: selectedMealForSwap.protein,
+          carbs: selectedMealForSwap.carbs,
+          fat: selectedMealForSwap.fat,
+        } : null}
+      />
 
       {/* Review Modal */}
       <Modal
@@ -875,8 +1169,8 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 8,
   },
-  skeletonProgressHeader: {
-    height: 140,
+  skeletonSummaryCard: {
+    height: 280,
     borderRadius: 20,
     marginBottom: 16,
   },
@@ -897,16 +1191,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    gap: 20,
+    gap: 16,
   },
   errorText: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  errorSubtext: {
+    fontSize: 14,
+    textAlign: "center",
   },
   errorButton: {
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 14,
+    marginTop: 8,
   },
   errorButtonText: {
     color: "#ffffff",
@@ -938,84 +1237,128 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // Progress Header
-  progressHeader: {
-    margin: 16,
-    borderRadius: 20,
-    padding: 20,
-  },
-  progressHeaderContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  progressHeaderLeft: {
+  // Scroll
+  scrollView: {
     flex: 1,
   },
-  progressBadge: {
+  scrollContent: {
+    paddingTop: 16,
+  },
+
+  // Summary Card
+  summaryCard: {
+    marginHorizontal: 16,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+  summaryHeader: {
     flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: "flex-start",
-    gap: 6,
-    marginBottom: 10,
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 14,
   },
-  progressBadgeText: {
-    color: "#ffffff",
-    fontSize: 12,
+  summaryHeaderLeft: {
+    flex: 1,
+  },
+  summaryTitle: {
+    fontSize: 16,
     fontWeight: "700",
+    marginBottom: 2,
   },
-  progressTitle: {
-    color: "#ffffff",
-    fontSize: 20,
-    fontWeight: "800",
-    marginBottom: 4,
-  },
-  progressSubtitle: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 14,
+  summarySubtitle: {
+    fontSize: 13,
     fontWeight: "500",
   },
-  progressCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
+  compactStatsRow: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-around",
+    marginBottom: 14,
+    paddingVertical: 8,
   },
-  progressCircleValue: {
-    color: "#ffffff",
-    fontSize: 18,
-    fontWeight: "800",
+  compactStatItem: {
+    alignItems: "center",
+    gap: 4,
   },
-  progressCircleLabel: {
-    color: "rgba(255,255,255,0.8)",
+  compactStatText: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 2,
+  },
+  compactStatValue: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  compactStatLabel: {
     fontSize: 11,
+    fontWeight: "500",
+  },
+  varianceChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  varianceChipText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  progressSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 24,
+  },
+  progressStats: {
+    flex: 1,
+    alignItems: "flex-end",
+    gap: 12,
+    marginLeft: 20,
+  },
+  varianceBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 6,
+  },
+  varianceText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  varianceLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  onTrackText: {
+    fontSize: 13,
     fontWeight: "600",
   },
-  progressBarContainer: {
-    marginTop: 4,
+  dayProgressSection: {
+    gap: 12,
   },
-  progressBarBg: {
-    height: 6,
-    backgroundColor: "rgba(255,255,255,0.3)",
-    borderRadius: 3,
-    overflow: "hidden",
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    paddingHorizontal: 4,
   },
-  progressBarFill: {
-    height: "100%",
-    backgroundColor: "#ffffff",
-    borderRadius: 3,
+
+  // Today's Meals
+  todaysMealsSection: {
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 4,
   },
 
   // Day Tabs
   dayTabsWrapper: {
     paddingVertical: 12,
+    marginBottom: 16,
   },
   dayTabsContent: {
     paddingHorizontal: 16,
@@ -1045,14 +1388,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Meals
-  mealsScrollView: {
-    flex: 1,
-  },
-  mealsContainer: {
-    padding: 16,
-    gap: 14,
-  },
+  // Meal Card
   mealCard: {
     borderRadius: 18,
     borderWidth: 1,
@@ -1082,28 +1418,35 @@ const styles = StyleSheet.create({
   mealEmoji: {
     fontSize: 28,
   },
-  miniProgressBadge: {
+  statusBadge: {
     position: "absolute",
-    bottom: -4,
-    right: -4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
+    bottom: -2,
+    right: -2,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
   },
-  miniProgressText: {
+  statusBadgeText: {
     color: "#ffffff",
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "700",
   },
   mealInfo: {
     flex: 1,
     gap: 6,
   },
+  mealTypeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   mealTypeBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
-    alignSelf: "flex-start",
   },
   mealTypeText: {
     fontSize: 10,
@@ -1111,6 +1454,10 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     textTransform: "uppercase",
     letterSpacing: 0.5,
+  },
+  mealStatusText: {
+    fontSize: 11,
+    fontWeight: "600",
   },
   mealName: {
     fontSize: 16,
@@ -1127,6 +1474,18 @@ const styles = StyleSheet.create({
   },
   mealMetaDot: {
     fontSize: 13,
+  },
+  mealActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  swapButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
   },
   expandIconBg: {
     width: 32,
@@ -1176,7 +1535,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  sectionTitle: {
+  ingredientsSectionTitle: {
     fontSize: 15,
     fontWeight: "700",
   },

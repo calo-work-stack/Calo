@@ -511,6 +511,142 @@ router.post(
   },
 );
 
+// GET /api/recommended-menus/:menuId/meal-alternatives/:mealId - Get AI-generated meal alternatives
+router.get(
+  "/:menuId/meal-alternatives/:mealId",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user.user_id;
+      const { menuId, mealId } = req.params;
+
+      console.log("🔄 Getting meal alternatives for:", { menuId, mealId });
+
+      // Get the original meal
+      const originalMeal = await prisma.recommendedMeal.findFirst({
+        where: {
+          meal_id: mealId,
+          menu: {
+            menu_id: menuId,
+            user_id: userId,
+          },
+        },
+        include: {
+          ingredients: true,
+        },
+      });
+
+      if (!originalMeal) {
+        return res.status(404).json({
+          success: false,
+          error: "Meal not found",
+        });
+      }
+
+      // Get user questionnaire for personalization
+      const questionnaire = await prisma.userQuestionnaire.findFirst({
+        where: { user_id: userId },
+        orderBy: { date_completed: "desc" },
+      });
+
+      // Generate alternatives using AI
+      const alternatives = await RecommendedMenuService.getMealAlternatives(
+        originalMeal,
+        questionnaire,
+        3, // Return 3 alternatives
+      );
+
+      console.log(
+        `✅ Generated ${alternatives.length} meal alternatives for ${originalMeal.name}`
+      );
+
+      res.json({
+        success: true,
+        data: alternatives,
+      });
+    } catch (error) {
+      console.error("💥 Error getting meal alternatives:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to get meal alternatives",
+        details: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+);
+
+// POST /api/recommended-menus/:menuId/meals/:mealId/skip - Mark a meal as skipped
+router.post(
+  "/:menuId/meals/:mealId/skip",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user.user_id;
+      const { menuId, mealId } = req.params;
+      const { reason } = req.body;
+
+      console.log("⏭️ Skipping meal:", { menuId, mealId, reason });
+
+      // Verify meal belongs to user's menu
+      const meal = await prisma.recommendedMeal.findFirst({
+        where: {
+          meal_id: mealId,
+          menu: {
+            menu_id: menuId,
+            user_id: userId,
+          },
+        },
+      });
+
+      if (!meal) {
+        return res.status(404).json({
+          success: false,
+          error: "Meal not found",
+        });
+      }
+
+      // Create or update meal completion record as skipped
+      await prisma.mealCompletion.upsert({
+        where: {
+          user_id_menu_id_day_number_meal_type: {
+            user_id: userId,
+            menu_id: menuId,
+            day_number: meal.day_number,
+            meal_type: meal.meal_type,
+          },
+        },
+        update: {
+          skipped: true,
+          skip_reason: reason || null,
+          updated_at: new Date(),
+        },
+        create: {
+          user_id: userId,
+          menu_id: menuId,
+          day_number: meal.day_number,
+          meal_type: meal.meal_type,
+          skipped: true,
+          skip_reason: reason || null,
+        },
+      });
+
+      console.log("✅ Meal skipped successfully");
+
+      res.json({
+        success: true,
+        message: "Meal skipped successfully",
+      });
+    } catch (error) {
+      console.error("💥 Error skipping meal:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to skip meal",
+        details: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+);
+
 // POST /api/recommended-menus/:menuId/replace-meal - Replace a specific meal
 router.post(
   "/:menuId/replace-meal",
