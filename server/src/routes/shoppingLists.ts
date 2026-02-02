@@ -25,6 +25,11 @@ const createSchema = z.object({
   added_from: z.string().optional(),
   product_barcode: z.string().optional(),
   estimated_cost: z.number().optional(),
+  // Metadata can include ingredient image (ing_img) and other custom fields
+  metadata: z.object({
+    ing_img: z.string().optional(),
+    barcode: z.string().optional(),
+  }).passthrough().optional(),
 });
 
 const updateSchema = z.object({
@@ -185,9 +190,12 @@ router.post(
         is_purchased: false,
       };
 
-      // Add metadata if barcode is provided
-      if (validatedData.product_barcode) {
-        createData.metadata = { barcode: validatedData.product_barcode };
+      // Add metadata if provided (includes ing_img, barcode, etc.)
+      if (validatedData.metadata || validatedData.product_barcode) {
+        createData.metadata = {
+          ...(validatedData.metadata || {}),
+          ...(validatedData.product_barcode ? { barcode: validatedData.product_barcode } : {}),
+        };
       }
 
       const item = await prisma.shoppingList.create({
@@ -293,9 +301,12 @@ router.post(
               is_purchased: false,
             };
 
-            // Add metadata if barcode is provided
-            if (validatedData.product_barcode) {
-              createData.metadata = { barcode: validatedData.product_barcode };
+            // Add metadata if provided (includes ing_img, barcode, etc.)
+            if (validatedData.metadata || validatedData.product_barcode) {
+              createData.metadata = {
+                ...(validatedData.metadata || {}),
+                ...(validatedData.product_barcode ? { barcode: validatedData.product_barcode } : {}),
+              };
             }
 
             const newItem = await prisma.shoppingList.create({

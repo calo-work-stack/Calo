@@ -21,7 +21,8 @@
       "Bash(npx eslint:*)",
       "Bash(timeout 10 npm run dev:*)",
       "Bash(node -e:*)",
-      "Bash(npx ts-node -e \"import ''./src/services/nutrition''\")"
+      "Bash(npx ts-node -e \"import ''./src/services/nutrition''\")",
+      "Bash(tree:*)"
     ]
   }
 }

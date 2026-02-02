@@ -1455,11 +1455,23 @@ const QuestionnaireScreen: React.FC = () => {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.skipButton}>
-          <Text style={[styles.skipText, { color: colors.textSecondary }]}>
-            {t("common.skip")}
-          </Text>
-        </TouchableOpacity>
+        {/* Only show skip on optional steps (4, 7, 8) */}
+        {[4, 7, 8].includes(currentStep) ? (
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={() => {
+              if (currentStep < totalSteps) {
+                setCurrentStep(currentStep + 1);
+              }
+            }}
+          >
+            <Text style={[styles.skipText, { color: colors.textSecondary }]}>
+              {t("common.skip")}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.skipButton} />
+        )}
       </View>
 
       <ProgressIndicator currentStep={currentStep} totalSteps={totalSteps} />

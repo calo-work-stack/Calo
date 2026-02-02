@@ -45,6 +45,7 @@ export default function StatisticsScreen() {
     achievements,
     aiRecommendations,
     isLoading,
+    isLoadingRecommendations,
     selectedPeriod,
     refreshing,
     progressStats,
@@ -54,6 +55,7 @@ export default function StatisticsScreen() {
     setSelectedPeriod,
     refresh,
     fetchAchievements,
+    generateAIRecommendations,
     updateMetrics,
   } = useStatistics("week");
 
@@ -150,6 +152,9 @@ export default function StatisticsScreen() {
         <AIRecommendationsSection
           recommendations={aiRecommendations}
           period={selectedPeriod}
+          onGenerateRecommendations={generateAIRecommendations}
+          isGenerating={isLoadingRecommendations}
+          isEligible={shouldShowAiRecommendations}
         />
       </Animated.View>
     );

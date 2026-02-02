@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, Platform } from "react-native";
-import { useDispatch } from "react-redux";
-import { AppDispatch } from "@/src/store";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/src/store";
 import {
   updateSingleIngredient,
   addIngredientToPendingMeal,
@@ -9,9 +9,12 @@ import {
 } from "@/src/store/mealSlice";
 import { Ingredient } from "@/src/types/camera";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 
 export function useIngredientEditor() {
   const dispatch = useDispatch<AppDispatch>();
+  const { t } = useTranslation();
+  const { pendingMeal } = useSelector((state: RootState) => state.meal);
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(
@@ -61,8 +64,27 @@ export function useIngredientEditor() {
     const ingredient = ingredientToSave || editingIngredient;
 
     if (!ingredient || !ingredient.name.trim()) {
-      Alert.alert("Error", "Ingredient name is required");
+      Alert.alert(t("common.error"), t("ingredients.name_required"));
       return false;
+    }
+
+    // Check for duplicate ingredient when adding new (not editing)
+    if (editingIndex === -1) {
+      const existingIngredients = pendingMeal?.analysis?.ingredients || [];
+      const ingredientName = ingredient.name.toLowerCase().trim();
+
+      const isDuplicate = existingIngredients.some(
+        (existing: Ingredient) =>
+          existing.name.toLowerCase().trim() === ingredientName
+      );
+
+      if (isDuplicate) {
+        Alert.alert(
+          t("ingredients.duplicate_title"),
+          t("ingredients.duplicate_message", { name: ingredient.name })
+        );
+        return false;
+      }
     }
 
     if (editingIndex >= 0) {

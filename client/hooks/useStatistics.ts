@@ -159,6 +159,42 @@ export function useStatistics(initialPeriod: TimePeriod = "week") {
     }
   }, []);
 
+  // Generate new AI recommendations manually
+  const generateAIRecommendations = useCallback(async () => {
+    setState((prev) => ({ ...prev, isLoadingRecommendations: true }));
+    try {
+      console.log("🚀 Generating new AI recommendations...");
+      const response = await api.post("/recommendations/generate");
+      console.log("✅ Generate response:", response.data);
+
+      if (response.data.success && response.data.data) {
+        const newRec = response.data.data;
+        const recommendation = {
+          id: newRec.id,
+          date: newRec.date,
+          created_at: newRec.created_at,
+          is_read: newRec.is_read,
+          recommendations: newRec.recommendations,
+          priority_level: newRec.priority_level,
+          confidence_score: newRec.confidence_score,
+          based_on: newRec.based_on,
+          user_id: newRec.user_id,
+        };
+        setState((prev) => ({
+          ...prev,
+          aiRecommendations: [recommendation, ...prev.aiRecommendations],
+        }));
+        return recommendation;
+      }
+      return null;
+    } catch (error: any) {
+      console.error("❌ Failed to generate AI recommendations:", error);
+      return null;
+    } finally {
+      setState((prev) => ({ ...prev, isLoadingRecommendations: false }));
+    }
+  }, []);
+
   // Fetch main statistics
   const fetchStatistics = useCallback(
     async (period: TimePeriod) => {
@@ -562,6 +598,7 @@ export function useStatistics(initialPeriod: TimePeriod = "week") {
     fetchStatistics,
     fetchAchievements,
     fetchAIRecommendations,
+    generateAIRecommendations,
     updateMetrics,
 
     // Computed

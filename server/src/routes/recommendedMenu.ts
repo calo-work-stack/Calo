@@ -1174,6 +1174,13 @@ router.post(
         .toString(36)
         .substr(2, 9)}`;
 
+      // Calculate proper start and end dates
+      const planStartDate = new Date();
+      planStartDate.setHours(0, 0, 0, 0); // Start of today
+      const planEndDate = new Date(planStartDate);
+      planEndDate.setDate(planEndDate.getDate() + menu.days_count - 1);
+      planEndDate.setHours(23, 59, 59, 999); // End of last day
+
       const mealPlan = await prisma.userMealPlan.create({
         data: {
           plan_id: planId,
@@ -1197,10 +1204,8 @@ router.post(
           target_fats_daily: Math.round(
             (menu.total_fat || 0) / menu.days_count,
           ),
-          start_date: new Date(),
-          end_date: new Date(
-            Date.now() + menu.days_count * 24 * 60 * 60 * 1000,
-          ),
+          start_date: planStartDate,
+          end_date: planEndDate,
           is_active: true,
         },
       });
@@ -1213,6 +1218,32 @@ router.post(
           is_active: true,
         },
         data: { is_active: false },
+      });
+
+      // Deactivate any other active recommended menus for this user
+      await prisma.recommendedMenu.updateMany({
+        where: {
+          user_id: userId,
+          menu_id: { not: menuId },
+          is_active: true,
+        },
+        data: { is_active: false },
+      });
+
+      // Update the RecommendedMenu with start_date, end_date and mark as active
+      const startDate = new Date();
+      startDate.setHours(0, 0, 0, 0); // Set to start of day
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + menu.days_count - 1);
+      endDate.setHours(23, 59, 59, 999); // Set to end of day
+
+      await prisma.recommendedMenu.update({
+        where: { menu_id: menuId },
+        data: {
+          is_active: true,
+          start_date: startDate,
+          end_date: endDate,
+        },
       });
 
       // Update user's active meal plan reference
@@ -1377,6 +1408,7 @@ router.post(
         message: "Menu started successfully",
         data: {
           plan_id: planId,
+          menu_id: menuId, // The RecommendedMenu ID for /with-progress endpoint
           name: mealPlan.name,
           start_date: mealPlan.start_date,
           end_date: mealPlan.end_date,
@@ -1955,6 +1987,28 @@ router.get(
         });
       }
 
+      // Auto-fix: If menu is active but has no start_date, set it to today
+      if (menu.is_active && !menu.start_date) {
+        const fixedStartDate = new Date();
+        fixedStartDate.setHours(0, 0, 0, 0);
+        const fixedEndDate = new Date(fixedStartDate);
+        fixedEndDate.setDate(fixedEndDate.getDate() + menu.days_count - 1);
+        fixedEndDate.setHours(23, 59, 59, 999);
+
+        await prisma.recommendedMenu.update({
+          where: { menu_id: planId },
+          data: {
+            start_date: fixedStartDate,
+            end_date: fixedEndDate,
+          },
+        });
+
+        // Update local reference
+        menu.start_date = fixedStartDate;
+        menu.end_date = fixedEndDate;
+        console.log(`🔧 Auto-fixed missing start_date for menu ${planId}`);
+      }
+
       // Get all ingredient checks for this user's menu
       const mealIds = menu.meals.map((m) => m.meal_id);
       const ingredientChecks = await prisma.ingredientCheck.findMany({
@@ -2005,6 +2059,11 @@ router.get(
         });
       });
 
+      // Calculate daily calorie target from total
+      const dailyCalorieTarget = menu.days_count > 0
+        ? Math.round(menu.total_calories / menu.days_count)
+        : 2000;
+
       const transformedData = {
         plan_id: menu.menu_id,
         name: menu.title,
@@ -2012,6 +2071,7 @@ router.get(
         start_date: menu.start_date?.toISOString() || new Date().toISOString(),
         end_date: menu.end_date?.toISOString() || new Date().toISOString(),
         status: menu.is_active ? "active" : "completed",
+        daily_calorie_target: dailyCalorieTarget,
         days: Array.from(daysMap.values()),
         ingredient_checks: ingredientChecks,
       };

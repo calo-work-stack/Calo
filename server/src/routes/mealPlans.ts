@@ -508,9 +508,21 @@ router.get("/current", authenticateToken, async (req: AuthRequest, res) => {
 
         planId = user.active_menu_id;
         planName = recommendedMenu.title;
-        startDate = new Date();
-        daysCount = 7;
+        // Use actual start_date from the menu, or fallback to now
+        startDate = recommendedMenu.start_date ? new Date(recommendedMenu.start_date) : new Date();
+        daysCount = recommendedMenu.days_count || 7;
         hasActivePlan = true;
+
+        // Calculate current day based on start_date
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const startDateNormalized = new Date(startDate);
+        startDateNormalized.setHours(0, 0, 0, 0);
+        const daysDiff = Math.floor(
+          (today.getTime() - startDateNormalized.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        const currentDay = Math.max(1, Math.min(daysDiff + 1, daysCount));
+        const progressPercentage = Math.round((currentDay / daysCount) * 100);
 
         const mealsPerDay =
           Object.values(weeklyPlan).reduce((count: number, day: any) => {
@@ -530,20 +542,20 @@ router.get("/current", authenticateToken, async (req: AuthRequest, res) => {
           plan_type: "RECOMMENDED",
           meals_per_day: Math.round(mealsPerDay),
           snacks_per_day: 0,
-          rotation_frequency_days: 7,
-          target_calories_daily: Math.round(recommendedMenu.total_calories / 7),
+          rotation_frequency_days: daysCount,
+          target_calories_daily: Math.round(recommendedMenu.total_calories / daysCount),
           target_protein_daily: Math.round(
-            (recommendedMenu.total_protein || 0) / 7
+            (recommendedMenu.total_protein || 0) / daysCount
           ),
           target_carbs_daily: Math.round(
-            (recommendedMenu.total_carbs || 0) / 7
+            (recommendedMenu.total_carbs || 0) / daysCount
           ),
-          target_fats_daily: Math.round((recommendedMenu.total_fat || 0) / 7),
+          target_fats_daily: Math.round((recommendedMenu.total_fat || 0) / daysCount),
           start_date: startDate.toISOString(),
-          end_date: null,
+          end_date: recommendedMenu.end_date?.toISOString() || null,
           is_active: true,
-          current_day: 1,
-          progress_percentage: 0,
+          current_day: currentDay,
+          progress_percentage: progressPercentage,
           weekly_plan: weeklyPlan,
         };
       } else {
@@ -578,18 +590,26 @@ router.get("/current", authenticateToken, async (req: AuthRequest, res) => {
     console.log("📋 Weekly plan structure:", Object.keys(weeklyPlan));
 
     if (hasActivePlan && planData && totalMeals > 0) {
+      // Include menu_id for the /with-progress endpoint (uses RecommendedMenu.menu_id)
+      const menuId = user?.active_menu_id || planData.plan_id;
+
       res.json({
         success: true,
         hasActivePlan: true,
-        planId: planData.plan_id,
+        planId: menuId, // Use menu_id for /with-progress endpoint
+        menuId: menuId, // Explicit menu_id
         planName: planData.name,
         start_date: planData.start_date,
+        end_date: planData.end_date,
         days_count: planData.rotation_frequency_days,
         target_calories_daily: planData.target_calories_daily,
         target_protein_daily: planData.target_protein_daily,
         target_carbs_daily: planData.target_carbs_daily,
         target_fats_daily: planData.target_fats_daily,
-        data: planData.weekly_plan,
+        data: {
+          ...planData,
+          weekly_plan: planData.weekly_plan,
+        },
         current_day: planData.current_day,
         progress_percentage: planData.progress_percentage,
       });

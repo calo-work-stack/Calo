@@ -5,7 +5,10 @@ import Animated, {
   useSharedValue,
   withSpring,
   withTiming,
+  interpolateColor,
 } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import { Check } from "lucide-react-native";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 
@@ -29,95 +32,138 @@ const OptionCard: React.FC<OptionCardProps> = ({
   onPress,
   disabled = false,
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { currentLanguage } = useLanguage();
   const isRTL = currentLanguage === "he";
 
   const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
+  const progress = useSharedValue(isSelected ? 1 : 0);
+
+  React.useEffect(() => {
+    progress.value = withSpring(isSelected ? 1 : 0, {
+      damping: 15,
+      stiffness: 200,
+    });
+  }, [isSelected]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [{ scale: scale.value }],
-      opacity: opacity.value,
+    };
+  });
+
+  const animatedBorderStyle = useAnimatedStyle(() => {
+    return {
+      borderColor: interpolateColor(
+        progress.value,
+        [0, 1],
+        [isDark ? "#374151" : "#E5E7EB", colors.primary]
+      ),
+      borderWidth: withSpring(isSelected ? 2 : 1.5),
     };
   });
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.98);
-    opacity.value = withTiming(0.8);
+    scale.value = withSpring(0.97, { damping: 15 });
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1);
-    opacity.value = withTiming(1);
+    scale.value = withSpring(1, { damping: 15 });
   };
 
   return (
     <AnimatedTouchableOpacity
-      style={[
-        styles.card,
-        {
-          backgroundColor: isSelected ? colors.primary + "10" : colors.card,
-          borderColor: isSelected ? colors.primary : colors.border,
-          shadowColor: colors.shadow,
-        },
-        animatedStyle,
-        disabled && styles.disabled,
-      ]}
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled}
       activeOpacity={1}
+      style={[animatedStyle]}
     >
-      <View style={[styles.content, isRTL && styles.contentRTL]}>
-        {icon && <View style={styles.iconContainer}>{icon}</View>}
+      <Animated.View
+        style={[
+          styles.card,
+          {
+            backgroundColor: isSelected
+              ? isDark
+                ? `${colors.primary}15`
+                : `${colors.primary}08`
+              : colors.card,
+          },
+          animatedBorderStyle,
+          disabled && styles.disabled,
+        ]}
+      >
+        <View style={[styles.content, isRTL && styles.contentRTL]}>
+          {/* Icon */}
+          {icon && (
+            <View
+              style={[
+                styles.iconContainer,
+                {
+                  backgroundColor: isSelected
+                    ? `${colors.primary}20`
+                    : isDark
+                    ? "#374151"
+                    : "#F3F4F6",
+                },
+              ]}
+            >
+              {icon}
+            </View>
+          )}
 
-        <View style={styles.textContainer}>
-          <Text
-            style={[
-              styles.label,
-              {
-                color: isSelected ? colors.primary : colors.text,
-              },
-              isRTL && styles.textRTL,
-            ]}
-          >
-            {label}
-          </Text>
-          {description && (
+          {/* Text */}
+          <View style={styles.textContainer}>
             <Text
               style={[
-                styles.description,
-                { color: colors.textSecondary },
+                styles.label,
+                {
+                  color: isSelected ? colors.primary : colors.text,
+                },
                 isRTL && styles.textRTL,
               ]}
             >
-              {description}
+              {label}
             </Text>
+            {description && (
+              <Text
+                style={[
+                  styles.description,
+                  {
+                    color: isSelected
+                      ? `${colors.primary}CC`
+                      : colors.textSecondary,
+                  },
+                  isRTL && styles.textRTL,
+                ]}
+                numberOfLines={2}
+              >
+                {description}
+              </Text>
+            )}
+          </View>
+
+          {/* Checkmark */}
+          {isSelected && (
+            <LinearGradient
+              colors={[colors.primary, colors.emerald600 || colors.primary]}
+              style={styles.checkmark}
+            >
+              <Check size={14} color="white" strokeWidth={3} />
+            </LinearGradient>
           )}
         </View>
-
-        {isSelected && (
-          <View style={[styles.checkmark, { backgroundColor: colors.primary }]}>
-            <Text style={styles.checkmarkText}>✓</Text>
-          </View>
-        )}
-      </View>
+      </Animated.View>
     </AnimatedTouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 2,
     borderRadius: 16,
-    padding: 20,
-    marginBottom: 12,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    marginBottom: 10,
+    overflow: "hidden",
   },
   disabled: {
     opacity: 0.5,
@@ -125,43 +171,38 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: "row",
     alignItems: "center",
+    padding: 16,
+    gap: 14,
   },
   contentRTL: {
     flexDirection: "row-reverse",
   },
   iconContainer: {
-    marginRight: 16,
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
   textContainer: {
     flex: 1,
+    gap: 3,
   },
   label: {
     fontSize: 16,
     fontWeight: "600",
-    marginBottom: 4,
+    letterSpacing: -0.2,
   },
   description: {
-    fontSize: 14,
-    lineHeight: 20,
-    opacity: 0.8,
+    fontSize: 13,
+    lineHeight: 18,
   },
   checkmark: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 12,
-  },
-  checkmarkText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
   },
   textRTL: {
     textAlign: "right",

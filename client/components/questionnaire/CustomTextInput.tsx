@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,8 +6,15 @@ import {
   StyleSheet,
   TextInputProps,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  interpolateColor,
+} from "react-native-reanimated";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
+import { AlertCircle } from "lucide-react-native";
 
 interface CustomTextInputProps extends TextInputProps {
   label: string;
@@ -24,74 +31,111 @@ const CustomTextInput: React.FC<CustomTextInputProps> = ({
   prefix,
   error,
   style,
+  onFocus,
+  onBlur,
   ...props
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { currentLanguage } = useLanguage();
   const isRTL = currentLanguage === "he";
+  const [isFocused, setIsFocused] = useState(false);
+
+  const focusProgress = useSharedValue(0);
+
+  const handleFocus = (e: any) => {
+    setIsFocused(true);
+    focusProgress.value = withSpring(1, { damping: 15 });
+    onFocus?.(e);
+  };
+
+  const handleBlur = (e: any) => {
+    setIsFocused(false);
+    focusProgress.value = withSpring(0, { damping: 15 });
+    onBlur?.(e);
+  };
+
+  const animatedBorderStyle = useAnimatedStyle(() => {
+    return {
+      borderColor: interpolateColor(
+        focusProgress.value,
+        [0, 1],
+        [error ? "#EF4444" : (isDark ? "#374151" : "#E5E7EB"), colors.primary]
+      ),
+      borderWidth: withSpring(isFocused ? 2 : 1.5),
+    };
+  });
 
   return (
     <View style={styles.container}>
-      <Text
-        style={[
-          styles.label,
-          { color: colors.text },
-          isRTL && styles.labelRTL,
-        ]}
-      >
-        {label}
-        {required && <Text style={styles.required}> *</Text>}
-      </Text>
+      <View style={[styles.labelRow, isRTL && styles.labelRowRTL]}>
+        <Text
+          style={[
+            styles.label,
+            { color: isFocused ? colors.primary : colors.text },
+            isRTL && styles.labelRTL,
+          ]}
+        >
+          {label}
+        </Text>
+        {required && (
+          <View style={[styles.requiredDot, { backgroundColor: colors.error }]} />
+        )}
+      </View>
 
-      <View
+      <Animated.View
         style={[
           styles.inputWrapper,
           {
-            backgroundColor: colors.card,
-            borderColor: error ? "#EF4444" : colors.border,
+            backgroundColor: isDark ? "#1F2937" : "#FAFAFA",
           },
+          animatedBorderStyle,
           isRTL && styles.inputWrapperRTL,
         ]}
       >
         {prefix && (
-          <Text
-            style={[
-              styles.prefix,
-              { color: colors.text },
-              isRTL && styles.prefixRTL,
-            ]}
-          >
-            {prefix}
-          </Text>
+          <View style={[styles.affixContainer, { backgroundColor: isDark ? "#374151" : "#F3F4F6" }]}>
+            <Text
+              style={[
+                styles.prefix,
+                { color: colors.primary },
+              ]}
+            >
+              {prefix}
+            </Text>
+          </View>
         )}
         <TextInput
           style={[
             styles.input,
             { color: colors.text },
             isRTL && styles.inputRTL,
-            (suffix || prefix) && styles.inputWithSuffix,
+            prefix && styles.inputWithPrefix,
+            suffix && styles.inputWithSuffix,
             style,
           ]}
-          placeholderTextColor={colors.textSecondary || colors.border}
+          placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           {...props}
         />
         {suffix && (
           <Text
             style={[
               styles.suffix,
-              { color: colors.textSecondary || colors.border },
+              { color: colors.textSecondary },
               isRTL && styles.suffixRTL,
             ]}
           >
             {suffix}
           </Text>
         )}
-      </View>
+      </Animated.View>
 
       {error && (
-        <Text style={[styles.errorText, isRTL && styles.errorTextRTL]}>
-          {error}
-        </Text>
+        <Animated.View style={[styles.errorContainer, isRTL && styles.errorContainerRTL]}>
+          <AlertCircle size={14} color="#EF4444" />
+          <Text style={styles.errorText}>{error}</Text>
+        </Animated.View>
       )}
     </View>
   );
@@ -101,24 +145,33 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 20,
   },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 10,
+  },
+  labelRowRTL: {
+    flexDirection: "row-reverse",
+  },
   label: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
-    marginBottom: 8,
+    letterSpacing: -0.2,
   },
   labelRTL: {
     textAlign: "right",
   },
-  required: {
-    color: "#EF4444",
+  requiredDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    minHeight: 52,
+    borderRadius: 14,
+    overflow: "hidden",
   },
   inputWrapperRTL: {
     flexDirection: "row-reverse",
@@ -127,39 +180,50 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     paddingVertical: 14,
+    paddingHorizontal: 16,
+    fontWeight: "500",
   },
   inputRTL: {
     textAlign: "right",
   },
+  inputWithPrefix: {
+    paddingLeft: 12,
+  },
   inputWithSuffix: {
-    paddingRight: 8,
+    paddingRight: 12,
   },
-  suffix: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  suffixRTL: {
-    marginLeft: 0,
-    marginRight: 8,
+  affixContainer: {
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginRight: -1,
   },
   prefix: {
     fontSize: 18,
     fontWeight: "700",
-    marginRight: 8,
   },
-  prefixRTL: {
-    marginRight: 0,
-    marginLeft: 8,
+  suffix: {
+    fontSize: 15,
+    fontWeight: "600",
+    paddingRight: 16,
+  },
+  suffixRTL: {
+    paddingRight: 0,
+    paddingLeft: 16,
+  },
+  errorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 4,
+  },
+  errorContainerRTL: {
+    flexDirection: "row-reverse",
   },
   errorText: {
     fontSize: 13,
     color: "#EF4444",
-    marginTop: 6,
     fontWeight: "500",
-  },
-  errorTextRTL: {
-    textAlign: "right",
   },
 });
 

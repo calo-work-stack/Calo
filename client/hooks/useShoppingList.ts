@@ -14,6 +14,11 @@ interface ShoppingListItem {
   added_from?: string;
   product_barcode?: string;
   estimated_cost?: number;
+  // Metadata can include ingredient image
+  metadata?: {
+    ing_img?: string;
+    [key: string]: any;
+  };
 }
 
 export const useShoppingList = () => {

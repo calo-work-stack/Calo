@@ -19,6 +19,10 @@ export interface Ingredient {
   // AI-calculated pricing
   estimated_cost?: number;
   category?: string;
+  // Ingredient visual data (instant, no API call)
+  ing_img?: string;
+  ing_emoji?: string;
+  ing_color?: string;
 }
 
 export interface AnalysisData {

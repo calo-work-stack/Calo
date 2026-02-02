@@ -1,0 +1,1 @@
+export { SmartShoppingItemModal } from "./SmartShoppingItemModal";

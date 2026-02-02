@@ -901,9 +901,16 @@ export default function RecommendedMenusScreen() {
             response.data.hasActivePlan &&
             response.data.data
           ) {
+            // Use menuId for navigation (it's the RecommendedMenu.menu_id)
+            const menuId = response.data.menuId || response.data.planId;
             const planData = {
-              plan_id: response.data.planId,
+              plan_id: menuId,
+              menu_id: menuId,
               name: response.data.planName || t("menus.active_plan"),
+              start_date: response.data.start_date,
+              end_date: response.data.end_date,
+              days_count: response.data.days_count,
+              current_day: response.data.current_day,
               data: response.data.data,
             };
             setActivePlanData(planData);
@@ -912,7 +919,7 @@ export default function RecommendedMenusScreen() {
             // Auto-redirect to activeMenu on first visit if there's an active plan
             if (!hasCheckedRedirect.current) {
               hasCheckedRedirect.current = true;
-              router.replace(`/menu/activeMenu?planId=${response.data.planId}`);
+              router.replace(`/menu/activeMenu?planId=${menuId}`);
             }
           } else {
             setActivePlanData(null);
@@ -947,11 +954,14 @@ export default function RecommendedMenusScreen() {
           setActivePlanData(newPlan);
           setHasActivePlan(true);
 
+          // Use menu_id for navigation (menuId from the request, or menu_id from response)
+          const activeMenuId = newPlan.menu_id || menuId;
+
           Alert.alert(t("common.success"), t("menus.menu_started_success"), [
             {
               text: t("menus.view_plan"),
               onPress: () => {
-                router.push(`/menu/activeMenu?planId=${newPlan.plan_id}`);
+                router.push(`/menu/activeMenu?planId=${activeMenuId}`);
               },
             },
             { text: t("common.ok") },

@@ -114,6 +114,76 @@ function validateAndCleanBase64(imageBase64: string): string {
   return cleanBase64;
 }
 
+// Fast ingredient emoji/icon mapping - instant lookup, no API calls needed
+const ingredientEmojiMap: { [key: string]: string } = {
+  // Proteins
+  chicken: "🍗", beef: "🥩", pork: "🥓", fish: "🐟", salmon: "🍣", tuna: "🐟",
+  shrimp: "🦐", lobster: "🦞", crab: "🦀", egg: "🥚", eggs: "🥚", turkey: "🦃",
+  lamb: "🍖", duck: "🦆", bacon: "🥓", ham: "🍖", sausage: "🌭", steak: "🥩",
+  // Dairy
+  milk: "🥛", cheese: "🧀", yogurt: "🥛", butter: "🧈", cream: "🥛", ice: "🧊",
+  // Grains & Carbs
+  bread: "🍞", rice: "🍚", pasta: "🍝", noodles: "🍜", wheat: "🌾", oats: "🌾",
+  cereal: "🥣", flour: "🌾", quinoa: "🌾", corn: "🌽", tortilla: "🫓",
+  // Fruits
+  apple: "🍎", banana: "🍌", orange: "🍊", lemon: "🍋", lime: "🍋", grape: "🍇",
+  strawberry: "🍓", blueberry: "🫐", raspberry: "🍓", cherry: "🍒", peach: "🍑",
+  pear: "🍐", watermelon: "🍉", melon: "🍈", pineapple: "🍍", mango: "🥭",
+  coconut: "🥥", kiwi: "🥝", avocado: "🥑", tomato: "🍅",
+  // Vegetables
+  carrot: "🥕", broccoli: "🥦", lettuce: "🥬", spinach: "🥬", cabbage: "🥬",
+  cucumber: "🥒", pepper: "🌶️", onion: "🧅", garlic: "🧄", potato: "🥔",
+  eggplant: "🍆", mushroom: "🍄", corn: "🌽", peas: "🫛", beans: "🫘",
+  celery: "🥬", zucchini: "🥒", squash: "🎃", pumpkin: "🎃", asparagus: "🥦",
+  // Nuts & Seeds
+  peanut: "🥜", almond: "🥜", walnut: "🥜", cashew: "🥜", pistachio: "🥜",
+  // Condiments & Sauces
+  salt: "🧂", sugar: "🍬", honey: "🍯", oil: "🫒", olive: "🫒", vinegar: "🍶",
+  sauce: "🥫", ketchup: "🥫", mustard: "🥫", mayo: "🥫", soy: "🥫",
+  // Beverages
+  coffee: "☕", tea: "🍵", juice: "🧃", water: "💧", wine: "🍷", beer: "🍺",
+  // Baked goods
+  cake: "🍰", cookie: "🍪", pie: "🥧", donut: "🍩", croissant: "🥐",
+  // Other
+  chocolate: "🍫", candy: "🍬", pizza: "🍕", burger: "🍔", sandwich: "🥪",
+  taco: "🌮", burrito: "🌯", sushi: "🍣", ramen: "🍜", soup: "🍲",
+  salad: "🥗", fries: "🍟", hotdog: "🌭", popcorn: "🍿",
+};
+
+// Get emoji for ingredient - instant, no API call
+function getIngredientEmoji(ingredientName: string): string {
+  const name = ingredientName.toLowerCase().trim();
+
+  // Direct match
+  if (ingredientEmojiMap[name]) {
+    return ingredientEmojiMap[name];
+  }
+
+  // Partial match - check if any key is contained in the name
+  for (const [key, emoji] of Object.entries(ingredientEmojiMap)) {
+    if (name.includes(key) || key.includes(name)) {
+      return emoji;
+    }
+  }
+
+  // Default food emoji
+  return "🍽️";
+}
+
+// Generate a simple color based on ingredient name (for gradient backgrounds)
+function getIngredientColor(ingredientName: string): string {
+  const colors = [
+    "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7",
+    "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9",
+    "#F8B500", "#FF7F50", "#87CEEB", "#98FB98", "#DDA0DD"
+  ];
+  let hash = 0;
+  for (let i = 0; i < ingredientName.length; i++) {
+    hash = ingredientName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
 export class OpenAIService {
   private static openai: OpenAI | null = null;
 
@@ -127,6 +197,39 @@ export class OpenAIService {
         "⚠️ OpenAI API key not found. AI features will use fallback responses."
       );
     }
+  }
+
+  /**
+   * Get ingredient visual data (emoji + color) - INSTANT, no API call
+   */
+  static getIngredientVisual(ingredientName: string): { emoji: string; color: string } {
+    return {
+      emoji: getIngredientEmoji(ingredientName),
+      color: getIngredientColor(ingredientName),
+    };
+  }
+
+  /**
+   * Add visual data to all ingredients - INSTANT, no API calls
+   */
+  static addIngredientVisuals(
+    ingredients: Array<{ name: string; [key: string]: any }>
+  ): Array<{ name: string; ing_img?: string; ing_emoji?: string; ing_color?: string; [key: string]: any }> {
+    if (ingredients.length === 0) {
+      return ingredients;
+    }
+
+    console.log(`🎨 Adding visuals for ${ingredients.length} ingredients (instant)...`);
+
+    return ingredients.map((ingredient) => {
+      const visual = this.getIngredientVisual(ingredient.name);
+      return {
+        ...ingredient,
+        ing_emoji: visual.emoji,
+        ing_color: visual.color,
+        // ing_img can be added later via CDN or user upload
+      };
+    });
   }
 
   static async generateText(
@@ -912,9 +1015,10 @@ JSON format:
       name: parsed.meal_name || "AI Analyzed Meal",
       description: parsed.description || "",
       calories: Math.max(0, Number(parsed.calories) || 0),
-      protein: Math.max(0, Number(parsed.protein_g) || 0),
-      carbs: Math.max(0, Number(parsed.carbs_g) || 0),
-      fat: Math.max(0, Number(parsed.fats_g) || 0),
+      // Check both field name variants - AI may return protein or protein_g
+      protein: Math.max(0, Number(parsed.protein_g) || Number(parsed.protein) || 0),
+      carbs: Math.max(0, Number(parsed.carbs_g) || Number(parsed.carbs) || 0),
+      fat: Math.max(0, Number(parsed.fats_g) || Number(parsed.fat) || Number(parsed.fats) || 0),
       saturated_fats_g: parsed.saturated_fats_g
         ? Math.max(0, Number(parsed.saturated_fats_g))
         : undefined,
@@ -930,7 +1034,7 @@ JSON format:
       omega_6_g: parsed.omega_6_g
         ? Math.max(0, Number(parsed.omega_6_g))
         : undefined,
-      fiber: parsed.fiber_g ? Math.max(0, Number(parsed.fiber_g)) : undefined,
+      fiber: (parsed.fiber_g || parsed.fiber) ? Math.max(0, Number(parsed.fiber_g) || Number(parsed.fiber) || 0) : undefined,
       soluble_fiber_g: parsed.soluble_fiber_g
         ? Math.max(0, Number(parsed.soluble_fiber_g))
         : undefined,
@@ -1134,6 +1238,14 @@ JSON format:
       "🥗 Final ingredients count:",
       analysisResult.ingredients?.length || 0
     );
+
+    // Add visual data (emoji + color) for each ingredient - INSTANT, no API calls
+    if (analysisResult.ingredients && analysisResult.ingredients.length > 0) {
+      console.log("🎨 Adding ingredient visuals (instant)...");
+      analysisResult.ingredients = this.addIngredientVisuals(analysisResult.ingredients);
+      console.log("✅ Ingredient visuals added successfully");
+    }
+
     return analysisResult;
   }
 

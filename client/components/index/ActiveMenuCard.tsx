@@ -41,16 +41,17 @@ const ActiveMenuCard = React.memo(() => {
       const response = await api.get("/meal-plans/current");
       if (
         response.data.success &&
-        response.data.hasActivePlan &&
-        response.data.data
+        response.data.hasActivePlan
       ) {
+        // Use top-level values first, fallback to data object
+        const data = response.data.data || {};
         setActivePlan({
-          plan_id: response.data.planId,
+          plan_id: response.data.planId || response.data.menuId,
           name: response.data.planName || t("menus.active_plan"),
-          days_count: response.data.data.days_count || 7,
-          start_date: response.data.data.start_date,
-          end_date: response.data.data.end_date,
-          daily_calorie_target: response.data.data.daily_calorie_target,
+          days_count: response.data.days_count || data.rotation_frequency_days || 7,
+          start_date: response.data.start_date || data.start_date,
+          end_date: response.data.end_date || data.end_date,
+          daily_calorie_target: response.data.target_calories_daily || data.target_calories_daily,
         });
       } else {
         setActivePlan(null);

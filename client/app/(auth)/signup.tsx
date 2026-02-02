@@ -37,7 +37,7 @@ const langOptions = [
 export default function SignUpScreen() {
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const dispatch = useDispatch<AppDispatch>();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
 
@@ -223,13 +223,24 @@ export default function SignUpScreen() {
 
   return (
     <>
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
+        <StatusBar
+          barStyle={isDark ? "light-content" : "dark-content"}
+          backgroundColor={colors.background}
+        />
 
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={[
+              styles.backButton,
+              {
+                backgroundColor: colors.card,
+                shadowColor: colors.shadow,
+              },
+            ]}
             onPress={() => router.push("/(auth)/welcome")}
             activeOpacity={0.7}
           >
@@ -239,7 +250,9 @@ export default function SignUpScreen() {
               color={colors.primary}
             />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t("auth.sign_up.title")}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t("auth.sign_up.title")}
+          </Text>
           <View style={styles.backButton} />
         </View>
 
@@ -265,17 +278,30 @@ export default function SignUpScreen() {
               {/* Logo Section */}
               <View style={styles.logoSection}>
                 <LinearGradient
-                  colors={[colors.primary, "#059669"]}
+                  colors={[colors.primary, colors.emerald600]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={styles.logoContainer}
+                  style={[
+                    styles.logoContainer,
+                    {
+                      shadowColor: colors.primary,
+                    },
+                  ]}
                 >
-                  <Ionicons name="person-add" size={36} color="white" />
+                  <Ionicons
+                    name="person-add"
+                    size={36}
+                    color={colors.onPrimary}
+                  />
                 </LinearGradient>
-                <Text style={styles.title}>
+                <Text style={[styles.title, { color: colors.text }]}>
                   {t("auth.sign_up.create_account")}
                 </Text>
-                <Text style={styles.subtitle}>{t("auth.sign_up.subtitle")}</Text>
+                <Text
+                  style={[styles.subtitle, { color: colors.textSecondary }]}
+                >
+                  {t("auth.sign_up.subtitle")}
+                </Text>
               </View>
 
               {/* Form */}
@@ -289,29 +315,46 @@ export default function SignUpScreen() {
                 <View
                   style={[
                     styles.inputContainer,
-                    nameFocused && styles.inputContainerFocused,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: nameFocused ? colors.primary : colors.border,
+                      shadowColor: nameFocused ? colors.primary : colors.shadow,
+                    },
                   ]}
                 >
-                  <View style={styles.inputIconContainer}>
+                  <View
+                    style={[
+                      styles.inputIconContainer,
+                      { backgroundColor: colors.surfaceVariant },
+                    ]}
+                  >
                     <Ionicons
                       name="person-outline"
                       size={20}
-                      color={nameFocused ? colors.primary : "#9CA3AF"}
+                      color={nameFocused ? colors.primary : colors.icon}
                     />
                   </View>
                   <View style={styles.inputWrapper}>
                     <Text
                       style={[
                         styles.inputLabel,
-                        nameFocused && styles.inputLabelFocused,
+                        {
+                          color: nameFocused
+                            ? colors.primary
+                            : colors.textTertiary,
+                        },
                       ]}
                     >
                       {t("auth.sign_up.name_label")}
                     </Text>
                     <TextInput
-                      style={[styles.input, isRTL && styles.inputRTL]}
+                      style={[
+                        styles.input,
+                        { color: colors.text },
+                        isRTL && styles.inputRTL,
+                      ]}
                       placeholder={t("auth.sign_up.name_placeholder")}
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={colors.textTertiary}
                       value={name}
                       onChangeText={setName}
                       autoCapitalize="words"
@@ -330,30 +373,51 @@ export default function SignUpScreen() {
                 <View
                   style={[
                     styles.inputContainer,
-                    emailFocused && styles.inputContainerFocused,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: emailFocused
+                        ? colors.primary
+                        : colors.border,
+                      shadowColor: emailFocused
+                        ? colors.primary
+                        : colors.shadow,
+                    },
                   ]}
                 >
-                  <View style={styles.inputIconContainer}>
+                  <View
+                    style={[
+                      styles.inputIconContainer,
+                      { backgroundColor: colors.surfaceVariant },
+                    ]}
+                  >
                     <Ionicons
                       name="mail-outline"
                       size={20}
-                      color={emailFocused ? colors.primary : "#9CA3AF"}
+                      color={emailFocused ? colors.primary : colors.icon}
                     />
                   </View>
                   <View style={styles.inputWrapper}>
                     <Text
                       style={[
                         styles.inputLabel,
-                        emailFocused && styles.inputLabelFocused,
+                        {
+                          color: emailFocused
+                            ? colors.primary
+                            : colors.textTertiary,
+                        },
                       ]}
                     >
                       {t("auth.sign_up.email_label")}
                     </Text>
                     <TextInput
                       ref={emailRef}
-                      style={[styles.input, isRTL && styles.inputRTL]}
+                      style={[
+                        styles.input,
+                        { color: colors.text },
+                        isRTL && styles.inputRTL,
+                      ]}
                       placeholder={t("auth.sign_up.email_placeholder")}
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={colors.textTertiary}
                       value={email}
                       onChangeText={setEmail}
                       keyboardType="email-address"
@@ -374,21 +438,38 @@ export default function SignUpScreen() {
                 <View
                   style={[
                     styles.inputContainer,
-                    passwordFocused && styles.inputContainerFocused,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: passwordFocused
+                        ? colors.primary
+                        : colors.border,
+                      shadowColor: passwordFocused
+                        ? colors.primary
+                        : colors.shadow,
+                    },
                   ]}
                 >
-                  <View style={styles.inputIconContainer}>
+                  <View
+                    style={[
+                      styles.inputIconContainer,
+                      { backgroundColor: colors.surfaceVariant },
+                    ]}
+                  >
                     <Ionicons
                       name="lock-closed-outline"
                       size={20}
-                      color={passwordFocused ? colors.primary : "#9CA3AF"}
+                      color={passwordFocused ? colors.primary : colors.icon}
                     />
                   </View>
                   <View style={styles.inputWrapper}>
                     <Text
                       style={[
                         styles.inputLabel,
-                        passwordFocused && styles.inputLabelFocused,
+                        {
+                          color: passwordFocused
+                            ? colors.primary
+                            : colors.textTertiary,
+                        },
                       ]}
                     >
                       {t("auth.sign_up.password_label")}
@@ -396,9 +477,14 @@ export default function SignUpScreen() {
                     <View style={styles.passwordRow}>
                       <TextInput
                         ref={passwordRef}
-                        style={[styles.input, styles.passwordInput, isRTL && styles.inputRTL]}
+                        style={[
+                          styles.input,
+                          styles.passwordInput,
+                          { color: colors.text },
+                          isRTL && styles.inputRTL,
+                        ]}
                         placeholder={t("auth.sign_up.password_placeholder")}
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor={colors.textTertiary}
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry={!showPassword}
@@ -409,7 +495,9 @@ export default function SignUpScreen() {
                         onFocus={() => setPasswordFocused(true)}
                         onBlur={() => setPasswordFocused(false)}
                         returnKeyType="next"
-                        onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+                        onSubmitEditing={() =>
+                          confirmPasswordRef.current?.focus()
+                        }
                         textAlign={isRTL ? "right" : "left"}
                       />
                       <TouchableOpacity
@@ -418,9 +506,11 @@ export default function SignUpScreen() {
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       >
                         <Ionicons
-                          name={showPassword ? "eye-off-outline" : "eye-outline"}
+                          name={
+                            showPassword ? "eye-off-outline" : "eye-outline"
+                          }
                           size={20}
-                          color="#9CA3AF"
+                          color={colors.icon}
                         />
                       </TouchableOpacity>
                     </View>
@@ -431,21 +521,40 @@ export default function SignUpScreen() {
                 <View
                   style={[
                     styles.inputContainer,
-                    confirmPasswordFocused && styles.inputContainerFocused,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: confirmPasswordFocused
+                        ? colors.primary
+                        : colors.border,
+                      shadowColor: confirmPasswordFocused
+                        ? colors.primary
+                        : colors.shadow,
+                    },
                   ]}
                 >
-                  <View style={styles.inputIconContainer}>
+                  <View
+                    style={[
+                      styles.inputIconContainer,
+                      { backgroundColor: colors.surfaceVariant },
+                    ]}
+                  >
                     <Ionicons
                       name="shield-checkmark-outline"
                       size={20}
-                      color={confirmPasswordFocused ? colors.primary : "#9CA3AF"}
+                      color={
+                        confirmPasswordFocused ? colors.primary : colors.icon
+                      }
                     />
                   </View>
                   <View style={styles.inputWrapper}>
                     <Text
                       style={[
                         styles.inputLabel,
-                        confirmPasswordFocused && styles.inputLabelFocused,
+                        {
+                          color: confirmPasswordFocused
+                            ? colors.primary
+                            : colors.textTertiary,
+                        },
                       ]}
                     >
                       {t("auth.sign_up.confirm_password_label")}
@@ -453,9 +562,16 @@ export default function SignUpScreen() {
                     <View style={styles.passwordRow}>
                       <TextInput
                         ref={confirmPasswordRef}
-                        style={[styles.input, styles.passwordInput, isRTL && styles.inputRTL]}
-                        placeholder={t("auth.sign_up.confirm_password_placeholder")}
-                        placeholderTextColor="#9CA3AF"
+                        style={[
+                          styles.input,
+                          styles.passwordInput,
+                          { color: colors.text },
+                          isRTL && styles.inputRTL,
+                        ]}
+                        placeholder={t(
+                          "auth.sign_up.confirm_password_placeholder",
+                        )}
+                        placeholderTextColor={colors.textTertiary}
                         value={confirmPassword}
                         onChangeText={setConfirmPassword}
                         secureTextEntry={!showConfirmPassword}
@@ -471,13 +587,19 @@ export default function SignUpScreen() {
                       />
                       <TouchableOpacity
                         style={styles.eyeButton}
-                        onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                        onPress={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       >
                         <Ionicons
-                          name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+                          name={
+                            showConfirmPassword
+                              ? "eye-off-outline"
+                              : "eye-outline"
+                          }
                           size={20}
-                          color="#9CA3AF"
+                          color={colors.icon}
                         />
                       </TouchableOpacity>
                     </View>
@@ -486,7 +608,9 @@ export default function SignUpScreen() {
 
                 {/* Language Selection */}
                 <View style={styles.langSection}>
-                  <Text style={styles.langTitle}>
+                  <Text
+                    style={[styles.langTitle, { color: colors.textSecondary }]}
+                  >
                     {t("auth.sign_up.lang_preferance")}
                   </Text>
                   <View style={styles.langOptions}>
@@ -495,8 +619,16 @@ export default function SignUpScreen() {
                         key={option.key}
                         style={[
                           styles.langOption,
-                          lang === option.key && styles.langOptionSelected,
-                          lang === option.key && { borderColor: colors.primary },
+                          {
+                            backgroundColor:
+                              lang === option.key
+                                ? colors.primaryContainer
+                                : colors.card,
+                            borderColor:
+                              lang === option.key
+                                ? colors.primary
+                                : colors.border,
+                          },
                         ]}
                         onPress={() => setLang(option.key)}
                         activeOpacity={0.7}
@@ -504,18 +636,30 @@ export default function SignUpScreen() {
                         <Ionicons
                           name={option.icon as any}
                           size={20}
-                          color={lang === option.key ? colors.primary : "#9CA3AF"}
+                          color={
+                            lang === option.key ? colors.primary : colors.icon
+                          }
                         />
                         <Text
                           style={[
                             styles.langOptionText,
-                            lang === option.key && { color: colors.primary, fontWeight: "600" },
+                            {
+                              color:
+                                lang === option.key
+                                  ? colors.primary
+                                  : colors.textSecondary,
+                              fontWeight: lang === option.key ? "600" : "400",
+                            },
                           ]}
                         >
                           {option.label}
                         </Text>
                         {lang === option.key && (
-                          <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={20}
+                            color={colors.primary}
+                          />
                         )}
                       </TouchableOpacity>
                     ))}
@@ -526,28 +670,57 @@ export default function SignUpScreen() {
                 <TouchableOpacity
                   style={[
                     styles.privacyContainer,
-                    acceptedPrivacyPolicy && styles.privacyContainerAccepted,
+                    {
+                      backgroundColor: acceptedPrivacyPolicy
+                        ? colors.primaryContainer
+                        : colors.card,
+                      borderColor: acceptedPrivacyPolicy
+                        ? colors.primary
+                        : colors.border,
+                    },
                   ]}
-                  onPress={() => setAcceptedPrivacyPolicy(!acceptedPrivacyPolicy)}
+                  onPress={() =>
+                    setAcceptedPrivacyPolicy(!acceptedPrivacyPolicy)
+                  }
                   activeOpacity={0.7}
                 >
                   <View
                     style={[
                       styles.checkbox,
-                      acceptedPrivacyPolicy && { backgroundColor: colors.primary, borderColor: colors.primary },
+                      {
+                        backgroundColor: acceptedPrivacyPolicy
+                          ? colors.primary
+                          : "transparent",
+                        borderColor: acceptedPrivacyPolicy
+                          ? colors.primary
+                          : colors.muted,
+                      },
                     ]}
                   >
                     {acceptedPrivacyPolicy && (
-                      <Ionicons name="checkmark" size={14} color="white" />
+                      <Ionicons
+                        name="checkmark"
+                        size={14}
+                        color={colors.onPrimary}
+                      />
                     )}
                   </View>
-                  <Text style={styles.privacyText}>
+                  <Text
+                    style={[
+                      styles.privacyText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     {t("auth.sign_up.agree_text")}{" "}
-                    <Text style={[styles.privacyLink, { color: colors.primary }]}>
+                    <Text
+                      style={[styles.privacyLink, { color: colors.primary }]}
+                    >
                       {t("auth.sign_up.terms_of_service")}
                     </Text>{" "}
                     {t("auth.sign_up.and")}{" "}
-                    <Text style={[styles.privacyLink, { color: colors.primary }]}>
+                    <Text
+                      style={[styles.privacyLink, { color: colors.primary }]}
+                    >
                       {t("auth.sign_up.privacy_policy")}
                     </Text>
                   </Text>
@@ -558,8 +731,12 @@ export default function SignUpScreen() {
                   <TouchableOpacity
                     style={[
                       styles.signUpButton,
-                      { backgroundColor: colors.primary },
-                      (!isFormValid() || isSubmitting) && styles.signUpButtonDisabled,
+                      {
+                        backgroundColor: colors.primary,
+                        shadowColor: colors.primary,
+                      },
+                      (!isFormValid() || isSubmitting) &&
+                        styles.signUpButtonDisabled,
                     ]}
                     onPress={handleSignUp}
                     onPressIn={() => animateButton(true)}
@@ -569,13 +746,26 @@ export default function SignUpScreen() {
                   >
                     {isSubmitting ? (
                       <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="small" color="white" />
-                        <Text style={styles.loadingText}>
+                        <ActivityIndicator
+                          size="small"
+                          color={colors.onPrimary}
+                        />
+                        <Text
+                          style={[
+                            styles.loadingText,
+                            { color: colors.onPrimary },
+                          ]}
+                        >
                           {t("auth.sign_up.creating_account")}
                         </Text>
                       </View>
                     ) : (
-                      <Text style={styles.signUpButtonText}>
+                      <Text
+                        style={[
+                          styles.signUpButtonText,
+                          { color: colors.onPrimary },
+                        ]}
+                      >
                         {t("auth.sign_up.create_account")}
                       </Text>
                     )}
@@ -583,10 +773,7 @@ export default function SignUpScreen() {
                     {/* Progress bar during loading */}
                     {isSubmitting && (
                       <Animated.View
-                        style={[
-                          styles.progressBar,
-                          { width: progressWidth },
-                        ]}
+                        style={[styles.progressBar, { width: progressWidth }]}
                       />
                     )}
                   </TouchableOpacity>
@@ -595,11 +782,15 @@ export default function SignUpScreen() {
 
               {/* Footer */}
               <View style={styles.footer}>
-                <Text style={styles.footerText}>
+                <Text
+                  style={[styles.footerText, { color: colors.textSecondary }]}
+                >
                   {t("auth.sign_up.already_have_account")}
                 </Text>
                 <Link href="/(auth)/signin" asChild>
-                  <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}>
+                  <TouchableOpacity
+                    hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}
+                  >
                     <Text style={[styles.linkText, { color: colors.primary }]}>
                       {t("auth.sign_up.sign_in")}
                     </Text>
@@ -618,7 +809,6 @@ export default function SignUpScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFA",
   },
   header: {
     flexDirection: "row",
@@ -631,10 +821,8 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "white",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
@@ -643,7 +831,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: "600",
-    color: "#1F2937",
   },
   keyboardView: {
     flex: 1,
@@ -667,7 +854,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
-    shadowColor: "#10B981",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -676,13 +862,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "700",
-    color: "#1F2937",
     marginBottom: 6,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: "#6B7280",
     textAlign: "center",
   },
   formContainer: {
@@ -691,29 +875,19 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "white",
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderWidth: 1.5,
-    borderColor: "#E5E7EB",
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 1,
   },
-  inputContainerFocused: {
-    borderColor: "#10B981",
-    shadowColor: "#10B981",
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-  },
   inputIconContainer: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "#F3F4F6",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -724,17 +898,12 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#9CA3AF",
     marginBottom: 2,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  inputLabelFocused: {
-    color: "#10B981",
-  },
   input: {
     fontSize: 15,
-    color: "#1F2937",
     paddingVertical: 2,
   },
   inputRTL: {
@@ -756,7 +925,6 @@ const styles = StyleSheet.create({
   langTitle: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#6B7280",
     marginBottom: 10,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -771,48 +939,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "white",
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 12,
     borderWidth: 1.5,
-    borderColor: "#E5E7EB",
-  },
-  langOptionSelected: {
-    backgroundColor: "#F0FDF4",
   },
   langOptionText: {
     fontSize: 14,
-    color: "#6B7280",
   },
   privacyContainer: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: "white",
     borderRadius: 14,
     padding: 14,
     borderWidth: 1.5,
-    borderColor: "#E5E7EB",
     marginTop: 4,
-  },
-  privacyContainerAccepted: {
-    borderColor: "#10B981",
-    backgroundColor: "#F0FDF4",
   },
   checkbox: {
     width: 22,
     height: 22,
     borderWidth: 2,
-    borderColor: "#D1D5DB",
     borderRadius: 6,
     marginRight: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "transparent",
   },
   privacyText: {
     fontSize: 13,
-    color: "#6B7280",
     flex: 1,
     lineHeight: 20,
   },
@@ -826,7 +979,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 12,
     overflow: "hidden",
-    shadowColor: "#10B981",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -839,7 +991,6 @@ const styles = StyleSheet.create({
   signUpButtonText: {
     fontSize: 17,
     fontWeight: "700",
-    color: "white",
     letterSpacing: 0.3,
   },
   loadingContainer: {
@@ -848,7 +999,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   loadingText: {
-    color: "white",
     fontSize: 16,
     fontWeight: "600",
   },
@@ -869,7 +1019,6 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 15,
-    color: "#6B7280",
   },
   linkText: {
     fontSize: 15,

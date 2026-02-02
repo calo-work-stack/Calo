@@ -159,13 +159,29 @@ export class EnhancedCronJobService {
         }
       }
 
-      // 3. Skip force creating daily goals on startup - let users trigger this on demand
-      // This was causing timeouts and is not critical for app startup
-      console.log("ℹ️ Skipping daily goals creation on startup (will create on demand)");
+      // 3. Create daily goals for users (run in background, non-blocking)
+      console.log("📊 Creating daily goals for users...");
+      EnhancedDailyGoalsService.createDailyGoalsForAllUsers()
+        .then((result) => {
+          console.log(`✅ Daily goals created: ${result.created} new, ${result.updated} updated`);
+        })
+        .catch((error) => {
+          console.warn("⚠️ Daily goals creation failed (non-critical):", error.message);
+        });
 
-      // 4. Skip AI recommendations on startup - too heavy
-      // Will generate on user request instead
-      console.log("ℹ️ Skipping AI recommendations on startup (will generate on demand)");
+      // 4. Generate AI recommendations for eligible users (run in background, non-blocking)
+      if (process.env.OPENAI_API_KEY) {
+        console.log("🤖 Generating AI recommendations for eligible users...");
+        EnhancedAIRecommendationService.generateRecommendationsForAllUsers()
+          .then((result) => {
+            console.log(`✅ AI recommendations generated: ${result.generated} for ${result.processed} users`);
+          })
+          .catch((error) => {
+            console.warn("⚠️ AI recommendations generation failed (non-critical):", error.message);
+          });
+      } else {
+        console.log("ℹ️ Skipping AI recommendations (no OpenAI API key configured)");
+      }
 
       console.log("✅ Startup tasks completed");
     } catch (error) {

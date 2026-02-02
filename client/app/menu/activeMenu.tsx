@@ -52,6 +52,7 @@ import {
   MealSwapModal,
   DailyTipsCard,
   WeeklySummaryCard,
+  QuickTipsGuide,
 } from "@/components/menu";
 import type { DayProgress } from "@/components/menu";
 
@@ -986,6 +987,9 @@ export default function ActiveMenu() {
           t={t}
           onDayPress={setSelectedDay}
         />
+
+        {/* Quick Tips Guide for new users */}
+        <QuickTipsGuide />
 
         {/* Day Tabs */}
         <View style={[styles.dayTabsWrapper, { backgroundColor: colors.surface }]}>

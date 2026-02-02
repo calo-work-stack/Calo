@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Modal,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -52,6 +53,9 @@ interface AIRecommendation {
 interface AIRecommendationsSectionProps {
   recommendations?: AIRecommendation[];
   period?: "today" | "week" | "month";
+  onGenerateRecommendations?: () => Promise<void>;
+  isGenerating?: boolean;
+  isEligible?: boolean;
 }
 
 interface ExtractedRecommendations {
@@ -389,7 +393,17 @@ const CarouselCard = ({
 };
 
 // Empty State Component
-const EmptyState = ({ colors }: { colors: any }) => (
+const EmptyState = ({
+  colors,
+  onGenerate,
+  isGenerating,
+  isEligible
+}: {
+  colors: any;
+  onGenerate?: () => void;
+  isGenerating?: boolean;
+  isEligible?: boolean;
+}) => (
   <Animated.View entering={FadeIn} style={styles.emptyContainer}>
     <LinearGradient
       colors={[`${colors.primary}0D`, `${colors.primary}05`]}
@@ -404,34 +418,63 @@ const EmptyState = ({ colors }: { colors: any }) => (
         </LinearGradient>
       </View>
       <Text style={[styles.emptyTitle, { color: colors.text }]}>
-        AI Learning Your Patterns
+        {isEligible ? "Get Your AI Insights" : "AI Learning Your Patterns"}
       </Text>
       <Text style={[styles.emptyDescription, { color: colors.textSecondary }]}>
-        Keep logging your meals and activities.{"\n"}
-        Personalized insights coming soon!
+        {isEligible
+          ? "Tap below to generate personalized\nnutrition recommendations based on your data."
+          : "Keep logging your meals and activities.\nPersonalized insights coming soon!"}
       </Text>
-      <View style={styles.emptyProgressDots}>
-        <View
+
+      {isEligible && onGenerate && (
+        <TouchableOpacity
           style={[
-            styles.progressDot,
-            styles.progressDotActive,
+            styles.generateButton,
             { backgroundColor: colors.primary },
+            isGenerating && { opacity: 0.7 }
           ]}
-        />
-        <View
-          style={[
-            styles.progressDot,
-            styles.progressDotActive,
-            { backgroundColor: colors.primary },
-          ]}
-        />
-        <View
-          style={[styles.progressDot, { backgroundColor: colors.border }]}
-        />
-        <View
-          style={[styles.progressDot, { backgroundColor: colors.border }]}
-        />
-      </View>
+          onPress={onGenerate}
+          disabled={isGenerating}
+          activeOpacity={0.8}
+        >
+          {isGenerating ? (
+            <>
+              <ActivityIndicator size="small" color="white" />
+              <Text style={styles.generateButtonText}>Generating...</Text>
+            </>
+          ) : (
+            <>
+              <Sparkles size={18} color="white" />
+              <Text style={styles.generateButtonText}>Generate Insights</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
+
+      {!isEligible && (
+        <View style={styles.emptyProgressDots}>
+          <View
+            style={[
+              styles.progressDot,
+              styles.progressDotActive,
+              { backgroundColor: colors.primary },
+            ]}
+          />
+          <View
+            style={[
+              styles.progressDot,
+              styles.progressDotActive,
+              { backgroundColor: colors.primary },
+            ]}
+          />
+          <View
+            style={[styles.progressDot, { backgroundColor: colors.border }]}
+          />
+          <View
+            style={[styles.progressDot, { backgroundColor: colors.border }]}
+          />
+        </View>
+      )}
     </LinearGradient>
   </Animated.View>
 );
@@ -620,7 +663,13 @@ const DetailModal = ({
 // Main Component
 export const AIRecommendationsSection: React.FC<
   AIRecommendationsSectionProps
-> = ({ recommendations = [], period = "month" }) => {
+> = ({
+  recommendations = [],
+  period = "month",
+  onGenerateRecommendations,
+  isGenerating = false,
+  isEligible = true,
+}) => {
   const { colors } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedRecommendation, setSelectedRecommendation] =
@@ -673,7 +722,14 @@ export const AIRecommendationsSection: React.FC<
   };
 
   if (filteredRecommendations.length === 0) {
-    return <EmptyState colors={colors} />;
+    return (
+      <EmptyState
+        colors={colors}
+        onGenerate={onGenerateRecommendations}
+        isGenerating={isGenerating}
+        isEligible={isEligible}
+      />
+    );
   }
 
   const currentRecommendation = filteredRecommendations[currentIndex];
@@ -990,6 +1046,21 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   progressDotActive: {},
+  generateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 16,
+    marginTop: 8,
+  },
+  generateButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
+  },
   modalContainer: {
     flex: 1,
   },

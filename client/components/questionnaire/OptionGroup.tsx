@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import OptionCard from "./OptionCard";
@@ -28,34 +29,44 @@ const OptionGroup: React.FC<OptionGroupProps> = ({
   multiSelect = false,
   selectedValues = [],
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { currentLanguage } = useLanguage();
   const isRTL = currentLanguage === "he";
 
   return (
     <View style={styles.container}>
-      <Text
-        style={[styles.label, { color: colors.text }, isRTL && styles.textRTL]}
-      >
-        {label}
-        {required && <Text style={{ color: colors.error }}> *</Text>}
-      </Text>
+      <View style={[styles.labelContainer, isRTL && styles.labelContainerRTL]}>
+        <Text
+          style={[styles.label, { color: colors.text }, isRTL && styles.textRTL]}
+        >
+          {label}
+        </Text>
+        {required && (
+          <View style={[styles.requiredBadge, { backgroundColor: `${colors.error}15` }]}>
+            <Text style={[styles.requiredText, { color: colors.error }]}>Required</Text>
+          </View>
+        )}
+      </View>
 
       <View style={styles.optionsContainer}>
-        {options.map((option) => {
+        {options.map((option, index) => {
           const isSelected = multiSelect
             ? selectedValues.includes(option.key)
             : selectedValue === option.key;
 
           return (
-            <OptionCard
+            <Animated.View
               key={option.key}
-              label={option.label}
-              description={option.description}
-              icon={option.icon}
-              isSelected={isSelected}
-              onPress={() => onSelect(option.key)}
-            />
+              entering={FadeInUp.delay(index * 50).duration(300).springify()}
+            >
+              <OptionCard
+                label={option.label}
+                description={option.description}
+                icon={option.icon}
+                isSelected={isSelected}
+                onPress={() => onSelect(option.key)}
+              />
+            </Animated.View>
           );
         })}
       </View>
@@ -65,16 +76,36 @@ const OptionGroup: React.FC<OptionGroupProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 32,
+    marginBottom: 28,
+  },
+  labelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginBottom: 16,
+  },
+  labelContainerRTL: {
+    flexDirection: "row-reverse",
   },
   label: {
-    fontSize: 18,
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+  },
+  requiredBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  requiredText: {
+    fontSize: 11,
     fontWeight: "600",
-    marginBottom: 20,
-    textAlign: "center",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   optionsContainer: {
-    gap: 8,
+    gap: 0,
   },
   textRTL: {
     textAlign: "right",

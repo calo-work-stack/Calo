@@ -229,13 +229,20 @@ function CameraScreenContent() {
   ): number => {
     if (!data) return 0;
 
+    // Build variations to check for different field naming conventions
+    const baseField = field.replace("_g", "").replace("_mg", "");
     const variations = [
-      field,
-      field.replace("_g", ""),
-      field.replace("_mg", ""),
-      field.replace("g", ""),
-      field.replace("mg", ""),
+      field,                    // e.g., "protein_g"
+      baseField,                // e.g., "protein"
+      `${baseField}_g`,         // e.g., "protein_g"
+      `${baseField}s`,          // e.g., "proteins" (plural)
+      `${baseField}s_g`,        // e.g., "proteins_g"
     ];
+
+    // Special handling for fats/fat - server returns "fat" but field might be "fats_g"
+    if (field === "fats_g" || baseField === "fats") {
+      variations.push("fat", "fats", "fat_g");
+    }
 
     for (const variation of variations) {
       const value = data[variation as keyof typeof data];

@@ -27,7 +27,11 @@ export interface Ingredient {
   vitamins_json?: any;
   micronutrients_json?: any;
   allergens_json?: any;
-  category?: string; // Add this line
+  category?: string;
+  // Ingredient visual data (instant, no API call)
+  ing_img?: string;
+  ing_emoji?: string;
+  ing_color?: string;
 }
 
 export interface MealAnalysisResult {

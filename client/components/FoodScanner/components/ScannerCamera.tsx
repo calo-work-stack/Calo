@@ -108,7 +108,11 @@ export default function ScannerCamera({
                 {scanMode === "barcode" ? (
                   <QrCode size={28} color={colors.primary} strokeWidth={2} />
                 ) : (
-                  <CameraIcon size={28} color={colors.primary} strokeWidth={2} />
+                  <CameraIcon
+                    size={28}
+                    color={colors.primary}
+                    strokeWidth={2}
+                  />
                 )}
               </View>
             </Animated.View>
@@ -122,23 +126,8 @@ export default function ScannerCamera({
 
       {/* Bottom overlay with instructions */}
       <View
-        style={[styles.overlayBottom, { backgroundColor: "rgba(0,0,0,0.7)" }]}
+        style={[styles.overlayBottom, { backgroundColor: "rgba(0,0,0,0.6)" }]}
       >
-        <View style={styles.instructionContainer}>
-          <View
-            style={[styles.aiIndicator, { backgroundColor: colors.primary + "20" }]}
-          >
-            <Sparkles size={14} color={colors.primary} strokeWidth={2.5} />
-            <Text style={[styles.aiIndicatorText, { color: colors.primary }]}>
-              {t("foodScanner.aiPriceEstimate")}
-            </Text>
-          </View>
-          <Text style={[styles.instructionText, { color: colors.onPrimary }]}>
-            {scanMode === "barcode"
-              ? t("foodScanner.alignFood")
-              : t("foodScanner.alignFood")}
-          </Text>
-        </View>
       </View>
     </View>
   );
@@ -151,7 +140,12 @@ export default function ScannerCamera({
           onPress={onImageScan}
           activeOpacity={0.9}
         >
-          <View style={[styles.placeholderCamera, { backgroundColor: colors.border }]}>
+          <View
+            style={[
+              styles.placeholderCamera,
+              { backgroundColor: colors.border },
+            ]}
+          >
             {renderOverlay()}
           </View>
         </TouchableOpacity>

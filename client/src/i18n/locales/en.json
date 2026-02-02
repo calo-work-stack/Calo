@@ -621,11 +621,25 @@
     "addDetailsPlaceholder": "Add details to improve analysis..."
   },
   "shopping": {
+    "title": "Shopping List",
     "from_meal_analysis": "From Meal Analysis",
     "item_added": "{{name}} added to shopping list!",
     "items_added": "{{count}} ingredients added to shopping list!",
     "add_item_failed": "Failed to add item to shopping list",
-    "add_items_failed": "Failed to add ingredients to shopping list"
+    "add_items_failed": "Failed to add ingredients to shopping list",
+    "items_remaining": "items to buy",
+    "empty_title": "Your list is empty",
+    "empty_subtitle": "Tap + to add your first item",
+    "to_buy": "To Buy",
+    "purchased": "Purchased",
+    "add_item": "Add Item",
+    "edit_item": "Edit Item",
+    "item_name": "Item Name",
+    "search_placeholder": "Search or type item name...",
+    "delete_confirm_title": "Delete Item",
+    "delete_confirm_message": "Remove",
+    "total_nutrition": "Total Nutrition",
+    "items_count": "{{count}} items"
   },
   "foodScanner": {
     "title": "Food Scanner",
@@ -1335,6 +1349,7 @@
     "on_track": "Goals on Track",
     "keep_going": "Keep going!",
     "today_meals": "Today's Meals",
+    "how_to_use": "How to use your menu",
     "logged": "Logged",
     "pending": "Pending",
     "weekly_variance": "weekly",
@@ -1505,6 +1520,21 @@
     "feedback_helps": "Your feedback helps us improve your meal plans",
     "ok": "OK",
     "failed_to_submit": "Failed to submit review. Please try again.",
+    "quick_tips": {
+      "title": "Quick Tips",
+      "tap_meal": "Tap any meal to see ingredients and instructions",
+      "check_ingredients": "Check off ingredients as you prepare them",
+      "swap_meal": "Tap the swap icon to replace a meal with alternatives",
+      "track_progress": "Your progress is saved automatically"
+    },
+    "progress": {
+      "on_track": "On Track!",
+      "keep_going": "Keep Going!",
+      "great_start": "Great Start!",
+      "almost_there": "Almost There!",
+      "completed": "Completed!",
+      "daily_goal": "Daily Goal"
+    },
     "meal_types": {
       "breakfast": "Breakfast",
       "lunch": "Lunch",
@@ -2019,6 +2049,7 @@
     "paste": "Paste",
     "cut": "Cut",
     "undo": "Undo",
+    "kcal": "Kcal",
     "redo": "Redo",
     "settings": "Settings",
     "preferences": "Preferences",
@@ -2223,7 +2254,11 @@
   "ingredients": {
     "title": "Ingredients",
     "addAllToShopping": "Add All",
-    "tapToAdd": "Tap to add to shopping list"
+    "tapToAdd": "Tap to add to shopping list",
+    "no_image": "No image",
+    "duplicate_title": "Duplicate Ingredient",
+    "duplicate_message": "\"{{name}}\" is already in the ingredient list",
+    "name_required": "Ingredient name is required"
   },
   "shoppingList": {
     "addSingle": {

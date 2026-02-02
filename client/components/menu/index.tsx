@@ -13,3 +13,4 @@ export type { DayProgress, DayStatus } from "./DayProgressRow";
 export { MealSwapModal } from "./MealSwapModal";
 export { DailyTipsCard } from "./DailyTipsCard";
 export { WeeklySummaryCard } from "./WeeklySummaryCard";
+export { QuickTipsGuide } from "./QuickTipsGuide";

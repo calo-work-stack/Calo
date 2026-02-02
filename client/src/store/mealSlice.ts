@@ -243,16 +243,32 @@ export const analyzeMeal = createAsyncThunk(
           Array.isArray(response.data.ingredients)
         ) {
           response.data.ingredients = response.data.ingredients.map(
-            (ingredient: any) => ({
-              name: ingredient.name || "Unknown ingredient",
-              calories: Number(ingredient.calories) || 0,
-              protein: Number(ingredient.protein) || 0,
-              carbs: Number(ingredient.carbs) || 0,
-              fat: Number(ingredient.fat) || 0,
-              fiber: Number(ingredient.fiber) || 0,
-              sugar: Number(ingredient.sugar) || 0,
-              sodium_mg: Number(ingredient.sodium_mg) || 0,
-            })
+            (ingredient: any) => {
+              // Normalize values while preserving all fields (including visual data)
+              const protein = Number(ingredient.protein) || Number(ingredient.protein_g) || 0;
+              const carbs = Number(ingredient.carbs) || Number(ingredient.carbs_g) || 0;
+              const fat = Number(ingredient.fat) || Number(ingredient.fats_g) || Number(ingredient.fats) || 0;
+              const fiber = Number(ingredient.fiber) || Number(ingredient.fiber_g) || 0;
+              const sugar = Number(ingredient.sugar) || Number(ingredient.sugar_g) || 0;
+
+              return {
+                ...ingredient, // Preserve all fields including ing_emoji, ing_color, estimated_cost
+                name: ingredient.name || "Unknown ingredient",
+                calories: Number(ingredient.calories) || 0,
+                protein,
+                carbs,
+                fat,
+                fiber,
+                sugar,
+                sodium_mg: Number(ingredient.sodium_mg) || 0,
+                // Also set _g variants for compatibility
+                protein_g: protein,
+                carbs_g: carbs,
+                fats_g: fat,
+                fiber_g: fiber,
+                sugar_g: sugar,
+              };
+            }
           );
         }
 

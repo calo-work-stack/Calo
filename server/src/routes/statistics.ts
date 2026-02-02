@@ -296,6 +296,64 @@ router.get(
     }
   }
 );
+// Manually generate AI recommendations
+router.post(
+  "/recommendations/generate",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    const userId = req.user?.user_id?.toString();
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: "User not authenticated",
+      });
+    }
+
+    try {
+      console.log(`🚀 Manually generating AI recommendations for user: ${userId}`);
+
+      // Check user eligibility
+      const { prisma } = await import("../lib/database");
+      const user = await prisma.user.findUnique({
+        where: { user_id: userId },
+        select: { subscription_type: true, is_questionnaire_completed: true },
+      });
+
+      if (!user?.is_questionnaire_completed) {
+        return res.status(400).json({
+          success: false,
+          error: "Please complete the questionnaire first",
+        });
+      }
+
+      if (user.subscription_type !== "GOLD" && user.subscription_type !== "PREMIUM") {
+        return res.status(403).json({
+          success: false,
+          error: "AI recommendations require GOLD or PREMIUM subscription",
+        });
+      }
+
+      // Generate recommendations
+      const recommendation = await AIRecommendationService.generateDailyRecommendations(userId);
+
+      console.log(`✅ Generated recommendations for user: ${userId}`);
+
+      res.json({
+        success: true,
+        data: recommendation,
+      });
+    } catch (error) {
+      console.error(`❌ Error generating AI recommendations for user ${userId}:`, error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to generate AI recommendations",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+);
+
 // Emergency setup trigger
 router.post("/debug/force-setup", async (req: any, res: Response) => {
   try {
