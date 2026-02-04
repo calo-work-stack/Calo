@@ -1361,40 +1361,23 @@ Return the same JSON structure as before with meals that specifically address th
         try {
           const prompt = `Generate ${count} alternative meals to replace "${originalMeal.name}" (${originalMeal.meal_type}).
 
-Original Meal Nutrition:
-- Calories: ${originalMeal.calories}
-- Protein: ${originalMeal.protein}g
-- Carbs: ${originalMeal.carbs}g
-- Fat: ${originalMeal.fat}g
-
-User Preferences:
-- Dietary Style: ${questionnaire?.dietary_style || "Balanced"}
-- Allergies: ${questionnaire?.allergies?.join(", ") || "None"}
-- Dislikes: ${questionnaire?.disliked_foods?.join(", ") || "None"}
-- Likes: ${questionnaire?.liked_foods?.join(", ") || "None"}
+Original meal has approximately ${originalMeal.calories} calories, ${originalMeal.protein} protein, ${originalMeal.carbs} carbs, ${originalMeal.fat} fat.
+Dietary style: ${questionnaire?.dietary_style || "Balanced"}. Allergies: ${questionnaire?.allergies?.join(", ") || "None"}. Dislikes: ${questionnaire?.disliked_foods?.join(", ") || "None"}. Likes: ${questionnaire?.liked_foods?.join(", ") || "None"}.
 
 Requirements:
-1. Each alternative should have SIMILAR nutritional values (within 15% of original)
-2. One option should be higher in protein
-3. One option should be quicker to prepare
-4. One option should be a comfort food version
-5. Respect allergies and dietary restrictions STRICTLY
+- Similar nutritional values (within 15% of original)
+- One higher protein option, one quicker option, one comfort option
+- Respect allergies and dietary restrictions
 
-Return JSON array with ${count} meals:
-[
-  {
-    "meal_id": "alt_1",
-    "name": "Meal name",
-    "calories": number,
-    "protein": number,
-    "carbs": number,
-    "fat": number,
-    "prep_time_minutes": number,
-    "cooking_method": "method",
-    "match_reason": "Similar nutrition" | "Higher protein" | "Quick preparation" | "Comfort option",
-    "ingredients": [{"name": "ingredient", "quantity": number, "unit": "g/ml/piece"}]
-  }
-]`;
+CRITICAL RULES FOR JSON OUTPUT:
+- All numeric fields (calories, protein, carbs, fat, prep_time_minutes, quantity) must be plain numbers WITHOUT units. Write 25 not 25g. Write 350 not 350kcal.
+- Return ONLY a valid JSON array. No extra text before or after.
+- No comments, no trailing commas.
+
+[{"meal_id":"alt_1","name":"Example Meal","calories":350,"protein":25,"carbs":40,"fat":12,"prep_time_minutes":20,"cooking_method":"Grilling","match_reason":"Similar nutrition","ingredients":[{"name":"chicken breast","quantity":150,"unit":"g"}]}]
+
+match_reason must be one of: "Similar nutrition", "Higher protein", "Quick preparation", "Comfort option".
+Return ${count} meals in the array.`;
 
           const aiResponse = await OpenAIService.generateText(prompt, 1500);
           const parsed = this.parseAIAlternativesResponse(aiResponse);
@@ -1417,23 +1400,64 @@ Return JSON array with ${count} meals:
     }
   }
 
+  private static cleanAIJson(text: string): string {
+    let cleaned = text;
+    // Remove trailing commas before } or ]
+    cleaned = cleaned.replace(/,\s*([\]}])/g, "$1");
+    // Remove single-line comments
+    cleaned = cleaned.replace(/\/\/[^\n]*/g, "");
+    // Remove control characters (except newlines/tabs needed for structure)
+    cleaned = cleaned.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, "");
+    // Fix unquoted property names (e.g., name: "value" -> "name": "value")
+    cleaned = cleaned.replace(/([{,])\s*([a-zA-Z_]\w*)\s*:/g, '$1"$2":');
+    // Strip unit suffixes from numeric values (e.g., 25g -> 25, 350kcal -> 350)
+    cleaned = cleaned.replace(/:\s*(\d+\.?\d*)\s*[a-zA-Z]+\s*([,}\]\n\r])/g, ": $1$2");
+    // Replace single quotes with double quotes
+    cleaned = cleaned.replace(/'/g, '"');
+    return cleaned;
+  }
+
   private static parseAIAlternativesResponse(response: string): any[] | null {
+    console.log("🔍 Raw AI alternatives response:", response.substring(0, 500));
+
     try {
       let cleaned = response.trim();
-      if (cleaned.includes("```json")) {
+
+      // Remove markdown code blocks
+      if (cleaned.includes("```")) {
         cleaned = cleaned.replace(/```json\s*/g, "").replace(/```\s*/g, "");
       }
 
+      // Extract JSON array
       const jsonStart = cleaned.indexOf("[");
       const jsonEnd = cleaned.lastIndexOf("]");
 
-      if (jsonStart !== -1 && jsonEnd !== -1) {
-        cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+      if (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {
+        console.error("No JSON array found in AI response");
+        return null;
       }
+
+      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+      cleaned = this.cleanAIJson(cleaned);
 
       return JSON.parse(cleaned);
     } catch (error) {
-      console.error("Failed to parse AI alternatives response:", error);
+      console.error("Failed to parse AI alternatives (attempt 1):", error);
+      // Try one more aggressive cleanup attempt
+      try {
+        let text = response;
+        const start = text.indexOf("[");
+        const end = text.lastIndexOf("]");
+        if (start !== -1 && end !== -1) {
+          text = text.substring(start, end + 1);
+          text = this.cleanAIJson(text);
+          // Also try to fix values wrapped in quotes that should be numbers
+          text = text.replace(/"(\d+\.?\d*)"/g, "$1");
+          return JSON.parse(text);
+        }
+      } catch (error2) {
+        console.error("Failed to parse AI alternatives (attempt 2):", error2);
+      }
       return null;
     }
   }
@@ -1662,42 +1686,84 @@ Return JSON array with ${count} meals:
     preferences: any,
     userId: string,
   ) {
-    // Get user preferences
-    const questionnaire = await prisma.userQuestionnaire.findFirst({
-      where: { user_id: userId },
-    });
+    // If the user selected a specific alternative with its own data, use that
+    if (preferences?.selectedAlternativeId) {
+      // Try to get AI-generated replacement with the alternative's nutrition targets
+      const questionnaire = await prisma.userQuestionnaire.findFirst({
+        where: { user_id: userId },
+      });
 
-    // Generate alternative meal with similar nutrition profile
-    const alternatives = [
-      {
-        name: "Protein Bowl Alternative",
-        calories: currentMeal.calories,
-        protein: currentMeal.protein,
-        carbs: currentMeal.carbs * 0.9,
-        fat: currentMeal.fat * 1.1,
-        fiber: (currentMeal.fiber || 5) + 2,
-        prep_time_minutes: (currentMeal.prep_time_minutes || 30) - 5,
-        cooking_method: "Bowl assembly",
-        instructions: "Combine protein, grains, and vegetables in a bowl",
-        ingredients: [
-          {
-            name: "lean protein",
-            quantity: 150,
-            unit: "g",
-            category: "protein",
-          },
-          { name: "quinoa", quantity: 80, unit: "g", category: "grain" },
-          {
-            name: "mixed vegetables",
-            quantity: 100,
-            unit: "g",
-            category: "vegetable",
-          },
-        ],
-      },
-    ];
+      if (process.env.OPENAI_API_KEY) {
+        try {
+          const targetCalories = preferences.targetCalories || currentMeal.calories;
+          const targetProtein = preferences.targetProtein || currentMeal.protein;
 
-    return alternatives[0];
+          const prompt = `Generate a single replacement meal for "${currentMeal.name}" (${currentMeal.meal_type}).
+Target: ${targetCalories} calories, ${targetProtein} protein, ${preferences.targetCarbs || currentMeal.carbs} carbs, ${preferences.targetFat || currentMeal.fat} fat.
+Dietary style: ${questionnaire?.dietary_style || "Balanced"}. Allergies: ${questionnaire?.allergies?.join(", ") || "None"}.
+
+CRITICAL: Return ONLY valid JSON. All numeric fields must be plain numbers WITHOUT units (write 25 not 25g). No comments, no trailing commas.
+
+{"name":"Meal Name","calories":${targetCalories},"protein":${targetProtein},"carbs":${preferences.targetCarbs || currentMeal.carbs},"fat":${preferences.targetFat || currentMeal.fat},"fiber":5,"prep_time_minutes":25,"cooking_method":"method","instructions":"Step by step instructions","ingredients":[{"name":"ingredient","quantity":150,"unit":"g","category":"protein"}]}`;
+
+          const aiResponse = await OpenAIService.generateText(prompt, 1000);
+          let cleaned = aiResponse.trim();
+          if (cleaned.includes("```")) {
+            cleaned = cleaned.replace(/```json\s*/g, "").replace(/```\s*/g, "");
+          }
+          const objStart = cleaned.indexOf("{");
+          const objEnd = cleaned.lastIndexOf("}");
+          if (objStart !== -1 && objEnd !== -1) {
+            cleaned = cleaned.substring(objStart, objEnd + 1);
+            cleaned = this.cleanAIJson(cleaned);
+            const parsed = JSON.parse(cleaned);
+            if (parsed.name && parsed.calories) {
+              return parsed;
+            }
+          }
+        } catch (aiError) {
+          console.warn("⚠️ AI replacement generation failed, using fallback");
+        }
+      }
+
+      // Fallback: use the target nutrition values from the selected alternative
+      return {
+        name: preferences.alternativeName || `${currentMeal.meal_type} Alternative`,
+        calories: preferences.targetCalories || currentMeal.calories,
+        protein: preferences.targetProtein || currentMeal.protein,
+        carbs: preferences.targetCarbs || currentMeal.carbs,
+        fat: preferences.targetFat || currentMeal.fat,
+        fiber: currentMeal.fiber || 5,
+        prep_time_minutes: preferences.prepTime || currentMeal.prep_time_minutes || 25,
+        cooking_method: preferences.cookingMethod || currentMeal.cooking_method || "Mixed",
+        instructions: currentMeal.instructions || "Prepare according to preference",
+        ingredients: currentMeal.ingredients?.map((ing: any) => ({
+          name: ing.name,
+          quantity: ing.quantity,
+          unit: ing.unit,
+          category: ing.category,
+        })) || [],
+      };
+    }
+
+    // Default fallback when no alternative was selected
+    return {
+      name: `${currentMeal.meal_type} Alternative`,
+      calories: currentMeal.calories,
+      protein: currentMeal.protein,
+      carbs: currentMeal.carbs,
+      fat: currentMeal.fat,
+      fiber: currentMeal.fiber || 5,
+      prep_time_minutes: currentMeal.prep_time_minutes || 25,
+      cooking_method: currentMeal.cooking_method || "Mixed",
+      instructions: currentMeal.instructions || "Prepare according to preference",
+      ingredients: currentMeal.ingredients?.map((ing: any) => ({
+        name: ing.name,
+        quantity: ing.quantity,
+        unit: ing.unit,
+        category: ing.category,
+      })) || [],
+    };
   }
 
   static async generateEnhancedMenuWithFeedback(params: {

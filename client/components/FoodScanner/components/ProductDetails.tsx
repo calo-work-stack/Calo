@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   Wallet,
   TrendingUp,
+  Package,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/context/ThemeContext";
@@ -43,9 +44,11 @@ export default function ProductDetails({
   const { t } = useTranslation();
   const { colors } = useTheme();
 
+  const nutrition = scanResult?.product?.nutrition_per_100g;
   const calories = Math.round(
-    (scanResult.product.nutrition_per_100g.calories * quantity) / 100,
+    ((nutrition?.calories || 0) * quantity) / 100,
   );
+  const product = scanResult?.product;
 
   return (
     <ScrollView
@@ -79,27 +82,38 @@ export default function ProductDetails({
 
       {/* Hero Product Card */}
       <View style={[styles.heroCard, { backgroundColor: colors.surface }]}>
-        <View style={styles.imageContainer}>
-          <Image
-            source={{
-              uri:
-                scanResult.product.image_url ||
-                "https://via.placeholder.com/120",
-            }}
-            style={styles.productImage}
-          />
-          <View
-            style={[styles.imageBadge, { backgroundColor: colors.primary }]}
-          >
-            <Text style={[styles.imageBadgeText, { color: colors.onPrimary }]}>
-              {quantity}g
-            </Text>
+        {product?.image_url ? (
+          <View style={styles.imageContainer}>
+            <Image
+              source={{ uri: product.image_url }}
+              style={styles.productImage}
+            />
+            <View
+              style={[styles.imageBadge, { backgroundColor: colors.primary }]}
+            >
+              <Text style={[styles.imageBadgeText, { color: colors.onPrimary }]}>
+                {quantity}g
+              </Text>
+            </View>
           </View>
-        </View>
+        ) : (
+          <View style={styles.imageContainer}>
+            <View style={[styles.productImage, { backgroundColor: colors.border, justifyContent: "center", alignItems: "center" }]}>
+              <Package size={40} color={colors.textSecondary} strokeWidth={1.5} />
+            </View>
+            <View
+              style={[styles.imageBadge, { backgroundColor: colors.primary }]}
+            >
+              <Text style={[styles.imageBadgeText, { color: colors.onPrimary }]}>
+                {quantity}g
+              </Text>
+            </View>
+          </View>
+        )}
 
         <View style={styles.productContent}>
           <Text style={[styles.productName, { color: colors.text }]}>
-            {scanResult.product.name}
+            {product?.name || t("foodScanner.unknownProduct") || "Unknown Product"}
           </Text>
 
           <View style={styles.caloriesRow}>
@@ -209,16 +223,20 @@ export default function ProductDetails({
       )}
 
       {/* Health Indicators */}
-      <HealthIndicators nutrition={scanResult.product.nutrition_per_100g} />
+      {nutrition && (
+        <HealthIndicators nutrition={nutrition} />
+      )}
 
       {/* Nutrition Bars */}
-      <NutritionBars
-        nutrition={scanResult.product.nutrition_per_100g}
-        quantity={quantity}
-      />
+      {nutrition && (
+        <NutritionBars
+          nutrition={nutrition}
+          quantity={quantity}
+        />
+      )}
 
       {/* Ingredients */}
-      {scanResult.product.ingredients.length > 0 && (
+      {(product?.ingredients?.length || 0) > 0 && (
         <View
           style={[styles.ingredientsCard, { backgroundColor: colors.surface }]}
         >
@@ -227,7 +245,7 @@ export default function ProductDetails({
           </Text>
 
           <View style={styles.ingredientsList}>
-            {scanResult.product.ingredients
+            {product!.ingredients
               .slice(0, 2)
               .map((ingredient, index) => (
                 <View
@@ -243,10 +261,7 @@ export default function ProductDetails({
                       { backgroundColor: colors.background },
                     ]}
                   >
-                    <Image
-                      source={{ uri: "https://via.placeholder.com/40" }}
-                      style={styles.ingredientImage}
-                    />
+                    <Package size={20} color={colors.textSecondary} strokeWidth={1.5} />
                   </View>
                   <Text style={[styles.ingredientName, { color: colors.text }]}>
                     {ingredient}

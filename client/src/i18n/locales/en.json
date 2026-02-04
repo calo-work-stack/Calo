@@ -543,10 +543,11 @@
     "save_failed": "Save Failed",
     "saveMeal": "Save Meal",
     "reanalyze": "Re-analyze",
+
     "title": "Meal Scanner",
     "subtitle": "Take a photo or select from gallery to analyze your meal",
-    "takePhoto": "Take Photo",
-    "chooseFromGallery": "Choose from Gallery",
+    "take_photo": "Take Photo",
+    "choose_from_gallery": "Choose from Gallery",
     "addDetails": "Add details (optional)",
     "detailsPlaceholder": "Describe ingredients, cooking method, or any special details...",
     "analyzing": "Analyzing...",

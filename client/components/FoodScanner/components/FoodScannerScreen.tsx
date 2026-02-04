@@ -149,7 +149,10 @@ export default function FoodScannerScreen() {
       }
     } catch (error) {
       console.error("Error loading scan history:", error);
-      ToastService.handleError(error, "Load Scan History");
+      ToastService.error(
+        t("foodScanner.scanError"),
+        t("common.tryAgain"),
+      );
     } finally {
       setIsLoadingHistory(false);
     }
@@ -175,9 +178,13 @@ export default function FoodScannerScreen() {
       } else {
         console.error("❌ Failed to save:", response.data);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Error saving product to history:", error);
-      ToastService.handleError(error, "Save Product to History");
+      const serverMessage = error?.response?.data?.error;
+      ToastService.error(
+        t("foodScanner.scanError"),
+        serverMessage || t("common.tryAgain"),
+      );
     }
   };
 
@@ -199,9 +206,8 @@ export default function FoodScannerScreen() {
         confidence: "medium",
         market_context: "Estimated based on category and size",
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Price estimation error:", error);
-      ToastService.handleError(error, "Price Estimation");
     }
     return null;
   };
@@ -248,14 +254,18 @@ export default function FoodScannerScreen() {
         setShowResults(true);
         await loadScanHistory();
       } else {
-        ToastService.handleError(
+        ToastService.error(
+          t("foodScanner.scanError"),
           response.data.error || t("foodScanner.noResults"),
-          "Barcode Search",
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Barcode scan error:", error);
-      ToastService.handleError(error, "Barcode Search");
+      const serverMessage = error?.response?.data?.error;
+      ToastService.error(
+        t("foodScanner.scanError"),
+        serverMessage || t("foodScanner.productNotFound"),
+      );
     } finally {
       setIsLoading(false);
       setLoadingText("");
@@ -286,9 +296,13 @@ export default function FoodScannerScreen() {
           t("foodScanner.productNotFound"),
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Barcode scan error:", error);
-      ToastService.handleError(error, "Barcode Scan");
+      const serverMessage = error?.response?.data?.error;
+      ToastService.error(
+        t("foodScanner.scanError"),
+        serverMessage || t("foodScanner.productNotFound"),
+      );
     } finally {
       setIsLoading(false);
       setLoadingText("");
@@ -340,9 +354,13 @@ export default function FoodScannerScreen() {
               t("foodScanner.couldNotIdentifyProduct"),
             );
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Image scan error:", error);
-          ToastService.handleError(error, "Image Scan");
+          const serverMessage = error?.response?.data?.error;
+          ToastService.error(
+            t("foodScanner.scanError"),
+            serverMessage || t("foodScanner.couldNotIdentifyProduct"),
+          );
         } finally {
           setIsLoading(false);
           setLoadingText("");
@@ -395,11 +413,18 @@ export default function FoodScannerScreen() {
           }),
         );
       } else {
-        ToastService.handleError(response.data.error, "Add to Shopping List");
+        ToastService.error(
+          t("foodScanner.scanError"),
+          response.data.error || t("common.tryAgain"),
+        );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Add to shopping list error:", error);
-      ToastService.handleError(error, "Add to Shopping List");
+      const serverMessage = error?.response?.data?.error;
+      ToastService.error(
+        t("foodScanner.scanError"),
+        serverMessage || t("common.tryAgain"),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -419,11 +444,18 @@ export default function FoodScannerScreen() {
       if (response.data.success) {
         ToastService.mealAdded(scanResult.product.name);
       } else {
-        ToastService.handleError(response.data.error, "Log Meal");
+        ToastService.error(
+          t("foodScanner.scanError"),
+          response.data.error || t("common.tryAgain"),
+        );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Add to meal history error:", error);
-      ToastService.handleError(error, "Log Meal");
+      const serverMessage = error?.response?.data?.error;
+      ToastService.error(
+        t("foodScanner.scanError"),
+        serverMessage || t("common.tryAgain"),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -461,9 +493,13 @@ export default function FoodScannerScreen() {
           );
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Product search error:", error);
-      ToastService.handleError(error, "Product Search");
+      const serverMessage = error?.response?.data?.error;
+      ToastService.error(
+        t("foodScanner.scanError"),
+        serverMessage || t("common.tryAgain"),
+      );
     } finally {
       setIsSearching(false);
     }
@@ -511,9 +547,13 @@ export default function FoodScannerScreen() {
       setSearchResults([]);
       animateResultAppearance();
       setShowResults(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error selecting product:", error);
-      ToastService.handleError(error, "Select Product");
+      const serverMessage = error?.response?.data?.error;
+      ToastService.error(
+        t("foodScanner.scanError"),
+        serverMessage || t("common.tryAgain"),
+      );
     } finally {
       setIsLoading(false);
       setLoadingText("");

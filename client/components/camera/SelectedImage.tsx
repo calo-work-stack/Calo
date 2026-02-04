@@ -214,13 +214,18 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
     },
     imageContainer: {
       flex: 1,
-      borderRadius: 0,
       overflow: "hidden",
+      backgroundColor: "#000",
+    },
+    imageWrapper: {
+      width: "100%",
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "center",
     },
     image: {
       width: "100%",
       height: "100%",
-      resizeMode: "cover",
     },
     gradient: {
       ...StyleSheet.absoluteFillObject,
@@ -539,7 +544,13 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
           },
         ]}
       >
-        <Image source={{ uri: imageUri }} style={styles.image} />
+        <View style={styles.imageWrapper}>
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+        </View>
 
         <LinearGradient
           colors={[

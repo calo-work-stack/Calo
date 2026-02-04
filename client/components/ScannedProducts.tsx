@@ -105,7 +105,11 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
         setProducts(response.data.data);
       }
     } catch (error: any) {
-      ToastService.handleError(error, t("errors.loadProducts"));
+      const serverMessage = error?.response?.data?.error;
+      ToastService.error(
+        t("errors.loadProducts"),
+        serverMessage || t("common.tryAgain"),
+      );
       setProducts([]);
     } finally {
       setIsLoading(false);

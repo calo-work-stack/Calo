@@ -1,14 +1,18 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
   Modal,
   TextInput,
-  Alert,
   Image,
   Animated,
   Pressable,
@@ -30,19 +34,15 @@ import {
   CheckCircle2,
   Circle,
   ChefHat,
-  Calendar,
   Target,
-  Timer,
   Trophy,
-  Sparkles,
   TrendingUp,
   Check,
   RefreshCw,
-  SkipForward,
 } from "lucide-react-native";
 import { api } from "@/src/services/api";
+import { ToastService } from "@/src/services/totastService";
 import { DietaryIcons } from "@/components/menu/DietaryIcons";
-import { LinearGradient } from "expo-linear-gradient";
 import {
   GoalProgressRing,
   DaysRemainingBadge,
@@ -56,7 +56,7 @@ import {
 } from "@/components/menu";
 import type { DayProgress } from "@/components/menu";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface Ingredient {
   ingredient_id: string;
@@ -120,7 +120,7 @@ const SkeletonPulse = React.memo(({ style }: { style?: any }) => {
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
     pulse.start();
     return () => pulse.stop();
@@ -211,13 +211,30 @@ const ProgressSummaryCard = React.memo(
           )}
 
           <View style={styles.compactStatItem}>
-            <View style={[styles.varianceChip, {
-              backgroundColor: weeklyVariance <= 0 ? colors.emerald500 + "15" : (colors.error || "#ef4444") + "15"
-            }]}>
-              <Text style={[styles.varianceChipText, {
-                color: weeklyVariance <= 0 ? colors.emerald500 : colors.error || "#ef4444"
-              }]}>
-                {weeklyVariance > 0 ? "+" : ""}{weeklyVariance}
+            <View
+              style={[
+                styles.varianceChip,
+                {
+                  backgroundColor:
+                    weeklyVariance <= 0
+                      ? colors.emerald500 + "15"
+                      : (colors.error || "#ef4444") + "15",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.varianceChipText,
+                  {
+                    color:
+                      weeklyVariance <= 0
+                        ? colors.emerald500
+                        : colors.error || "#ef4444",
+                  },
+                ]}
+              >
+                {weeklyVariance > 0 ? "+" : ""}
+                {weeklyVariance}
               </Text>
             </View>
             <Text style={[styles.compactStatLabel, { color: colors.icon }]}>
@@ -235,7 +252,7 @@ const ProgressSummaryCard = React.memo(
         />
       </View>
     );
-  }
+  },
 );
 
 // ==================== TODAY'S MEALS SECTION ====================
@@ -281,7 +298,7 @@ const TodaysMealsSection = React.memo(
         ))}
       </View>
     );
-  }
+  },
 );
 
 // ==================== DAY TAB ====================
@@ -323,12 +340,12 @@ const DayTab = React.memo(
     const dayDate = new Date(day.date);
     const dayName = dayDate.toLocaleDateString(
       language === "he" ? "he-IL" : "en-US",
-      { weekday: "short" }
+      { weekday: "short" },
     );
     const dateNumber = dayDate.getDate();
     const monthName = dayDate.toLocaleDateString(
       language === "he" ? "he-IL" : "en-US",
-      { month: "short" }
+      { month: "short" },
     );
 
     return (
@@ -370,7 +387,7 @@ const DayTab = React.memo(
         </Pressable>
       </Animated.View>
     );
-  }
+  },
 );
 
 // ==================== MEAL CARD ====================
@@ -395,22 +412,51 @@ const ActiveMealCard = React.memo(
     colors: any;
     t: any;
   }) => {
-    const getMealTypeConfig = useCallback((type: string) => {
-      const configs: Record<string, { emoji: string; color: string; label: string }> = {
-        breakfast: { emoji: "🍳", color: "#F59E0B", label: t("active_menu.meal_types.breakfast", "Breakfast") },
-        lunch: { emoji: "🥗", color: "#10B981", label: t("active_menu.meal_types.lunch", "Lunch") },
-        dinner: { emoji: "🍲", color: "#6366F1", label: t("active_menu.meal_types.dinner", "Dinner") },
-        snack: { emoji: "🍎", color: "#EC4899", label: t("active_menu.meal_types.snack", "Snack") },
-      };
-      return configs[type.toLowerCase()] || { emoji: "🍽️", color: "#6B7280", label: type };
-    }, [t]);
+    const getMealTypeConfig = useCallback(
+      (type: string) => {
+        const configs: Record<
+          string,
+          { emoji: string; color: string; label: string }
+        > = {
+          breakfast: {
+            emoji: "🍳",
+            color: "#F59E0B",
+            label: t("active_menu.meal_types.breakfast", "Breakfast"),
+          },
+          lunch: {
+            emoji: "🥗",
+            color: "#10B981",
+            label: t("active_menu.meal_types.lunch", "Lunch"),
+          },
+          dinner: {
+            emoji: "🍲",
+            color: "#6366F1",
+            label: t("active_menu.meal_types.dinner", "Dinner"),
+          },
+          snack: {
+            emoji: "🍎",
+            color: "#EC4899",
+            label: t("active_menu.meal_types.snack", "Snack"),
+          },
+        };
+        return (
+          configs[type.toLowerCase()] || {
+            emoji: "🍽️",
+            color: "#6B7280",
+            label: type,
+          }
+        );
+      },
+      [t],
+    );
 
     const config = getMealTypeConfig(meal.meal_type);
     const ingredientCount = meal.ingredients.length;
     const checkedCount = meal.ingredients.filter((ing) =>
-      checkedIngredients.has(ing.ingredient_id)
+      checkedIngredients.has(ing.ingredient_id),
     ).length;
-    const mealProgress = ingredientCount > 0 ? (checkedCount / ingredientCount) * 100 : 0;
+    const mealProgress =
+      ingredientCount > 0 ? (checkedCount / ingredientCount) * 100 : 0;
     const isLogged = meal.is_logged || mealProgress === 100;
 
     return (
@@ -425,21 +471,41 @@ const ActiveMealCard = React.memo(
           {/* Meal Image */}
           <View style={styles.mealImageContainer}>
             {meal.image_url ? (
-              <Image source={{ uri: meal.image_url }} style={styles.mealImage} />
+              <Image
+                source={{ uri: meal.image_url }}
+                style={styles.mealImage}
+              />
             ) : (
-              <View style={[styles.mealImagePlaceholder, { backgroundColor: config.color + "20" }]}>
+              <View
+                style={[
+                  styles.mealImagePlaceholder,
+                  { backgroundColor: config.color + "20" },
+                ]}
+              >
                 <Text style={styles.mealEmoji}>{config.emoji}</Text>
               </View>
             )}
 
             {/* Status indicator */}
             {isLogged ? (
-              <View style={[styles.statusBadge, { backgroundColor: colors.emerald500 }]}>
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: colors.emerald500 },
+                ]}
+              >
                 <Check size={10} color="#ffffff" strokeWidth={3} />
               </View>
             ) : mealProgress > 0 ? (
-              <View style={[styles.statusBadge, { backgroundColor: colors.warning || "#f59e0b" }]}>
-                <Text style={styles.statusBadgeText}>{Math.round(mealProgress)}%</Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: colors.warning || "#f59e0b" },
+                ]}
+              >
+                <Text style={styles.statusBadgeText}>
+                  {Math.round(mealProgress)}%
+                </Text>
               </View>
             ) : null}
           </View>
@@ -447,16 +513,19 @@ const ActiveMealCard = React.memo(
           {/* Meal Info */}
           <View style={styles.mealInfo}>
             <View style={styles.mealTypeRow}>
-              <View style={[styles.mealTypeBadge, { backgroundColor: config.color }]}>
+              <View
+                style={[
+                  styles.mealTypeBadge,
+                  { backgroundColor: config.color },
+                ]}
+              >
                 <Text style={styles.mealTypeText}>{config.label}</Text>
               </View>
               <Text
                 style={[
                   styles.mealStatusText,
                   {
-                    color: isLogged
-                      ? colors.emerald500
-                      : colors.icon,
+                    color: isLogged ? colors.emerald500 : colors.icon,
                   },
                 ]}
               >
@@ -465,7 +534,10 @@ const ActiveMealCard = React.memo(
                   : t("menu.pending", "Pending")}
               </Text>
             </View>
-            <Text style={[styles.mealName, { color: colors.text }]} numberOfLines={1}>
+            <Text
+              style={[styles.mealName, { color: colors.text }]}
+              numberOfLines={1}
+            >
               {meal.name}
             </Text>
             <View style={styles.mealMeta}>
@@ -473,13 +545,19 @@ const ActiveMealCard = React.memo(
               <Text style={[styles.mealMetaText, { color: colors.icon }]}>
                 {meal.calories} {t("menu.kcal", "kcal")}
               </Text>
-              <Text style={[styles.mealMetaDot, { color: colors.icon }]}>•</Text>
+              <Text style={[styles.mealMetaDot, { color: colors.icon }]}>
+                •
+              </Text>
               <Target size={14} color={colors.emerald500} />
               <Text style={[styles.mealMetaText, { color: colors.icon }]}>
                 {meal.protein}g {t("menu.protein", "protein")}
               </Text>
               {meal.dietary_tags && meal.dietary_tags.length > 0 && (
-                <DietaryIcons tags={meal.dietary_tags} size={14} style={{ marginLeft: 6 }} />
+                <DietaryIcons
+                  tags={meal.dietary_tags}
+                  size={14}
+                  style={{ marginLeft: 6 }}
+                />
               )}
             </View>
           </View>
@@ -490,14 +568,19 @@ const ActiveMealCard = React.memo(
             {onSwapMeal && !isLogged && (
               <Pressable
                 onPress={() => onSwapMeal(meal)}
-                style={[styles.swapButton, { backgroundColor: colors.emerald500 + "15" }]}
+                style={[
+                  styles.swapButton,
+                  { backgroundColor: colors.emerald500 + "15" },
+                ]}
               >
                 <RefreshCw size={16} color={colors.emerald500} />
               </Pressable>
             )}
 
             {/* Expand Icon */}
-            <View style={[styles.expandIconBg, { backgroundColor: colors.surface }]}>
+            <View
+              style={[styles.expandIconBg, { backgroundColor: colors.surface }]}
+            >
               {isExpanded ? (
                 <ChevronUp size={20} color={colors.icon} />
               ) : (
@@ -509,18 +592,32 @@ const ActiveMealCard = React.memo(
 
         {/* Expanded Content */}
         {isExpanded && (
-          <View style={[styles.expandedContent, { borderTopColor: colors.border }]}>
+          <View
+            style={[styles.expandedContent, { borderTopColor: colors.border }]}
+          >
             {/* Nutrition Grid */}
-            <View style={[styles.nutritionGrid, { backgroundColor: colors.surface }]}>
+            <View
+              style={[
+                styles.nutritionGrid,
+                { backgroundColor: colors.surface },
+              ]}
+            >
               <View style={styles.nutritionItem}>
-                <Text style={[styles.nutritionValue, { color: colors.emerald500 }]}>
+                <Text
+                  style={[styles.nutritionValue, { color: colors.emerald500 }]}
+                >
                   {meal.protein}g
                 </Text>
                 <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
                   {t("menu.protein", "Protein")}
                 </Text>
               </View>
-              <View style={[styles.nutritionDivider, { backgroundColor: colors.border }]} />
+              <View
+                style={[
+                  styles.nutritionDivider,
+                  { backgroundColor: colors.border },
+                ]}
+              />
               <View style={styles.nutritionItem}>
                 <Text style={[styles.nutritionValue, { color: "#f59e0b" }]}>
                   {meal.carbs}g
@@ -529,9 +626,19 @@ const ActiveMealCard = React.memo(
                   {t("menu.carbs", "Carbs")}
                 </Text>
               </View>
-              <View style={[styles.nutritionDivider, { backgroundColor: colors.border }]} />
+              <View
+                style={[
+                  styles.nutritionDivider,
+                  { backgroundColor: colors.border },
+                ]}
+              />
               <View style={styles.nutritionItem}>
-                <Text style={[styles.nutritionValue, { color: colors.error || "#ef4444" }]}>
+                <Text
+                  style={[
+                    styles.nutritionValue,
+                    { color: colors.error || "#ef4444" },
+                  ]}
+                >
                   {meal.fat}g
                 </Text>
                 <Text style={[styles.nutritionLabel, { color: colors.icon }]}>
@@ -544,30 +651,58 @@ const ActiveMealCard = React.memo(
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <ChefHat size={18} color={colors.emerald500} />
-                <Text style={[styles.ingredientsSectionTitle, { color: colors.text }]}>
+                <Text
+                  style={[
+                    styles.ingredientsSectionTitle,
+                    { color: colors.text },
+                  ]}
+                >
                   {t("active_menu.ingredients")}
                 </Text>
-                <View style={[styles.checkedBadge, { backgroundColor: colors.emerald500 + "20" }]}>
-                  <Text style={[styles.checkedBadgeText, { color: colors.emerald500 }]}>
+                <View
+                  style={[
+                    styles.checkedBadge,
+                    { backgroundColor: colors.emerald500 + "20" },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.checkedBadgeText,
+                      { color: colors.emerald500 },
+                    ]}
+                  >
                     {checkedCount}/{ingredientCount}
                   </Text>
                 </View>
               </View>
               <View style={styles.ingredientsList}>
                 {meal.ingredients.map((ingredient) => {
-                  const isChecked = checkedIngredients.has(ingredient.ingredient_id);
+                  const isChecked = checkedIngredients.has(
+                    ingredient.ingredient_id,
+                  );
 
                   return (
                     <Pressable
                       key={ingredient.ingredient_id}
-                      onPress={() => onToggleIngredient(ingredient.ingredient_id, meal.meal_id)}
+                      onPress={() =>
+                        onToggleIngredient(
+                          ingredient.ingredient_id,
+                          meal.meal_id,
+                        )
+                      }
                       style={[
                         styles.ingredientItem,
-                        isChecked && { backgroundColor: colors.emerald500 + "10" },
+                        isChecked && {
+                          backgroundColor: colors.emerald500 + "10",
+                        },
                       ]}
                     >
                       {isChecked ? (
-                        <CheckCircle2 size={22} color={colors.success || colors.emerald500} fill={colors.success || colors.emerald500} />
+                        <CheckCircle2
+                          size={22}
+                          color={colors.success || colors.emerald500}
+                          fill={colors.success || colors.emerald500}
+                        />
                       ) : (
                         <Circle size={22} color={colors.border} />
                       )}
@@ -575,7 +710,10 @@ const ActiveMealCard = React.memo(
                         style={[
                           styles.ingredientText,
                           { color: colors.text },
-                          isChecked && [styles.ingredientTextChecked, { color: colors.icon }],
+                          isChecked && [
+                            styles.ingredientTextChecked,
+                            { color: colors.icon },
+                          ],
                         ]}
                       >
                         {ingredient.name} - {ingredient.quantity}
@@ -589,11 +727,23 @@ const ActiveMealCard = React.memo(
             {/* Instructions */}
             {meal.instructions && (
               <View style={styles.section}>
-                <Text style={[styles.ingredientsSectionTitle, { color: colors.text }]}>
+                <Text
+                  style={[
+                    styles.ingredientsSectionTitle,
+                    { color: colors.text },
+                  ]}
+                >
                   {t("active_menu.instructions")}
                 </Text>
-                <View style={[styles.instructionsContainer, { backgroundColor: colors.surface }]}>
-                  <Text style={[styles.instructionsText, { color: colors.icon }]}>
+                <View
+                  style={[
+                    styles.instructionsContainer,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <Text
+                    style={[styles.instructionsText, { color: colors.icon }]}
+                  >
                     {meal.instructions}
                   </Text>
                 </View>
@@ -603,7 +753,7 @@ const ActiveMealCard = React.memo(
         )}
       </View>
     );
-  }
+  },
 );
 
 // ==================== MAIN COMPONENT ====================
@@ -619,35 +769,44 @@ export default function ActiveMenu() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState(0);
   const [expandedMeals, setExpandedMeals] = useState<Set<string>>(new Set());
-  const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(new Set());
+  const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(
+    new Set(),
+  );
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [reviewType, setReviewType] = useState<"completed" | "failed">("completed");
+  const [reviewType, setReviewType] = useState<"completed" | "failed">(
+    "completed",
+  );
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   // Meal swap state
   const [showSwapModal, setShowSwapModal] = useState(false);
-  const [selectedMealForSwap, setSelectedMealForSwap] = useState<Meal | null>(null);
+  const [selectedMealForSwap, setSelectedMealForSwap] = useState<Meal | null>(
+    null,
+  );
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Calculate current day index based on start_date
-  const getCurrentDayIndex = useCallback((startDate: string, totalDays: number): number => {
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  const getCurrentDayIndex = useCallback(
+    (startDate: string, totalDays: number): number => {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    const diffTime = today.getTime() - start.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const diffTime = today.getTime() - start.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    // Clamp to valid range (0 to totalDays-1)
-    if (diffDays < 0) return 0;
-    if (diffDays >= totalDays) return totalDays - 1;
-    return diffDays;
-  }, []);
+      // Clamp to valid range (0 to totalDays-1)
+      if (diffDays < 0) return 0;
+      if (diffDays >= totalDays) return totalDays - 1;
+      return diffDays;
+    },
+    [],
+  );
 
   useEffect(() => {
     loadMealPlan();
@@ -662,7 +821,10 @@ export default function ActiveMenu() {
   useEffect(() => {
     if (mealPlan) {
       // Set current day based on actual date
-      const currentDayIdx = getCurrentDayIndex(mealPlan.start_date, mealPlan.days.length);
+      const currentDayIdx = getCurrentDayIndex(
+        mealPlan.start_date,
+        mealPlan.days.length,
+      );
       setSelectedDay(currentDayIdx);
       checkMenuCompletion();
     }
@@ -671,7 +833,9 @@ export default function ActiveMenu() {
   const loadMealPlan = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get(`/recommended-menus/${planId}/with-progress`);
+      const response = await api.get(
+        `/recommended-menus/${planId}/with-progress`,
+      );
       const plan = response.data.data;
       setMealPlan(plan);
 
@@ -679,13 +843,16 @@ export default function ActiveMenu() {
         const checked = new Set<string>(
           plan.ingredient_checks
             .filter((c: any) => c.checked)
-            .map((c: any) => c.ingredient_id as string)
+            .map((c: any) => c.ingredient_id as string),
         );
         setCheckedIngredients(checked);
       }
     } catch (error) {
       console.error("Error loading meal plan:", error);
-      Alert.alert(t("common.error"), t("active_menu.failed_to_load"));
+      ToastService.error(
+        t("common.error"),
+        t("active_menu.failed_to_load"),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -748,7 +915,11 @@ export default function ActiveMenu() {
     loadMealPlan();
     setShowSwapModal(false);
     setSelectedMealForSwap(null);
-  }, []);
+    ToastService.success(
+      t("menu.meal_swapped", "Meal Swapped"),
+      t("menu.meal_swapped_desc", "Your meal has been updated successfully"),
+    );
+  }, [t]);
 
   const toggleIngredientCheck = useCallback(
     async (ingredientId: string, mealId: string) => {
@@ -763,10 +934,13 @@ export default function ActiveMenu() {
       setCheckedIngredients(newChecked);
 
       try {
-        await api.post(`/recommended-menus/${planId}/ingredients/${ingredientId}/check`, {
-          meal_id: mealId,
-          checked: isChecked,
-        });
+        await api.post(
+          `/recommended-menus/${planId}/ingredients/${ingredientId}/check`,
+          {
+            meal_id: mealId,
+            checked: isChecked,
+          },
+        );
       } catch (error) {
         console.error("Error updating ingredient check:", error);
         // Revert on error
@@ -778,12 +952,15 @@ export default function ActiveMenu() {
         setCheckedIngredients(new Set(newChecked));
       }
     },
-    [checkedIngredients, planId]
+    [checkedIngredients, planId],
   );
 
   const submitReview = async () => {
     if (rating === 0) {
-      Alert.alert(t("active_menu.please_rate"), t("active_menu.select_star_rating"));
+      ToastService.warning(
+        t("active_menu.please_rate"),
+        t("active_menu.select_star_rating"),
+      );
       return;
     }
 
@@ -797,12 +974,17 @@ export default function ActiveMenu() {
       });
 
       setShowReviewModal(false);
-      Alert.alert(t("active_menu.thank_you"), t("active_menu.feedback_helps"), [
-        { text: t("common.ok"), onPress: () => router.back() },
-      ]);
+      ToastService.success(
+        t("active_menu.thank_you"),
+        t("active_menu.feedback_helps"),
+      );
+      router.back();
     } catch (error) {
       console.error("Error submitting review:", error);
-      Alert.alert(t("common.error"), t("active_menu.failed_to_submit"));
+      ToastService.error(
+        t("common.error"),
+        t("active_menu.failed_to_submit"),
+      );
     } finally {
       setIsSubmittingReview(false);
     }
@@ -849,19 +1031,23 @@ export default function ActiveMenu() {
       day.meals.forEach((meal) => {
         dayTotalIngredients += meal.ingredients.length;
         const mealChecked = meal.ingredients.filter((ing) =>
-          checkedIngredients.has(ing.ingredient_id)
+          checkedIngredients.has(ing.ingredient_id),
         ).length;
         dayCheckedIngredients += mealChecked;
 
         // If meal is mostly checked, count its calories
-        if (meal.ingredients.length > 0 && mealChecked / meal.ingredients.length >= 0.5) {
+        if (
+          meal.ingredients.length > 0 &&
+          mealChecked / meal.ingredients.length >= 0.5
+        ) {
           caloriesActual += meal.calories;
         }
       });
 
-      const dayProgress = dayTotalIngredients > 0
-        ? (dayCheckedIngredients / dayTotalIngredients) * 100
-        : 0;
+      const dayProgress =
+        dayTotalIngredients > 0
+          ? (dayCheckedIngredients / dayTotalIngredients) * 100
+          : 0;
 
       let status: DayProgress["status"] = "pending";
       if (dayDate < today) {
@@ -886,13 +1072,18 @@ export default function ActiveMenu() {
   }, [mealPlan, checkedIngredients]);
 
   // Calculate streak
-  const streak = useMemo(() => calculateStreak(dayProgressData), [dayProgressData]);
+  const streak = useMemo(
+    () => calculateStreak(dayProgressData),
+    [dayProgressData],
+  );
 
   // Calculate weekly variance
   const weeklyVariance = useMemo(() => {
     if (!dayProgressData.length) return 0;
 
-    const completedDays = dayProgressData.filter((d) => d.status === "completed");
+    const completedDays = dayProgressData.filter(
+      (d) => d.status === "completed",
+    );
     if (!completedDays.length) return 0;
 
     const totalVariance = completedDays.reduce((sum, day) => {
@@ -904,27 +1095,61 @@ export default function ActiveMenu() {
 
   const currentDay = useMemo(
     () => (mealPlan ? mealPlan.days[selectedDay] : null),
-    [mealPlan, selectedDay]
+    [mealPlan, selectedDay],
   );
 
   // Loading skeleton
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
         <View style={styles.loadingContainer}>
-          <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-            <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <View
+            style={[
+              styles.header,
+              {
+                backgroundColor: colors.card,
+                borderBottomColor: colors.border,
+              },
+            ]}
+          >
+            <Pressable
+              onPress={() => router.push("/(tabs)")}
+              style={styles.backButton}
+            >
               <ArrowLeft size={24} color={colors.text} />
             </Pressable>
-            <SkeletonPulse style={[styles.skeletonHeaderTitle, { backgroundColor: colors.border }]} />
+            <SkeletonPulse
+              style={[
+                styles.skeletonHeaderTitle,
+                { backgroundColor: colors.border },
+              ]}
+            />
             <View style={{ width: 40 }} />
           </View>
 
           <View style={styles.skeletonContent}>
-            <SkeletonPulse style={[styles.skeletonSummaryCard, { backgroundColor: colors.border }]} />
-            <SkeletonPulse style={[styles.skeletonDayTabs, { backgroundColor: colors.border }]} />
+            <SkeletonPulse
+              style={[
+                styles.skeletonSummaryCard,
+                { backgroundColor: colors.border },
+              ]}
+            />
+            <SkeletonPulse
+              style={[
+                styles.skeletonDayTabs,
+                { backgroundColor: colors.border },
+              ]}
+            />
             {[1, 2].map((i) => (
-              <SkeletonPulse key={i} style={[styles.skeletonMealCard, { backgroundColor: colors.border }]} />
+              <SkeletonPulse
+                key={i}
+                style={[
+                  styles.skeletonMealCard,
+                  { backgroundColor: colors.border },
+                ]}
+              />
             ))}
           </View>
         </View>
@@ -934,7 +1159,9 @@ export default function ActiveMenu() {
 
   if (!mealPlan) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
         <View style={styles.errorContainer}>
           <ChefHat size={64} color={colors.icon} />
           <Text style={[styles.errorText, { color: colors.text }]}>
@@ -947,7 +1174,9 @@ export default function ActiveMenu() {
             onPress={() => router.push("/(tabs)/recommended-menus")}
             style={[styles.errorButton, { backgroundColor: colors.emerald500 }]}
           >
-            <Text style={styles.errorButtonText}>{t("active_menu.browse_menus")}</Text>
+            <Text style={styles.errorButtonText}>
+              {t("active_menu.browse_menus")}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -955,14 +1184,27 @@ export default function ActiveMenu() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: colors.card, borderBottomColor: colors.border },
+        ]}
+      >
+        <Pressable
+          onPress={() => router.push("/(tabs)")}
+          style={styles.backButton}
+        >
           <ArrowLeft size={24} color={colors.text} />
         </Pressable>
         <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
+          <Text
+            style={[styles.headerTitle, { color: colors.text }]}
+            numberOfLines={1}
+          >
             {mealPlan.name}
           </Text>
         </View>
@@ -992,7 +1234,9 @@ export default function ActiveMenu() {
         <QuickTipsGuide />
 
         {/* Day Tabs */}
-        <View style={[styles.dayTabsWrapper, { backgroundColor: colors.surface }]}>
+        <View
+          style={[styles.dayTabsWrapper, { backgroundColor: colors.surface }]}
+        >
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -1059,15 +1303,19 @@ export default function ActiveMenu() {
         }}
         onSwap={handleMealSwapped}
         menuId={planId as string}
-        originalMeal={selectedMealForSwap ? {
-          meal_id: selectedMealForSwap.meal_id,
-          name: selectedMealForSwap.name,
-          meal_type: selectedMealForSwap.meal_type,
-          calories: selectedMealForSwap.calories,
-          protein: selectedMealForSwap.protein,
-          carbs: selectedMealForSwap.carbs,
-          fat: selectedMealForSwap.fat,
-        } : null}
+        originalMeal={
+          selectedMealForSwap
+            ? {
+                meal_id: selectedMealForSwap.meal_id,
+                name: selectedMealForSwap.name,
+                meal_type: selectedMealForSwap.meal_type,
+                calories: selectedMealForSwap.calories,
+                protein: selectedMealForSwap.protein,
+                carbs: selectedMealForSwap.carbs,
+                fat: selectedMealForSwap.fat,
+              }
+            : null
+        }
       />
 
       {/* Review Modal */}
@@ -1080,7 +1328,12 @@ export default function ActiveMenu() {
         <View style={styles.modalOverlay}>
           <View style={[styles.reviewModal, { backgroundColor: colors.card }]}>
             {/* Trophy Icon */}
-            <View style={[styles.reviewIconContainer, { backgroundColor: colors.emerald500 + "20" }]}>
+            <View
+              style={[
+                styles.reviewIconContainer,
+                { backgroundColor: colors.emerald500 + "20" },
+              ]}
+            >
               {reviewType === "completed" ? (
                 <Trophy size={40} color={colors.emerald500} />
               ) : (
@@ -1102,7 +1355,11 @@ export default function ActiveMenu() {
             {/* Star Rating */}
             <View style={styles.starsContainer}>
               {[1, 2, 3, 4, 5].map((star) => (
-                <Pressable key={star} onPress={() => setRating(star)} style={styles.starButton}>
+                <Pressable
+                  key={star}
+                  onPress={() => setRating(star)}
+                  style={styles.starButton}
+                >
                   <Star
                     size={36}
                     color={star <= rating ? "#f59e0b" : colors.border}
@@ -1139,12 +1396,17 @@ export default function ActiveMenu() {
             <Pressable
               onPress={submitReview}
               disabled={isSubmittingReview}
-              style={[styles.submitButton, { backgroundColor: colors.emerald500 }]}
+              style={[
+                styles.submitButton,
+                { backgroundColor: colors.emerald500 },
+              ]}
             >
               {isSubmittingReview ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.submitButtonText}>{t("active_menu.submit_review")}</Text>
+                <Text style={styles.submitButtonText}>
+                  {t("active_menu.submit_review")}
+                </Text>
               )}
             </Pressable>
           </View>
@@ -1397,25 +1659,30 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   mealHeader: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    padding: 14,
   },
   mealImageContainer: {
-    marginRight: 14,
+    marginRight: 12,
     position: "relative",
   },
   mealImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
   },
   mealImagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
   },

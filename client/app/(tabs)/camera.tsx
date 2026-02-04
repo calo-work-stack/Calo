@@ -232,11 +232,11 @@ function CameraScreenContent() {
     // Build variations to check for different field naming conventions
     const baseField = field.replace("_g", "").replace("_mg", "");
     const variations = [
-      field,                    // e.g., "protein_g"
-      baseField,                // e.g., "protein"
-      `${baseField}_g`,         // e.g., "protein_g"
-      `${baseField}s`,          // e.g., "proteins" (plural)
-      `${baseField}s_g`,        // e.g., "proteins_g"
+      field, // e.g., "protein_g"
+      baseField, // e.g., "protein"
+      `${baseField}_g`, // e.g., "protein_g"
+      `${baseField}s`, // e.g., "proteins" (plural)
+      `${baseField}s_g`, // e.g., "proteins_g"
     ];
 
     // Special handling for fats/fat - server returns "fat" but field might be "fats_g"
@@ -289,8 +289,14 @@ function CameraScreenContent() {
     }
   };
 
+  /**
+   * 🔥 FIXED: Calculate total nutrition by SUMMING UP all ingredient values
+   * This is the critical fix - we now iterate through all ingredients and sum their nutrition
+   */
   const calculateTotalNutrition = () => {
-    if (!pendingMeal?.analysis) {
+    const data = analysisData || pendingMeal?.analysis;
+
+    if (!data) {
       return {
         calories: 0,
         protein: 0,
@@ -302,14 +308,96 @@ function CameraScreenContent() {
       };
     }
 
+    // If backend provides total values at the top level, use those first
+    const hasTopLevelNutrition =
+      data.calories ||
+      getNutritionValue(data, "protein_g") ||
+      getNutritionValue(data, "carbs_g");
+
+    if (hasTopLevelNutrition) {
+      return {
+        calories: data.calories || 0,
+        protein: getNutritionValue(data, "protein_g") || 0,
+        carbs: getNutritionValue(data, "carbs_g") || 0,
+        fat: getNutritionValue(data, "fats_g") || 0,
+        fiber: getNutritionValue(data, "fiber_g") || 0,
+        sugar: getNutritionValue(data, "sugar_g") || 0,
+        sodium: getNutritionValue(data, "sodium_mg") || 0,
+      };
+    }
+
+    // 🔥 FIX: Sum up nutrition from all ingredients
+    if (!data.ingredients || data.ingredients.length === 0) {
+      return {
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        fiber: 0,
+        sugar: 0,
+        sodium: 0,
+      };
+    }
+
+    const totals = {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      sodium: 0,
+    };
+
+    // Sum up each ingredient's nutrition values
+    data.ingredients.forEach((ingredient: any) => {
+      // Helper function to safely get a numeric value from an ingredient
+      const getIngredientValue = (field: string): number => {
+        const baseField = field.replace("_g", "").replace("_mg", "");
+        const variations = [
+          field,
+          baseField,
+          `${baseField}_g`,
+          `${baseField}s`,
+          `${baseField}s_g`,
+        ];
+
+        // Special handling for fat/fats
+        if (field === "fats_g" || baseField === "fats" || baseField === "fat") {
+          variations.push("fat", "fats", "fat_g", "fats_g");
+        }
+
+        for (const variation of variations) {
+          const value = ingredient[variation];
+          if (typeof value === "number" && value > 0) {
+            return value;
+          }
+          if (typeof value === "string" && !isNaN(parseFloat(value))) {
+            return parseFloat(value);
+          }
+        }
+        return 0;
+      };
+
+      // Add each nutrient from this ingredient
+      totals.calories += getIngredientValue("calories") || 0;
+      totals.protein += getIngredientValue("protein_g") || 0;
+      totals.carbs += getIngredientValue("carbs_g") || 0;
+      totals.fat += getIngredientValue("fats_g") || 0;
+      totals.fiber += getIngredientValue("fiber_g") || 0;
+      totals.sugar += getIngredientValue("sugar_g") || 0;
+      totals.sodium += getIngredientValue("sodium_mg") || 0;
+    });
+
+    // Round all values for clean display
     return {
-      calories: pendingMeal.analysis.calories || 0,
-      protein: getNutritionValue(pendingMeal.analysis, "protein_g") || 0,
-      carbs: getNutritionValue(pendingMeal.analysis, "carbs_g") || 0,
-      fat: getNutritionValue(pendingMeal.analysis, "fats_g") || 0,
-      fiber: getNutritionValue(pendingMeal.analysis, "fiber_g") || 0,
-      sugar: getNutritionValue(pendingMeal.analysis, "sugar_g") || 0,
-      sodium: getNutritionValue(pendingMeal.analysis, "sodium_mg") || 0,
+      calories: Math.round(totals.calories),
+      protein: Math.round(totals.protein),
+      carbs: Math.round(totals.carbs),
+      fat: Math.round(totals.fat),
+      fiber: Math.round(totals.fiber),
+      sugar: Math.round(totals.sugar),
+      sodium: Math.round(totals.sodium),
     };
   };
 

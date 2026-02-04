@@ -12,9 +12,9 @@ import { QrCode, Camera as CameraIcon, Sparkles } from "lucide-react-native";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useTranslation } from "react-i18next";
 
-const { width } = Dimensions.get("window");
-const SCANNER_SIZE = width - 48;
-const FRAME_SIZE = 220;
+const { width, height } = Dimensions.get("window");
+const SCANNER_SIZE = Math.min(width - 48, height * 0.45);
+const FRAME_SIZE = Math.min(220, SCANNER_SIZE - 80);
 
 interface ScannerCameraProps {
   scanMode: "barcode" | "image";

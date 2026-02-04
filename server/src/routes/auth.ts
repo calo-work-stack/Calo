@@ -1,5 +1,6 @@
 import { Router } from "express";
 import crypto from "crypto";
+import { z } from "zod";
 import { AuthService } from "../services/auth";
 import { signUpSchema, signInSchema } from "../types/auth";
 import { authenticateToken, AuthRequest } from "../middleware/auth";
@@ -32,7 +33,20 @@ router.post("/signup", async (req, res, next) => {
   } catch (error) {
     console.error("💥 Signup error:", error);
 
-    if (error instanceof Error) {
+    if (error instanceof z.ZodError) {
+      // Extract the first user-friendly validation message from ZodError
+      const firstIssue = error.issues[0];
+      const fieldName = firstIssue.path.join(".");
+      const friendlyMessage = fieldName
+        ? `${fieldName}: ${firstIssue.message}`
+        : firstIssue.message;
+
+      console.error("💥 Validation error:", friendlyMessage);
+      res.status(400).json({
+        success: false,
+        error: friendlyMessage,
+      });
+    } else if (error instanceof Error) {
       console.error("💥 Error details:", {
         name: error.name,
         message: error.message,

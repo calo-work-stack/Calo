@@ -391,11 +391,13 @@ export default function MealCard({
           {/* Image Section */}
           <View style={styles.imageSection}>
             {meal.image_url || meal.imageUrl ? (
-              <Image
-                source={{ uri: meal.image_url || meal.imageUrl }}
-                style={styles.image}
-                resizeMode="cover"
-              />
+              <View style={styles.imageContainer}>
+                <Image
+                  source={{ uri: meal.image_url || meal.imageUrl }}
+                  style={styles.image}
+                  resizeMode="cover"
+                />
+              </View>
             ) : (
               <View
                 style={[
@@ -774,14 +776,19 @@ const styles = StyleSheet.create({
   imageSection: {
     position: "relative",
   },
-  image: {
-    width: 85,
-    height: 85,
+  imageContainer: {
+    width: 95,
+    height: 95,
     borderRadius: 14,
+    overflow: "hidden", // ✅ No background color
+  },
+  image: {
+    width: "100%",
+    height: "100%",
   },
   imagePlaceholder: {
-    width: 85,
-    height: 85,
+    width: 95,
+    height: 95,
     borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",

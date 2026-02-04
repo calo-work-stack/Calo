@@ -7,6 +7,68 @@ import { NutritionService } from "../services/nutrition";
 import { AchievementService } from "../services/achievements";
 import { UsageTrackingService } from "../services/usageTracking";
 import { MealTrackingService } from "../services/mealTracking";
+import * as fs from "fs";
+import * as path from "path";
+
+// Load ingredient nutrition database for manual meal enrichment
+let ingredientNutritionDB: Record<string, any> = {};
+try {
+  const dbPath = path.join(__dirname, "../data/ingredientNutrition.json");
+  ingredientNutritionDB = JSON.parse(fs.readFileSync(dbPath, "utf-8"));
+} catch (e) {
+  console.warn("⚠️ Could not load ingredientNutrition.json:", e);
+}
+
+/**
+ * Look up ingredient nutrition data from the database.
+ * Matches by English name, Hebrew name, or aliases.
+ */
+function lookupIngredientNutrition(ingredientName: string): any | null {
+  const lower = ingredientName.toLowerCase().trim();
+
+  // Direct key match
+  if (ingredientNutritionDB[lower]) {
+    return ingredientNutritionDB[lower];
+  }
+
+  // Search by name_en, name_he, or aliases_he
+  for (const key of Object.keys(ingredientNutritionDB)) {
+    const entry = ingredientNutritionDB[key];
+    if (
+      entry.name_en?.toLowerCase() === lower ||
+      entry.name_he === ingredientName.trim() ||
+      entry.aliases_he?.some((alias: string) => alias === ingredientName.trim())
+    ) {
+      return entry;
+    }
+  }
+  return null;
+}
+
+/**
+ * Enrich plain string ingredients with nutritional data from the database.
+ * Assumes a default portion of 100g per ingredient.
+ */
+function enrichIngredients(
+  ingredients: string[]
+): { name: string; calories: number; protein: number; carbs: number; fat: number; fiber?: number; sugar?: number }[] {
+  return ingredients.map((name) => {
+    const data = lookupIngredientNutrition(name);
+    if (data && data.per_100g) {
+      return {
+        name,
+        calories: data.per_100g.calories || 0,
+        protein: data.per_100g.protein_g || 0,
+        carbs: data.per_100g.carbs_g || 0,
+        fat: data.per_100g.fats_g || 0,
+        fiber: data.per_100g.fiber_g || 0,
+        sugar: data.per_100g.sugar_g || 0,
+      };
+    }
+    // No match found — return ingredient with zero nutrition
+    return { name, calories: 0, protein: 0, carbs: 0, fat: 0 };
+  });
+}
 
 const router = Router();
 
@@ -1130,6 +1192,15 @@ router.post(
         });
       }
 
+      // Enrich ingredients with nutritional data from database
+      let enrichedIngredients: any[] | null = null;
+      if (ingredients) {
+        const rawIngredients = Array.isArray(ingredients)
+          ? ingredients
+          : [ingredients];
+        enrichedIngredients = enrichIngredients(rawIngredients);
+      }
+
       const mealData = {
         user_id: userId,
         meal_name: mealName,
@@ -1140,10 +1211,8 @@ router.post(
         fiber_g: fiber ? parseFloat(fiber) : null,
         sugar_g: sugar ? parseFloat(sugar) : null,
         sodium_mg: sodium ? parseFloat(sodium) : null,
-        ingredients: ingredients
-          ? JSON.stringify(
-              Array.isArray(ingredients) ? ingredients : [ingredients]
-            )
+        ingredients: enrichedIngredients
+          ? JSON.stringify(enrichedIngredients)
           : null,
         meal_period: mealPeriod || "other",
         image_url: imageUrl || "",

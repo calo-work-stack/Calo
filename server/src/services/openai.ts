@@ -505,7 +505,7 @@ export class OpenAIService {
       } else if (mealName.toLowerCase().includes("salad")) {
         return [
           {
-            name: "mixed greens",
+            name: "lettuce",
             calories: 20,
             protein: 2,
             carbs: 4,
@@ -515,7 +515,7 @@ export class OpenAIService {
             fats_g: 0,
           },
           {
-            name: "vegetables",
+            name: "tomato & cucumber",
             calories: 30,
             protein: 2,
             carbs: 7,
@@ -525,7 +525,7 @@ export class OpenAIService {
             fats_g: 0,
           },
           {
-            name: "dressing",
+            name: "olive oil dressing",
             calories: 80,
             protein: 0,
             carbs: 2,
@@ -538,10 +538,10 @@ export class OpenAIService {
       }
     }
 
-    // Ultimate fallback
+    // Ultimate fallback - use meal name as the ingredient
     return [
       {
-        name: "Main ingredients",
+        name: mealName || "mixed dish",
         calories: 200,
         protein: 10,
         carbs: 25,
@@ -1205,9 +1205,10 @@ JSON format:
         const addProtein = Math.floor((parsed.protein_g || 0) * 0.4);
         const addCarbs = Math.floor((parsed.carbs_g || 0) * 0.4);
         const addFat = Math.floor((parsed.fats_g || 0) * 0.4);
+        const baseName = parsed.meal_name || mealName || "dish";
         return [
           {
-            name: "Main components",
+            name: baseName,
             calories: Math.floor((parsed.calories || 0) * 0.6),
             protein: mainProtein,
             carbs: mainCarbs,
@@ -1217,7 +1218,7 @@ JSON format:
             fats_g: mainFat,
           },
           {
-            name: "Additional ingredients",
+            name: `${baseName} sides`,
             calories: Math.floor((parsed.calories || 0) * 0.4),
             protein: addProtein,
             carbs: addCarbs,
@@ -1563,7 +1564,7 @@ JSON format:
       const fatsFat = Math.floor(baseMeal.fat * 0.5);
       ingredients = [
         {
-          name: language === "hebrew" ? "חלבון עיקרי" : "Main protein",
+          name: language === "hebrew" ? "עוף" : "chicken",
           calories: Math.floor(baseMeal.calories * 0.4),
           protein: mainProtein,
           carbs: mainCarbs,
@@ -1573,7 +1574,7 @@ JSON format:
           fats_g: mainFat,
         },
         {
-          name: language === "hebrew" ? "פחמימות" : "Carbohydrate source",
+          name: language === "hebrew" ? "אורז" : "rice",
           calories: Math.floor(baseMeal.calories * 0.3),
           protein: carbProtein,
           carbs: carbCarbs,
@@ -1583,7 +1584,7 @@ JSON format:
           fats_g: carbFat,
         },
         {
-          name: language === "hebrew" ? "ירקות" : "Vegetables",
+          name: language === "hebrew" ? "ירקות מעורבים" : "mixed vegetables",
           calories: Math.floor(baseMeal.calories * 0.2),
           protein: vegProtein,
           carbs: vegCarbs,
@@ -1593,7 +1594,7 @@ JSON format:
           fats_g: vegFat,
         },
         {
-          name: language === "hebrew" ? "שמנים בריאים" : "Healthy fats",
+          name: language === "hebrew" ? "שמן זית" : "olive oil",
           calories: Math.floor(baseMeal.calories * 0.1),
           protein: 0,
           carbs: 0,

@@ -87,10 +87,14 @@ router.post(
       });
     } catch (error) {
       console.error("❌ Barcode scan error:", error);
-      res.status(500).json({
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      const isNotFound = errorMessage.toLowerCase().includes("not found");
+      res.status(isNotFound ? 404 : 500).json({
         success: false,
-        error: "Failed to scan barcode",
-        message: error instanceof Error ? error.message : "Unknown error",
+        error: isNotFound
+          ? "Product not found. Try entering the barcode manually or search by name."
+          : "Failed to scan barcode. Please try again.",
       });
     }
   },
@@ -157,8 +161,7 @@ router.post(
       console.error("❌ Image scan error:", error);
       res.status(500).json({
         success: false,
-        error: "Failed to scan image",
-        message: error instanceof Error ? error.message : "Unknown error",
+        error: "Could not identify the product. Please try a clearer image or search by name.",
       });
     }
   },
@@ -220,8 +223,7 @@ router.post(
       console.error("❌ Add to meal error:", error);
       res.status(500).json({
         success: false,
-        error: "Failed to add product to meal log",
-        message: error instanceof Error ? error.message : "Unknown error",
+        error: "Failed to add product to meal log. Please try again.",
       });
     }
   },
@@ -268,8 +270,7 @@ router.get(
       console.error("❌ Product search error:", error);
       res.status(500).json({
         success: false,
-        error: "Failed to search products",
-        message: error instanceof Error ? error.message : "Unknown error",
+        error: "Search failed. Please try again.",
       });
     }
   },
@@ -314,8 +315,7 @@ router.post(
       console.error("❌ Error saving product:", error);
       res.status(500).json({
         success: false,
-        error: "Failed to save product to history",
-        message: error instanceof Error ? error.message : "Unknown error",
+        error: "Failed to save product to history.",
       });
     }
   },

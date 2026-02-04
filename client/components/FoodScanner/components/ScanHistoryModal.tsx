@@ -88,7 +88,7 @@ export default function ScanHistoryModal({
                   <Text
                     style={[styles.itemDate, { color: colors.textTertiary }]}
                   >
-                    {new Date(item.created_at).toLocaleDateString()}
+                    {item.created_at ? new Date(item.created_at).toLocaleDateString() : ""}
                   </Text>
                 </View>
               </View>

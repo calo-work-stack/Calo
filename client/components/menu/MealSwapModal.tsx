@@ -435,13 +435,18 @@ export const MealSwapModal: React.FC<MealSwapModalProps> = ({
     try {
       setIsSwapping(alternative.meal_id);
 
-      // Call the replace meal API
+      // Call the replace meal API with full alternative nutrition data
       const response = await api.post(`/recommended-menus/${menuId}/replace-meal`, {
         mealId: originalMeal.meal_id,
         preferences: {
           targetCalories: alternative.calories,
           targetProtein: alternative.protein,
+          targetCarbs: alternative.carbs,
+          targetFat: alternative.fat,
           selectedAlternativeId: alternative.meal_id,
+          alternativeName: alternative.name,
+          prepTime: alternative.prep_time_minutes,
+          cookingMethod: alternative.cooking_method,
         },
       });
 
@@ -453,9 +458,7 @@ export const MealSwapModal: React.FC<MealSwapModalProps> = ({
       }
     } catch (err) {
       console.error("Error swapping meal:", err);
-      // Still allow the swap for demo/offline purposes
-      onSwap(alternative);
-      onClose();
+      setError(t("menu.swap_failed", "Failed to swap meal. Please try again."));
     } finally {
       setIsSwapping(null);
     }
