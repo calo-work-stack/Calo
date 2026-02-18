@@ -16,6 +16,19 @@ const openai = process.env.OPENAI_API_KEY
 
 const router = Router();
 
+const MAX_MENUS_PER_USER = 3;
+
+// Helper function to check if user has reached menu limit
+async function checkMenuLimit(userId: string): Promise<{ allowed: boolean; currentCount: number }> {
+  const count = await prisma.recommendedMenu.count({
+    where: { user_id: userId },
+  });
+  return {
+    allowed: count < MAX_MENUS_PER_USER,
+    currentCount: count,
+  };
+}
+
 // Get user's recommended menus
 router.get("/", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
@@ -47,6 +60,9 @@ router.get("/", authenticateToken, async (req: AuthRequest, res: Response) => {
     res.json({
       success: true,
       data: menus,
+      menuCount: menus.length,
+      maxMenus: MAX_MENUS_PER_USER,
+      canCreateMore: menus.length < MAX_MENUS_PER_USER,
     });
   } catch (error) {
     console.error("💥 Error getting recommended menus:", error);
@@ -297,6 +313,17 @@ router.post(
       console.log("🎨 Generating custom menu for user:", userId);
       console.log("📋 Custom request:", req.body);
 
+      // Check menu limit
+      const { allowed, currentCount } = await checkMenuLimit(userId);
+      if (!allowed) {
+        return res.status(400).json({
+          success: false,
+          error: `Maximum ${MAX_MENUS_PER_USER} menus allowed. Please delete a menu to create a new one.`,
+          currentCount,
+          maxMenus: MAX_MENUS_PER_USER,
+        });
+      }
+
       const {
         days = 7,
         mealsPerDay = "3_main",
@@ -401,6 +428,17 @@ router.post(
       const userId = req.user.user_id;
       console.log("🎯 Generating menu for user:", userId);
       console.log("📋 Request body:", req.body);
+
+      // Check menu limit
+      const { allowed, currentCount } = await checkMenuLimit(userId);
+      if (!allowed) {
+        return res.status(400).json({
+          success: false,
+          error: `Maximum ${MAX_MENUS_PER_USER} menus allowed. Please delete a menu to create a new one.`,
+          currentCount,
+          maxMenus: MAX_MENUS_PER_USER,
+        });
+      }
 
       const {
         days = 7,
@@ -519,8 +557,9 @@ router.get(
     try {
       const userId = req.user.user_id;
       const { menuId, mealId } = req.params;
+      const { language = "en" } = req.query;
 
-      console.log("🔄 Getting meal alternatives for:", { menuId, mealId });
+      console.log("🔄 Getting meal alternatives for:", { menuId, mealId, language });
 
       // Get the original meal
       const originalMeal = await prisma.recommendedMeal.findFirst({
@@ -549,15 +588,16 @@ router.get(
         orderBy: { date_completed: "desc" },
       });
 
-      // Generate alternatives using AI
+      // Generate alternatives using AI with language support
       const alternatives = await RecommendedMenuService.getMealAlternatives(
         originalMeal,
         questionnaire,
         3, // Return 3 alternatives
+        language as string, // Pass language for AI generation
       );
 
       console.log(
-        `✅ Generated ${alternatives.length} meal alternatives for ${originalMeal.name}`
+        `✅ Generated ${alternatives.length} meal alternatives for ${originalMeal.name} in ${language}`
       );
 
       res.json({
@@ -655,13 +695,16 @@ router.post(
     try {
       const userId = req.user.user_id;
       const { menuId } = req.params;
-      const { mealId, preferences } = req.body;
+      const { mealId, preferences, language = "en" } = req.body;
+
+      console.log("🔄 Replace meal request:", { menuId, mealId, language, alternativeName: preferences?.alternativeName });
 
       const updatedMeal = await RecommendedMenuService.replaceMeal(
         userId,
         menuId,
         mealId,
         preferences,
+        language, // Pass language for AI generation
       );
 
       res.json({
@@ -829,7 +872,6 @@ router.post(
     try {
       const userId = req.user.user_id;
       const { menuId } = req.params;
-      const feedback = req.body;
 
       console.log(
         "🚀 Starting recommended menu today:",
@@ -860,22 +902,67 @@ router.post(
         });
       }
 
+      // Calculate start and end dates based on today
+      // Use noon UTC to avoid timezone shift issues (midnight local can become previous day in UTC)
+      const now = new Date();
+      const startDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0));
+      const endDate = new Date(startDate);
+      endDate.setUTCDate(endDate.getUTCDate() + menu.days_count - 1);
+      endDate.setUTCHours(23, 59, 59, 999);
+
+      console.log("📅 Setting menu dates:", {
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+        days_count: menu.days_count,
+      });
+
+      // Deactivate any other active recommended menus for this user
+      const deactivateResult = await prisma.recommendedMenu.updateMany({
+        where: {
+          user_id: userId,
+          menu_id: { not: menuId },
+          is_active: true,
+        },
+        data: { is_active: false },
+      });
+      console.log(`📋 Deactivated ${deactivateResult.count} other menus`);
+
+      // Update the menu with start_date, end_date and mark as active
+      const updatedMenu = await prisma.recommendedMenu.update({
+        where: { menu_id: menuId },
+        data: {
+          is_active: true,
+          start_date: startDate,
+          end_date: endDate,
+        },
+      });
+      console.log(`📋 Menu ${menuId} now has is_active = ${updatedMenu.is_active}`);
+
       // Update user's active menu
-      await prisma.user.update({
+      const updatedUser = await prisma.user.update({
         where: { user_id: userId },
         data: {
           active_menu_id: menuId,
           active_meal_plan_id: null, // Clear any active meal plan
         },
       });
+      console.log(`📋 User active_menu_id updated to: ${updatedUser.active_menu_id}`);
 
-      console.log("✅ Menu started successfully");
+      console.log("✅ Menu started successfully - All state synchronized:", {
+        menu_id: menuId,
+        is_active: updatedMenu.is_active,
+        user_active_menu_id: updatedUser.active_menu_id,
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+      });
       res.json({
         success: true,
         data: {
           plan_id: menuId,
           name: menu.title,
-          start_date: new Date().toISOString(),
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
+          days_count: menu.days_count,
         },
       });
     } catch (error) {
@@ -1012,6 +1099,17 @@ router.post(
       console.log("🎯 Generating comprehensive menu for user:", userId);
       console.log("📋 Request body:", req.body);
 
+      // Check menu limit
+      const { allowed, currentCount } = await checkMenuLimit(userId);
+      if (!allowed) {
+        return res.status(400).json({
+          success: false,
+          error: `Maximum ${MAX_MENUS_PER_USER} menus allowed. Please delete a menu to create a new one.`,
+          currentCount,
+          maxMenus: MAX_MENUS_PER_USER,
+        });
+      }
+
       const {
         name,
         days = 7,
@@ -1135,9 +1233,12 @@ router.post(
   },
 );
 
-// POST /api/recommended-menus/:menuId/start-today - Create meal plan from menu and activate it
+// DEPRECATED: This duplicate route is shadowed by the one above. Keeping for reference.
+// The route above now properly handles setting start_date and end_date.
+// If meal plan creation is needed, consider renaming this to "/:menuId/start-with-meal-plan"
+/*
 router.post(
-  "/:menuId/start-today",
+  "/:menuId/start-today-legacy",
   authenticateToken,
   async (req: AuthRequest, res: Response) => {
     try {
@@ -1430,6 +1531,28 @@ router.post(
     }
   },
 );
+*/
+
+// Helper: Clear placeholder state when AI fails - ensures meals don't stay stuck in "Preparing..." forever
+async function clearPlaceholderState(
+  menuId: string,
+  savedMealIds: { mealId: string; dayNumber: number; mealType: string }[],
+) {
+  try {
+    for (const meal of savedMealIds) {
+      await prisma.recommendedMeal.update({
+        where: { meal_id: meal.mealId },
+        data: {
+          cooking_method: "Simple preparation",
+          instructions: "Recipe details could not be generated. You can edit this meal to add your own instructions.",
+        },
+      });
+    }
+    console.log(`🔧 Cleared placeholder state for menu ${menuId} (${savedMealIds.length} meals)`);
+  } catch (e) {
+    console.error(`❌ Failed to clear placeholder state for menu ${menuId}:`, e);
+  }
+}
 
 // Generate menu with user ingredients
 router.post(
@@ -1442,6 +1565,17 @@ router.post(
         return res.status(401).json({
           success: false,
           error: "User not authenticated",
+        });
+      }
+
+      // Check menu limit
+      const { allowed, currentCount } = await checkMenuLimit(userId);
+      if (!allowed) {
+        return res.status(400).json({
+          success: false,
+          error: `Maximum ${MAX_MENUS_PER_USER} menus allowed. Please delete a menu to create a new one.`,
+          currentCount,
+          maxMenus: MAX_MENUS_PER_USER,
         });
       }
 
@@ -1517,7 +1651,7 @@ Respond in ${menuLanguage} for ALL text (menu name, descriptions, instructions, 
 1. CREATE RESTAURANT-QUALITY DISHES: Each meal should be exciting, flavorful, and memorable
 2. ${hasIngredients ? "MAXIMIZE INGREDIENT USE: Creatively incorporate the provided ingredients across multiple meals" : "SMART INGREDIENT SELECTION: Choose fresh, affordable, and accessible ingredients that complement the cuisine style"}
 3. BALANCE NUTRITION: Hit macro targets while ensuring variety and satisfaction
-4. DETAILED INSTRUCTIONS: Step-by-step cooking guidance that anyone can follow
+4. STRUCTURED INSTRUCTIONS: Each meal MUST have 4-8 numbered cooking steps. Each step starts with an action verb (Prep, Heat, Sear, Mix, Bake, etc.). Include temperatures (°C) and times (minutes) where applicable. Final step should be plating/serving.
 5. SMART MEAL PLANNING: Prep ingredients once, use in multiple meals when possible
 6. FLAVOR PROFILES: Layer flavors with herbs, spices, and proper cooking techniques
 7. VISUAL APPEAL: Describe plating and presentation tips
@@ -1593,7 +1727,7 @@ EXAMPLE: A meal with 150g chicken breast (₪18-22), 200g vegetables (₪6-8), 1
       "fat": <grams>,
       "prep_time_minutes": <realistic time>,
       "cooking_method": "Specific method (e.g., 'Pan-searing and roasting', 'Slow cooker', 'Stir-frying')",
-      "instructions": "Detailed step-by-step: 1. Prep ingredients... 2. Heat pan... 3. Cook... 4. Season... 5. Plate and serve. Include temperatures, cooking times, and pro tips.",
+      "instructions": "1. Prep: Dice the onions and mince garlic.\n2. Sear: Heat olive oil in a pan over medium-high heat (200°C).\n3. Cook: Add chicken and cook 5-6 min per side.\n4. Season: Add paprika, salt, and pepper.\n5. Finish: Let rest 3 minutes, then plate with fresh herbs.",
       "dietary_tags": ["vegan", "vegetarian", "gluten-free", "dairy-free", "nut-free", "meat", "fish", "egg"] (include all that apply),
       "ingredients": [
         {
@@ -1685,7 +1819,23 @@ EXAMPLE: A meal with 150g chicken breast (₪18-22), 200g vegetables (₪6-8), 1
       const totalCarbs = placeholderMeals.reduce((sum, m) => sum + m.carbs, 0);
       const totalFat = placeholderMeals.reduce((sum, m) => sum + m.fat, 0);
 
-      // Save menu to database IMMEDIATELY
+      // Auto-activate: calculate start and end dates
+      const now = new Date();
+      const startDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0));
+      const endDate = new Date(startDate);
+      endDate.setUTCDate(endDate.getUTCDate() + sanitizedDuration - 1);
+      endDate.setUTCHours(23, 59, 59, 999);
+
+      // Deactivate any other active menus for this user
+      await prisma.recommendedMenu.updateMany({
+        where: {
+          user_id: userId,
+          is_active: true,
+        },
+        data: { is_active: false },
+      });
+
+      // Save menu to database IMMEDIATELY - auto-activated
       const savedMenu = await prisma.recommendedMenu.create({
         data: {
           user_id: userId,
@@ -1704,7 +1854,18 @@ EXAMPLE: A meal with 150g chicken breast (₪18-22), 200g vegetables (₪6-8), 1
               : preferences.cooking_difficulty === "hard"
                 ? 3
                 : 2,
-          // AI enhancement will happen in background
+          is_active: true,
+          start_date: startDate,
+          end_date: endDate,
+        },
+      });
+
+      // Update user's active menu
+      await prisma.user.update({
+        where: { user_id: userId },
+        data: {
+          active_menu_id: savedMenu.menu_id,
+          active_meal_plan_id: null,
         },
       });
 
@@ -1751,7 +1912,9 @@ EXAMPLE: A meal with 150g chicken breast (₪18-22), 200g vegetables (₪6-8), 1
         success: true,
         data: {
           menu_id: savedMenu.menu_id,
+          plan_id: savedMenu.menu_id,
           menu_name: quickMenuName,
+          name: quickMenuName,
           description: `${cuisineNames[preferences.cuisine] || "Custom"} cuisine menu - AI is personalizing your recipes...`,
           total_calories: totalCalories,
           total_protein: totalProtein,
@@ -1759,168 +1922,291 @@ EXAMPLE: A meal with 150g chicken breast (₪18-22), 200g vegetables (₪6-8), 1
           total_fat: totalFat,
           days_count: sanitizedDuration,
           estimated_cost: 0,
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
+          is_active: true,
           meals: placeholderMeals,
-          is_generating: true, // Hint to client that AI is enhancing recipes
+          is_generating: true,
         },
         message:
           "Menu created! AI is now personalizing your recipes in the background.",
       });
 
       // ========== BACKGROUND AI ENHANCEMENT ==========
-      // Generate actual AI content in the background
+      // Generate meals in PARALLEL BATCHES for speed
+      // Day 1 runs first (to get menu name), then remaining days run 3 at a time
+      const menuId = savedMenu.menu_id;
       if (openai) {
         setImmediate(async () => {
           try {
-            console.log(
-              `🤖 Starting background AI enhancement for menu: ${savedMenu.menu_id}`,
-            );
+            console.log(`🤖 Starting parallel AI enhancement for menu: ${menuId} (${sanitizedDuration} days)`);
 
-            const response = await openai.chat.completions.create({
-              model: "gpt-4o-mini",
-              messages: [
-                {
-                  role: "system",
-                  content:
-                    "You are an award-winning chef. Create restaurant-quality recipes. Return ONLY valid JSON.",
-                },
-                { role: "user", content: prompt },
-              ],
-              max_completion_tokens: 16000,
-              temperature: 0.7,
-              response_format: { type: "json_object" },
-            });
+            let totalUpdated = 0;
+            let menuName = quickMenuName;
+            let menuDescription = "";
 
-            const aiContent = response.choices[0]?.message?.content;
-            if (!aiContent) {
-              console.error("❌ No AI response");
-              return;
-            }
+            // --- Helper: build prompt for a single day ---
+            const buildDayPrompt = (day: number, dayMealIds: typeof savedMealIds) => {
+              const cookingStyles = [
+                "grilled", "baked", "stir-fried", "steamed", "roasted",
+                "sautéed", "poached", "braised", "pan-seared", "slow-cooked",
+              ];
+              const varietyHint = cookingStyles.slice((day - 1) * 2 % cookingStyles.length, (day - 1) * 2 % cookingStyles.length + 3).join(", ");
 
-            let parsedMenu;
-            try {
-              const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                parsedMenu = JSON.parse(jsonMatch[0]);
+              return `You are a world-class chef creating DAY ${day} of a ${sanitizedDuration}-day ${preferences.cuisine || "mixed"} meal plan.
+
+📋 REQUIREMENTS:
+- Cuisine: ${preferences.cuisine || "mixed"}
+- Dietary: ${(preferences.dietary_restrictions || []).join(", ") || "None"}
+- Difficulty: ${preferences.cooking_difficulty || "easy"}
+- Budget: ${preferences.budget_range || "moderate"}
+- Language: ${menuLanguage}
+${day === 1 ? `- Menu Name: ${customName || "Create a catchy 2-3 word name in " + menuLanguage}` : ""}
+
+${userQuestionnaire ? `👤 USER: Age ${userQuestionnaire.age}, Goal: ${userQuestionnaire.main_goal}, Activity: ${userQuestionnaire.physical_activity_level}` : ""}
+
+🍽️ Generate EXACTLY these meals for day ${day}:
+${dayMealIds.map((m) => `- ${m.mealType}`).join("\n")}
+
+${hasIngredients ? `Available ingredients: ${ingredientsList}` : "Suggest fresh, affordable ingredients."}
+
+🎨 VARIETY (important!):
+- This is day ${day} of ${sanitizedDuration} - each day must feel DIFFERENT
+- Preferred cooking methods for today: ${varietyHint}
+- Do NOT repeat standard meals like plain chicken and rice
+- Use creative names, varied proteins (chicken, fish, eggs, tofu, beef, legumes), diverse grains, seasonal vegetables
+- Breakfast ideas: shakshuka, overnight oats, smoothie bowls, French toast, granola parfaits, savory crepes
+- Lunch/Dinner ideas: stir-fry, stuffed peppers, grain bowls, wraps, pasta, curry, tacos, soups
+
+✨ RECIPE RULES:
+- Each meal: 4-8 numbered cooking steps with action verbs, temperatures (°C), and times
+- Each ingredient MUST have estimated_cost in ₪ (Israeli Shekels)
+- Use realistic Israeli supermarket prices
+
+💰 PRICE GUIDE (₪): Chicken breast 100g: ₪12-15, Rice 100g: ₪1-2, Vegetables 100g: ₪2-5, Eggs each: ₪1.5, Olive oil 100ml: ₪4-6, Cheese 100g: ₪8-12, Ground beef 100g: ₪14-18, Fish fillet 100g: ₪15-25, Tofu 100g: ₪5-7, Pasta 100g: ₪2-3
+
+📊 RESPOND IN THIS JSON FORMAT:
+{
+  ${day === 1 ? `"menu_name": "Catchy name",\n  "description": "1-2 sentence description",` : ""}
+  "meals": [
+    {
+      "name": "Creative appetizing name",
+      "meal_type": "BREAKFAST|LUNCH|DINNER|SNACK|MORNING_SNACK|AFTERNOON_SNACK",
+      "day_number": ${day},
+      "calories": <number>,
+      "protein": <grams>,
+      "carbs": <grams>,
+      "fat": <grams>,
+      "prep_time_minutes": <number>,
+      "cooking_method": "Specific method",
+      "instructions": "1. Prep: ...\\n2. Cook: ...\\n3. ...",
+      "dietary_tags": [],
+      "ingredients": [
+        {"name": "ingredient", "quantity": <number>, "unit": "g|ml|piece|tbsp", "category": "protein|vegetable|grain|dairy|fruit|spice|fat", "estimated_cost": <₪ number>}
+      ]
+    }
+  ]
+}`;
+            };
+
+            // --- Helper: process AI response for one day ---
+            const processDay = async (day: number) => {
+              const dayMealIds = savedMealIds.filter((m) => m.dayNumber === day);
+              if (dayMealIds.length === 0) return 0;
+
+              console.log(`📅 Generating day ${day}/${sanitizedDuration}: ${dayMealIds.map((m) => m.mealType).join(", ")}`);
+
+              const response = await openai!.chat.completions.create({
+                model: "gpt-4o-mini",
+                messages: [
+                  {
+                    role: "system",
+                    content: `You are an award-winning chef. Create diverse, restaurant-quality recipes. Return ONLY valid JSON. You MUST generate exactly ${dayMealIds.length} meals. Every ingredient MUST have a realistic estimated_cost in ₪. Make each meal unique and creative.`,
+                  },
+                  { role: "user", content: buildDayPrompt(day, dayMealIds) },
+                ],
+                max_completion_tokens: 4096,
+                temperature: 0.8,
+                response_format: { type: "json_object" },
+              });
+
+              const aiContent = response.choices[0]?.message?.content;
+              if (!aiContent) throw new Error("No AI response");
+
+              let parsed: any;
+              try {
+                parsed = JSON.parse(aiContent);
+              } catch {
+                const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
+                if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+                else throw new Error("Failed to parse JSON");
               }
-            } catch (e) {
-              console.error("❌ Failed to parse AI response");
-              return;
-            }
 
-            if (!parsedMenu?.meals || !Array.isArray(parsedMenu.meals)) {
-              console.error("❌ Invalid menu structure");
-              return;
-            }
+              // Grab menu name from day 1
+              if (day === 1 && parsed.menu_name) {
+                menuName = String(parsed.menu_name);
+                menuDescription = String(parsed.description || "");
+              }
 
-            // Update menu with AI data
-            await prisma.recommendedMenu.update({
-              where: { menu_id: savedMenu.menu_id },
-              data: {
-                title: String(parsedMenu.menu_name || quickMenuName),
-                description: String(parsedMenu.description || ""),
-                total_calories: parseInt(
-                  parsedMenu.total_calories?.toString() || "0",
-                ),
-                total_protein: parseInt(
-                  parsedMenu.total_protein?.toString() || "0",
-                ),
-                total_carbs: parseInt(
-                  parsedMenu.total_carbs?.toString() || "0",
-                ),
-                total_fat: parseInt(parsedMenu.total_fat?.toString() || "0"),
-                estimated_cost: parseFloat(
-                  parsedMenu.estimated_cost?.toString() || "0",
-                ),
-              },
-            });
+              const aiMeals = parsed.meals || [];
+              if (!Array.isArray(aiMeals) || aiMeals.length === 0) throw new Error("No meals in response");
 
-            // Update each meal with AI-generated content
-            for (const aiMeal of parsedMenu.meals) {
-              const matchingMeal = savedMealIds.find(
-                (m) =>
-                  m.dayNumber === aiMeal.day_number &&
-                  m.mealType === aiMeal.meal_type,
-              );
+              let dayUpdated = 0;
+              for (const aiMeal of aiMeals) {
+                const aiMealType = (aiMeal.meal_type || "").toUpperCase();
+                const matchingMeal = dayMealIds.find((m) => m.mealType === aiMealType);
+                if (!matchingMeal) continue;
 
-              if (matchingMeal) {
                 await prisma.recommendedMeal.update({
                   where: { meal_id: matchingMeal.mealId },
                   data: {
                     name: aiMeal.name || "Delicious Meal",
-                    calories: aiMeal.calories || 500,
-                    protein: aiMeal.protein || 25,
-                    carbs: aiMeal.carbs || 50,
-                    fat: aiMeal.fat || 20,
-                    prep_time_minutes: aiMeal.prep_time_minutes || 30,
-                    cooking_method: aiMeal.cooking_method || "",
+                    calories: parseFloat(aiMeal.calories?.toString() || "500"),
+                    protein: parseFloat(aiMeal.protein?.toString() || "25"),
+                    carbs: parseFloat(aiMeal.carbs?.toString() || "50"),
+                    fat: parseFloat(aiMeal.fat?.toString() || "20"),
+                    prep_time_minutes: parseInt(aiMeal.prep_time_minutes?.toString() || "30"),
+                    cooking_method: aiMeal.cooking_method || "Mixed cooking",
                     instructions: aiMeal.instructions || "",
-                    dietary_tags: aiMeal.dietary_tags || [],
+                    dietary_tags: Array.isArray(aiMeal.dietary_tags) ? aiMeal.dietary_tags : [],
                   },
                 });
 
-                // Add ingredients
-                if (aiMeal.ingredients && Array.isArray(aiMeal.ingredients)) {
-                  for (const ingredient of aiMeal.ingredients) {
-                    await prisma.recommendedIngredient.create({
-                      data: {
-                        meal_id: matchingMeal.mealId,
-                        name: ingredient.name,
-                        quantity: ingredient.quantity || 1,
-                        unit: ingredient.unit || "piece",
-                        category: ingredient.category || "Other",
-                        estimated_cost: ingredient.estimated_cost || 0,
-                      },
-                    });
+                if (Array.isArray(aiMeal.ingredients)) {
+                  for (const ing of aiMeal.ingredients) {
+                    const cost = parseFloat(ing.estimated_cost?.toString() || "0");
+                    try {
+                      await prisma.recommendedIngredient.create({
+                        data: {
+                          meal_id: matchingMeal.mealId,
+                          name: ing.name || "Ingredient",
+                          quantity: parseFloat(ing.quantity?.toString() || "1"),
+                          unit: ing.unit || "piece",
+                          category: ing.category || "Other",
+                          estimated_cost: cost,
+                        },
+                      });
+                    } catch {}
                   }
+                }
+                dayUpdated++;
+              }
+
+              console.log(`✅ Day ${day} complete: ${dayUpdated} meals`);
+              return dayUpdated;
+            };
+
+            // --- EXECUTE: Day 1 first (for menu name), then remaining days in parallel batches of 3 ---
+            try {
+              const day1Result = await processDay(1);
+              totalUpdated += day1Result;
+            } catch (err) {
+              console.error(`❌ Day 1 failed:`, (err as Error).message);
+            }
+
+            // Remaining days in parallel batches of 3
+            const BATCH_SIZE = 3;
+            for (let batchStart = 2; batchStart <= sanitizedDuration; batchStart += BATCH_SIZE) {
+              const batchEnd = Math.min(batchStart + BATCH_SIZE - 1, sanitizedDuration);
+              const batchDays = [];
+              for (let d = batchStart; d <= batchEnd; d++) batchDays.push(d);
+
+              console.log(`⚡ Parallel batch: days ${batchDays.join(", ")}`);
+
+              const results = await Promise.allSettled(
+                batchDays.map((d) => processDay(d))
+              );
+
+              for (let i = 0; i < results.length; i++) {
+                if (results[i].status === "fulfilled") {
+                  totalUpdated += (results[i] as PromiseFulfilledResult<number>).value;
+                } else {
+                  console.error(`❌ Day ${batchDays[i]} failed:`, (results[i] as PromiseRejectedResult).reason?.message);
                 }
               }
             }
 
-            console.log(
-              `✅ AI enhancement complete for menu: ${savedMenu.menu_id}`,
+            // Update remaining placeholder meals to remove "Preparing..." state
+            for (const meal of savedMealIds) {
+              try {
+                const dbMeal = await prisma.recommendedMeal.findUnique({
+                  where: { meal_id: meal.mealId },
+                });
+                if (dbMeal && dbMeal.cooking_method === "Preparing...") {
+                  await prisma.recommendedMeal.update({
+                    where: { meal_id: meal.mealId },
+                    data: {
+                      cooking_method: "Simple preparation",
+                      instructions: "Recipe could not be generated. Tap Edit to customize this meal.",
+                    },
+                  });
+                }
+              } catch {}
+            }
+
+            // Update menu totals
+            const allMeals = await prisma.recommendedMeal.findMany({
+              where: { menu_id: menuId },
+              include: { ingredients: true },
+            });
+            const computedCalories = allMeals.reduce((s, m) => s + m.calories, 0);
+            const computedProtein = allMeals.reduce((s, m) => s + m.protein, 0);
+            const computedCarbs = allMeals.reduce((s, m) => s + m.carbs, 0);
+            const computedFat = allMeals.reduce((s, m) => s + m.fat, 0);
+            const computedCost = allMeals.reduce(
+              (s, m) => s + m.ingredients.reduce((is, i) => is + (i.estimated_cost || 0), 0),
+              0,
             );
 
-            // Generate images in background (optional, non-blocking)
-            for (const aiMeal of parsedMenu.meals) {
-              const matchingMeal = savedMealIds.find(
-                (m) =>
-                  m.dayNumber === aiMeal.day_number &&
-                  m.mealType === aiMeal.meal_type,
-              );
+            await prisma.recommendedMenu.update({
+              where: { menu_id: menuId },
+              data: {
+                title: menuName,
+                description: menuDescription || undefined,
+                total_calories: Math.round(computedCalories),
+                total_protein: Math.round(computedProtein),
+                total_carbs: Math.round(computedCarbs),
+                total_fat: Math.round(computedFat),
+                estimated_cost: Math.round(computedCost * 10) / 10,
+              },
+            });
 
-              if (matchingMeal && aiMeal.name) {
+            console.log(`✅ Menu ${menuId} fully complete: ${totalUpdated}/${savedMealIds.length} meals, ₪${computedCost.toFixed(1)} total cost`);
+
+            // Generate images (optional, non-blocking)
+            for (const meal of allMeals) {
+              if (meal.name && !meal.name.includes(" - Day ") && !meal.image_url) {
                 try {
-                  const imagePrompt = `Professional food photo of ${aiMeal.name}, ${aiMeal.cooking_method || "beautifully plated"}, restaurant quality, appetizing`;
-                  const imageResponse = await openai.images.generate({
+                  const imgResp = await openai.images.generate({
                     model: "dall-e-3",
-                    prompt: imagePrompt,
+                    prompt: `Professional food photo of ${meal.name}, ${meal.cooking_method || "beautifully plated"}, restaurant quality, appetizing`,
                     n: 1,
                     size: "1024x1024",
                     quality: "standard",
                     style: "natural",
                   });
-
-                  const imageUrl = imageResponse.data?.[0]?.url;
+                  const imageUrl = imgResp.data?.[0]?.url;
                   if (imageUrl) {
                     await prisma.recommendedMeal.update({
-                      where: { meal_id: matchingMeal.mealId },
+                      where: { meal_id: meal.meal_id },
                       data: { image_url: imageUrl },
                     });
                   }
-                } catch (imgErr) {
-                  // Image generation is optional - continue
+                } catch {
+                  // Image generation is optional
                 }
               }
             }
 
-            console.log(
-              `✅ Background processing complete for menu: ${savedMenu.menu_id}`,
-            );
+            console.log(`✅ Background processing complete for menu: ${menuId}`);
           } catch (bgError) {
-            console.error("❌ Background AI enhancement failed:", bgError);
-            // Background failed but menu still exists with placeholder data
+            console.error(`❌ Background AI enhancement failed for menu ${menuId}:`, bgError);
+            await clearPlaceholderState(menuId, savedMealIds).catch(() => {});
           }
         });
+      } else {
+        console.warn(`⚠️ No OpenAI API key - clearing placeholder state for menu ${menuId}`);
+        await clearPlaceholderState(menuId, savedMealIds);
       }
     } catch (error) {
       console.error("💥 Error generating menu with ingredients:", error);
@@ -2021,16 +2307,40 @@ router.get(
       // Transform data to match frontend expectations
       const daysMap = new Map<number, any>();
 
+      // Check if menu was created recently (within 10 minutes) - only show generating state for recent menus
+      const menuAge = Date.now() - new Date(menu.created_at).getTime();
+      const isRecentMenu = menuAge < 10 * 60 * 1000; // 10 minutes
+
+      // Normalize dates to noon UTC for consistent cross-timezone date calculations
+      const baseStartDate = menu.start_date
+        ? new Date(menu.start_date)
+        : new Date();
+      // Normalize to noon UTC of the same date to avoid timezone shift
+      baseStartDate.setUTCHours(12, 0, 0, 0);
+
+      const nowLocal = new Date();
+      const today = new Date(Date.UTC(nowLocal.getFullYear(), nowLocal.getMonth(), nowLocal.getDate(), 12, 0, 0, 0));
+
+      console.log("📅 Date calculation for menu:", {
+        menu_id: planId,
+        raw_start_date: menu.start_date?.toISOString(),
+        normalized_start_date: baseStartDate.toISOString(),
+        today_utc: today.toISOString(),
+        days_count: menu.days_count,
+      });
+
       menu.meals.forEach((meal) => {
         const dayNumber = meal.day_number;
 
         if (!daysMap.has(dayNumber)) {
-          // Calculate date for this day
-          const startDate = menu.start_date
-            ? new Date(menu.start_date)
-            : new Date();
-          const dayDate = new Date(startDate);
-          dayDate.setDate(startDate.getDate() + dayNumber - 1);
+          // Calculate date for this day (add days to normalized start date, keep noon UTC)
+          const dayDate = new Date(baseStartDate);
+          dayDate.setUTCDate(baseStartDate.getUTCDate() + dayNumber - 1);
+          dayDate.setUTCHours(12, 0, 0, 0);
+
+          const isToday = dayDate.getTime() === today.getTime();
+
+          console.log(`  Day ${dayNumber}: ${dayDate.toISOString().split('T')[0]} ${isToday ? '(TODAY)' : ''}`);
 
           daysMap.set(dayNumber, {
             day: dayNumber,
@@ -2038,6 +2348,9 @@ router.get(
             meals: [],
           });
         }
+
+        // Only mark as generating if menu is recent AND meal looks like a placeholder
+        const isPlaceholder = isRecentMenu && meal.cooking_method === "Preparing...";
 
         daysMap.get(dayNumber).meals.push({
           meal_id: meal.meal_id,
@@ -2051,11 +2364,18 @@ router.get(
           ingredients: meal.ingredients.map((ing) => ({
             ingredient_id: ing.ingredient_id,
             name: ing.name,
-            quantity: `${ing.quantity} ${ing.unit}`,
+            quantity: ing.quantity,
+            unit: ing.unit,
+            category: ing.category,
+            estimated_cost: ing.estimated_cost,
           })),
           instructions: meal.instructions || "",
           image_url: meal.image_url,
           dietary_tags: meal.dietary_tags || [],
+          cooking_method: meal.cooking_method || null,
+          is_completed: meal.is_completed || false,
+          completed_at: meal.completed_at || null,
+          is_generating: isPlaceholder,
         });
       });
 
@@ -2063,6 +2383,14 @@ router.get(
       const dailyCalorieTarget = menu.days_count > 0
         ? Math.round(menu.total_calories / menu.days_count)
         : 2000;
+
+      // Compute estimated cost from ingredients if menu-level cost is 0
+      let menuEstimatedCost = menu.estimated_cost || 0;
+      if (menuEstimatedCost === 0) {
+        menuEstimatedCost = menu.meals.reduce((sum, meal) => {
+          return sum + meal.ingredients.reduce((ingSum, ing) => ingSum + (ing.estimated_cost || 0), 0);
+        }, 0);
+      }
 
       const transformedData = {
         plan_id: menu.menu_id,
@@ -2072,8 +2400,10 @@ router.get(
         end_date: menu.end_date?.toISOString() || new Date().toISOString(),
         status: menu.is_active ? "active" : "completed",
         daily_calorie_target: dailyCalorieTarget,
+        estimated_cost: menuEstimatedCost,
         days: Array.from(daysMap.values()),
         ingredient_checks: ingredientChecks,
+        is_generating: isRecentMenu && menu.meals.some(m => m.cooking_method === "Preparing..."),
       };
 
       res.json({
@@ -2189,6 +2519,21 @@ router.post(
         },
       });
 
+      // BUGFIX: Also clear user's active_menu_id to keep in sync
+      // This prevents the bug where app shows menu as "active" but is_active = false
+      const user = await prisma.user.findUnique({
+        where: { user_id: userId },
+        select: { active_menu_id: true },
+      });
+
+      if (user?.active_menu_id === planId) {
+        await prisma.user.update({
+          where: { user_id: userId },
+          data: { active_menu_id: null },
+        });
+        console.log("✅ Cleared user's active_menu_id after menu completion");
+      }
+
       res.json({
         success: true,
         data: review,
@@ -2201,6 +2546,362 @@ router.post(
       });
     }
   },
+);
+
+// PUT /api/recommended-menus/:menuId - Edit menu metadata
+router.put(
+  "/:menuId",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) {
+        return res.status(401).json({ success: false, error: "Unauthorized" });
+      }
+
+      const { menuId } = req.params;
+      const { title, description, dietary_category } = req.body;
+
+      const menu = await prisma.recommendedMenu.findFirst({
+        where: { menu_id: menuId, user_id: userId },
+      });
+
+      if (!menu) {
+        return res.status(404).json({ success: false, error: "Menu not found" });
+      }
+
+      const updated = await prisma.recommendedMenu.update({
+        where: { menu_id: menuId },
+        data: {
+          ...(title !== undefined && { title }),
+          ...(description !== undefined && { description }),
+          ...(dietary_category !== undefined && { dietary_category }),
+        },
+      });
+
+      res.json({ success: true, data: updated });
+    } catch (error) {
+      console.error("Error updating menu:", error);
+      res.status(500).json({ success: false, error: "Failed to update menu" });
+    }
+  }
+);
+
+// PUT /api/recommended-menus/:menuId/meals/:mealId - Edit individual meal
+router.put(
+  "/:menuId/meals/:mealId",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) {
+        return res.status(401).json({ success: false, error: "Unauthorized" });
+      }
+
+      const { menuId, mealId } = req.params;
+      const { name, calories, protein, carbs, fat, instructions, ingredients } = req.body;
+
+      // Verify meal belongs to user's menu
+      const meal = await prisma.recommendedMeal.findFirst({
+        where: {
+          meal_id: mealId,
+          menu: { menu_id: menuId, user_id: userId },
+        },
+      });
+
+      if (!meal) {
+        return res.status(404).json({ success: false, error: "Meal not found" });
+      }
+
+      const updated = await prisma.recommendedMeal.update({
+        where: { meal_id: mealId },
+        data: {
+          ...(name !== undefined && { name }),
+          ...(calories !== undefined && { calories: parseFloat(calories) }),
+          ...(protein !== undefined && { protein: parseFloat(protein) }),
+          ...(carbs !== undefined && { carbs: parseFloat(carbs) }),
+          ...(fat !== undefined && { fat: parseFloat(fat) }),
+          ...(instructions !== undefined && { instructions }),
+        },
+        include: { ingredients: true },
+      });
+
+      // Update ingredients if provided
+      if (ingredients && Array.isArray(ingredients)) {
+        // Delete existing ingredients
+        await prisma.recommendedIngredient.deleteMany({
+          where: { meal_id: mealId },
+        });
+
+        // Create new ingredients
+        for (const ing of ingredients) {
+          await prisma.recommendedIngredient.create({
+            data: {
+              meal_id: mealId,
+              name: ing.name,
+              quantity: parseFloat(ing.quantity) || 1,
+              unit: ing.unit || "piece",
+              category: ing.category || "Other",
+              estimated_cost: parseFloat(ing.estimated_cost) || 0,
+            },
+          });
+        }
+      }
+
+      // Re-fetch with ingredients
+      const finalMeal = await prisma.recommendedMeal.findUnique({
+        where: { meal_id: mealId },
+        include: { ingredients: true },
+      });
+
+      res.json({ success: true, data: finalMeal });
+    } catch (error) {
+      console.error("Error updating meal:", error);
+      res.status(500).json({ success: false, error: "Failed to update meal" });
+    }
+  }
+);
+
+// DELETE /api/recommended-menus/:menuId/meals/:mealId - Delete meal from menu
+router.delete(
+  "/:menuId/meals/:mealId",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) {
+        return res.status(401).json({ success: false, error: "Unauthorized" });
+      }
+
+      const { menuId, mealId } = req.params;
+
+      const meal = await prisma.recommendedMeal.findFirst({
+        where: {
+          meal_id: mealId,
+          menu: { menu_id: menuId, user_id: userId },
+        },
+      });
+
+      if (!meal) {
+        return res.status(404).json({ success: false, error: "Meal not found" });
+      }
+
+      await prisma.recommendedMeal.delete({
+        where: { meal_id: mealId },
+      });
+
+      res.json({ success: true, message: "Meal deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting meal:", error);
+      res.status(500).json({ success: false, error: "Failed to delete meal" });
+    }
+  }
+);
+
+// POST /api/recommended-menus/:menuId/meals - Add new meal to menu
+router.post(
+  "/:menuId/meals",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) {
+        return res.status(401).json({ success: false, error: "Unauthorized" });
+      }
+
+      const { menuId } = req.params;
+      const { name, meal_type, day_number, calories, protein, carbs, fat, instructions, ingredients } = req.body;
+
+      // Verify menu belongs to user
+      const menu = await prisma.recommendedMenu.findFirst({
+        where: { menu_id: menuId, user_id: userId },
+      });
+
+      if (!menu) {
+        return res.status(404).json({ success: false, error: "Menu not found" });
+      }
+
+      if (!name || !meal_type) {
+        return res.status(400).json({ success: false, error: "Name and meal_type are required" });
+      }
+
+      const newMeal = await prisma.recommendedMeal.create({
+        data: {
+          menu_id: menuId,
+          name,
+          meal_type: meal_type.toUpperCase(),
+          day_number: day_number || 1,
+          calories: parseFloat(calories) || 0,
+          protein: parseFloat(protein) || 0,
+          carbs: parseFloat(carbs) || 0,
+          fat: parseFloat(fat) || 0,
+          instructions: instructions || null,
+        },
+      });
+
+      // Add ingredients if provided
+      if (ingredients && Array.isArray(ingredients)) {
+        for (const ing of ingredients) {
+          await prisma.recommendedIngredient.create({
+            data: {
+              meal_id: newMeal.meal_id,
+              name: ing.name,
+              quantity: parseFloat(ing.quantity) || 1,
+              unit: ing.unit || "piece",
+              category: ing.category || "Other",
+              estimated_cost: parseFloat(ing.estimated_cost) || 0,
+            },
+          });
+        }
+      }
+
+      const mealWithIngredients = await prisma.recommendedMeal.findUnique({
+        where: { meal_id: newMeal.meal_id },
+        include: { ingredients: true },
+      });
+
+      res.json({ success: true, data: mealWithIngredients });
+    } catch (error) {
+      console.error("Error adding meal:", error);
+      res.status(500).json({ success: false, error: "Failed to add meal" });
+    }
+  }
+);
+
+// POST /api/recommended-menus/:menuId/stop - Stop/pause active menu
+router.post(
+  "/:menuId/stop",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) {
+        return res.status(401).json({ success: false, error: "Unauthorized" });
+      }
+
+      const { menuId } = req.params;
+
+      const menu = await prisma.recommendedMenu.findFirst({
+        where: { menu_id: menuId, user_id: userId },
+      });
+
+      if (!menu) {
+        return res.status(404).json({ success: false, error: "Menu not found" });
+      }
+
+      await prisma.recommendedMenu.update({
+        where: { menu_id: menuId },
+        data: { is_active: false },
+      });
+
+      // Clear user's active_menu_id
+      const user = await prisma.user.findUnique({
+        where: { user_id: userId },
+        select: { active_menu_id: true },
+      });
+
+      if (user?.active_menu_id === menuId) {
+        await prisma.user.update({
+          where: { user_id: userId },
+          data: { active_menu_id: null },
+        });
+      }
+
+      console.log(`✅ Menu ${menuId} stopped successfully`);
+
+      res.json({ success: true, message: "Menu stopped successfully" });
+    } catch (error) {
+      console.error("Error stopping menu:", error);
+      res.status(500).json({ success: false, error: "Failed to stop menu" });
+    }
+  }
+);
+
+// GET /api/recommended-menus/:menuId/today-meals - Get today's meals + completion status
+router.get(
+  "/:menuId/today-meals",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) {
+        return res.status(401).json({ success: false, error: "Unauthorized" });
+      }
+
+      const { menuId } = req.params;
+
+      const menu = await prisma.recommendedMenu.findFirst({
+        where: { menu_id: menuId, user_id: userId },
+        include: {
+          meals: {
+            include: { ingredients: true },
+            orderBy: [{ day_number: "asc" }, { meal_type: "asc" }],
+          },
+        },
+      });
+
+      if (!menu) {
+        return res.status(404).json({ success: false, error: "Menu not found" });
+      }
+
+      // Calculate today's day_number using noon UTC to avoid timezone shifts
+      let dayNumber = 1;
+      if (menu.start_date) {
+        const startRaw = new Date(menu.start_date);
+        const start = new Date(Date.UTC(startRaw.getUTCFullYear(), startRaw.getUTCMonth(), startRaw.getUTCDate(), 12, 0, 0, 0));
+        const nowLocal = new Date();
+        const today = new Date(Date.UTC(nowLocal.getFullYear(), nowLocal.getMonth(), nowLocal.getDate(), 12, 0, 0, 0));
+        const diffDays = Math.round(
+          (today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        dayNumber = Math.max(1, Math.min(diffDays + 1, menu.days_count));
+      }
+
+      // Get today's meals
+      const todayMeals = menu.meals.filter((m) => m.day_number === dayNumber);
+
+      // Get completions for today
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const completions = await prisma.mealCompletion.findMany({
+        where: {
+          user_id: userId,
+          menu_id: menuId,
+          completed_date: { gte: todayStart, lte: todayEnd },
+        },
+      });
+
+      const completedMealTypes = new Set(
+        completions.map((c) => c.meal_type.toUpperCase())
+      );
+
+      const mealsWithStatus = todayMeals.map((meal) => ({
+        ...meal,
+        is_completed: meal.is_completed || completedMealTypes.has(meal.meal_type.toUpperCase()),
+      }));
+
+      const totalMealsToday = mealsWithStatus.length;
+      const completedCount = mealsWithStatus.filter((m) => m.is_completed).length;
+
+      res.json({
+        success: true,
+        data: {
+          day_number: dayNumber,
+          total_days: menu.days_count,
+          meals: mealsWithStatus,
+          total_meals_today: totalMealsToday,
+          completed_meals_today: completedCount,
+          menu_name: menu.title,
+        },
+      });
+    } catch (error) {
+      console.error("Error getting today's meals:", error);
+      res.status(500).json({ success: false, error: "Failed to get today's meals" });
+    }
+  }
 );
 
 export default router;

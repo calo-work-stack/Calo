@@ -1,9 +1,23 @@
 import express, { Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import { authenticateToken, AuthRequest } from "../middleware/auth";
+import { NutritionService } from "../services/nutrition";
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// Helper to map meal_type string to meal_period
+function mealTypeToPeriod(mealType: string): string {
+  const map: Record<string, string> = {
+    BREAKFAST: "breakfast",
+    LUNCH: "lunch",
+    DINNER: "dinner",
+    SNACK: "snack",
+    MORNING_SNACK: "snack",
+    AFTERNOON_SNACK: "snack",
+  };
+  return map[mealType.toUpperCase()] || "other";
+}
 
 // Mark meal as completed
 router.post(
@@ -30,8 +44,17 @@ router.post(
         carbs_g,
         fats_g,
         rating,
+        taste_rating,
+        satiety_rating,
+        energy_rating,
+        heaviness_rating,
         notes,
         prep_time_actual,
+        image_url,
+        meal_id_ref,
+        ingredients,
+        cooking_method,
+        estimated_cost,
       } = req.body;
 
       if (!meal_name || !meal_type) {
@@ -58,8 +81,75 @@ router.post(
           rating,
           notes,
           prep_time_actual,
+          image_url: image_url || null,
+          meal_id_ref: meal_id_ref || null,
+          ingredients_json: ingredients || null,
         },
       });
+
+      // Calculate total cost from ingredients if not provided
+      let mealCost = estimated_cost || 0;
+      if (!mealCost && ingredients && Array.isArray(ingredients)) {
+        mealCost = ingredients.reduce(
+          (sum: number, ing: any) => sum + (ing.estimated_cost || 0),
+          0
+        );
+      }
+
+      // Save meal to nutrition history
+      let historyMealId: number | null = null;
+      try {
+        const historyMeal = await prisma.meal.create({
+          data: {
+            user_id: userId,
+            image_url: image_url || "",
+            analysis_status: "COMPLETED",
+            meal_name: meal_name,
+            meal_period: mealTypeToPeriod(meal_type),
+            description: `Completed from menu: ${meal_name}`,
+            calories: calories || 0,
+            protein_g: protein_g || 0,
+            carbs_g: carbs_g || 0,
+            fats_g: fats_g || 0,
+            ingredients: ingredients || null,
+            confidence: 100,
+            taste_rating: taste_rating || rating || 0,
+            satiety_rating: satiety_rating || 0,
+            energy_rating: energy_rating || 0,
+            heaviness_rating: heaviness_rating || 0,
+            estimated_cost: mealCost || null,
+            cooking_method: cooking_method || null,
+          },
+        });
+        historyMealId = historyMeal.meal_id;
+
+        // Update completion with history reference
+        await prisma.mealCompletion.update({
+          where: { id: completion.id },
+          data: {
+            saved_to_history: true,
+            history_meal_id: historyMealId,
+          },
+        });
+      } catch (histErr) {
+        console.error("Failed to save meal to history:", histErr);
+        // Non-critical: completion still succeeded
+      }
+
+      // Mark RecommendedMeal as completed if meal_id_ref is provided
+      if (meal_id_ref) {
+        try {
+          await prisma.recommendedMeal.update({
+            where: { meal_id: meal_id_ref },
+            data: {
+              is_completed: true,
+              completed_at: new Date(),
+            },
+          });
+        } catch (rmErr) {
+          console.error("Failed to mark recommended meal as completed:", rmErr);
+        }
+      }
 
       // Update plan progress if plan_id is provided
       if (plan_id) {
@@ -92,8 +182,8 @@ router.post(
       });
 
       if (user) {
-        const xpGained = 10; // Base XP for completing a meal
-        const bonusXp = rating && rating >= 4 ? 5 : 0; // Bonus for high rating
+        const xpGained = 10;
+        const bonusXp = rating && rating >= 4 ? 5 : 0;
 
         await prisma.user.update({
           where: { user_id: userId },
@@ -104,9 +194,13 @@ router.post(
         });
       }
 
+      // Clear nutrition cache so history reflects the new meal immediately
+      NutritionService.clearCachesForUser(userId);
+
       res.json({
         success: true,
         data: completion,
+        history_meal_id: historyMealId,
         xp_gained: 10 + (rating && rating >= 4 ? 5 : 0),
         message: "Meal marked as completed successfully!",
       });

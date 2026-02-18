@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
-import { Ionicons } from "@expo/vector-icons";
+import { ChevronRight, Languages, X, CheckCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -103,8 +103,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
               {currentLang?.nativeName}
             </Text>
           </View>
-          <Ionicons
-            name="chevron-forward"
+          <ChevronRight
             size={20}
             color="#6c757d"
             style={[isRTL && { transform: [{ scaleX: -1 }] }]}
@@ -141,7 +140,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                 style={[styles.modalHeader, isRTL && styles.modalHeaderRTL]}
               >
                 <View style={styles.headerTitleContainer}>
-                  <Ionicons name="language" size={24} color="#007AFF" />
+                  <Languages size={24} color="#007AFF" />
                   <Text style={[styles.modalTitle, isRTL && styles.textRTL]}>
                     {t("language.select") || "Select Language"}
                   </Text>
@@ -151,7 +150,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                   style={styles.closeButton}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="close" size={28} color="#6c757d" />
+                  <X size={28} color="#6c757d" />
                 </TouchableOpacity>
               </View>
 
@@ -208,8 +207,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
 
                       {currentLanguage === language.code && (
                         <View style={styles.checkmarkContainer}>
-                          <Ionicons
-                            name="checkmark-circle"
+                          <CheckCircle
                             size={24}
                             color="#007AFF"
                           />
@@ -223,9 +221,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
               {/* Footer */}
               <View style={styles.modalFooter}>
                 <Text style={[styles.footerText, isRTL && styles.textRTL]}>
-                  {isRTL
-                    ? "השפה תשתנה לאחר הבחירה"
-                    : "Language will change after selection"}
+                  {t("language.change_note")}
                 </Text>
               </View>
             </LinearGradient>

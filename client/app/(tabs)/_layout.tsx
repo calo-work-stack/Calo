@@ -6,8 +6,6 @@ import { ProtectedRoute } from "@/components/ProtectedRoutes";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { ScrollableTabBar } from "@/components/ScrollableTabBar";
 import { useTheme } from "@/src/context/ThemeContext";
-import { MessageSquare } from "lucide-react-native";
-import { TabBarIcon } from "@/components/navigation/TabBarIcon";
 import { useOptimizedAuthSelector } from "@/hooks/useOptimizedAuthSelector";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "react-native";
@@ -62,7 +60,7 @@ export default function TabLayout() {
       <View
         style={{
           flex: 1,
-          backgroundColor: colors.background,
+           backgroundColor: "transparent", // ← change
         }}
       >
         <Tabs
@@ -71,7 +69,7 @@ export default function TabLayout() {
             tabBarHideOnKeyboard: true,
             sceneStyle: {
               paddingBottom: totalBottomSpace,
-              backgroundColor: colors.background,
+               backgroundColor: "transparent", // ← change
             },
           }}
           tabBar={(props) => <ScrollableTabBar {...props} />}
@@ -108,11 +106,8 @@ export default function TabLayout() {
             options={{
               title: t("tabs.recommended_menus"),
               headerShown: false,
-              tabBarIcon: ({ color, focused }) => (
-                <TabBarIcon
-                  name={focused ? "restaurant" : "restaurant-outline"}
-                  color={color}
-                />
+              tabBarIcon: ({ color }) => (
+                <IconSymbol size={24} name="restaurant" color={color} />
               ),
             }}
           />
@@ -157,7 +152,7 @@ export default function TabLayout() {
             options={{
               title: t("tabs.ai_chat"),
               tabBarIcon: ({ color }) => (
-                <MessageSquare size={28} color={color} />
+                <IconSymbol size={24} name="message.square" color={color} />
               ),
               // Hide from tab bar for users without access
               href: shouldShowAiChat ? undefined : null,
@@ -195,19 +190,6 @@ export default function TabLayout() {
             }}
           />
         </Tabs>
-
-        {/* Optional: Add a background fill for the bottom area if needed */}
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: totalBottomSpace,
-            backgroundColor: colors.background,
-            zIndex: -1,
-          }}
-        />
       </View>
     </ProtectedRoute>
   );

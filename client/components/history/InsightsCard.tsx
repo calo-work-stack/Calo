@@ -1,11 +1,9 @@
-import React, { useRef } from "react";
+import React from "react";
 import {
   View,
   Text,
   StyleSheet,
   Dimensions,
-  ScrollView,
-  Animated,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/context/ThemeContext";
@@ -20,8 +18,6 @@ import {
 } from "lucide-react-native";
 
 const { width } = Dimensions.get("window");
-const CARD_WIDTH = width - 100;
-const CARD_SPACING = 12;
 
 interface InsightsData {
   totalMeals: number;
@@ -38,7 +34,6 @@ interface InsightsCardProps {
 export default function InsightsCard({ insights }: InsightsCardProps) {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
-  const scrollX = useRef(new Animated.Value(0)).current;
 
   if (!insights) return null;
 
@@ -106,230 +101,180 @@ export default function InsightsCard({ insights }: InsightsCardProps) {
         </View>
       </View>
 
-      {/* Carousel */}
-      <Animated.ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        snapToInterval={CARD_WIDTH + CARD_SPACING}
-        decelerationRate="fast"
-        contentContainerStyle={styles.scrollContent}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
-      >
-        {stats.map((stat, index) => {
-          const IconComponent = stat.icon;
-          const inputRange = [
-            (index - 1) * (CARD_WIDTH + CARD_SPACING),
-            index * (CARD_WIDTH + CARD_SPACING),
-            (index + 1) * (CARD_WIDTH + CARD_SPACING),
-          ];
-
-          const scale = scrollX.interpolate({
-            inputRange,
-            outputRange: [0.92, 1, 0.92],
-            extrapolate: "clamp",
-          });
-
-          const opacity = scrollX.interpolate({
-            inputRange,
-            outputRange: [0.6, 1, 0.6],
-            extrapolate: "clamp",
-          });
-
-          return (
-            <Animated.View
-              key={index}
-              style={[
-                styles.statCard,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  transform: [{ scale }],
-                  opacity,
-                },
-              ]}
-            >
-              <LinearGradient
-                colors={stat.gradient}
-                style={styles.statCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+      {/* 2x2 Grid */}
+      <View style={styles.gridContainer}>
+        <View style={styles.gridRow}>
+          {stats.slice(0, 2).map((stat, index) => {
+            const IconComponent = stat.icon;
+            return (
+              <View
+                key={index}
+                style={[
+                  styles.gridCard,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
               >
-                <View style={styles.statCardContent}>
-                  <View style={styles.statIconContainer}>
-                    <View
-                      style={[
-                        styles.statIconBg,
-                        { backgroundColor: "rgba(255, 255, 255, 0.25)" },
-                      ]}
-                    >
-                      <IconComponent size={28} color="#FFF" />
-                    </View>
+                <LinearGradient
+                  colors={stat.gradient}
+                  style={styles.gridCardGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View
+                    style={[
+                      styles.gridIconBg,
+                      { backgroundColor: "rgba(255,255,255,0.25)" },
+                    ]}
+                  >
+                    <IconComponent size={22} color="#FFF" />
                   </View>
-                  <View style={styles.statInfo}>
-                    <Text style={styles.statValue}>
-                      {stat.value}
-                      {stat.suffix && (
-                        <Text style={styles.statSuffix}> {stat.suffix}</Text>
-                      )}
-                    </Text>
-                    <Text style={styles.statLabel} numberOfLines={2}>
-                      {stat.label}
-                    </Text>
+                  <Text style={styles.gridValue}>
+                    {stat.value}
+                    {stat.suffix && (
+                      <Text style={styles.gridSuffix}> {stat.suffix}</Text>
+                    )}
+                  </Text>
+                  <Text style={styles.gridLabel} numberOfLines={1}>
+                    {stat.label}
+                  </Text>
+                </LinearGradient>
+              </View>
+            );
+          })}
+        </View>
+        <View style={styles.gridRow}>
+          {stats.slice(2, 4).map((stat, index) => {
+            const IconComponent = stat.icon;
+            return (
+              <View
+                key={index + 2}
+                style={[
+                  styles.gridCard,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <LinearGradient
+                  colors={stat.gradient}
+                  style={styles.gridCardGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View
+                    style={[
+                      styles.gridIconBg,
+                      { backgroundColor: "rgba(255,255,255,0.25)" },
+                    ]}
+                  >
+                    <IconComponent size={22} color="#FFF" />
                   </View>
-                </View>
-              </LinearGradient>
-            </Animated.View>
-          );
-        })}
-      </Animated.ScrollView>
-
-      {/* Pagination Dots */}
-      <View style={styles.pagination}>
-        {stats.map((_, index) => {
-          const inputRange = [
-            (index - 1) * (CARD_WIDTH + CARD_SPACING),
-            index * (CARD_WIDTH + CARD_SPACING),
-            (index + 1) * (CARD_WIDTH + CARD_SPACING),
-          ];
-
-          const dotScale = scrollX.interpolate({
-            inputRange,
-            outputRange: [0.8, 1.4, 0.8],
-            extrapolate: "clamp",
-          });
-
-          const dotOpacity = scrollX.interpolate({
-            inputRange,
-            outputRange: [0.3, 1, 0.3],
-            extrapolate: "clamp",
-          });
-
-          return (
-            <Animated.View
-              key={index}
-              style={[
-                styles.dot,
-                {
-                  backgroundColor: colors.primary,
-                  transform: [{ scale: dotScale }],
-                  opacity: dotOpacity,
-                },
-              ]}
-            />
-          );
-        })}
+                  <Text style={styles.gridValue}>
+                    {stat.value}
+                    {stat.suffix && (
+                      <Text style={styles.gridSuffix}> {stat.suffix}</Text>
+                    )}
+                  </Text>
+                  <Text style={styles.gridLabel} numberOfLines={1}>
+                    {stat.label}
+                  </Text>
+                </LinearGradient>
+              </View>
+            );
+          })}
+        </View>
       </View>
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
-    paddingHorizontal: 16,
+    gap: 14,
+    marginBottom: 18,
+    paddingHorizontal: 20,
   },
   headerIconBg: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 46,
+    height: 46,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#009EAD",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
   },
   headerText: {
     flex: 1,
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "800",
-    letterSpacing: -0.3,
-    marginBottom: 2,
+    letterSpacing: -0.5,
+    marginBottom: 3,
   },
   subtitle: {
     fontSize: 13,
-    fontWeight: "500",
+    fontWeight: "600",
+    opacity: 0.7,
   },
   trendBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+  },
+  gridContainer: {
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  gridRow: {
     flexDirection: "row",
+    gap: 10,
   },
-  scrollContent: {
-    paddingHorizontal: 16,
-    gap: CARD_SPACING,
-  },
-  statCard: {
-    width: CARD_WIDTH,
-    height: 140,
+  gridCard: {
+    flex: 1,
     borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  statCardGradient: {
-    flex: 1,
-    padding: 20,
+  gridCardGradient: {
+    padding: 16,
+    gap: 8,
   },
-  statCardContent: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  statIconContainer: {
+  gridIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
   },
-  statIconBg: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  statInfo: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  statValue: {
-    fontSize: 36,
-    fontWeight: "800",
+  gridValue: {
+    fontSize: 28,
+    fontWeight: "900",
     letterSpacing: -1,
-    marginBottom: 4,
-    color: "#FFFFFF",
+    color: "#FFF",
   },
-  statSuffix: {
-    fontSize: 16,
+  gridSuffix: {
+    fontSize: 13,
     fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.9)",
+    color: "rgba(255,255,255,0.85)",
   },
-  statLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.95)",
-    lineHeight: 18,
-  },
-  pagination: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 12,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  gridLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.9)",
   },
 });

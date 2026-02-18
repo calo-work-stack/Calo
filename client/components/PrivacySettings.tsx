@@ -9,7 +9,17 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  X,
+  Eye,
+  Heart,
+  BarChart3,
+  Radio,
+  Trophy,
+  Users,
+  FileText,
+  LucideIcon
+} from "lucide-react-native";
 
 interface PrivacySettingsProps {
   onClose: () => void;
@@ -33,48 +43,53 @@ export default function PrivacySettings({ onClose }: PrivacySettingsProps) {
     setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const privacyOptions = [
+  const privacyOptions: Array<{
+    key: string;
+    title: string;
+    description: string;
+    Icon: LucideIcon;
+  }> = [
     {
       key: "profileVisibility",
       title: t("profile.profileVisibility"),
       description: t("profile.profileVisibilityDesc"),
-      icon: "eye-outline",
+      Icon: Eye,
     },
     {
       key: "shareHealthData",
       title: t("profile.shareHealthData"),
       description: t("profile.shareHealthDataDesc"),
-      icon: "heart-outline",
+      Icon: Heart,
     },
     {
       key: "allowDataCollection",
       title: t("profile.allowDataCollection"),
       description: t("profile.allowDataCollectionDesc"),
-      icon: "analytics-outline",
+      Icon: BarChart3,
     },
     {
       key: "showOnlineStatus",
       title: t("profile.showOnlineStatus"),
       description: t("profile.showOnlineStatusDesc"),
-      icon: "radio-outline",
+      Icon: Radio,
     },
     {
       key: "shareAchievements",
       title: t("profile.shareAchievements"),
       description: t("profile.shareAchievementsDesc"),
-      icon: "trophy-outline",
+      Icon: Trophy,
     },
     {
       key: "allowFriendRequests",
       title: t("profile.allowFriendRequests"),
       description: t("profile.allowFriendRequestsDesc"),
-      icon: "people-outline",
+      Icon: Users,
     },
     {
       key: "shareProgressReports",
       title: t("profile.shareProgressReports"),
       description: t("profile.shareProgressReportsDesc"),
-      icon: "document-outline",
+      Icon: FileText,
     },
   ];
 
@@ -82,7 +97,7 @@ export default function PrivacySettings({ onClose }: PrivacySettingsProps) {
     <View style={[styles.container, isRTL && styles.containerRTL]}>
       <View style={[styles.header, isRTL && styles.headerRTL]}>
         <TouchableOpacity onPress={onClose}>
-          <Ionicons name="close" size={24} color="#666" />
+          <X size={24} color="#666" />
         </TouchableOpacity>
         <Text style={[styles.title, isRTL && styles.titleRTL]}>
           {t("profile.privacy")}
@@ -96,8 +111,7 @@ export default function PrivacySettings({ onClose }: PrivacySettingsProps) {
             <View
               style={[styles.optionContent, isRTL && styles.optionContentRTL]}
             >
-              <Ionicons
-                name={option.icon as any}
+              <option.Icon
                 size={24}
                 color="#666"
                 style={[styles.optionIcon, isRTL && styles.optionIconRTL]}

@@ -334,8 +334,19 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
       }
 
       // Calculate nutrition for the specified quantity
-      const nutritionPer100g = productData.nutrition_per_100g;
-      const multiplier = quantity / 100;
+      // Ensure all values are numbers with defaults
+      const nutritionPer100g = {
+        calories: Number(productData.nutrition_per_100g?.calories) || 0,
+        protein: Number(productData.nutrition_per_100g?.protein) || 0,
+        carbs: Number(productData.nutrition_per_100g?.carbs) || 0,
+        fat: Number(productData.nutrition_per_100g?.fat) || 0,
+        fiber: productData.nutrition_per_100g?.fiber != null ? Number(productData.nutrition_per_100g.fiber) : null,
+        sugar: productData.nutrition_per_100g?.sugar != null ? Number(productData.nutrition_per_100g.sugar) : null,
+        sodium: productData.nutrition_per_100g?.sodium != null ? Number(productData.nutrition_per_100g.sodium) : null,
+        saturated_fat: productData.nutrition_per_100g?.saturated_fat != null ? Number(productData.nutrition_per_100g.saturated_fat) : null,
+        cholesterol: productData.nutrition_per_100g?.cholesterol != null ? Number(productData.nutrition_per_100g.cholesterol) : null,
+      };
+      const multiplier = Number(quantity) / 100;
 
       // Calculate estimated cost for the quantity using AI
       let estimatedCost = 0;
@@ -365,19 +376,19 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
       }
 
       const mealData = {
-        meal_name: `${productData.name} (${quantity}g)`,
-        calories: Math.round((nutritionPer100g.calories || 0) * multiplier),
-        protein_g: Math.round((nutritionPer100g.protein || 0) * multiplier),
-        carbs_g: Math.round((nutritionPer100g.carbs || 0) * multiplier),
-        fats_g: Math.round((nutritionPer100g.fat || 0) * multiplier),
+        meal_name: `${productData.name || 'Product'} (${quantity}g)`,
+        calories: Math.round(nutritionPer100g.calories * multiplier),
+        protein_g: Math.round(nutritionPer100g.protein * multiplier),
+        carbs_g: Math.round(nutritionPer100g.carbs * multiplier),
+        fats_g: Math.round(nutritionPer100g.fat * multiplier),
         estimated_cost: estimatedCost,
-        fiber_g: nutritionPer100g.fiber
+        fiber_g: nutritionPer100g.fiber != null
           ? Math.round(nutritionPer100g.fiber * multiplier)
           : null,
-        sugar_g: nutritionPer100g.sugar
+        sugar_g: nutritionPer100g.sugar != null
           ? Math.round(nutritionPer100g.sugar * multiplier)
           : null,
-        sodium_mg: nutritionPer100g.sodium
+        sodium_mg: nutritionPer100g.sodium != null
           ? Math.round(nutritionPer100g.sodium * multiplier)
           : null,
         serving_size_g: quantity,
@@ -401,7 +412,7 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
             ? "Product may have health concerns based on analysis"
             : null,
         // Add missing required fields
-        saturated_fats_g: nutritionPer100g.saturated_fat
+        saturated_fats_g: nutritionPer100g.saturated_fat != null
           ? Math.round(nutritionPer100g.saturated_fat * multiplier)
           : null,
         polyunsaturated_fats_g: null,
@@ -410,7 +421,7 @@ Extract all visible nutritional information. If a value is not visible, use 0 or
         omega_6_g: null,
         soluble_fiber_g: null,
         insoluble_fiber_g: null,
-        cholesterol_mg: nutritionPer100g.cholesterol
+        cholesterol_mg: nutritionPer100g.cholesterol != null
           ? Math.round(nutritionPer100g.cholesterol * multiplier)
           : null,
         alcohol_g: null,

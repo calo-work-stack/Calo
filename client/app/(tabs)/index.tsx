@@ -15,6 +15,8 @@ import {
   Dimensions,
   Image,
   StatusBar,
+  Modal,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/src/context/ThemeContext";
@@ -31,12 +33,15 @@ import {
   ChevronRight,
   Sun,
   Coffee,
+  Clock,
+  X,
+  Droplets,
+  Utensils,
 } from "lucide-react-native";
 import { api, APIError } from "@/src/services/api";
 import { fetchMeals } from "@/src/store/mealSlice";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { useTranslation } from "react-i18next";
-import LoadingScreen from "@/components/LoadingScreen";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import XPNotification from "@/components/XPNotification";
 import { useOptimizedSelector } from "@/src/utils/useOptimizedSelector";
@@ -47,7 +52,9 @@ import ShoppingList from "@/components/ShoppingList";
 import { initializeStorageCleanup } from "@/src/utils/databaseCleanup";
 import WaterIntakeCard from "@/components/index/WaterIntake";
 import ActiveMenuCard from "@/components/index/ActiveMenuCard";
+import ActiveMealCard from "@/components/index/ActiveMealCard";
 import { DailyGoals } from "@/src/types";
+import { HomeScreenSkeleton, MealImagePlaceholder } from "@/components/loaders";
 
 const { width } = Dimensions.get("window");
 
@@ -106,6 +113,17 @@ const HomeScreen = React.memo(() => {
   }>({ xpGained: 0 });
 
   const [showShoppingList, setShowShoppingList] = useState(false);
+  const [showYesterdaySummary, setShowYesterdaySummary] = useState(false);
+  const [yesterdayData, setYesterdayData] = useState<{
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    mealCount: number;
+    waterCups: number;
+  } | null>(null);
+  const [yesterdayLoading, setYesterdayLoading] = useState(false);
+  const [showYesterdayButton, setShowYesterdayButton] = useState(true);
 
   const handleOpenShoppingList = useCallback(() => {
     setShowShoppingList(true);
@@ -114,6 +132,51 @@ const HomeScreen = React.memo(() => {
   const handleCloseShoppingList = useCallback(() => {
     setShowShoppingList(false);
   }, []);
+
+  const fetchYesterdaySummary = useCallback(async () => {
+    if (!user?.user_id) return;
+    setYesterdayLoading(true);
+    try {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+      const [rangeRes, waterRes] = await Promise.allSettled([
+        api.get("/nutrition/stats/range", {
+          params: { startDate: yesterdayStr, endDate: yesterdayStr },
+          timeout: 10000,
+        }),
+        api.get(`/nutrition/water-intake/${yesterdayStr}`, {
+          timeout: 8000,
+        }),
+      ]);
+
+      let calories = 0, protein = 0, carbs = 0, fat = 0, mealCount = 0;
+      let waterCups = 0;
+
+      if (rangeRes.status === "fulfilled" && rangeRes.value?.data?.success && rangeRes.value?.data?.data) {
+        const data = rangeRes.value.data.data;
+        calories = data.total_calories || data.calories || 0;
+        protein = data.total_protein_g || data.protein_g || 0;
+        carbs = data.total_carbs_g || data.carbs_g || 0;
+        fat = data.total_fats_g || data.fats_g || 0;
+        mealCount = data.totalMeals || 0;
+      }
+
+      if (waterRes.status === "fulfilled" && waterRes.value?.data?.success) {
+        waterCups = waterRes.value.data.data?.cups_consumed || 0;
+      }
+
+      setYesterdayData({ calories, protein, carbs, fat, mealCount, waterCups });
+      setShowYesterdaySummary(true);
+    } catch (error) {
+      console.error("Failed to fetch yesterday summary:", error);
+      setYesterdayData(null);
+      setShowYesterdaySummary(true);
+    } finally {
+      setYesterdayLoading(false);
+    }
+  }, [user?.user_id]);
 
   const { isRTL, language: currentLanguage } = useLanguage();
 
@@ -521,7 +584,7 @@ const HomeScreen = React.memo(() => {
   }, [user?.user_id, loadDailyGoals]);
 
   if (initialLoading) {
-    return <LoadingScreen text={t("loading.loading", "loading.home")} />;
+    return <HomeScreenSkeleton />;
   }
 
   if (dataError && retryCount > 0) {
@@ -677,8 +740,57 @@ const HomeScreen = React.memo(() => {
             </LinearGradient>
           </View>
 
+          {/* Yesterday Summary Button */}
+          {showYesterdayButton && (
+            <View style={styles.yesterdayButtonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.yesterdayButton,
+                  { backgroundColor: colors.surface },
+                ]}
+                onPress={fetchYesterdaySummary}
+                activeOpacity={0.7}
+                disabled={yesterdayLoading}
+              >
+                <LinearGradient
+                  colors={["rgba(139, 92, 246, 0.12)", "rgba(59, 130, 246, 0.08)"]}
+                  style={styles.yesterdayButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View
+                    style={[
+                      styles.yesterdayIconBg,
+                      { backgroundColor: "rgba(139, 92, 246, 0.15)" },
+                    ]}
+                  >
+                    {yesterdayLoading ? (
+                      <ActivityIndicator size="small" color="#8B5CF6" />
+                    ) : (
+                      <Clock size={22} color="#8B5CF6" strokeWidth={2.5} />
+                    )}
+                  </View>
+                  <Text
+                    style={[styles.yesterdayButtonText, { color: colors.text }]}
+                  >
+                    {t("home.yesterdaySummary")}
+                  </Text>
+                  <ChevronRight
+                    size={18}
+                    color={colors.textSecondary}
+                    strokeWidth={2}
+                    style={isRTL ? { transform: [{ scaleX: -1 }] } : undefined}
+                  />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Active Menu Card */}
           <ActiveMenuCard />
+
+          {/* Active Meal Card - time-based current meal */}
+          <ActiveMealCard />
 
           {/* Progress Section with Enhanced Design */}
           <View style={styles.progressSection}>
@@ -986,7 +1098,7 @@ const HomeScreen = React.memo(() => {
                     }}
                     activeOpacity={0.7}
                   >
-                    {meal.image_url ? (
+                    {meal.image_url && !meal.image_url.includes("placeholder") ? (
                       <View style={styles.mealImageWrapper}>
                         <Image
                           source={{ uri: meal.image_url }}
@@ -994,14 +1106,7 @@ const HomeScreen = React.memo(() => {
                         />
                       </View>
                     ) : (
-                      <View
-                        style={[
-                          styles.mealPlaceholder,
-                          { backgroundColor: "rgba(16, 185, 129, 0.1)" },
-                        ]}
-                      >
-                        <Camera size={22} color="#10B981" strokeWidth={2} />
-                      </View>
+                      <MealImagePlaceholder size={52} borderRadius={14} />
                     )}
                     <View style={styles.activityContent}>
                       <Text
@@ -1087,6 +1192,260 @@ const HomeScreen = React.memo(() => {
 
           <View style={styles.bottomSpacing} />
         </ScrollView>
+
+        {/* Yesterday Summary Modal */}
+        <Modal
+          visible={showYesterdaySummary}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowYesterdaySummary(false)}
+        >
+          <View style={styles.yesterdayModalOverlay}>
+            <View
+              style={[
+                styles.yesterdayModalContent,
+                { backgroundColor: colors.background },
+              ]}
+            >
+              <View style={styles.yesterdayModalHeader}>
+                <Text
+                  style={[styles.yesterdayModalTitle, { color: colors.text }]}
+                >
+                  {t("home.yesterdaySummaryTitle")}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowYesterdaySummary(false)}
+                  style={[
+                    styles.yesterdayCloseBtn,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <X size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {yesterdayData &&
+              (yesterdayData.mealCount > 0 || yesterdayData.waterCups > 0) ? (
+                <View style={styles.yesterdaySummaryGrid}>
+                  <View style={styles.yesterdaySummaryRow}>
+                    <View
+                      style={[
+                        styles.yesterdayStat,
+                        { backgroundColor: colors.surface },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.yesterdayStatIcon,
+                          { backgroundColor: "rgba(255, 107, 107, 0.15)" },
+                        ]}
+                      >
+                        <Flame size={20} color="#FF6B6B" />
+                      </View>
+                      <Text
+                        style={[
+                          styles.yesterdayStatValue,
+                          { color: colors.text },
+                        ]}
+                      >
+                        {Math.round(yesterdayData.calories)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.yesterdayStatLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {t("home.yesterdayCalories")}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.yesterdayStat,
+                        { backgroundColor: colors.surface },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.yesterdayStatIcon,
+                          { backgroundColor: "rgba(16, 185, 129, 0.15)" },
+                        ]}
+                      >
+                        <TrendingUp size={20} color="#10B981" />
+                      </View>
+                      <Text
+                        style={[
+                          styles.yesterdayStatValue,
+                          { color: colors.text },
+                        ]}
+                      >
+                        {Math.round(yesterdayData.protein)}g
+                      </Text>
+                      <Text
+                        style={[
+                          styles.yesterdayStatLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {t("home.yesterdayProtein")}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.yesterdaySummaryRow}>
+                    <View
+                      style={[
+                        styles.yesterdayStat,
+                        { backgroundColor: colors.surface },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.yesterdayStatIcon,
+                          { backgroundColor: "rgba(245, 158, 11, 0.15)" },
+                        ]}
+                      >
+                        <Target size={20} color="#F59E0B" />
+                      </View>
+                      <Text
+                        style={[
+                          styles.yesterdayStatValue,
+                          { color: colors.text },
+                        ]}
+                      >
+                        {Math.round(yesterdayData.carbs)}g
+                      </Text>
+                      <Text
+                        style={[
+                          styles.yesterdayStatLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {t("home.yesterdayCarbs")}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.yesterdayStat,
+                        { backgroundColor: colors.surface },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.yesterdayStatIcon,
+                          { backgroundColor: "rgba(59, 130, 246, 0.15)" },
+                        ]}
+                      >
+                        <Droplets size={20} color="#3B82F6" />
+                      </View>
+                      <Text
+                        style={[
+                          styles.yesterdayStatValue,
+                          { color: colors.text },
+                        ]}
+                      >
+                        {Math.round(yesterdayData.fat)}g
+                      </Text>
+                      <Text
+                        style={[
+                          styles.yesterdayStatLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {t("home.yesterdayFat")}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.yesterdaySummaryRow}>
+                    <View
+                      style={[
+                        styles.yesterdayStat,
+                        { backgroundColor: colors.surface },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.yesterdayStatIcon,
+                          { backgroundColor: "rgba(139, 92, 246, 0.15)" },
+                        ]}
+                      >
+                        <Utensils size={20} color="#8B5CF6" />
+                      </View>
+                      <Text
+                        style={[
+                          styles.yesterdayStatValue,
+                          { color: colors.text },
+                        ]}
+                      >
+                        {yesterdayData.mealCount}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.yesterdayStatLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {t("home.yesterdayMeals")}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.yesterdayStat,
+                        { backgroundColor: colors.surface },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.yesterdayStatIcon,
+                          { backgroundColor: "rgba(6, 182, 212, 0.15)" },
+                        ]}
+                      >
+                        <Droplets size={20} color="#06B6D4" />
+                      </View>
+                      <Text
+                        style={[
+                          styles.yesterdayStatValue,
+                          { color: colors.text },
+                        ]}
+                      >
+                        {yesterdayData.waterCups}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.yesterdayStatLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {t("home.yesterdayWater")}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.yesterdayEmptyState}>
+                  <Clock size={48} color={colors.textTertiary} strokeWidth={1.5} />
+                  <Text
+                    style={[
+                      styles.yesterdayEmptyText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {t("home.yesterdayNoData")}
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={[styles.yesterdayCloseButton, { backgroundColor: colors.primary }]}
+                onPress={() => setShowYesterdaySummary(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.yesterdayCloseButtonText}>
+                  {t("home.yesterdayClose")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         <ShoppingList
           visible={showShoppingList}
@@ -1462,6 +1821,122 @@ const styles = StyleSheet.create({
   },
   addMealButtonText: {
     fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
+  },
+
+  // Yesterday Summary Button
+  yesterdayButtonContainer: {
+    marginHorizontal: 24,
+    marginBottom: 16,
+  },
+  yesterdayButton: {
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  yesterdayButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    gap: 14,
+  },
+  yesterdayIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  yesterdayButtonText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
+
+  // Yesterday Summary Modal
+  yesterdayModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  yesterdayModalContent: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: 28,
+    padding: 24,
+  },
+  yesterdayModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  yesterdayModalTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  yesterdayCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  yesterdaySummaryGrid: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  yesterdaySummaryRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  yesterdayStat: {
+    flex: 1,
+    borderRadius: 20,
+    padding: 16,
+    alignItems: "center",
+    gap: 8,
+  },
+  yesterdayStatIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  yesterdayStatValue: {
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  yesterdayStatLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+  },
+  yesterdayEmptyState: {
+    alignItems: "center",
+    paddingVertical: 40,
+    gap: 16,
+  },
+  yesterdayEmptyText: {
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  yesterdayCloseButton: {
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+  },
+  yesterdayCloseButtonText: {
+    fontSize: 16,
     fontWeight: "700",
     color: "#FFFFFF",
     letterSpacing: 0.2,

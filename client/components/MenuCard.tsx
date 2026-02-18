@@ -8,7 +8,18 @@ import {
   Animated,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  Sun,
+  UtensilsCrossed,
+  Moon,
+  Coffee,
+  Apple,
+  Flame,
+  CreditCard,
+  Eye,
+  Play,
+  LucideIcon
+} from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { RecommendedMenu } from "../../types/menu";
 
@@ -31,18 +42,18 @@ export default function MenuCard({
 }: MenuCardProps) {
   const router = useRouter();
 
-  const getMealTypeIcon = (mealType: string): string => {
+  const getMealTypeIcon = (mealType: string): LucideIcon => {
     switch (mealType.toLowerCase()) {
       case "breakfast":
-        return "sunny-outline";
+        return Sun;
       case "lunch":
-        return "restaurant-outline";
+        return UtensilsCrossed;
       case "dinner":
-        return "moon-outline";
+        return Moon;
       case "snack":
-        return "cafe-outline";
+        return Coffee;
       default:
-        return "nutrition-outline";
+        return Apple;
     }
   };
 
@@ -117,7 +128,7 @@ export default function MenuCard({
               {/* Calories - Main */}
               <View style={styles.caloriesCard}>
                 <View style={styles.nutritionIcon}>
-                  <Ionicons name="flame" size={20} color="#ef4444" />
+                  <Flame size={20} color="#ef4444" />
                 </View>
                 <Text style={styles.caloriesValue}>{menu.total_calories}</Text>
                 <Text style={[styles.caloriesLabel, isRTL && styles.rtlText]}>
@@ -241,11 +252,10 @@ export default function MenuCard({
                       style={styles.mealCard}
                     >
                       <View style={styles.mealIcon}>
-                        <Ionicons
-                          name={getMealTypeIcon(meal.meal_type) as any}
-                          size={16}
-                          color="#6b7280"
-                        />
+                        {React.createElement(getMealTypeIcon(meal.meal_type), {
+                          size: 16,
+                          color: "#6b7280"
+                        })}
                       </View>
                       <Text
                         style={[styles.mealName, isRTL && styles.rtlText]}
@@ -266,7 +276,7 @@ export default function MenuCard({
           <View style={styles.footerSection}>
             {menu.estimated_cost && (
               <View style={[styles.costInfo, isRTL && styles.rtlRow]}>
-                <Ionicons name="card-outline" size={16} color="#6b7280" />
+                <CreditCard size={16} color="#6b7280" />
                 <Text style={[styles.costText, isRTL && styles.rtlText]}>
                   {isRTL ? "עלות משוערת:" : "Estimated cost:"}
                 </Text>
@@ -281,7 +291,7 @@ export default function MenuCard({
                 style={styles.secondaryButton}
                 onPress={() => router.push(`/menu/${menu.menu_id}`)}
               >
-                <Ionicons name="eye-outline" size={16} color="#10b981" />
+                <Eye size={16} color="#10b981" />
                 <Text
                   style={[styles.secondaryButtonText, isRTL && styles.rtlText]}
                 >
@@ -293,7 +303,7 @@ export default function MenuCard({
                 style={styles.primaryButton}
                 onPress={() => onStart(menu.menu_id)}
               >
-                <Ionicons name="play" size={16} color="#ffffff" />
+                <Play size={16} color="#ffffff" />
                 <Text
                   style={[styles.primaryButtonText, isRTL && styles.rtlText]}
                 >

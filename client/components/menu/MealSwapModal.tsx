@@ -63,6 +63,7 @@ interface MealSwapModalProps {
   onSwap: (newMeal: MealAlternative) => void;
   menuId: string;
   originalMeal: OriginalMeal | null;
+  language?: string; // "he" for Hebrew, "en" for English
 }
 
 const AlternativeCard: React.FC<{
@@ -243,6 +244,7 @@ export const MealSwapModal: React.FC<MealSwapModalProps> = ({
   onSwap,
   menuId,
   originalMeal,
+  language = "en",
 }) => {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -274,20 +276,37 @@ export const MealSwapModal: React.FC<MealSwapModalProps> = ({
       setIsLoading(true);
       setError(null);
 
+      console.log("📋 Loading alternatives for:", {
+        menuId,
+        mealId: originalMeal.meal_id,
+        mealName: originalMeal.name,
+        language,
+      });
+
       const response = await api.get(
-        `/recommended-menus/${menuId}/meal-alternatives/${originalMeal.meal_id}`
+        `/recommended-menus/${menuId}/meal-alternatives/${originalMeal.meal_id}`,
+        {
+          timeout: 20000, // 20 second timeout for AI alternatives
+          params: { language },
+        }
       );
 
       if (response.data.success) {
+        console.log(`✅ Loaded ${response.data.data?.length || 0} alternatives`);
         setAlternatives(response.data.data || []);
       } else {
+        console.warn("⚠️ API returned unsuccessful:", response.data);
         setError(t("menu.failed_load_alternatives", "Failed to load alternatives"));
+        // Use fallback alternatives
+        setAlternatives(generateFallbackAlternatives(originalMeal));
       }
-    } catch (err) {
-      console.error("Error loading meal alternatives:", err);
-      setError(t("menu.failed_load_alternatives", "Failed to load alternatives"));
+    } catch (err: any) {
+      console.error("❌ Error loading meal alternatives:", err);
+      console.log("📝 Using fallback alternatives");
       // Generate fallback alternatives based on original meal
       setAlternatives(generateFallbackAlternatives(originalMeal));
+      // Clear error since we have fallback alternatives
+      setError(null);
     } finally {
       setIsLoading(false);
     }
@@ -429,36 +448,81 @@ export const MealSwapModal: React.FC<MealSwapModalProps> = ({
     return mealTypeAlternatives[mealType] || mealTypeAlternatives.LUNCH;
   };
 
-  const handleSelectAlternative = async (alternative: MealAlternative) => {
+  const handleSelectAlternative = async (alternative: MealAlternative, retryCount: number = 0) => {
     if (!originalMeal) return;
+
+    const MAX_RETRIES = 2;
 
     try {
       setIsSwapping(alternative.meal_id);
+      setError(null);
+
+      console.log("🔄 Swapping meal:", {
+        menuId,
+        originalMealId: originalMeal.meal_id,
+        originalMealName: originalMeal.name,
+        alternativeId: alternative.meal_id,
+        alternativeName: alternative.name,
+        language,
+      });
+      console.log("🎯 User selected alternative:", alternative.name, "to replace:", originalMeal.name);
 
       // Call the replace meal API with full alternative nutrition data
-      const response = await api.post(`/recommended-menus/${menuId}/replace-meal`, {
-        mealId: originalMeal.meal_id,
-        preferences: {
-          targetCalories: alternative.calories,
-          targetProtein: alternative.protein,
-          targetCarbs: alternative.carbs,
-          targetFat: alternative.fat,
-          selectedAlternativeId: alternative.meal_id,
-          alternativeName: alternative.name,
-          prepTime: alternative.prep_time_minutes,
-          cookingMethod: alternative.cooking_method,
+      const response = await api.post(
+        `/recommended-menus/${menuId}/replace-meal`,
+        {
+          mealId: originalMeal.meal_id,
+          language, // Pass language for AI to generate in correct language
+          preferences: {
+            targetCalories: alternative.calories,
+            targetProtein: alternative.protein,
+            targetCarbs: alternative.carbs,
+            targetFat: alternative.fat,
+            selectedAlternativeId: alternative.meal_id,
+            alternativeName: alternative.name,
+            prepTime: alternative.prep_time_minutes,
+            cookingMethod: alternative.cooking_method,
+            ingredients: alternative.ingredients, // Pass ingredients so AI can use them
+          },
         },
-      });
+        {
+          timeout: 30000, // 30 second timeout for AI generation
+        }
+      );
 
       if (response.data.success) {
+        console.log("✅ Meal swapped successfully");
         onSwap(alternative);
         onClose();
       } else {
-        setError(t("menu.swap_failed", "Failed to swap meal"));
+        console.error("❌ Swap failed:", response.data.error);
+        setError(response.data.error || t("menu.swap_failed", "Failed to swap meal"));
       }
-    } catch (err) {
-      console.error("Error swapping meal:", err);
-      setError(t("menu.swap_failed", "Failed to swap meal. Please try again."));
+    } catch (err: any) {
+      console.error("❌ Error swapping meal:", err);
+
+      // Check if it's a network error or timeout and retry
+      const isRetryable =
+        err.code === "ECONNABORTED" ||
+        err.code === "ERR_NETWORK" ||
+        err.message?.includes("Network Error") ||
+        !err.response;
+
+      if (isRetryable && retryCount < MAX_RETRIES) {
+        console.log(`🔄 Retrying meal swap (attempt ${retryCount + 2}/${MAX_RETRIES + 1})...`);
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return handleSelectAlternative(alternative, retryCount + 1);
+      }
+
+      // Show detailed error message
+      const errorMessage =
+        err.response?.data?.error ||
+        err.response?.data?.details ||
+        (isRetryable
+          ? t("menu.network_error", "Network error. Please check your connection and try again.")
+          : t("menu.swap_failed", "Failed to swap meal. Please try again."));
+
+      setError(errorMessage);
     } finally {
       setIsSwapping(null);
     }

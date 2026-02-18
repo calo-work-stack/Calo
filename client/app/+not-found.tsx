@@ -10,11 +10,13 @@ import {
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import React, { useEffect, useRef } from "react";
-import { Ionicons } from "@expo/vector-icons";
+import { AlertCircle, Home, ArrowLeft } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 
 const { height } = Dimensions.get("window");
 
 export default function NotFoundScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -70,7 +72,7 @@ export default function NotFoundScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Page Not Found", headerShown: false }} />
+      <Stack.Screen options={{ title: t("notFound.pageTitle"), headerShown: false }} />
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <ThemedView style={styles.container}>
@@ -112,8 +114,7 @@ export default function NotFoundScreen() {
                   { transform: [{ translateY: bounceAnim }] },
                 ]}
               >
-                <Ionicons
-                  name="alert-circle-outline"
+                <AlertCircle
                   size={120}
                   color="#10B981"
                   style={styles.icon}
@@ -121,10 +122,9 @@ export default function NotFoundScreen() {
               </Animated.View>
 
               <ThemedText style={styles.errorCode}>404</ThemedText>
-              <ThemedText style={styles.title}>Oops! Page Not Found</ThemedText>
+              <ThemedText style={styles.title}>{t("notFound.title")}</ThemedText>
               <ThemedText style={styles.subtitle}>
-                The page you're looking for wandered off into the digital jungle
-                🌿
+                {t("notFound.subtitle")} 🌿
               </ThemedText>
 
               <Animated.View style={styles.buttonContainer}>
@@ -133,9 +133,9 @@ export default function NotFoundScreen() {
                   onPress={handleGoHome}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="home" size={20} color="#FFFFFF" />
+                  <Home size={20} color="#FFFFFF" />
                   <ThemedText style={styles.primaryButtonText}>
-                    Go Home
+                    {t("notFound.goHome")}
                   </ThemedText>
                 </TouchableOpacity>
 
@@ -144,16 +144,16 @@ export default function NotFoundScreen() {
                   onPress={handleGoBack}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="arrow-back" size={20} color="#10B981" />
+                  <ArrowLeft size={20} color="#10B981" />
                   <ThemedText style={styles.secondaryButtonText}>
-                    Go Back
+                    {t("notFound.goBack")}
                   </ThemedText>
                 </TouchableOpacity>
               </Animated.View>
 
               <Link href="/(tabs)" style={styles.fallbackLink}>
                 <ThemedText style={styles.linkText}>
-                  Or tap here to return to the main app
+                  {t("notFound.fallbackLink")}
                 </ThemedText>
               </Link>
             </Animated.View>

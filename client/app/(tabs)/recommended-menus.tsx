@@ -59,7 +59,6 @@ import {
   Percent,
 } from "lucide-react-native";
 import { api } from "@/src/services/api";
-import LoadingScreen from "@/components/LoadingScreen";
 import { router, useFocusEffect } from "expo-router";
 import { useSelector } from "react-redux";
 import { RootState } from "@/src/store";
@@ -67,7 +66,12 @@ import { EnhancedMenuCreator } from "@/components/menu";
 import { RecommendedMenu } from "@/src/types/recommended-menus";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
-import { MenuCardSkeleton } from "@/components/loaders/SkeletonLoader";
+import {
+  MenuCardSkeleton,
+  OperationLoader,
+  OperationType,
+} from "@/components/loaders";
+import { MenuEditModal } from "@/components/menu/MenuEditModal";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const isSmallDevice = SCREEN_WIDTH < 375;
@@ -192,10 +196,10 @@ const FilterSortModal = React.memo(
                           styles.filterChip,
                           {
                             backgroundColor: isSelected
-                              ? colors.emerald500
+                              ? colors.warmOrange
                               : colors.surface,
                             borderColor: isSelected
-                              ? colors.emerald500
+                              ? colors.warmOrange
                               : colors.border,
                           },
                         ]}
@@ -237,7 +241,7 @@ const FilterSortModal = React.memo(
                           styles.sortOption,
                           {
                             backgroundColor: isSelected
-                              ? colors.emerald500 + "15"
+                              ? colors.warmOrange + "15"
                               : "transparent",
                           },
                         ]}
@@ -248,7 +252,7 @@ const FilterSortModal = React.memo(
                             styles.sortOptionText,
                             {
                               color: isSelected
-                                ? colors.emerald500
+                                ? colors.warmOrange
                                 : colors.text,
                               fontWeight: isSelected ? "700" : "500",
                             },
@@ -257,7 +261,7 @@ const FilterSortModal = React.memo(
                           {t(option.label)}
                         </Text>
                         {isSelected && (
-                          <CheckCircle size={18} color={colors.emerald500} />
+                          <CheckCircle size={18} color={colors.warmOrange} />
                         )}
                       </TouchableOpacity>
                     );
@@ -269,7 +273,7 @@ const FilterSortModal = React.memo(
               <TouchableOpacity
                 style={[
                   styles.applyButton,
-                  { backgroundColor: colors.emerald500 },
+                  { backgroundColor: colors.warmOrange },
                 ]}
                 onPress={onClose}
               >
@@ -369,7 +373,7 @@ const MenuCard = React.memo(
       >
         {/* Top Section with Gradient */}
         <LinearGradient
-          colors={[colors.emerald500 + "15", "transparent"]}
+          colors={[colors.warmOrange + "15", "transparent"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.cardGradient}
@@ -379,7 +383,7 @@ const MenuCard = React.memo(
               <View
                 style={[
                   styles.menuIconBg,
-                  { backgroundColor: colors.emerald500 },
+                  { backgroundColor: colors.warmOrange },
                 ]}
               >
                 <ChefHat size={24} color="#ffffff" />
@@ -405,7 +409,7 @@ const MenuCard = React.memo(
               <View
                 style={[
                   styles.daysBadge,
-                  { backgroundColor: colors.emerald500 },
+                  { backgroundColor: colors.warmOrange },
                 ]}
               >
                 <Calendar size={12} color="#ffffff" />
@@ -518,7 +522,7 @@ const MenuCard = React.memo(
               style={[
                 styles.actionBtn,
                 styles.startBtn,
-                { backgroundColor: colors.emerald500 },
+                { backgroundColor: colors.warmOrange },
               ]}
               onPress={() => onStart(menu.menu_id)}
             >
@@ -571,7 +575,7 @@ const ActivePlanBanner = React.memo(({ plan, colors, t, onContinue }: any) => {
     <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
       <TouchableOpacity onPress={onContinue} activeOpacity={0.95}>
         <LinearGradient
-          colors={[colors.emerald500, colors.emerald600 || colors.emerald500]}
+          colors={[colors.warmOrange, "#D97706"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.activePlanBanner}
@@ -630,7 +634,7 @@ const QuickStatsCard = React.memo(({ menus, colors, t }: any) => {
   return (
     <View style={[styles.quickStatsCard, { backgroundColor: colors.card }]}>
       <View style={styles.quickStatsHeader}>
-        <Award size={18} color={colors.emerald500} />
+        <Award size={18} color={colors.warmOrange} />
         <Text style={[styles.quickStatsTitle, { color: colors.text }]}>
           {t("menus.your_menu_stats")}
         </Text>
@@ -638,7 +642,7 @@ const QuickStatsCard = React.memo(({ menus, colors, t }: any) => {
 
       <View style={styles.quickStatsGrid}>
         <View style={styles.quickStatItem}>
-          <Text style={[styles.quickStatValue, { color: colors.emerald500 }]}>
+          <Text style={[styles.quickStatValue, { color: colors.warmOrange }]}>
             {stats.totalMenus}
           </Text>
           <Text style={[styles.quickStatLabel, { color: colors.icon }]}>
@@ -651,7 +655,7 @@ const QuickStatsCard = React.memo(({ menus, colors, t }: any) => {
         />
 
         <View style={styles.quickStatItem}>
-          <Text style={[styles.quickStatValue, { color: colors.emerald500 }]}>
+          <Text style={[styles.quickStatValue, { color: colors.warmOrange }]}>
             {stats.avgCalories}
           </Text>
           <Text style={[styles.quickStatLabel, { color: colors.icon }]}>
@@ -664,7 +668,7 @@ const QuickStatsCard = React.memo(({ menus, colors, t }: any) => {
         />
 
         <View style={styles.quickStatItem}>
-          <Text style={[styles.quickStatValue, { color: colors.emerald500 }]}>
+          <Text style={[styles.quickStatValue, { color: colors.warmOrange }]}>
             ₪{stats.avgCost}
           </Text>
           <Text style={[styles.quickStatLabel, { color: colors.icon }]}>
@@ -706,9 +710,9 @@ const CategoryPills = React.memo(
                 styles.categoryPill,
                 {
                   backgroundColor: isActive
-                    ? colors.emerald500
+                    ? colors.warmOrange
                     : colors.surface,
-                  borderColor: isActive ? colors.emerald500 : colors.border,
+                  borderColor: isActive ? colors.warmOrange : colors.border,
                 },
               ]}
               onPress={() => onCategorySelect(category.key)}
@@ -771,7 +775,7 @@ const EmptyState = React.memo(
             },
           ]}
         >
-          <ChefHat size={48} color={colors.emerald500} />
+          <ChefHat size={48} color={colors.warmOrange} />
         </Animated.View>
 
         <Text style={[styles.emptyTitle, { color: colors.text }]}>
@@ -787,7 +791,7 @@ const EmptyState = React.memo(
 
         {!searchQuery && (
           <TouchableOpacity
-            style={[styles.emptyButton, { backgroundColor: colors.emerald500 }]}
+            style={[styles.emptyButton, { backgroundColor: colors.warmOrange }]}
             onPress={onCreateMenu}
           >
             <Plus size={20} color="#ffffff" />
@@ -821,6 +825,16 @@ export default function RecommendedMenusScreen() {
   const [hasActivePlan, setHasActivePlan] = useState(false);
   const [activePlanData, setActivePlanData] = useState<any>(null);
   const [showEnhancedCreation, setShowEnhancedCreation] = useState(false);
+  const [menuCount, setMenuCount] = useState(0);
+  const [maxMenus, setMaxMenus] = useState(3);
+  const [canCreateMore, setCanCreateMore] = useState(true);
+
+  // Operation loading states
+  const [operationLoading, setOperationLoading] = useState<{
+    visible: boolean;
+    type: OperationType;
+    message?: string;
+  }>({ visible: false, type: "loading" });
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -840,8 +854,13 @@ export default function RecommendedMenusScreen() {
 
       if (menusResponse.data.success) {
         setMenus(menusResponse.data.data || []);
+        setMenuCount(menusResponse.data.menuCount || menusResponse.data.data?.length || 0);
+        setMaxMenus(menusResponse.data.maxMenus || 3);
+        setCanCreateMore(menusResponse.data.canCreateMore !== false);
       } else {
         setMenus([]);
+        setMenuCount(0);
+        setCanCreateMore(true);
       }
 
       if (
@@ -989,30 +1008,40 @@ export default function RecommendedMenusScreen() {
           text: t("menus.delete"),
           style: "destructive",
           onPress: async () => {
+            setOperationLoading({
+              visible: true,
+              type: "delete",
+              message: t("operations.deletingMenu"),
+            });
             try {
               const response = await api.delete(`/recommended-menus/${menuId}`);
 
               if (response.data.success) {
                 setMenus((prev) => prev.filter((m) => m.menu_id !== menuId));
+                // Update menu count after deletion
+                setMenuCount((prev) => Math.max(0, prev - 1));
+                setCanCreateMore(true); // After deletion, user can create more
 
                 if (activePlanData?.plan_id === menuId) {
                   setActivePlanData(null);
                   setHasActivePlan(false);
                 }
 
+                setOperationLoading({ visible: false, type: "loading" });
                 Alert.alert(
                   t("common.success"),
-                  t("menus.menu_deleted_success"),
+                  t("operations.success.menuDeleted"),
                 );
               } else {
                 throw new Error(response.data.error || "Failed to delete");
               }
             } catch (error: any) {
+              setOperationLoading({ visible: false, type: "loading" });
               Alert.alert(
                 t("common.error"),
                 error.response?.data?.error ||
                   error.message ||
-                  t("menus.failed_to_delete"),
+                  t("operations.error.menuDeleteFailed"),
               );
             }
           },
@@ -1123,11 +1152,16 @@ export default function RecommendedMenusScreen() {
 
     return (
       <EnhancedMenuCreator
-        onCreateMenu={async () => {
+        onCreateMenu={async (menuData: any) => {
           try {
             setShowEnhancedCreation(false);
             await loadAllData();
-            Alert.alert(t("common.success"), t("menus.menu_created_success"));
+            // Auto-navigate to the active menu since it's now auto-activated
+            const newMenuId = menuData?.menu_id;
+            if (newMenuId) {
+              setHasActivePlan(true);
+              router.push(`/menu/activeMenu?planId=${newMenuId}`);
+            }
           } catch (error) {
             console.error("Error handling menu creation:", error);
           }
@@ -1189,12 +1223,35 @@ export default function RecommendedMenusScreen() {
               </Text>
             </View>
           </View>
-          <TouchableOpacity
-            style={[styles.createBtn, { backgroundColor: colors.emerald500 }]}
-            onPress={() => setShowEnhancedCreation(true)}
-          >
-            <Plus size={20} color="#ffffff" />
-          </TouchableOpacity>
+          <View style={styles.createBtnContainer}>
+            {/* Menu count indicator */}
+            <View style={[styles.menuCountBadge, { backgroundColor: canCreateMore ? colors.warmOrange + "20" : colors.error + "20" }]}>
+              <Text style={[styles.menuCountText, { color: canCreateMore ? colors.warmOrange : colors.error }]}>
+                {menuCount}/{maxMenus}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.createBtn,
+                {
+                  backgroundColor: canCreateMore ? colors.warmOrange : colors.border,
+                  opacity: canCreateMore ? 1 : 0.6,
+                },
+              ]}
+              onPress={() => {
+                if (canCreateMore) {
+                  setShowEnhancedCreation(true);
+                } else {
+                  Alert.alert(
+                    t("menus.limit_reached", "Menu Limit Reached"),
+                    t("menus.limit_message", `Maximum ${maxMenus} menus allowed. Please delete a menu to create a new one.`),
+                  );
+                }
+              }}
+            >
+              <Plus size={20} color={canCreateMore ? "#ffffff" : colors.icon} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Search and Filter Row */}
@@ -1221,11 +1278,11 @@ export default function RecommendedMenusScreen() {
               {
                 backgroundColor:
                   selectedFilter !== "all" || selectedSort !== "newest"
-                    ? colors.emerald500 + "20"
+                    ? colors.warmOrange + "20"
                     : colors.surface,
                 borderColor:
                   selectedFilter !== "all" || selectedSort !== "newest"
-                    ? colors.emerald500
+                    ? colors.warmOrange
                     : colors.border,
               },
             ]}
@@ -1235,7 +1292,7 @@ export default function RecommendedMenusScreen() {
               size={18}
               color={
                 selectedFilter !== "all" || selectedSort !== "newest"
-                  ? colors.emerald500
+                  ? colors.warmOrange
                   : colors.icon
               }
             />
@@ -1251,8 +1308,8 @@ export default function RecommendedMenusScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[colors.emerald500]}
-            tintColor={colors.emerald500}
+            colors={[colors.warmOrange]}
+            tintColor={colors.warmOrange}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -1326,6 +1383,13 @@ export default function RecommendedMenusScreen() {
       />
 
       {renderMenuCreationModal()}
+
+      {/* Operation Loader */}
+      <OperationLoader
+        visible={operationLoading.visible}
+        type={operationLoading.type}
+        message={operationLoading.message}
+      />
     </SafeAreaView>
   );
 }
@@ -1437,6 +1501,20 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 12,
     fontWeight: "500",
+  },
+  createBtnContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  menuCountBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  menuCountText: {
+    fontSize: 13,
+    fontWeight: "700",
   },
   createBtn: {
     width: 44,

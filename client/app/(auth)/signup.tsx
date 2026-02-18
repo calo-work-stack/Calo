@@ -15,7 +15,7 @@ import {
   Animated,
   Keyboard,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { ChevronLeft, ChevronRight, User, Mail, Lock, ShieldCheck, Eye, EyeOff, Globe, CheckCircle, Check, UserPlus, Info, X } from "lucide-react-native";
 import { Link, router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
@@ -30,8 +30,8 @@ import { LinearGradient } from "expo-linear-gradient";
 const { width, height } = Dimensions.get("window");
 
 const langOptions = [
-  { key: "he", label: "עברית", icon: "globe-outline" },
-  { key: "en", label: "English", icon: "globe-outline" },
+  { key: "he", label: "עברית" },
+  { key: "en", label: "English" },
 ];
 
 export default function SignUpScreen() {
@@ -56,6 +56,11 @@ export default function SignUpScreen() {
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
+
+  // Info tooltip states
+  const [showNameInfo, setShowNameInfo] = useState(false);
+  const [showEmailInfo, setShowEmailInfo] = useState(false);
+  const [showPasswordInfo, setShowPasswordInfo] = useState(false);
 
   // Animations
   const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -134,6 +139,16 @@ export default function SignUpScreen() {
     return emailRegex.test(email);
   };
 
+  // Password validation rules matching server
+  const passwordChecks = [
+    { key: "min", check: (p: string) => p.length >= 8, label: t("auth.sign_up.requirements.password_min") },
+    { key: "upper", check: (p: string) => /[A-Z]/.test(p), label: t("auth.sign_up.requirements.password_uppercase") },
+    { key: "lower", check: (p: string) => /[a-z]/.test(p), label: t("auth.sign_up.requirements.password_lowercase") },
+    { key: "number", check: (p: string) => /\d/.test(p), label: t("auth.sign_up.requirements.password_number") },
+  ];
+
+  const isPasswordValid = passwordChecks.every((rule) => rule.check(password));
+
   const handleSignUp = async () => {
     Keyboard.dismiss();
 
@@ -146,6 +161,15 @@ export default function SignUpScreen() {
     if (!validateEmail(email)) {
       shake();
       ToastService.error(t("common.error"), t("auth.email_validation_error"));
+      return;
+    }
+
+    if (!isPasswordValid) {
+      shake();
+      ToastService.error(
+        t("common.error"),
+        t("auth.reset_password.password_too_short"),
+      );
       return;
     }
 
@@ -212,6 +236,7 @@ export default function SignUpScreen() {
       confirmPassword.trim() &&
       password === confirmPassword &&
       validateEmail(email) &&
+      isPasswordValid &&
       acceptedPrivacyPolicy
     );
   };
@@ -244,11 +269,11 @@ export default function SignUpScreen() {
             onPress={() => router.push("/(auth)/welcome")}
             activeOpacity={0.7}
           >
-            <Ionicons
-              name={isRTL ? "chevron-forward" : "chevron-back"}
-              size={22}
-              color={colors.primary}
-            />
+            {isRTL ? (
+              <ChevronRight size={22} color={colors.primary} />
+            ) : (
+              <ChevronLeft size={22} color={colors.primary} />
+            )}
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             {t("auth.sign_up.title")}
@@ -288,8 +313,7 @@ export default function SignUpScreen() {
                     },
                   ]}
                 >
-                  <Ionicons
-                    name="person-add"
+                  <UserPlus
                     size={36}
                     color={colors.onPrimary}
                   />
@@ -328,25 +352,32 @@ export default function SignUpScreen() {
                       { backgroundColor: colors.surfaceVariant },
                     ]}
                   >
-                    <Ionicons
-                      name="person-outline"
+                    <User
                       size={20}
                       color={nameFocused ? colors.primary : colors.icon}
                     />
                   </View>
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        {
-                          color: nameFocused
-                            ? colors.primary
-                            : colors.textTertiary,
-                        },
-                      ]}
-                    >
-                      {t("auth.sign_up.name_label")}
-                    </Text>
+                    <View style={styles.labelRow}>
+                      <Text
+                        style={[
+                          styles.inputLabel,
+                          {
+                            color: nameFocused
+                              ? colors.primary
+                              : colors.textTertiary,
+                          },
+                        ]}
+                      >
+                        {t("auth.sign_up.name_label")}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setShowNameInfo(!showNameInfo)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Info size={14} color={showNameInfo ? colors.primary : colors.textTertiary} />
+                      </TouchableOpacity>
+                    </View>
                     <TextInput
                       style={[
                         styles.input,
@@ -369,6 +400,35 @@ export default function SignUpScreen() {
                   </View>
                 </View>
 
+                {/* Name Requirements Tooltip */}
+                {showNameInfo && (
+                  <View style={[styles.tooltipContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.tooltipTitle, { color: colors.text }]}>
+                      {t("auth.sign_up.requirements.title")}
+                    </Text>
+                    <View style={styles.tooltipRow}>
+                      {name.length >= 2 ? (
+                        <Check size={14} color={colors.primary} />
+                      ) : (
+                        <X size={14} color={colors.error || "#EF4444"} />
+                      )}
+                      <Text style={[styles.tooltipText, { color: name.length >= 2 ? colors.primary : colors.textSecondary }]}>
+                        {t("auth.sign_up.requirements.name_min")}
+                      </Text>
+                    </View>
+                    <View style={styles.tooltipRow}>
+                      {name.length <= 50 ? (
+                        <Check size={14} color={colors.primary} />
+                      ) : (
+                        <X size={14} color={colors.error || "#EF4444"} />
+                      )}
+                      <Text style={[styles.tooltipText, { color: name.length <= 50 ? colors.primary : colors.textSecondary }]}>
+                        {t("auth.sign_up.requirements.name_max")}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
                 {/* Email Input */}
                 <View
                   style={[
@@ -390,25 +450,32 @@ export default function SignUpScreen() {
                       { backgroundColor: colors.surfaceVariant },
                     ]}
                   >
-                    <Ionicons
-                      name="mail-outline"
+                    <Mail
                       size={20}
                       color={emailFocused ? colors.primary : colors.icon}
                     />
                   </View>
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        {
-                          color: emailFocused
-                            ? colors.primary
-                            : colors.textTertiary,
-                        },
-                      ]}
-                    >
-                      {t("auth.sign_up.email_label")}
-                    </Text>
+                    <View style={styles.labelRow}>
+                      <Text
+                        style={[
+                          styles.inputLabel,
+                          {
+                            color: emailFocused
+                              ? colors.primary
+                              : colors.textTertiary,
+                          },
+                        ]}
+                      >
+                        {t("auth.sign_up.email_label")}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setShowEmailInfo(!showEmailInfo)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Info size={14} color={showEmailInfo ? colors.primary : colors.textTertiary} />
+                      </TouchableOpacity>
+                    </View>
                     <TextInput
                       ref={emailRef}
                       style={[
@@ -434,6 +501,25 @@ export default function SignUpScreen() {
                   </View>
                 </View>
 
+                {/* Email Requirements Tooltip */}
+                {showEmailInfo && (
+                  <View style={[styles.tooltipContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.tooltipTitle, { color: colors.text }]}>
+                      {t("auth.sign_up.requirements.title")}
+                    </Text>
+                    <View style={styles.tooltipRow}>
+                      {validateEmail(email) ? (
+                        <Check size={14} color={colors.primary} />
+                      ) : (
+                        <X size={14} color={colors.error || "#EF4444"} />
+                      )}
+                      <Text style={[styles.tooltipText, { color: validateEmail(email) ? colors.primary : colors.textSecondary }]}>
+                        {t("auth.sign_up.requirements.email_valid")}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
                 {/* Password Input */}
                 <View
                   style={[
@@ -455,25 +541,32 @@ export default function SignUpScreen() {
                       { backgroundColor: colors.surfaceVariant },
                     ]}
                   >
-                    <Ionicons
-                      name="lock-closed-outline"
+                    <Lock
                       size={20}
                       color={passwordFocused ? colors.primary : colors.icon}
                     />
                   </View>
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        {
-                          color: passwordFocused
-                            ? colors.primary
-                            : colors.textTertiary,
-                        },
-                      ]}
-                    >
-                      {t("auth.sign_up.password_label")}
-                    </Text>
+                    <View style={styles.labelRow}>
+                      <Text
+                        style={[
+                          styles.inputLabel,
+                          {
+                            color: passwordFocused
+                              ? colors.primary
+                              : colors.textTertiary,
+                          },
+                        ]}
+                      >
+                        {t("auth.sign_up.password_label")}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setShowPasswordInfo(!showPasswordInfo)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Info size={14} color={showPasswordInfo ? colors.primary : colors.textTertiary} />
+                      </TouchableOpacity>
+                    </View>
                     <View style={styles.passwordRow}>
                       <TextInput
                         ref={passwordRef}
@@ -505,17 +598,44 @@ export default function SignUpScreen() {
                         onPress={() => setShowPassword(!showPassword)}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       >
-                        <Ionicons
-                          name={
-                            showPassword ? "eye-off-outline" : "eye-outline"
-                          }
-                          size={20}
-                          color={colors.icon}
-                        />
+                        {showPassword ? (
+                          <EyeOff size={20} color={colors.icon} />
+                        ) : (
+                          <Eye size={20} color={colors.icon} />
+                        )}
                       </TouchableOpacity>
                     </View>
                   </View>
                 </View>
+
+                {/* Password Requirements Checklist */}
+                {(showPasswordInfo || (password.length > 0 && !isPasswordValid)) && (
+                  <View style={[styles.tooltipContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.tooltipTitle, { color: colors.text }]}>
+                      {t("auth.sign_up.requirements.title")}
+                    </Text>
+                    {passwordChecks.map((rule) => {
+                      const passed = rule.check(password);
+                      return (
+                        <View key={rule.key} style={styles.tooltipRow}>
+                          {passed ? (
+                            <Check size={14} color={colors.primary} />
+                          ) : (
+                            <X size={14} color={colors.error || "#EF4444"} />
+                          )}
+                          <Text
+                            style={[
+                              styles.tooltipText,
+                              { color: passed ? colors.primary : colors.textSecondary },
+                            ]}
+                          >
+                            {rule.label}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
 
                 {/* Confirm Password Input */}
                 <View
@@ -538,8 +658,7 @@ export default function SignUpScreen() {
                       { backgroundColor: colors.surfaceVariant },
                     ]}
                   >
-                    <Ionicons
-                      name="shield-checkmark-outline"
+                    <ShieldCheck
                       size={20}
                       color={
                         confirmPasswordFocused ? colors.primary : colors.icon
@@ -592,15 +711,11 @@ export default function SignUpScreen() {
                         }
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       >
-                        <Ionicons
-                          name={
-                            showConfirmPassword
-                              ? "eye-off-outline"
-                              : "eye-outline"
-                          }
-                          size={20}
-                          color={colors.icon}
-                        />
+                        {showConfirmPassword ? (
+                          <EyeOff size={20} color={colors.icon} />
+                        ) : (
+                          <Eye size={20} color={colors.icon} />
+                        )}
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -633,8 +748,7 @@ export default function SignUpScreen() {
                         onPress={() => setLang(option.key)}
                         activeOpacity={0.7}
                       >
-                        <Ionicons
-                          name={option.icon as any}
+                        <Globe
                           size={20}
                           color={
                             lang === option.key ? colors.primary : colors.icon
@@ -655,8 +769,7 @@ export default function SignUpScreen() {
                           {option.label}
                         </Text>
                         {lang === option.key && (
-                          <Ionicons
-                            name="checkmark-circle"
+                          <CheckCircle
                             size={20}
                             color={colors.primary}
                           />
@@ -698,8 +811,7 @@ export default function SignUpScreen() {
                     ]}
                   >
                     {acceptedPrivacyPolicy && (
-                      <Ionicons
-                        name="checkmark"
+                      <Check
                         size={14}
                         color={colors.onPrimary}
                       />
@@ -895,10 +1007,15 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flex: 1,
   },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 2,
+  },
   inputLabel: {
     fontSize: 11,
     fontWeight: "600",
-    marginBottom: 2,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -1023,5 +1140,24 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 15,
     fontWeight: "600",
+  },
+  tooltipContainer: {
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    gap: 6,
+  },
+  tooltipTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  tooltipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  tooltipText: {
+    fontSize: 12,
   },
 });

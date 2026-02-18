@@ -492,19 +492,27 @@ export class NotificationService {
       await this.initialize();
 
       if (userQuestionnaire?.meal_times) {
+        // Cancel old meal reminders first
+        await this.cancelMealReminders();
+
         const mealTimes = userQuestionnaire.meal_times
           .split(",")
           .map((t: string) => t.trim());
-        const mealNames = ["Breakfast", "Lunch", "Dinner", "Snack"];
+        const mealNames = ["Breakfast", "Lunch", "Dinner", "Snack", "Late Snack"];
 
         for (let i = 0; i < Math.min(mealTimes.length, mealNames.length); i++) {
           await this.scheduleMealReminder(mealNames[i], mealTimes[i]);
         }
       }
 
-      console.log("✅ Notification system initialized successfully");
+      // Schedule water and weekly progress reminders
+      await this.scheduleWaterReminders();
+      await this.scheduleWeeklyProgress();
+      await this.scheduleEndOfDayMealCheck();
+
+      console.log("Notification system fully initialized");
     } catch (error) {
-      console.error("💥 Error initializing notification system:", error);
+      console.error("Error initializing notification system:", error);
     }
   }
 
@@ -559,6 +567,87 @@ export class NotificationService {
     }
 
     console.log(`✅ Scheduled ${settings.reminderTimes.length} meal reminders`);
+  }
+
+  static async scheduleWaterReminders(): Promise<void> {
+    try {
+      if (this.isExpoGo) return;
+
+      const notif = await getNotifications();
+      if (!notif || notif === mockNotifications) return;
+
+      // Cancel existing water reminders first
+      const scheduled = await notif.getAllScheduledNotificationsAsync();
+      for (const n of scheduled) {
+        if (n.content.data?.type === "water_reminder") {
+          await notif.cancelScheduledNotificationAsync(n.identifier);
+        }
+      }
+
+      // Schedule water reminders every 2 hours from 8 AM to 8 PM
+      const startHour = 8;
+      const endHour = 20;
+      const intervalHours = 2;
+
+      for (let hour = startHour; hour <= endHour; hour += intervalHours) {
+        await notif.scheduleNotificationAsync({
+          content: {
+            title: "Stay Hydrated!",
+            body: "Time to drink some water. Your body will thank you!",
+            data: { type: "water_reminder", hour },
+            sound: true,
+          },
+          trigger: {
+            type: notif.SchedulableTriggerInputTypes.CALENDAR,
+            repeats: true,
+            hour,
+            minute: 0,
+          },
+        });
+      }
+
+      console.log("Scheduled water reminders (8AM-8PM every 2h)");
+    } catch (error) {
+      console.error("Error scheduling water reminders:", error);
+    }
+  }
+
+  static async scheduleWeeklyProgress(): Promise<void> {
+    try {
+      if (this.isExpoGo) return;
+
+      const notif = await getNotifications();
+      if (!notif || notif === mockNotifications) return;
+
+      // Cancel existing weekly progress reminders
+      const scheduled = await notif.getAllScheduledNotificationsAsync();
+      for (const n of scheduled) {
+        if (n.content.data?.type === "weekly_progress") {
+          await notif.cancelScheduledNotificationAsync(n.identifier);
+        }
+      }
+
+      // Schedule for Monday at 9 AM (weekday 2 = Monday in expo-notifications)
+      await notif.scheduleNotificationAsync({
+        content: {
+          title: "Weekly Progress",
+          body: "Check out your nutrition progress this week!",
+          data: { type: "weekly_progress" },
+          sound: true,
+        },
+        trigger: {
+          type: notif.SchedulableTriggerInputTypes.CALENDAR,
+          repeats: true,
+          weekday: 2, // Monday
+          hour: 9,
+          minute: 0,
+        },
+      });
+
+      console.log("Weekly progress reminder scheduled for Monday 9AM");
+    } catch (error) {
+      console.error("Error scheduling weekly progress:", error);
+    }
   }
 
   static async scheduleEndOfDayMealCheck(): Promise<void> {

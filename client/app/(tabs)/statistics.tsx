@@ -23,7 +23,7 @@ import WeeklyChart from "@/components/statistics/charts/WeeklyChart";
 import MacrosChart from "@/components/statistics/charts/MacrosChart";
 import { AchievementsSection } from "@/components/statistics/AchievementsSection";
 import { AIRecommendationsSection } from "@/components/statistics/AIRecommendationsSection";
-import LoadingScreen from "@/components/LoadingScreen";
+import { StatisticsScreenSkeleton } from "@/components/loaders";
 // Icons
 import { Award, Droplets, Sparkles } from "lucide-react-native";
 import useOptimizedAuthSelector from "@/hooks/useOptimizedAuthSelector";
@@ -85,8 +85,7 @@ export default function StatisticsScreen() {
   }, [refresh, fetchAchievements]);
 
   // Loading state
-  if (isLoading)
-    return <LoadingScreen text={t("loading.loading", "loading.statistics")} />;
+  if (isLoading) return <StatisticsScreenSkeleton />;
 
   // Render nutrition metrics carousel
   const renderNutritionMetrics = () => {

@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "@/src/store";
-import { PushNotificationService } from "@/src/services/pushNotifications";
+import { NotificationService as ExpoNotifications } from "@/src/services/notifications";
 import NotificationService from "@/src/services/notificationService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTranslation } from "react-i18next";
@@ -96,17 +96,12 @@ export const useAppInitialization = (): AppInitializationState => {
           NotificationService.showUserOnline();
         }
 
-        // Register for push notifications
-        const token =
-          await PushNotificationService.registerForPushNotifications();
+        // Initialize Expo-compatible notification system
+        try {
+          await ExpoNotifications.initialize();
 
-        if (token && user) {
-          // Send token to backend if needed
-          console.log("Push notification token:", token);
-
-          // Schedule notifications based on user's questionnaire data
-          try {
-            // You'll need to fetch user questionnaire data from your backend
+          if (user) {
+            // Fetch questionnaire data to schedule meal-time reminders
             const response = await fetch(
               `${process.env.EXPO_PUBLIC_API_URL}/api/questionnaire/user`,
               {
@@ -118,15 +113,16 @@ export const useAppInitialization = (): AppInitializationState => {
 
             if (response.ok) {
               const questionnaire = await response.json();
-              await PushNotificationService.scheduleMealReminders(
+              await ExpoNotifications.initializeNotifications(
                 questionnaire.data
               );
-              await PushNotificationService.scheduleWaterReminder();
-              await PushNotificationService.scheduleWeeklyProgress();
+            } else {
+              // No questionnaire yet — still schedule water & weekly reminders
+              await ExpoNotifications.initializeNotifications();
             }
-          } catch (error) {
-            console.error("Error setting up notifications:", error);
           }
+        } catch (error) {
+          console.error("Error setting up notifications:", error);
         }
         console.log("✅ App initialization completed");
       } catch (error) {

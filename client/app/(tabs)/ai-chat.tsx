@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Dimensions,
   Image,
+  FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,21 +22,73 @@ import {
   AlertTriangle,
   Shield,
   Trash2,
+  BotIcon,
+  ChevronRight,
+  ArrowLeft,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { chatAPI, nutritionAPI, questionnaireAPI } from "@/src/services/api";
-import i18n from "@/src/i18n";
-import LoadingScreen from "@/components/LoadingScreen";
+import { AIChatSkeleton } from "@/components/loaders";
 import { errorMessageIncludes } from "@/src/utils/errorHandler";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  FadeIn,
+  FadeInUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  withSequence,
+  withDelay,
+} from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { useSelector } from "react-redux";
 import { RootState } from "@/src/store";
 import { useTheme } from "@/src/context/ThemeContext";
 import { AIChatScreenProps, Message, UserProfile } from "@/src/types/ai-chat";
 
-const { width, height } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// ==================== TYPING DOTS ====================
+const TypingDot = ({ delay, color }: { delay: number; color: string }) => {
+  const opacity = useSharedValue(0.3);
+
+  useEffect(() => {
+    opacity.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration: 400 }),
+          withTiming(0.3, { duration: 400 }),
+        ),
+        -1,
+        false,
+      ),
+    );
+  }, []);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: 0.8 + opacity.value * 0.2 }],
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width: 7,
+          height: 7,
+          borderRadius: 3.5,
+          backgroundColor: color,
+        },
+        style,
+      ]}
+    />
+  );
+};
+
+// ==================== MAIN COMPONENT ====================
 
 export default function AIChatScreen({
   onClose,
@@ -56,9 +108,9 @@ export default function AIChatScreen({
     goals: [],
   });
   const [isLoading, setIsLoading] = useState(true);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const flatListRef = useRef<FlatList>(null);
   const isRTL = language === "he";
-  const { colors, emeraldSpectrum } = useTheme();
+  const { colors, isDark } = useTheme();
 
   const getCommonQuestions = () => [
     t("ai_chat.common_questions.weight_loss"),
@@ -73,16 +125,15 @@ export default function AIChatScreen({
       try {
         if (!user || user.subscription_type === "FREE") {
           Alert.alert(
-            t("common.upgradeRequired") || "Upgrade Required",
-            t("ai_chat.upgrade_message") ||
-              "AI Chat is not available on the Free plan.",
+            t("common.upgradeRequired"),
+            t("ai_chat.upgrade_message"),
             [
               {
-                text: t("common.cancel") || "Cancel",
+                text: t("common.cancel"),
                 onPress: () => router.replace("/(tabs)"),
               },
               {
-                text: t("common.upgradePlan") || "Upgrade",
+                text: t("common.upgradePlan"),
                 onPress: () => router.replace("/payment-plan"),
               },
             ],
@@ -94,16 +145,15 @@ export default function AIChatScreen({
         const stats = await nutritionAPI.getUsageStats();
         if (stats.subscriptionType === "FREE") {
           Alert.alert(
-            t("common.upgradeRequired") || "Upgrade Required",
-            t("ai_chat.upgrade_message") ||
-              "AI Chat is not available on the Free plan.",
+            t("common.upgradeRequired"),
+            t("ai_chat.upgrade_message"),
             [
               {
-                text: t("common.cancel") || "Cancel",
+                text: t("common.cancel"),
                 onPress: () => router.replace("/(tabs)"),
               },
               {
-                text: t("common.upgradePlan") || "Upgrade",
+                text: t("common.upgradePlan"),
                 onPress: () => router.replace("/payment-plan"),
               },
             ],
@@ -122,9 +172,15 @@ export default function AIChatScreen({
     checkAccess();
   }, [user]);
 
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  }, []);
+
   useEffect(() => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
+    scrollToBottom();
+  }, [messages, isTyping]);
 
   const loadUserProfile = async () => {
     try {
@@ -231,16 +287,11 @@ export default function AIChatScreen({
     setInputText("");
     setIsTyping(true);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
-
     try {
       const res = await chatAPI.sendMessage(
         msg,
         language === "he" ? "hebrew" : "english",
       );
-
-      clearTimeout(timeoutId);
 
       let aiContent = "";
 
@@ -273,7 +324,6 @@ export default function AIChatScreen({
 
       if (aiContent && typeof aiContent === "string") {
         aiContent = aiContent.trim();
-
         if (
           (aiContent.startsWith("{") || aiContent.startsWith("[")) &&
           aiContent.length > 50
@@ -285,12 +335,9 @@ export default function AIChatScreen({
               parsed.message ||
               parsed.content ||
               parsed.text;
-            if (extracted && typeof extracted === "string") {
+            if (extracted && typeof extracted === "string")
               aiContent = extracted;
-            }
-          } catch (parseError) {
-            console.log("Content looks like JSON but couldn't parse");
-          }
+          } catch {}
         }
       }
 
@@ -312,40 +359,24 @@ export default function AIChatScreen({
 
       setMessages((p) => [...p, aiMsg]);
     } catch (error: any) {
-      clearTimeout(timeoutId);
-      console.error("AI Chat error details:", error);
-
-      let errorMessage =
-        t("ai_chat.error.serverError") ||
-        "Sorry, I couldn't process your message. Please try again.";
-
+      let errorMessage = t("ai_chat.error.serverError");
       if (
         error?.name === "AbortError" ||
         errorMessageIncludes(error, "timeout")
       ) {
-        errorMessage =
-          t("ai_chat.error.timeout") ||
-          "The request took too long. Please try again.";
+        errorMessage = t("ai_chat.error.timeout");
       } else if (
         errorMessageIncludes(error, "Network") ||
         error?.code === "ERR_NETWORK" ||
         !error?.response
       ) {
-        errorMessage =
-          t("ai_chat.error.network") ||
-          "Network error. Please check your connection and try again.";
+        errorMessage = t("ai_chat.error.network");
       } else if (error?.response?.status === 429) {
-        errorMessage =
-          t("ai_chat.error.rateLimit") ||
-          "Too many requests. Please wait a moment and try again.";
+        errorMessage = t("ai_chat.error.rateLimit");
       } else if (error?.response?.status >= 500) {
-        errorMessage =
-          t("ai_chat.error.serverError") ||
-          "Server error. Please try again later.";
+        errorMessage = t("ai_chat.error.serverError");
       } else if (errorMessageIncludes(error, "Empty response")) {
-        errorMessage =
-          t("ai_chat.error.emptyResponse") ||
-          "Received an empty response. Please try again.";
+        errorMessage = t("ai_chat.error.emptyResponse");
       }
 
       setMessages((p) => [
@@ -390,468 +421,611 @@ export default function AIChatScreen({
     ]);
   };
 
-  const renderMessage = (msg: Message) => {
-    const isUser = msg.type === "user";
-    return (
-      <Animated.View
-        entering={FadeInDown.delay(50).duration(300)}
-        key={msg.id}
-        style={s.msgContainer}
-      >
-        <View
-          style={[
-            s.msgRow,
-            isUser && (isRTL ? s.userRTL : s.userLTR),
-            !isUser && isRTL && s.botRTL,
-          ]}
-        >
-          {!isUser && (
-            <View style={s.botIconContainer}>
-              <Bot size={18} color="#fff" />
-            </View>
-          )}
-          <View style={s.msgContent}>
-            <View
-              style={[
-                s.bubble,
-                isUser ? s.userBubble : s.botBubble,
-                msg.hasWarning &&
-                  msg.allergenWarning &&
-                  msg.allergenWarning.length > 0 &&
-                  s.warnBubble,
-              ]}
-            >
-              {msg.hasWarning &&
-                msg.allergenWarning &&
-                msg.allergenWarning.length > 0 && (
+  const formatTime = (date: Date) =>
+    date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  // ==================== RENDER MESSAGE ====================
+
+  const renderMessage = useCallback(
+    ({ item: msg, index }: { item: Message; index: number }) => {
+      const isUser = msg.type === "user";
+      // Only animate the last 2 messages for performance
+      const shouldAnimate = index >= messages.length - 2;
+
+      const content = (
+        <View style={s.msgContainer}>
+          <View
+            style={[
+              s.msgRow,
+              isUser && (isRTL ? s.userRTL : s.userLTR),
+              !isUser && isRTL && s.botRTL,
+            ]}
+          >
+            {!isUser && (
+              <LinearGradient
+                colors={[colors.warmOrange, "#D97706"]}
+                style={s.botAvatar}
+              >
+                <BotIcon size={14} color="#fff" />
+              </LinearGradient>
+            )}
+
+            <View style={[s.msgContent, isUser && s.userMsgContent]}>
+              <View
+                style={[
+                  s.bubble,
+                  isUser
+                    ? {
+                        backgroundColor: colors.warmOrange,
+                        borderBottomRightRadius: 6,
+                      }
+                    : {
+                        backgroundColor: isDark ? colors.surface : "#F8F9FA",
+                        borderBottomLeftRadius: 6,
+                        borderWidth: 1,
+                        borderColor: isDark ? colors.border + "30" : "#E9ECEF",
+                      },
+                  msg.hasWarning && msg.allergenWarning?.length
+                    ? { borderWidth: 1.5, borderColor: "#EF4444" }
+                    : undefined,
+                  msg.isError
+                    ? {
+                        borderWidth: 1.5,
+                        borderColor: "#EF4444",
+                        backgroundColor: isDark
+                          ? "rgba(239,68,68,0.08)"
+                          : "rgba(239,68,68,0.04)",
+                      }
+                    : undefined,
+                ]}
+              >
+                {msg.hasWarning && msg.allergenWarning?.length ? (
                   <View style={s.warnBanner}>
-                    <AlertTriangle size={12} color="#FF6B6B" />
+                    <AlertTriangle size={13} color="#EF4444" />
                     <Text style={s.warnText}>
                       {t("ai_chat.allergen_warning")}:{" "}
                       {msg.allergenWarning.join(", ")}
                     </Text>
                   </View>
-                )}
-              <Text
-                style={[
-                  s.msgText,
-                  isUser && s.userMsgText,
-                  { textAlign: isRTL ? "right" : "left" },
-                ]}
-              >
-                {msg.content}
-              </Text>
-            </View>
-            {msg.suggestions && (
-              <View style={s.suggests}>
-                <View style={s.sugGrid}>
-                  {msg.suggestions.map((sug, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={s.sugBtn}
-                      onPress={() => setInputText(sug)}
-                    >
-                      <Text style={s.sugBtnText}>{sug}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-          </View>
-          {isUser && (
-            <View style={s.userIconContainer}>
-              {user?.avatar_url ? (
-                <Image source={{ uri: user.avatar_url }} style={s.profImg} />
-              ) : (
-                <User size={18} color="#fff" />
-              )}
-            </View>
-          )}
-        </View>
-      </Animated.View>
-    );
-  };
+                ) : null}
 
-  if (isLoading)
-    return <LoadingScreen text={t("loading.loading", "loading.ai_chat")} />;
-
-  return (
-    <View style={s.container}>
-      <View
-        style={StyleSheet.absoluteFill}
-      />
-      <SafeAreaView style={s.safeArea}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-        >
-          {/* Header */}
-          <View style={s.header}>
-            <View style={[s.hContent, isRTL && s.hContentRTL]}>
-              <View style={[s.hLeft, isRTL && s.hLeftRTL]}>
-                <Text style={s.onlineStatus}>{t("ai_chat.title")}</Text>
-              </View>
-              <TouchableOpacity style={s.clearBtn} onPress={clearChat}>
-                <Trash2 size={18} color="#fff" />
-              </TouchableOpacity>
-            </View>
-            {(userProfile.allergies.length > 0 ||
-              userProfile.medicalConditions.length > 0) && (
-              <View style={s.profCard}>
-                <View
-                  style={[s.profHdr, isRTL && { flexDirection: "row-reverse" }]}
-                >
-                  <Shield size={14} color="#fff" />
-                  <Text style={s.profTitle}>
-                    {t("ai_chat.safety_profile.title")}
-                  </Text>
-                </View>
-                <View style={{ gap: 8 }}>
-                  {userProfile.allergies.length > 0 && (
-                    <View
-                      style={[
-                        s.profSec,
-                        isRTL && { flexDirection: "row-reverse" },
-                      ]}
-                    >
-                      <Text style={s.profLbl}>
-                        {t("ai_chat.safety_profile.allergies")}
-                      </Text>
-                      <View style={s.tags}>
-                        {userProfile.allergies.map((a, i) => (
-                          <View key={i} style={s.allergyTag}>
-                            <Text style={s.allergyTxt}>{a}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  )}
-                  {userProfile.medicalConditions.length > 0 && (
-                    <View
-                      style={[
-                        s.profSec,
-                        isRTL && { flexDirection: "row-reverse" },
-                      ]}
-                    >
-                      <Text style={s.profLbl}>
-                        {t("ai_chat.safety_profile.medical")}
-                      </Text>
-                      <View style={s.tags}>
-                        {userProfile.medicalConditions.map((c, i) => (
-                          <View key={i} style={s.medTag}>
-                            <Text style={s.medTxt}>{c}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  )}
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Messages */}
-          <ScrollView
-            ref={scrollViewRef}
-            style={s.scrollView}
-            contentContainerStyle={s.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {messages.map(renderMessage)}
-            {isTyping && (
-              <View style={{ marginBottom: 12 }}>
-                <View
+                <Text
                   style={[
-                    { flexDirection: "row", alignItems: "center", gap: 8 },
-                    isRTL && { flexDirection: "row-reverse" },
+                    s.msgText,
+                    isUser
+                      ? { color: "#FFFFFF" }
+                      : { color: isDark ? colors.text : "#1F2937" },
+                    { textAlign: isRTL ? "right" : "left" },
                   ]}
                 >
-                  <View style={s.botIconContainer}>
-                    <Bot size={18} color="#fff" />
-                  </View>
-                  <View style={s.typeBubble}>
-                    <ActivityIndicator size="small" color="#9B7EDE" />
-                    <Text style={s.typeText}>{t("ai_chat.typing")}</Text>
-                  </View>
+                  {msg.content}
+                </Text>
+                <Text
+                  style={[
+                    s.timestamp,
+                    isUser
+                      ? { color: "rgba(255,255,255,0.65)" }
+                      : { color: colors.textSecondary },
+                  ]}
+                >
+                  {formatTime(msg.timestamp)}
+                </Text>
+              </View>
+
+              {msg.suggestions?.length ? (
+                <View style={s.suggestionsWrap}>
+                  {msg.suggestions.map((sug, i) => (
+                    <Pressable
+                      key={i}
+                      style={[
+                        s.suggestionChip,
+                        {
+                          backgroundColor: isDark ? colors.surface : "#FFF7ED",
+                          borderColor: colors.warmOrange + "25",
+                        },
+                      ]}
+                      onPress={() => setInputText(sug)}
+                    >
+                      <Text
+                        style={[s.suggestionText, { color: colors.warmOrange }]}
+                        numberOfLines={2}
+                      >
+                        {sug}
+                      </Text>
+                      <ChevronRight size={13} color={colors.warmOrange} />
+                    </Pressable>
+                  ))}
                 </View>
+              ) : null}
+            </View>
+
+            {isUser && (
+              <View>
+                {user?.avatar_url ? (
+                  <Image
+                    source={{ uri: user.avatar_url }}
+                    style={s.userAvatar}
+                  />
+                ) : (
+                  <LinearGradient
+                    colors={[colors.warmOrange, "#D97706"]}
+                    style={s.userAvatar}
+                  >
+                    <User size={14} color="#fff" />
+                  </LinearGradient>
+                )}
               </View>
             )}
-          </ScrollView>
+          </View>
+        </View>
+      );
 
-          {/* Input Area */}
-          <View style={s.inputArea}>
-            <View style={s.inputCont}>
-              <TextInput
-                style={[s.input, { textAlign: isRTL ? "right" : "left" }]}
-                value={inputText}
-                onChangeText={setInputText}
-                placeholder={t("ai_chat.type_message") || "Enter message"}
-                placeholderTextColor="#999"
-                multiline
-              />
-              <TouchableOpacity
-                style={s.sendBtn}
-                onPress={sendMessage}
-                disabled={!inputText.trim()}
-              >
-                <Send size={18} color="#999" />
-              </TouchableOpacity>
+      if (shouldAnimate) {
+        return (
+          <Animated.View entering={FadeInUp.duration(300).springify()}>
+            {content}
+          </Animated.View>
+        );
+      }
+
+      return content;
+    },
+    [messages.length, colors, isDark, isRTL, user, t],
+  );
+
+  const keyExtractor = useCallback((item: Message) => item.id, []);
+
+  // ==================== LOADING ====================
+
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        style={[s.container, { backgroundColor: colors.background }]}
+      >
+        <AIChatSkeleton />
+      </SafeAreaView>
+    );
+  }
+
+  // ==================== RENDER ====================
+
+  return (
+    <SafeAreaView
+      style={[s.container, { backgroundColor: colors.background }]}
+      edges={["top"]}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
+        {/* ===== HEADER ===== */}
+        <View
+          style={[
+            s.header,
+            {
+              backgroundColor: isDark ? colors.surface : "#FFFFFF",
+              borderBottomColor: colors.border + "30",
+            },
+          ]}
+        >
+          <Pressable
+            style={s.headerBtn}
+            onPress={() => router.back()}
+            hitSlop={8}
+          >
+            <ArrowLeft size={20} color={colors.text} />
+          </Pressable>
+
+          <View style={s.headerCenter}>
+            <LinearGradient
+              colors={[colors.warmOrange, "#D97706"]}
+              style={s.headerIcon}
+            >
+              <Bot size={15} color="#fff" />
+            </LinearGradient>
+            <View>
+              <Text style={[s.headerTitle, { color: colors.text }]}>
+                {t("ai_chat.title")}
+              </Text>
+              <View style={s.statusRow}>
+                <View style={[s.onlineDot, { backgroundColor: "#10B981" }]} />
+                <Text style={[s.statusText, { color: colors.textSecondary }]}>
+                  {t("ai_chat.online")}
+                </Text>
+              </View>
             </View>
           </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </View>
+
+          <Pressable
+            style={[
+              s.headerBtn,
+              { backgroundColor: isDark ? colors.background : "#F3F4F6" },
+            ]}
+            onPress={clearChat}
+            hitSlop={8}
+          >
+            <Trash2 size={17} color={colors.textSecondary} />
+          </Pressable>
+        </View>
+
+        {/* ===== SAFETY BANNER ===== */}
+        {(userProfile.allergies.length > 0 ||
+          userProfile.medicalConditions.length > 0) && (
+          <View
+            style={[
+              s.safetyBanner,
+              {
+                backgroundColor: isDark ? "rgba(16,185,129,0.08)" : "#ECFDF5",
+                borderColor: isDark ? "rgba(16,185,129,0.15)" : "#D1FAE5",
+              },
+            ]}
+          >
+            <Shield size={14} color="#10B981" />
+            <View style={s.safetyTags}>
+              {userProfile.allergies.slice(0, 3).map((a, i) => (
+                <View key={`a-${i}`} style={s.allergyChip}>
+                  <Text style={s.allergyChipText}>{a}</Text>
+                </View>
+              ))}
+              {userProfile.medicalConditions.slice(0, 2).map((c, i) => (
+                <View key={`m-${i}`} style={s.medicalChip}>
+                  <Text style={s.medicalChipText}>{c}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* ===== MESSAGES ===== */}
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={keyExtractor}
+          contentContainerStyle={s.listContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          onContentSizeChange={scrollToBottom}
+          ListFooterComponent={
+            isTyping ? (
+              <View style={s.typingRow}>
+                <LinearGradient
+                  colors={[colors.warmOrange, "#D97706"]}
+                  style={s.botAvatar}
+                >
+                  <Bot size={14} color="#fff" />
+                </LinearGradient>
+                <View
+                  style={[
+                    s.typingBubble,
+                    {
+                      backgroundColor: isDark ? colors.surface : "#F8F9FA",
+                      borderColor: isDark ? colors.border + "30" : "#E9ECEF",
+                    },
+                  ]}
+                >
+                  <View style={s.typingDots}>
+                    <TypingDot delay={0} color={colors.warmOrange} />
+                    <TypingDot delay={150} color={colors.warmOrange} />
+                    <TypingDot delay={300} color={colors.warmOrange} />
+                  </View>
+                  <Text style={[s.typingText, { color: colors.textSecondary }]}>
+                    {t("ai_chat.typing")}
+                  </Text>
+                </View>
+              </View>
+            ) : null
+          }
+        />
+
+        {/* ===== INPUT ===== */}
+        <View
+          style={[
+            s.inputArea,
+            {
+              borderTopColor: colors.border + "20",
+            },
+          ]}
+        >
+          <View
+            style={[
+              s.inputWrapper,
+              {
+                backgroundColor: isDark ? colors.card : "#F3F4F6",
+                borderColor: inputText.trim()
+                  ? colors.warmOrange + "60"
+                  : "transparent",
+              },
+            ]}
+          >
+            <TextInput
+              style={[
+                s.input,
+                { color: colors.text, textAlign: isRTL ? "right" : "left" },
+              ]}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder={t("ai_chat.type_message")}
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              maxLength={1000}
+              onSubmitEditing={sendMessage}
+            />
+            <Pressable
+              style={[
+                s.sendBtn,
+                {
+                  backgroundColor: inputText.trim()
+                    ? colors.warmOrange
+                    : isDark
+                      ? colors.surface
+                      : "#E5E7EB",
+                },
+              ]}
+              onPress={sendMessage}
+              disabled={!inputText.trim() || isTyping}
+            >
+              <Send
+                size={17}
+                color={inputText.trim() ? "#FFFFFF" : colors.textSecondary}
+                style={isRTL ? { transform: [{ scaleX: -1 }] } : undefined}
+              />
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
+// ==================== STYLES ====================
+
 const s = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+
+  // Header
   header: {
-    paddingTop: 12,
-  },
-  hContent: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    gap: 12,
   },
-  hContentRTL: {
-    flexDirection: "row-reverse",
-  },
-  hLeft: {
-    flex: 1,
-  },
-  hLeftRTL: {
-    alignItems: "flex-end",
-  },
-  onlineStatus: {
-    color: "#fff",
-    fontSize: 12,
-    opacity: 0.8,
-  },
-  clearBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  headerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
   },
-  profCard: {
-    marginHorizontal: 20,
-    marginTop: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
-    borderRadius: 16,
-    padding: 12,
-    backdropFilter: "blur(10px)",
-  },
-  profHdr: {
+  headerCenter: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginBottom: 8,
+    gap: 10,
   },
-  profTitle: {
-    fontWeight: "600",
-    fontSize: 13,
-    color: "#fff",
+  headerIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  profSec: {
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  statusRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 1,
   },
-  profLbl: {
+  onlineDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
     fontSize: 11,
-    fontWeight: "500",
-    color: "rgba(255, 255, 255, 0.9)",
+    fontWeight: "600",
   },
-  tags: {
+
+  // Safety
+  safetyBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  safetyTags: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
-  },
-  allergyTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: "rgba(255, 107, 107, 0.2)",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255, 107, 107, 0.3)",
-  },
-  allergyTxt: {
-    fontSize: 10,
-    color: "#FFB3B3",
-  },
-  medTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: "rgba(255, 193, 7, 0.2)",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255, 193, 7, 0.3)",
-  },
-  medTxt: {
-    fontSize: 10,
-    color: "#FFE082",
-  },
-  scrollView: {
+    gap: 5,
     flex: 1,
   },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+  allergyChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: "rgba(239,68,68,0.1)",
+    borderRadius: 6,
+  },
+  allergyChipText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#DC2626",
+  },
+  medicalChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: "rgba(245,158,11,0.1)",
+    borderRadius: 6,
+  },
+  medicalChipText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#D97706",
+  },
+
+  // Messages
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   msgContainer: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   msgRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
+    alignItems: "flex-end",
+    gap: 8,
   },
-  botIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
+  botAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
     alignItems: "center",
-  },
-  userIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
-    alignItems: "center",
+    marginBottom: 2,
   },
-  profImg: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  userAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 2,
+    overflow: "hidden",
   },
   msgContent: {
     flex: 1,
-    maxWidth: width * 0.75,
+    maxWidth: SCREEN_WIDTH * 0.72,
+  },
+  userMsgContent: {
+    alignItems: "flex-end",
   },
   bubble: {
-    padding: 16,
-    borderRadius: 20,
-  },
-  botBubble: {
-    backgroundColor: "#fff",
-    borderBottomLeftRadius: 4,
-  },
-  userBubble: {
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
-    borderBottomRightRadius: 4,
-  },
-  warnBubble: {
-    borderWidth: 1.5,
-    borderColor: "#FF6B6B",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
   },
   warnBanner: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 6,
     paddingBottom: 8,
     marginBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 107, 107, 0.2)",
+    borderBottomColor: "rgba(239,68,68,0.12)",
   },
   warnText: {
-    fontSize: 10,
-    marginLeft: 4,
-    color: "#FF6B6B",
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#DC2626",
+    flex: 1,
   },
   msgText: {
     fontSize: 15,
     lineHeight: 22,
-    color: "#333",
+    letterSpacing: -0.1,
   },
-  userMsgText: {
-    color: "#fff",
-  },
-  suggests: {
-    marginTop: 12,
-    gap: 8,
-  },
-  sugGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  sugBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sugBtnText: {
-    fontSize: 13,
-    color: "#8B5CF6",
+  timestamp: {
+    fontSize: 10,
+    marginTop: 4,
     fontWeight: "500",
   },
-  typeBubble: {
+
+  // Suggestions
+  suggestionsWrap: {
+    marginTop: 10,
+    gap: 6,
+  },
+  suggestionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  suggestionText: {
+    fontSize: 13,
+    fontWeight: "600",
+    flex: 1,
+  },
+
+  // Typing
+  typingRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 8,
+    marginBottom: 8,
+  },
+  typingBubble: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 20,
-    backgroundColor: "#fff",
+    borderRadius: 18,
+    borderBottomLeftRadius: 6,
+    borderWidth: 1,
+  },
+  typingDots: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 4,
   },
-  typeText: {
-    fontSize: 14,
-    color: "#666",
+  typingText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
+
+  // Input
   inputArea: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: Platform.OS === "ios" ? 24 : 16,
-  },
-  inputCont: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 30,
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    paddingBottom: Platform.OS === "ios" ? 120 : 60,
+    borderTopWidth: 1,
   },
-  iconBtn: {
-    padding: 4,
-    marginRight: 4,
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    borderRadius: 22,
+    paddingLeft: 16,
+    paddingRight: 5,
+    paddingVertical: 5,
+    borderWidth: 1.5,
+    minHeight: 46,
   },
   input: {
     flex: 1,
-    maxHeight: 100,
     fontSize: 15,
-    color: "#333",
-    paddingVertical: 8,
+    maxHeight: 100,
+    paddingVertical: 7,
+    letterSpacing: -0.1,
   },
   sendBtn: {
-    padding: 6,
-    marginLeft: 4,
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 6,
   },
+
+  // RTL
   userLTR: {
     justifyContent: "flex-end",
   },

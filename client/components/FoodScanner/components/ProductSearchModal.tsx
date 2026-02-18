@@ -230,7 +230,7 @@ export default function ProductSearchModal({
                               { color: getConfidenceColor(product.price_confidence) },
                             ]}
                           >
-                            ₪{product.estimated_price?.toFixed(0)}/100g
+                            ₪{Number(product.estimated_price || 0).toFixed(0)}/100g
                           </Text>
                         </View>
                       )}

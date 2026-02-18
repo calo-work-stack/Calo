@@ -89,6 +89,32 @@ export class EnhancedAIRecommendationService {
                 return;
               }
 
+              // Check if user logged any meals yesterday - if not, keep previous recommendation
+              const yesterday = new Date();
+              yesterday.setDate(yesterday.getDate() - 1);
+              const yesterdayStart = new Date(yesterday);
+              yesterdayStart.setHours(0, 0, 0, 0);
+              const yesterdayEnd = new Date(yesterday);
+              yesterdayEnd.setHours(23, 59, 59, 999);
+
+              const yesterdayMealCount = await prisma.meal.count({
+                where: {
+                  user_id: user.user_id,
+                  created_at: {
+                    gte: yesterdayStart,
+                    lte: yesterdayEnd,
+                  },
+                },
+              });
+
+              if (yesterdayMealCount === 0) {
+                result.skipped++;
+                console.log(
+                  `⏭️ Skipped user ${user.user_id} - no meals logged yesterday, keeping previous recommendation`
+                );
+                return;
+              }
+
               // Generate personalized recommendations
               const recommendation =
                 await this.generatePersonalizedRecommendation(

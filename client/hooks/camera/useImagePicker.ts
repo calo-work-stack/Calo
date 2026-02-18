@@ -38,10 +38,10 @@ export function useImagePicker() {
       triggerHaptic();
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
+        allowsEditing: false, // Disabled to preserve full image - no cropping
+        quality: 0.85,
         base64: false,
+        exif: false, // Reduce data size
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -72,10 +72,10 @@ export function useImagePicker() {
       triggerHaptic();
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
+        allowsEditing: false, // Disabled to preserve full image - no cropping
+        quality: 0.85,
         base64: false,
+        exif: false, // Reduce data size
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {

@@ -54,6 +54,7 @@ import enhancedMenuRouter from "./routes/enhancedMenu";
 import adminRoutes from "./routes/admin";
 import { promoteAdminRoutes } from "./routes/promote-admin";
 import dashboardRoutes from "./routes/dashboard";
+import notificationsRoutes from "./routes/notifications";
 
 // Server instance
 let server: Server;
@@ -296,6 +297,7 @@ apiRouter.use("/daily-goals-simple", dailyGoalsRoutes);
 apiRouter.use("/meal-completions", mealCompletionRouter);
 apiRouter.use("/schema", schemaValidationRoutes);
 apiRouter.use("/menu/enhanced", enhancedMenuRouter);
+apiRouter.use("/notifications", notificationsRoutes);
 
 // Routes mounted at root of /api
 apiRouter.use("/", statisticsRoutes);

@@ -16,7 +16,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/src/store";
 import { userAPI } from "@/src/services/api";
-import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import {
   CreditCard,
   Lock,
@@ -25,6 +25,7 @@ import {
   Star,
   Zap,
   Crown,
+  ArrowLeft,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -32,69 +33,38 @@ const { width: screenWidth } = Dimensions.get("window");
 
 type PlanType = "FREE" | "GOLD" | "PREMIUM";
 
-interface Plan {
+interface PlanConfig {
   id: PlanType;
-  name: string;
+  translationKey: string;
   price: string;
-  features: string[];
   color: string;
   gradient: string[];
   icon: React.ComponentType<any>;
   recommended?: boolean;
-  description: string;
-  savings?: string;
 }
 
-const plans: Plan[] = [
+const planConfigs: PlanConfig[] = [
   {
     id: "FREE",
-    name: "תוכנית חינמית",
-    price: "חינם",
-    description: "מושלם להתחלה",
-    features: [
-      "5 ניתוחי ארוחות בחודש",
-      "שאלון תזונה בסיסי (נשמר 7 ימים)",
-      "מעקב קלוריות",
-      "גישה למאגר מתכונים",
-      "ללא גישה לצ'אט AI",
-    ],
+    translationKey: "free",
+    price: "Free",
     color: "#4CAF50",
     gradient: ["#4CAF50", "#66BB6A"],
     icon: Check,
   },
   {
     id: "GOLD",
-    name: "תוכנית זהב",
+    translationKey: "gold",
     price: "₪99",
-    description: "הבחירה הפופולרית",
-    features: [
-      "100 ניתוחי ארוחות בחודש",
-      "שאלון תזונה מלא",
-      "עד 100 הודעות בצ'אט AI בחודש",
-      "מעקב מפורט אחר מקרו וויטמינים",
-      "המלצות AI מותאמות אישית",
-      "גישה לכל המתכונים",
-    ],
     color: "#FF9800",
     gradient: ["#FF9800", "#FFB74D"],
     icon: Crown,
     recommended: true,
-    savings: "המלצת המערכת",
   },
   {
     id: "PREMIUM",
-    name: "תוכנית פלטינום",
+    translationKey: "premium",
     price: "₪49",
-    description: "חוויית AI מתקדמת",
-    features: [
-      "50 ניתוחי ארוחות בחודש",
-      "שאלון תזונה מלא",
-      "1000 טוקנים לצ'אט AI בחודש (כ-20 הודעות)",
-      "תפריט מותאם אישית עם AI מתקדם",
-      "מעקב בריאותי מלא",
-      "ייעוץ תזונתי אישי",
-      "תמיכה עדיפות גבוהה",
-    ],
     color: "#2196F3",
     gradient: ["#2196F3", "#42A5F5"],
     icon: Zap,
@@ -102,6 +72,7 @@ const plans: Plan[] = [
 ];
 
 export default function PaymentPlan() {
+  const { t } = useTranslation();
   const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -121,19 +92,19 @@ export default function PaymentPlan() {
   useEffect(() => {
     if (user && !user.is_questionnaire_completed && mode !== "change") {
       ToastService.warning(
-        "Complete Questionnaire",
-        "Please complete the questionnaire before selecting a plan"
+        t("payment.completeQuestionnaire"),
+        t("payment.completeQuestionnaireMessage")
       );
       router.replace("/questionnaire");
     }
-  }, [user, mode, router]);
+  }, [user, mode, router, t]);
 
   // Filter plans based on mode
   const availablePlans = useMemo(() => {
     if (mode === "change" && currentPlan) {
-      return plans.filter((plan) => plan.id !== currentPlan);
+      return planConfigs.filter((plan) => plan.id !== currentPlan);
     }
-    return plans;
+    return planConfigs;
   }, [mode, currentPlan]);
 
   const detectCardType = (cardNumber: string) => {
@@ -172,22 +143,22 @@ export default function PaymentPlan() {
     const { cardNumber, expiryDate, cvv, cardholderName } = paymentData;
 
     if (!cardNumber || cardNumber.replace(/\s/g, "").length < 13) {
-      Alert.alert("שגיאה", "מספר כרטיס אשראי לא תקין");
+      Alert.alert(t("payment.error"), t("payment.invalidCardNumber"));
       return false;
     }
 
     if (!expiryDate || expiryDate.length !== 5) {
-      Alert.alert("שגיאה", "תאריך תפוגה לא תקין");
+      Alert.alert(t("payment.error"), t("payment.invalidExpiryDate"));
       return false;
     }
 
     if (!cvv || cvv.length < 3) {
-      Alert.alert("שגיאה", "קוד CVV לא תקין");
+      Alert.alert(t("payment.error"), t("payment.invalidCvv"));
       return false;
     }
 
     if (!cardholderName.trim()) {
-      Alert.alert("שגיאה", "שם בעל הכרטיס נדרש");
+      Alert.alert(t("payment.error"), t("payment.cardholderRequired"));
       return false;
     }
 
@@ -200,15 +171,16 @@ export default function PaymentPlan() {
     }
 
     // Get plan details
-    const selectedPlan = plans.find((p) => p.id === planId);
+    const selectedPlanConfig = planConfigs.find((p) => p.id === planId);
+    const planName = t(`payment.plans.${selectedPlanConfig?.translationKey}.name`);
 
     // Navigate to payment page with plan details
     router.push({
       pathname: "/payment",
       params: {
         planType: planId,
-        planName: selectedPlan?.name || "",
-        planPrice: selectedPlan?.price || "",
+        planName: planName || "",
+        planPrice: selectedPlanConfig?.price || "",
       },
     });
   };
@@ -233,7 +205,7 @@ export default function PaymentPlan() {
         cardholderName: "",
       });
     } catch (error) {
-      Alert.alert("שגיאה", "התשלום נכשל. אנא נסה שוב.");
+      Alert.alert(t("payment.error"), t("payment.paymentFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -268,7 +240,7 @@ export default function PaymentPlan() {
       router.replace("/(tabs)");
     } catch (error: any) {
       console.error("Plan selection error:", error);
-      Alert.alert("שגיאה", error.message || "נכשל בעדכון התוכנית");
+      Alert.alert(t("payment.error"), error.message || t("payment.planUpdateFailed"));
     }
   };
 
@@ -292,21 +264,25 @@ export default function PaymentPlan() {
     }
   };
 
-  const renderPlan = (plan: Plan) => {
+  const renderPlan = (planConfig: PlanConfig) => {
     // Don't render current plan in change mode
-    if (mode === "change" && plan.id === currentPlan) {
+    if (mode === "change" && planConfig.id === currentPlan) {
       return null;
     }
 
-    const IconComponent = plan.icon;
-    const isRecommended = plan.recommended;
+    const IconComponent = planConfig.icon;
+    const isRecommended = planConfig.recommended;
+    const planName = t(`payment.plans.${planConfig.translationKey}.name`);
+    const planDescription = t(`payment.plans.${planConfig.translationKey}.description`);
+    const features = t(`payment.plans.${planConfig.translationKey}.features`, { returnObjects: true }) as string[];
+    const savings = planConfig.recommended ? t(`payment.plans.${planConfig.translationKey}.savings`) : null;
 
     return (
-      <View key={plan.id} style={styles.planContainer}>
+      <View key={planConfig.id} style={styles.planContainer}>
         {isRecommended && (
           <View style={styles.popularBadge}>
             <Star size={12} color="#FFD700" fill="#FFD700" />
-            <Text style={styles.popularText}>הכי פופולרי</Text>
+            <Text style={styles.popularText}>{t("payment.mostPopular")}</Text>
           </View>
         )}
 
@@ -314,60 +290,60 @@ export default function PaymentPlan() {
           style={[
             styles.planCard,
             isRecommended && styles.recommendedCard,
-            { borderColor: plan.color },
+            { borderColor: planConfig.color },
           ]}
         >
           <LinearGradient
-            colors={[plan.color + "15", plan.color + "05"]}
+            colors={[planConfig.color + "15", planConfig.color + "05"]}
             style={styles.cardGradient}
           >
             <View style={styles.planHeader}>
               <View
                 style={[
                   styles.iconContainer,
-                  { backgroundColor: plan.color + "20" },
+                  { backgroundColor: planConfig.color + "20" },
                 ]}
               >
-                <IconComponent size={24} color={plan.color} />
+                <IconComponent size={24} color={planConfig.color} />
               </View>
               <View style={styles.planTitleContainer}>
-                <Text style={styles.planName}>{plan.name}</Text>
-                <Text style={styles.planDescription}>{plan.description}</Text>
+                <Text style={styles.planName}>{planName}</Text>
+                <Text style={styles.planDescription}>{planDescription}</Text>
               </View>
             </View>
 
             <View style={styles.priceContainer}>
-              <Text style={[styles.planPrice, { color: plan.color }]}>
-                {plan.price}
+              <Text style={[styles.planPrice, { color: planConfig.color }]}>
+                {planConfig.price}
               </Text>
-              {plan.id !== "FREE" && (
-                <Text style={styles.priceSubtext}>/חודש</Text>
+              {planConfig.id !== "FREE" && (
+                <Text style={styles.priceSubtext}>{t("payment.perMonth")}</Text>
               )}
             </View>
 
-            {plan.savings && (
+            {savings && (
               <View
                 style={[
                   styles.savingsBadge,
-                  { backgroundColor: plan.color + "15" },
+                  { backgroundColor: planConfig.color + "15" },
                 ]}
               >
-                <Text style={[styles.savingsText, { color: plan.color }]}>
-                  {plan.savings}
+                <Text style={[styles.savingsText, { color: planConfig.color }]}>
+                  {savings}
                 </Text>
               </View>
             )}
 
             <View style={styles.featuresContainer}>
-              {plan.features.map((feature, index) => (
+              {features.map((feature, index) => (
                 <View key={index} style={styles.featureRow}>
                   <View
                     style={[
                       styles.checkmarkContainer,
-                      { backgroundColor: plan.color + "20" },
+                      { backgroundColor: planConfig.color + "20" },
                     ]}
                   >
-                    <Check size={12} color={plan.color} />
+                    <Check size={12} color={planConfig.color} />
                   </View>
                   <Text style={styles.featureText}>{feature}</Text>
                 </View>
@@ -378,22 +354,22 @@ export default function PaymentPlan() {
               style={[
                 styles.selectButton,
                 isRecommended && styles.recommendedButton,
-                { backgroundColor: plan.color },
+                { backgroundColor: planConfig.color },
               ]}
-              onPress={() => handlePayment(plan.id)}
-              accessibilityLabel={`Select ${plan.name} plan`}
+              onPress={() => handlePayment(planConfig.id)}
+              accessibilityLabel={`Select ${planName} plan`}
               activeOpacity={0.8}
             >
               <LinearGradient
                 colors={
                   isRecommended
-                    ? [plan.color, plan.color + "CC"]
-                    : [plan.color, plan.color]
+                    ? [planConfig.color, planConfig.color + "CC"]
+                    : [planConfig.color, planConfig.color]
                 }
                 style={styles.buttonGradient}
               >
                 <Text style={styles.selectButtonText}>
-                  {plan.id === "FREE" ? "התחל חינם" : "בחר תוכנית"}
+                  {planConfig.id === "FREE" ? t("payment.startFree") : t("payment.selectPlan")}
                 </Text>
                 {isRecommended && <Zap size={16} color="white" fill="white" />}
               </LinearGradient>
@@ -404,178 +380,183 @@ export default function PaymentPlan() {
     );
   };
 
-  const renderPaymentModal = () => (
-    <Modal
-      visible={showPaymentModal}
-      transparent
-      animationType="slide"
-      onRequestClose={() => setShowPaymentModal(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.paymentModal}>
-          <LinearGradient
-            colors={["#f8f9fa", "#ffffff"]}
-            style={styles.modalGradient}
-          >
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTitleContainer}>
-                <CreditCard size={24} color="#2196F3" />
-                <Text style={styles.modalTitle}>פרטי תשלום</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setShowPaymentModal(false)}
-                style={styles.closeButton}
-              >
-                <X size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
+  const renderPaymentModal = () => {
+    const selectedPlanConfig = planConfigs.find((p) => p.id === selectedPlan);
+    const selectedPlanName = selectedPlanConfig ? t(`payment.plans.${selectedPlanConfig.translationKey}.name`) : "";
 
-            <ScrollView
-              style={styles.modalContent}
-              showsVerticalScrollIndicator={false}
+    return (
+      <Modal
+        visible={showPaymentModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPaymentModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.paymentModal}>
+            <LinearGradient
+              colors={["#f8f9fa", "#ffffff"]}
+              style={styles.modalGradient}
             >
-              <View style={styles.planSummary}>
-                <LinearGradient
-                  colors={["#2196F3", "#42A5F5"]}
-                  style={styles.summaryGradient}
+              <View style={styles.modalHeader}>
+                <View style={styles.modalTitleContainer}>
+                  <CreditCard size={24} color="#2196F3" />
+                  <Text style={styles.modalTitle}>{t("payment.paymentDetails")}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowPaymentModal(false)}
+                  style={styles.closeButton}
                 >
-                  <Text style={styles.summaryTitle}>
-                    {plans.find((p) => p.id === selectedPlan)?.name}
-                  </Text>
-                  <Text style={styles.summaryPrice}>
-                    {plans.find((p) => p.id === selectedPlan)?.price}
-                  </Text>
-                  <Text style={styles.summarySubtext}>חיוב חודשי</Text>
-                </LinearGradient>
+                  <X size={24} color="#666" />
+                </TouchableOpacity>
               </View>
 
-              <View style={styles.paymentForm}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>מספר כרטיס אשראי</Text>
-                  <View style={styles.cardInputContainer}>
-                    <TextInput
-                      style={styles.cardInput}
-                      value={paymentData.cardNumber}
-                      onChangeText={(text) => {
-                        const formatted = formatCardNumber(text);
-                        if (formatted.replace(/\s/g, "").length <= 16) {
-                          setPaymentData({
-                            ...paymentData,
-                            cardNumber: formatted,
-                          });
-                          setCardType(detectCardType(formatted));
-                        }
-                      }}
-                      placeholder="1234 5678 9012 3456"
-                      keyboardType="numeric"
-                      maxLength={19}
-                    />
-                    {cardType && (
-                      <View style={styles.cardTypeBadge}>
-                        <Text style={styles.cardTypeText}>{cardType}</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-
-                <View style={styles.inputRow}>
-                  <View
-                    style={[
-                      styles.inputContainer,
-                      { flex: 1, marginRight: 12 },
-                    ]}
+              <ScrollView
+                style={styles.modalContent}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.planSummary}>
+                  <LinearGradient
+                    colors={["#2196F3", "#42A5F5"]}
+                    style={styles.summaryGradient}
                   >
-                    <Text style={styles.inputLabel}>תאריך תפוגה</Text>
+                    <Text style={styles.summaryTitle}>
+                      {selectedPlanName}
+                    </Text>
+                    <Text style={styles.summaryPrice}>
+                      {selectedPlanConfig?.price}
+                    </Text>
+                    <Text style={styles.summarySubtext}>{t("payment.monthlyBilling")}</Text>
+                  </LinearGradient>
+                </View>
+
+                <View style={styles.paymentForm}>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>{t("payment.creditCardNumber")}</Text>
+                    <View style={styles.cardInputContainer}>
+                      <TextInput
+                        style={styles.cardInput}
+                        value={paymentData.cardNumber}
+                        onChangeText={(text) => {
+                          const formatted = formatCardNumber(text);
+                          if (formatted.replace(/\s/g, "").length <= 16) {
+                            setPaymentData({
+                              ...paymentData,
+                              cardNumber: formatted,
+                            });
+                            setCardType(detectCardType(formatted));
+                          }
+                        }}
+                        placeholder="1234 5678 9012 3456"
+                        keyboardType="numeric"
+                        maxLength={19}
+                      />
+                      {cardType && (
+                        <View style={styles.cardTypeBadge}>
+                          <Text style={styles.cardTypeText}>{cardType}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
+                  <View style={styles.inputRow}>
+                    <View
+                      style={[
+                        styles.inputContainer,
+                        { flex: 1, marginRight: 12 },
+                      ]}
+                    >
+                      <Text style={styles.inputLabel}>{t("payment.expiryDate")}</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={paymentData.expiryDate}
+                        onChangeText={(text) => {
+                          const formatted = formatExpiryDate(text);
+                          if (formatted.length <= 5) {
+                            setPaymentData({
+                              ...paymentData,
+                              expiryDate: formatted,
+                            });
+                          }
+                        }}
+                        placeholder="MM/YY"
+                        keyboardType="numeric"
+                        maxLength={5}
+                      />
+                    </View>
+
+                    <View style={[styles.inputContainer, { flex: 1 }]}>
+                      <Text style={styles.inputLabel}>CVV</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={paymentData.cvv}
+                        onChangeText={(text) => {
+                          if (text.length <= 4) {
+                            setPaymentData({ ...paymentData, cvv: text });
+                          }
+                        }}
+                        placeholder="123"
+                        keyboardType="numeric"
+                        maxLength={4}
+                        secureTextEntry
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>{t("payment.cardholderName")}</Text>
                     <TextInput
                       style={styles.input}
-                      value={paymentData.expiryDate}
-                      onChangeText={(text) => {
-                        const formatted = formatExpiryDate(text);
-                        if (formatted.length <= 5) {
-                          setPaymentData({
-                            ...paymentData,
-                            expiryDate: formatted,
-                          });
-                        }
-                      }}
-                      placeholder="MM/YY"
-                      keyboardType="numeric"
-                      maxLength={5}
+                      value={paymentData.cardholderName}
+                      onChangeText={(text) =>
+                        setPaymentData({ ...paymentData, cardholderName: text })
+                      }
+                      placeholder={t("payment.fullNameOnCard")}
+                      autoCapitalize="words"
                     />
                   </View>
 
-                  <View style={[styles.inputContainer, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>CVV</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={paymentData.cvv}
-                      onChangeText={(text) => {
-                        if (text.length <= 4) {
-                          setPaymentData({ ...paymentData, cvv: text });
-                        }
-                      }}
-                      placeholder="123"
-                      keyboardType="numeric"
-                      maxLength={4}
-                      secureTextEntry
-                    />
+                  <View style={styles.securityNotice}>
+                    <Lock size={16} color="#10b981" />
+                    <Text style={styles.securityText}>
+                      {t("payment.securePayment")}
+                    </Text>
                   </View>
                 </View>
+              </ScrollView>
 
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>שם בעל הכרטיס</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={paymentData.cardholderName}
-                    onChangeText={(text) =>
-                      setPaymentData({ ...paymentData, cardholderName: text })
-                    }
-                    placeholder="שם מלא כפי שמופיע על הכרטיס"
-                    autoCapitalize="words"
-                  />
-                </View>
-
-                <View style={styles.securityNotice}>
-                  <Lock size={16} color="#10b981" />
-                  <Text style={styles.securityText}>
-                    התשלום מאובטח ומוצפן ברמה הגבוהה ביותר
-                  </Text>
-                </View>
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.cancelPaymentButton}
-                onPress={() => setShowPaymentModal(false)}
-              >
-                <Text style={styles.cancelPaymentText}>ביטול</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.payButton, isLoading && styles.loadingButton]}
-                onPress={processPayment}
-                disabled={isLoading}
-              >
-                <LinearGradient
-                  colors={["#10b981", "#059669"]}
-                  style={styles.payButtonGradient}
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.cancelPaymentButton}
+                  onPress={() => setShowPaymentModal(false)}
                 >
-                  {isLoading ? (
-                    <ActivityIndicator color="white" size="small" />
-                  ) : (
-                    <>
-                      <CreditCard size={16} color="#ffffff" />
-                      <Text style={styles.payButtonText}>שלם עכשיו</Text>
-                    </>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
+                  <Text style={styles.cancelPaymentText}>{t("payment.cancel")}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.payButton, isLoading && styles.loadingButton]}
+                  onPress={processPayment}
+                  disabled={isLoading}
+                >
+                  <LinearGradient
+                    colors={["#10b981", "#059669"]}
+                    style={styles.payButtonGradient}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator color="white" size="small" />
+                    ) : (
+                      <>
+                        <CreditCard size={16} color="#ffffff" />
+                        <Text style={styles.payButtonText}>{t("payment.payNow")}</Text>
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
         </View>
-      </View>
-    </Modal>
-  );
+      </Modal>
+    );
+  };
 
   return (
     <ScrollView
@@ -586,7 +567,7 @@ export default function PaymentPlan() {
     >
       <View style={styles.backButtonContainer}>
         <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#007AFF" />
+          <ArrowLeft size={24} color="#007AFF" />
         </TouchableOpacity>
       </View>
 
@@ -597,13 +578,13 @@ export default function PaymentPlan() {
         <View style={styles.header}>
           <Text style={styles.title}>
             {mode === "change"
-              ? "שנה את התוכנית שלך"
-              : "בחר את התוכנית המושלמת"}
+              ? t("payment.changeTitle")
+              : t("payment.title")}
           </Text>
           <Text style={styles.subtitle}>
             {mode === "change"
-              ? "בחר תוכנית חדשה שמתאימה לך יותר"
-              : "התחל במסע התזונתי שלך עם התוכנית המתאימה לך"}
+              ? t("payment.changeSubtitle")
+              : t("payment.subtitle")}
           </Text>
         </View>
       </LinearGradient>
@@ -616,11 +597,11 @@ export default function PaymentPlan() {
         <View style={styles.guaranteeContainer}>
           <Check size={16} color="#10b981" />
           <Text style={styles.guaranteeText}>
-            ללא התחייבות • ביטול בכל עת • החזר כספי מלא תוך 7 ימים
+            {t("payment.noCommitment")}
           </Text>
         </View>
         <Text style={styles.footerText}>
-          ניתן לשנות או לבטל את המנוי בכל עת מהגדרות החשבון
+          {t("payment.changeAnytime")}
         </Text>
       </View>
 

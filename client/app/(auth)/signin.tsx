@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   Dimensions,
   KeyboardAvoidingView,
@@ -15,7 +14,7 @@ import {
   Animated,
   Keyboard,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { ChevronLeft, ChevronRight, Mail, Lock, Eye, EyeOff, Apple } from "lucide-react-native";
 import { Link, router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
@@ -24,6 +23,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { signIn } from "@/src/store/authSlice";
 import { RootState, AppDispatch } from "@/src/store";
 import { LinearGradient } from "expo-linear-gradient";
+import { ToastService } from "@/src/services/totastService";
+import Toast from "react-native-toast-message";
 
 const { width, height } = Dimensions.get("window");
 
@@ -116,7 +117,7 @@ export default function SignInScreen() {
 
     if (!email || !password) {
       shake();
-      Alert.alert(t("common.error"), t("auth.errors.required_field"));
+      ToastService.error(t("common.error"), t("auth.errors.required_field"));
       return;
     }
 
@@ -130,7 +131,7 @@ export default function SignInScreen() {
       }
     } catch (error: any) {
       shake();
-      Alert.alert(t("common.error"), error || t("auth.sign_in.failed"));
+      ToastService.error(t("common.error"), error || t("auth.sign_in.failed"));
     } finally {
       setIsSubmitting(false);
       progressAnim.stopAnimation();
@@ -143,6 +144,7 @@ export default function SignInScreen() {
   });
 
   return (
+    <>
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
@@ -164,11 +166,11 @@ export default function SignInScreen() {
           onPress={() => router.push("/(auth)/welcome")}
           activeOpacity={0.7}
         >
-          <Ionicons
-            name={isRTL ? "chevron-forward" : "chevron-back"}
-            size={22}
-            color={colors.primary}
-          />
+          {isRTL ? (
+            <ChevronRight size={22} color={colors.primary} />
+          ) : (
+            <ChevronLeft size={22} color={colors.primary} />
+          )}
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
           {t("auth.sign_in.title")}
@@ -202,7 +204,7 @@ export default function SignInScreen() {
                 },
               ]}
             >
-              <Ionicons name="nutrition" size={38} color={colors.onPrimary} />
+              <Apple size={38} color={colors.onPrimary} />
             </LinearGradient>
             <Text style={[styles.title, { color: colors.text }]}>
               {t("auth.sign_in.welcome_back")}
@@ -236,8 +238,7 @@ export default function SignInScreen() {
                   { backgroundColor: colors.surfaceVariant },
                 ]}
               >
-                <Ionicons
-                  name="mail-outline"
+                <Mail
                   size={20}
                   color={emailFocused ? colors.primary : colors.icon}
                 />
@@ -296,8 +297,7 @@ export default function SignInScreen() {
                   { backgroundColor: colors.surfaceVariant },
                 ]}
               >
-                <Ionicons
-                  name="lock-closed-outline"
+                <Lock
                   size={20}
                   color={passwordFocused ? colors.primary : colors.icon}
                 />
@@ -344,11 +344,11 @@ export default function SignInScreen() {
                     onPress={() => setShowPassword(!showPassword)}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
-                    <Ionicons
-                      name={showPassword ? "eye-off-outline" : "eye-outline"}
-                      size={20}
-                      color={colors.icon}
-                    />
+                    {showPassword ? (
+                      <EyeOff size={20} color={colors.icon} />
+                    ) : (
+                      <Eye size={20} color={colors.icon} />
+                    )}
                   </TouchableOpacity>
                 </View>
               </View>
@@ -431,6 +431,8 @@ export default function SignInScreen() {
         </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    <Toast />
+    </>
   );
 }
 

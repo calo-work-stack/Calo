@@ -63,6 +63,21 @@ export const Colors = {
     error: "#FF3B30", // ERROR (#FF3B30)
     warning: "#FF9F0A", // WARNING (#FF9F0A)
     info: "#009EAD", // TEAL_ACCENT (#009EAD)
+
+    // Warm menu colors
+    warmOrange: "#F59E0B",
+    warmOrangeLight: "#FCD34D",
+    warmCream: "#FFFBEB",
+    warmBeige: "#FEF3C7",
+    sageGreen: "#84CC16",
+    warmSurface: "#FFFBEB",
+    warmBorder: "#FDE68A",
+
+    // Per-meal-type accent colors
+    mealBreakfast: "#F59E0B",
+    mealLunch: "#10B981",
+    mealDinner: "#6366F1",
+    mealSnack: "#EC4899",
   },
 
   dark: {
@@ -121,6 +136,21 @@ export const Colors = {
     error: "#FF453A",
     warning: "#FF9F0A",
     info: "#05A9B8",
+
+    // Warm menu colors
+    warmOrange: "#FBBF24",
+    warmOrangeLight: "#FDE68A",
+    warmCream: "#292524",
+    warmBeige: "#44403C",
+    sageGreen: "#A3E635",
+    warmSurface: "#292524",
+    warmBorder: "#78716C",
+
+    // Per-meal-type accent colors
+    mealBreakfast: "#FBBF24",
+    mealLunch: "#34D399",
+    mealDinner: "#818CF8",
+    mealSnack: "#F472B6",
   },
 };
 

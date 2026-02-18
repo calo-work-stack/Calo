@@ -1352,14 +1352,26 @@ Return the same JSON structure as before with meals that specifically address th
     originalMeal: any,
     questionnaire: any,
     count: number = 3,
+    language: string = "en",
   ): Promise<any[]> {
     try {
-      console.log("🔄 Generating meal alternatives for:", originalMeal.name);
+      console.log("🔄 Generating meal alternatives for:", originalMeal.name, "in language:", language);
+
+      // Determine language instructions
+      const isHebrew = language === "he" || language === "Hebrew";
+      const languageInstruction = isHebrew
+        ? "IMPORTANT: Generate ALL text content (meal names, cooking methods, ingredient names, match reasons) in HEBREW. Use Hebrew food names and descriptions."
+        : "Generate all content in English.";
+      const matchReasonOptions = isHebrew
+        ? '["תזונה דומה", "עשיר בחלבון", "הכנה מהירה", "מנחם ונעים"]'
+        : '["Similar nutrition", "Higher protein", "Quick preparation", "Comfort option"]';
 
       // Try AI-based generation first
       if (process.env.OPENAI_API_KEY) {
         try {
           const prompt = `Generate ${count} alternative meals to replace "${originalMeal.name}" (${originalMeal.meal_type}).
+
+${languageInstruction}
 
 Original meal has approximately ${originalMeal.calories} calories, ${originalMeal.protein} protein, ${originalMeal.carbs} carbs, ${originalMeal.fat} fat.
 Dietary style: ${questionnaire?.dietary_style || "Balanced"}. Allergies: ${questionnaire?.allergies?.join(", ") || "None"}. Dislikes: ${questionnaire?.disliked_foods?.join(", ") || "None"}. Likes: ${questionnaire?.liked_foods?.join(", ") || "None"}.
@@ -1373,10 +1385,11 @@ CRITICAL RULES FOR JSON OUTPUT:
 - All numeric fields (calories, protein, carbs, fat, prep_time_minutes, quantity) must be plain numbers WITHOUT units. Write 25 not 25g. Write 350 not 350kcal.
 - Return ONLY a valid JSON array. No extra text before or after.
 - No comments, no trailing commas.
+- ${languageInstruction}
 
 [{"meal_id":"alt_1","name":"Example Meal","calories":350,"protein":25,"carbs":40,"fat":12,"prep_time_minutes":20,"cooking_method":"Grilling","match_reason":"Similar nutrition","ingredients":[{"name":"chicken breast","quantity":150,"unit":"g"}]}]
 
-match_reason must be one of: "Similar nutrition", "Higher protein", "Quick preparation", "Comfort option".
+match_reason must be one of: ${matchReasonOptions}.
 Return ${count} meals in the array.`;
 
           const aiResponse = await OpenAIService.generateText(prompt, 1500);
@@ -1393,10 +1406,10 @@ Return ${count} meals in the array.`;
       }
 
       // Fallback: Generate alternatives based on meal type
-      return this.generateFallbackAlternatives(originalMeal, count);
+      return this.generateFallbackAlternatives(originalMeal, count, language);
     } catch (error) {
       console.error("💥 Error generating meal alternatives:", error);
-      return this.generateFallbackAlternatives(originalMeal, count);
+      return this.generateFallbackAlternatives(originalMeal, count, language);
     }
   }
 
@@ -1465,136 +1478,121 @@ Return ${count} meals in the array.`;
   private static generateFallbackAlternatives(
     originalMeal: any,
     count: number,
+    language: string = "en",
   ): any[] {
     const mealType = originalMeal.meal_type?.toUpperCase() || "LUNCH";
+    const isHebrew = language === "he" || language === "Hebrew";
+
+    // Define templates with both English and Hebrew names
+    const getTemplate = (en: string, he: string, method_en: string, method_he: string, reason_en: string, reason_he: string) => ({
+      name: isHebrew ? he : en,
+      cooking_method: isHebrew ? method_he : method_en,
+      match_reason: isHebrew ? reason_he : reason_en,
+    });
 
     const alternativeTemplates: Record<string, any[]> = {
       BREAKFAST: [
         {
-          name: "Overnight Oats with Berries",
+          ...getTemplate("Overnight Oats with Berries", "שיבולת שועל לילה עם פירות יער", "No-cook", "ללא בישול", "Similar nutrition", "תזונה דומה"),
           calories: Math.round(originalMeal.calories * 0.95),
           protein: Math.round(originalMeal.protein * 0.9),
           carbs: Math.round(originalMeal.carbs * 1.1),
           fat: Math.round(originalMeal.fat * 0.85),
           prep_time_minutes: 5,
-          cooking_method: "No-cook",
-          match_reason: "Similar nutrition",
         },
         {
-          name: "High-Protein Omelet",
+          ...getTemplate("High-Protein Omelet", "חביתה עשירה בחלבון", "Pan-frying", "טיגון במחבת", "Higher protein", "עשיר בחלבון"),
           calories: Math.round(originalMeal.calories * 0.85),
           protein: Math.round(originalMeal.protein * 1.3),
           carbs: Math.round(originalMeal.carbs * 0.5),
           fat: Math.round(originalMeal.fat * 1.1),
           prep_time_minutes: 12,
-          cooking_method: "Pan-frying",
-          match_reason: "Higher protein",
         },
         {
-          name: "Protein Smoothie Bowl",
+          ...getTemplate("Protein Smoothie Bowl", "קערת שייק חלבון", "Blending", "ערבוב בבלנדר", "Quick preparation", "הכנה מהירה"),
           calories: Math.round(originalMeal.calories * 1.05),
           protein: Math.round(originalMeal.protein * 1.1),
           carbs: Math.round(originalMeal.carbs * 1.2),
           fat: Math.round(originalMeal.fat * 0.7),
           prep_time_minutes: 8,
-          cooking_method: "Blending",
-          match_reason: "Quick preparation",
         },
       ],
       LUNCH: [
         {
-          name: "Mediterranean Grain Bowl",
+          ...getTemplate("Mediterranean Grain Bowl", "קערת דגנים ים תיכונית", "Assembly", "הרכבה", "Similar nutrition", "תזונה דומה"),
           calories: Math.round(originalMeal.calories * 0.95),
           protein: Math.round(originalMeal.protein * 0.95),
           carbs: Math.round(originalMeal.carbs * 1.05),
           fat: Math.round(originalMeal.fat * 0.9),
           prep_time_minutes: 20,
-          cooking_method: "Assembly",
-          match_reason: "Similar nutrition",
         },
         {
-          name: "Grilled Chicken Protein Bowl",
+          ...getTemplate("Grilled Chicken Protein Bowl", "קערת עוף צלוי עשירה בחלבון", "Grilling", "צלייה על האש", "Higher protein", "עשיר בחלבון"),
           calories: Math.round(originalMeal.calories * 1.0),
           protein: Math.round(originalMeal.protein * 1.25),
           carbs: Math.round(originalMeal.carbs * 0.85),
           fat: Math.round(originalMeal.fat * 0.95),
           prep_time_minutes: 25,
-          cooking_method: "Grilling",
-          match_reason: "Higher protein",
         },
         {
-          name: "Quick Wrap & Soup Combo",
+          ...getTemplate("Quick Wrap & Soup Combo", "טורטייה ומרק מהיר", "Quick assembly", "הרכבה מהירה", "Quick preparation", "הכנה מהירה"),
           calories: Math.round(originalMeal.calories * 0.9),
           protein: Math.round(originalMeal.protein * 0.9),
           carbs: Math.round(originalMeal.carbs * 0.95),
           fat: Math.round(originalMeal.fat * 0.85),
           prep_time_minutes: 10,
-          cooking_method: "Quick assembly",
-          match_reason: "Quick preparation",
         },
       ],
       DINNER: [
         {
-          name: "Baked Fish with Vegetables",
+          ...getTemplate("Baked Fish with Vegetables", "דג אפוי עם ירקות", "Baking", "אפייה בתנור", "Similar nutrition", "תזונה דומה"),
           calories: Math.round(originalMeal.calories * 0.9),
           protein: Math.round(originalMeal.protein * 1.1),
           carbs: Math.round(originalMeal.carbs * 0.7),
           fat: Math.round(originalMeal.fat * 0.85),
           prep_time_minutes: 35,
-          cooking_method: "Baking",
-          match_reason: "Similar nutrition",
         },
         {
-          name: "Lean Beef Stir-Fry",
+          ...getTemplate("Lean Beef Stir-Fry", "מוקפץ בקר רזה", "Stir-frying", "טיגון מהיר בווק", "Higher protein", "עשיר בחלבון"),
           calories: Math.round(originalMeal.calories * 0.95),
           protein: Math.round(originalMeal.protein * 1.2),
           carbs: Math.round(originalMeal.carbs * 0.9),
           fat: Math.round(originalMeal.fat * 0.95),
           prep_time_minutes: 25,
-          cooking_method: "Stir-frying",
-          match_reason: "Higher protein",
         },
         {
-          name: "One-Pan Sheet Dinner",
+          ...getTemplate("One-Pan Sheet Dinner", "ארוחה במגש אחד", "Sheet pan roasting", "צלייה במגש", "Quick preparation", "הכנה מהירה"),
           calories: Math.round(originalMeal.calories * 1.0),
           protein: Math.round(originalMeal.protein * 0.95),
           carbs: Math.round(originalMeal.carbs * 1.05),
           fat: Math.round(originalMeal.fat * 1.05),
           prep_time_minutes: 15,
-          cooking_method: "Sheet pan roasting",
-          match_reason: "Quick preparation",
         },
       ],
       SNACK: [
         {
-          name: "Greek Yogurt with Nuts",
+          ...getTemplate("Greek Yogurt with Nuts", "יוגורט יווני עם אגוזים", "No-cook", "ללא בישול", "Higher protein", "עשיר בחלבון"),
           calories: Math.round(originalMeal.calories * 0.95),
           protein: Math.round(originalMeal.protein * 1.2),
           carbs: Math.round(originalMeal.carbs * 0.8),
           fat: Math.round(originalMeal.fat * 1.1),
           prep_time_minutes: 2,
-          cooking_method: "No-cook",
-          match_reason: "Higher protein",
         },
         {
-          name: "Fruit & Cottage Cheese",
+          ...getTemplate("Fruit & Cottage Cheese", "פירות וגבינת קוטג'", "No-cook", "ללא בישול", "Similar nutrition", "תזונה דומה"),
           calories: Math.round(originalMeal.calories * 0.9),
           protein: Math.round(originalMeal.protein * 1.1),
           carbs: Math.round(originalMeal.carbs * 1.1),
           fat: Math.round(originalMeal.fat * 0.7),
           prep_time_minutes: 3,
-          cooking_method: "No-cook",
-          match_reason: "Similar nutrition",
         },
         {
-          name: "Protein Energy Bites",
+          ...getTemplate("Protein Energy Bites", "כדורי אנרגיה מחלבון", "Grab & go", "קח ולך", "Quick preparation", "הכנה מהירה"),
           calories: Math.round(originalMeal.calories * 1.05),
           protein: Math.round(originalMeal.protein * 1.0),
           carbs: Math.round(originalMeal.carbs * 1.1),
           fat: Math.round(originalMeal.fat * 0.9),
           prep_time_minutes: 0,
-          cooking_method: "Grab & go",
-          match_reason: "Quick preparation",
         },
       ],
     };
@@ -1612,9 +1610,14 @@ Return ${count} meals in the array.`;
     menuId: string,
     mealId: string,
     preferences: any,
+    language: string = "en",
   ) {
     try {
-      console.log("🔄 Replacing meal in menu:", { menuId, mealId });
+      console.log("🔄 === MEAL SWAP STARTED ===");
+      console.log("🔄 Menu ID:", menuId);
+      console.log("🔄 Meal ID to replace:", mealId);
+      console.log("🔄 Language:", language);
+      console.log("🔄 Preferences:", JSON.stringify(preferences, null, 2));
 
       // Get the current meal
       const currentMeal = await prisma.recommendedMeal.findFirst({
@@ -1630,15 +1633,27 @@ Return ${count} meals in the array.`;
       });
 
       if (!currentMeal) {
+        console.error("❌ Current meal not found!");
         throw new Error("Meal not found");
       }
 
-      // Generate replacement meal
+      console.log("📋 Current meal found:", currentMeal.name);
+
+      // Generate replacement meal with language support (ALWAYS uses AI)
+      console.log("🤖 Calling AI to generate replacement...");
       const replacementMeal = await this.generateReplacementMeal(
         currentMeal,
         preferences,
         userId,
+        language,
       );
+
+      console.log("✅ AI generated replacement:", replacementMeal.name);
+
+      // Ensure instructions is a string (AI might return array)
+      const instructionsStr = Array.isArray(replacementMeal.instructions)
+        ? replacementMeal.instructions.join("\n")
+        : (replacementMeal.instructions || "");
 
       // Update the meal
       const updatedMeal = await prisma.recommendedMeal.update({
@@ -1652,7 +1667,7 @@ Return ${count} meals in the array.`;
           fiber: replacementMeal.fiber,
           prep_time_minutes: replacementMeal.prep_time_minutes,
           cooking_method: replacementMeal.cooking_method,
-          instructions: replacementMeal.instructions,
+          instructions: instructionsStr,
         },
       });
 
@@ -1673,10 +1688,13 @@ Return ${count} meals in the array.`;
         });
       }
 
-      console.log("✅ Meal replaced successfully");
+      console.log("🎉 === MEAL SWAP COMPLETED ===");
+      console.log("✅ Old meal:", currentMeal.name);
+      console.log("✅ New meal:", updatedMeal.name);
       return updatedMeal;
     } catch (error) {
-      console.error("💥 Error replacing meal:", error);
+      console.error("💥 === MEAL SWAP FAILED ===");
+      console.error("💥 Error:", error);
       throw error;
     }
   }
@@ -1685,85 +1703,112 @@ Return ${count} meals in the array.`;
     currentMeal: any,
     preferences: any,
     userId: string,
+    language: string = "en",
   ) {
-    // If the user selected a specific alternative with its own data, use that
-    if (preferences?.selectedAlternativeId) {
-      // Try to get AI-generated replacement with the alternative's nutrition targets
-      const questionnaire = await prisma.userQuestionnaire.findFirst({
-        where: { user_id: userId },
-      });
+    console.log("🤖 generateReplacementMeal called:", {
+      currentMealName: currentMeal.name,
+      alternativeName: preferences?.alternativeName,
+      selectedAlternativeId: preferences?.selectedAlternativeId,
+      language,
+      hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+    });
 
-      if (process.env.OPENAI_API_KEY) {
-        try {
-          const targetCalories = preferences.targetCalories || currentMeal.calories;
-          const targetProtein = preferences.targetProtein || currentMeal.protein;
+    // Determine language
+    const isHebrew = language === "he" || language === "Hebrew";
+    const languageInstruction = isHebrew
+      ? "IMPORTANT: Generate ALL text content (meal name, cooking method, instructions, ingredient names) in HEBREW. Use Hebrew food names and descriptions."
+      : "Generate all content in English.";
 
-          const prompt = `Generate a single replacement meal for "${currentMeal.name}" (${currentMeal.meal_type}).
-Target: ${targetCalories} calories, ${targetProtein} protein, ${preferences.targetCarbs || currentMeal.carbs} carbs, ${preferences.targetFat || currentMeal.fat} fat.
-Dietary style: ${questionnaire?.dietary_style || "Balanced"}. Allergies: ${questionnaire?.allergies?.join(", ") || "None"}.
+    // Get user questionnaire for dietary preferences
+    const questionnaire = await prisma.userQuestionnaire.findFirst({
+      where: { user_id: userId },
+    });
 
-CRITICAL: Return ONLY valid JSON. All numeric fields must be plain numbers WITHOUT units (write 25 not 25g). No comments, no trailing commas.
+    // Extract values from preferences
+    const alternativeName = preferences?.alternativeName || currentMeal.name;
+    const targetCalories = preferences?.targetCalories || currentMeal.calories;
+    const targetProtein = preferences?.targetProtein || currentMeal.protein;
+    const targetCarbs = preferences?.targetCarbs || currentMeal.carbs;
+    const targetFat = preferences?.targetFat || currentMeal.fat;
+    const prepTime = preferences?.prepTime || currentMeal.prep_time_minutes || 25;
+    const cookingMethod = preferences?.cookingMethod || currentMeal.cooking_method || "Standard preparation";
 
-{"name":"Meal Name","calories":${targetCalories},"protein":${targetProtein},"carbs":${preferences.targetCarbs || currentMeal.carbs},"fat":${preferences.targetFat || currentMeal.fat},"fiber":5,"prep_time_minutes":25,"cooking_method":"method","instructions":"Step by step instructions","ingredients":[{"name":"ingredient","quantity":150,"unit":"g","category":"protein"}]}`;
-
-          const aiResponse = await OpenAIService.generateText(prompt, 1000);
-          let cleaned = aiResponse.trim();
-          if (cleaned.includes("```")) {
-            cleaned = cleaned.replace(/```json\s*/g, "").replace(/```\s*/g, "");
-          }
-          const objStart = cleaned.indexOf("{");
-          const objEnd = cleaned.lastIndexOf("}");
-          if (objStart !== -1 && objEnd !== -1) {
-            cleaned = cleaned.substring(objStart, objEnd + 1);
-            cleaned = this.cleanAIJson(cleaned);
-            const parsed = JSON.parse(cleaned);
-            if (parsed.name && parsed.calories) {
-              return parsed;
-            }
-          }
-        } catch (aiError) {
-          console.warn("⚠️ AI replacement generation failed, using fallback");
-        }
-      }
-
-      // Fallback: use the target nutrition values from the selected alternative
-      return {
-        name: preferences.alternativeName || `${currentMeal.meal_type} Alternative`,
-        calories: preferences.targetCalories || currentMeal.calories,
-        protein: preferences.targetProtein || currentMeal.protein,
-        carbs: preferences.targetCarbs || currentMeal.carbs,
-        fat: preferences.targetFat || currentMeal.fat,
-        fiber: currentMeal.fiber || 5,
-        prep_time_minutes: preferences.prepTime || currentMeal.prep_time_minutes || 25,
-        cooking_method: preferences.cookingMethod || currentMeal.cooking_method || "Mixed",
-        instructions: currentMeal.instructions || "Prepare according to preference",
-        ingredients: currentMeal.ingredients?.map((ing: any) => ({
-          name: ing.name,
-          quantity: ing.quantity,
-          unit: ing.unit,
-          category: ing.category,
-        })) || [],
-      };
+    // ALWAYS try AI first
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("❌ OPENAI_API_KEY is not set!");
+      throw new Error("OpenAI API key is not configured");
     }
 
-    // Default fallback when no alternative was selected
-    return {
-      name: `${currentMeal.meal_type} Alternative`,
-      calories: currentMeal.calories,
-      protein: currentMeal.protein,
-      carbs: currentMeal.carbs,
-      fat: currentMeal.fat,
-      fiber: currentMeal.fiber || 5,
-      prep_time_minutes: currentMeal.prep_time_minutes || 25,
-      cooking_method: currentMeal.cooking_method || "Mixed",
-      instructions: currentMeal.instructions || "Prepare according to preference",
-      ingredients: currentMeal.ingredients?.map((ing: any) => ({
-        name: ing.name,
-        quantity: ing.quantity,
-        unit: ing.unit,
-        category: ing.category,
-      })) || [],
-    };
+    console.log("🚀 Calling OpenAI to generate replacement meal:", alternativeName);
+
+    const prompt = `Generate a detailed recipe for "${alternativeName}" (${currentMeal.meal_type}).
+
+${languageInstruction}
+
+You MUST generate this exact meal: "${alternativeName}"
+
+Nutrition targets:
+- Calories: ${targetCalories}
+- Protein: ${targetProtein}g
+- Carbs: ${targetCarbs}g
+- Fat: ${targetFat}g
+
+User profile:
+- Dietary style: ${questionnaire?.dietary_style || "Balanced"}
+- Allergies: ${questionnaire?.allergies?.join(", ") || "None"}
+- Dislikes: ${questionnaire?.disliked_foods?.join(", ") || "None"}
+
+Prep time: ${prepTime} minutes
+Cooking method: ${cookingMethod}
+
+Return ONLY valid JSON with this exact structure (no markdown, no comments):
+{"name":"meal name","calories":${targetCalories},"protein":${targetProtein},"carbs":${targetCarbs},"fat":${targetFat},"fiber":5,"prep_time_minutes":${prepTime},"cooking_method":"cooking method description","instructions":"Step 1: ... Step 2: ... Step 3: ...","ingredients":[{"name":"ingredient name","quantity":100,"unit":"g","category":"protein"}]}`;
+
+    try {
+      const aiResponse = await OpenAIService.generateText(prompt, 1500);
+      console.log("✅ AI response received, length:", aiResponse.length);
+
+      let cleaned = aiResponse.trim();
+
+      // Remove markdown code blocks if present
+      if (cleaned.includes("```")) {
+        cleaned = cleaned.replace(/```json\s*/g, "").replace(/```\s*/g, "");
+      }
+
+      // Extract JSON object
+      const objStart = cleaned.indexOf("{");
+      const objEnd = cleaned.lastIndexOf("}");
+
+      if (objStart === -1 || objEnd === -1) {
+        console.error("❌ No JSON object found in AI response:", cleaned.substring(0, 200));
+        throw new Error("AI did not return valid JSON");
+      }
+
+      cleaned = cleaned.substring(objStart, objEnd + 1);
+      cleaned = this.cleanAIJson(cleaned);
+
+      const parsed = JSON.parse(cleaned);
+
+      if (!parsed.name || !parsed.calories) {
+        console.error("❌ Parsed JSON missing required fields:", parsed);
+        throw new Error("AI response missing required fields");
+      }
+
+      // Ensure instructions is a string
+      if (Array.isArray(parsed.instructions)) {
+        parsed.instructions = parsed.instructions.join("\n");
+      }
+
+      console.log("✅ Successfully generated replacement meal:", parsed.name);
+      return parsed;
+
+    } catch (aiError: any) {
+      console.error("❌ AI generation failed:", aiError.message);
+      console.error("Full error:", aiError);
+
+      // Instead of silent fallback, throw the error so user knows something went wrong
+      throw new Error(`Failed to generate replacement meal: ${aiError.message}`);
+    }
   }
 
   static async generateEnhancedMenuWithFeedback(params: {

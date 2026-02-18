@@ -8,15 +8,16 @@ import {
   TextInput,
   Animated,
   Dimensions,
-  ActivityIndicator,
   Platform,
   Keyboard,
 } from "react-native";
-import { X, RotateCcw, Sparkles } from "lucide-react-native";
+import { X, RotateCcw, Sparkles, MessageSquare, Wand2, Zap } from "lucide-react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/context/ThemeContext";
+import { AnalysisLoadingOverlay } from "./AnalysisLoadingOverlay";
+import { AnalysisPhase } from "@/hooks/camera/useMealAnalysis";
 
 const { width, height } = Dimensions.get("window");
 
@@ -25,6 +26,9 @@ interface SelectedImageProps {
   userComment: string;
   isAnalyzing: boolean;
   hasBeenAnalyzed: boolean;
+  analysisPhase?: AnalysisPhase;
+  analysisProgress?: number;
+  analysisStatusMessage?: string;
   onRemoveImage: () => void;
   onRetakePhoto: () => void;
   onAnalyze: () => void;
@@ -36,6 +40,9 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
   userComment,
   isAnalyzing,
   hasBeenAnalyzed,
+  analysisPhase,
+  analysisProgress,
+  analysisStatusMessage,
   onRemoveImage,
   onRetakePhoto,
   onAnalyze,
@@ -47,9 +54,7 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const scannerAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0.6)).current;
-  const rippleAnim = useRef(new Animated.Value(0)).current;
   const [showDetailsInput, setShowDetailsInput] = useState(false);
   const [inputHeight, setInputHeight] = useState(110);
   const inputHeightAnim = useRef(new Animated.Value(110)).current;
@@ -125,15 +130,6 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
         ]),
       ).start();
 
-      // Elegant rotation
-      Animated.loop(
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 8000,
-          useNativeDriver: true,
-        }),
-      ).start();
-
       // Glow breathing
       Animated.loop(
         Animated.sequence([
@@ -149,43 +145,12 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
           }),
         ]),
       ).start();
-
-      // Ripple effect
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(rippleAnim, {
-            toValue: 1,
-            duration: 2500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(rippleAnim, {
-            toValue: 0,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ]),
-      ).start();
     }
   }, [isAnalyzing]);
 
   const scannerTranslateY = scannerAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [-100, height * 0.65],
-  });
-
-  const rotate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
-
-  const rippleScale = rippleAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.8, 2],
-  });
-
-  const rippleOpacity = rippleAnim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0.5, 0.2, 0],
   });
 
   const handleStartAnalysis = () => {
@@ -263,38 +228,6 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: "rgba(0,0,0,0.3)",
-    },
-    rippleRing: {
-      position: "absolute",
-      width: 380,
-      height: 380,
-      borderRadius: 190,
-    },
-    rippleBorder: {
-      flex: 1,
-      borderRadius: 190,
-      borderWidth: 3,
-      borderColor: colors.primary,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.6,
-      shadowRadius: 20,
-    },
-    outerRing: {
-      position: "absolute",
-      width: 280,
-      height: 280,
-      borderRadius: 140,
-    },
-    ringBorder: {
-      flex: 1,
-      borderRadius: 140,
-      borderWidth: 3,
-      borderColor: colors.primary + "60",
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.5,
-      shadowRadius: 15,
     },
     innerRing: {
       position: "absolute",
@@ -382,13 +315,34 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
       elevation: 15,
       backgroundColor: isDark ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.5)",
     },
+    inputHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      marginBottom: 24,
+    },
+    inputHeaderIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.primary + "20",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    inputHeaderText: {
+      flex: 1,
+    },
     inputLabel: {
-      fontSize: 15,
+      fontSize: 18,
       fontWeight: "800",
-      color: "rgba(255,255,255,0.85)",
-      marginBottom: 20,
-      letterSpacing: 1.2,
-      textTransform: "uppercase",
+      color: "#FFF",
+      letterSpacing: -0.3,
+    },
+    inputSubtitle: {
+      fontSize: 13,
+      fontWeight: "500",
+      color: "rgba(255,255,255,0.5)",
+      marginTop: 4,
     },
     mainButton: {
       width: "100%",
@@ -420,6 +374,19 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
       fontSize: 14,
       color: "rgba(255,255,255,0.5)",
       fontWeight: "600",
+      letterSpacing: 0.3,
+    },
+    addDetailsButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 14,
+      marginTop: 4,
+    },
+    addDetailsText: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: "rgba(255,255,255,0.65)",
       letterSpacing: 0.3,
     },
     inputContainer: {
@@ -471,6 +438,24 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
       color: "#FBBF24",
       fontWeight: "800",
     },
+    exampleTags: {
+      flexDirection: "row",
+      gap: 8,
+      flex: 1,
+    },
+    exampleTag: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 12,
+      backgroundColor: "rgba(255,255,255,0.1)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.15)",
+    },
+    exampleTagText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: "rgba(255,255,255,0.6)",
+    },
     buttonRow: {
       flexDirection: "row",
       gap: 16,
@@ -508,6 +493,7 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
       borderColor: "rgba(255,255,255,0.15)",
     },
     primaryGradient: {
+      flexDirection: "row",
       paddingVertical: 20,
       alignItems: "center",
       justifyContent: "center",
@@ -548,7 +534,7 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
           <Image
             source={{ uri: imageUri }}
             style={styles.image}
-            resizeMode="cover"
+            resizeMode="contain"
           />
         </View>
 
@@ -586,89 +572,16 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Refined Scanning Animation */}
-        {isAnalyzing && (
-          <View style={styles.scanOverlay}>
-            {/* Outer Ripple */}
-            <Animated.View
-              style={[
-                styles.rippleRing,
-                {
-                  opacity: rippleOpacity,
-                  transform: [{ scale: rippleScale }],
-                },
-              ]}
-            >
-              <View style={styles.rippleBorder} />
-            </Animated.View>
-
-            {/* Rotating Outer Ring */}
-            <Animated.View
-              style={[
-                styles.outerRing,
-                {
-                  transform: [{ rotate }, { scale: pulseAnim }],
-                },
-              ]}
-            >
-              <View style={styles.ringBorder} />
-            </Animated.View>
-
-            {/* Inner Ring */}
-            <Animated.View
-              style={[
-                styles.innerRing,
-                {
-                  opacity: glowAnim,
-                },
-              ]}
-            >
-              <View style={styles.innerRingBorder} />
-            </Animated.View>
-
-            {/* Center Orb */}
-            <Animated.View
-              style={[
-                styles.centerOrb,
-                {
-                  opacity: glowAnim,
-                  transform: [{ scale: pulseAnim }],
-                },
-              ]}
-            >
-              <BlurView intensity={70} tint="dark" style={styles.orbBlur}>
-                <LinearGradient
-                  colors={[colors.primary, colors.primaryContainer]}
-                  style={styles.orbGradient}
-                >
-                  <Sparkles size={40} color="#FFF" strokeWidth={2.5} />
-                </LinearGradient>
-              </BlurView>
-            </Animated.View>
-
-            {/* Smooth Scan Line */}
-            <Animated.View
-              style={[
-                styles.scanLine,
-                { transform: [{ translateY: scannerTranslateY }] },
-              ]}
-            >
-              <LinearGradient
-                colors={[
-                  colors.primary + "00",
-                  colors.primary + "40",
-                  colors.primary + "E0",
-                  colors.primary + "40",
-                  colors.primary + "00",
-                ]}
-                style={styles.scanGradient}
-              />
-            </Animated.View>
-          </View>
-        )}
+        {/* Analysis Loading Overlay */}
+        <AnalysisLoadingOverlay
+          visible={isAnalyzing}
+          currentPhase={analysisPhase}
+          progress={analysisProgress}
+          statusMessage={analysisStatusMessage}
+        />
       </Animated.View>
 
-      {/* Clean Bottom UI - Initial */}
+      {/* Clean Bottom UI - Two-Button Initial */}
       {!isAnalyzing && !hasBeenAnalyzed && !showDetailsInput && (
         <Animated.View
           style={[
@@ -677,9 +590,10 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
           ]}
         >
           <BlurView intensity={90} tint="dark" style={styles.sheet}>
+            {/* Quick Analyze - primary gradient button */}
             <TouchableOpacity
               style={styles.mainButton}
-              onPress={() => setShowDetailsInput(true)}
+              onPress={() => onAnalyze()}
               activeOpacity={0.85}
             >
               <LinearGradient
@@ -688,20 +602,29 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
                 end={{ x: 1, y: 1 }}
                 style={styles.buttonGradient}
               >
+                <Zap size={20} color="#FFF" strokeWidth={2.5} style={{ marginRight: 8 }} />
                 <Text style={styles.buttonText}>
-                  {t("camera.getNutritionInfo")}
+                  {t("camera.quickAnalyze")}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
 
-            <Text style={styles.hint}>
-              {t("camera.imagePreview.tapToAnalyze")}
-            </Text>
+            {/* Add Details - secondary button */}
+            <TouchableOpacity
+              style={styles.addDetailsButton}
+              onPress={() => setShowDetailsInput(true)}
+              activeOpacity={0.7}
+            >
+              <MessageSquare size={16} color="rgba(255,255,255,0.75)" strokeWidth={2} style={{ marginRight: 8 }} />
+              <Text style={styles.addDetailsText}>
+                {t("camera.addDetailsFirst")}
+              </Text>
+            </TouchableOpacity>
           </BlurView>
         </Animated.View>
       )}
 
-      {/* Details Input */}
+      {/* Enhanced Details Input */}
       {!isAnalyzing && !hasBeenAnalyzed && showDetailsInput && (
         <Animated.View
           style={[
@@ -716,7 +639,18 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
           ]}
         >
           <BlurView intensity={90} tint="dark" style={styles.inputSheet}>
-            <Text style={styles.inputLabel}>{t("camera.addDetails")}</Text>
+            {/* Header with icon */}
+            <View style={styles.inputHeader}>
+              <View style={styles.inputHeaderIcon}>
+                <MessageSquare size={20} color={colors.primary} strokeWidth={2.5} />
+              </View>
+              <View style={styles.inputHeaderText}>
+                <Text style={styles.inputLabel}>{t("camera.addDetails")}</Text>
+                <Text style={styles.inputSubtitle}>
+                  {t("camera.imagePreview.improveAccuracy")}
+                </Text>
+              </View>
+            </View>
 
             <View style={styles.inputContainer}>
               <Animated.View
@@ -728,9 +662,7 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
                   onChangeText={onCommentChange}
                   onContentSizeChange={handleContentSizeChange}
                   placeholder={t("camera.detailsPlaceholder")}
-                  placeholderTextColor={
-                    isDark ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.35)"
-                  }
+                  placeholderTextColor="rgba(255,255,255,0.35)"
                   multiline
                   maxLength={200}
                   autoFocus
@@ -738,9 +670,17 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
                 />
               </Animated.View>
               <View style={styles.inputFooter}>
-                <Text style={styles.inputHint}>
-                  {t("camera.imagePreview.improveAccuracy")}
-                </Text>
+                <View style={styles.exampleTags}>
+                  <View style={styles.exampleTag}>
+                    <Text style={styles.exampleTagText}>{t("camera.imagePreview.exampleTags.grilled")}</Text>
+                  </View>
+                  <View style={styles.exampleTag}>
+                    <Text style={styles.exampleTagText}>{t("camera.imagePreview.exampleTags.noOil")}</Text>
+                  </View>
+                  <View style={styles.exampleTag}>
+                    <Text style={styles.exampleTagText}>{t("camera.imagePreview.exampleTags.homemade")}</Text>
+                  </View>
+                </View>
                 <Text
                   style={[
                     styles.charCount,
@@ -767,33 +707,17 @@ export const SelectedImage: React.FC<SelectedImageProps> = ({
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={[colors.primary, colors.primaryContainer]}
+                  colors={[colors.primary, colors.primaryContainer || colors.primary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.primaryGradient}
                 >
+                  <Wand2 size={20} color="#FFF" strokeWidth={2.5} style={{ marginRight: 8 }} />
                   <Text style={styles.primaryText}>
                     {t("camera.analyzeMeal")}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
-            </View>
-          </BlurView>
-        </Animated.View>
-      )}
-
-      {/* Analyzing State */}
-      {isAnalyzing && (
-        <Animated.View
-          style={[
-            styles.bottomSheet,
-            { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
-          ]}
-        >
-          <BlurView intensity={90} tint="dark" style={styles.sheet}>
-            <View style={styles.analyzingContent}>
-              <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={styles.analyzingText}>{t("camera.analyzing")}</Text>
             </View>
           </BlurView>
         </Animated.View>

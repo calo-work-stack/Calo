@@ -17,7 +17,7 @@ import { ScanLine, Search, Package } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { api } from "@/src/services/api";
-import { Ionicons } from "@expo/vector-icons";
+import { Camera as CameraIcon } from "lucide-react-native";
 import LoadingScreen from "@/components/LoadingScreen";
 import { ToastService } from "@/src/services/totastService";
 import { useTheme } from "@/src/context/ThemeContext";
@@ -338,10 +338,10 @@ export default function FoodScannerScreen() {
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
+        allowsEditing: false, // Disabled to preserve full image
+        quality: 0.85,
         base64: true,
+        exif: false, // Reduce data size
       });
 
       if (!result.canceled && result.assets?.[0]?.base64) {
@@ -592,7 +592,7 @@ export default function FoodScannerScreen() {
           { backgroundColor: colors.background },
         ]}
       >
-        <Ionicons name="camera" size={48} color={colors.textSecondary} />
+        <CameraIcon size={48} color={colors.textSecondary} />
         <Text
           style={[styles.noPermissionText, { color: colors.textSecondary }]}
         >
@@ -797,108 +797,142 @@ const styles = StyleSheet.create({
   },
   modernHeader: {
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    paddingTop: 16,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
   },
   headerTop: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 16,
   },
   headerIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   headerTextContainer: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: "800",
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
   },
   headerSubtitle: {
-    fontSize: 13,
-    marginTop: 2,
+    fontSize: 14,
+    marginTop: 4,
+    fontWeight: "500",
   },
   galleryButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   scannerContainer: {
     flex: 1,
-    paddingTop: 24,
+    paddingTop: 20,
     alignItems: "center",
+    paddingHorizontal: 20,
   },
   scanInstructions: {
-    marginTop: 20,
-    fontSize: 14,
+    marginTop: 24,
+    fontSize: 15,
+    fontWeight: "500",
+    textAlign: "center",
+    paddingHorizontal: 20,
   },
   manualInputContainer: {
     paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingVertical: 16,
+    marginBottom: 24,
   },
   inputWrapper: {
     flexDirection: "row",
-    gap: 10,
+    gap: 12,
   },
   barcodeInput: {
     flex: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    fontSize: 17,
+    borderWidth: 1.5,
+    fontWeight: "500",
   },
   scanButton: {
-    borderRadius: 14,
-    paddingHorizontal: 24,
+    borderRadius: 18,
+    paddingHorizontal: 28,
     justifyContent: "center",
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 4,
   },
   scanButtonText: {
     fontWeight: "700",
     fontSize: 16,
+    letterSpacing: 0.3,
   },
   loadingOverlay: {
     flex: 1,
-    backgroundColor: "rgba(15,23,42,0.6)",
+    backgroundColor: "rgba(0,0,0,0.65)",
     justifyContent: "center",
     alignItems: "center",
   },
   loadingContent: {
-    padding: 28,
-    borderRadius: 20,
+    padding: 36,
+    borderRadius: 28,
     alignItems: "center",
+    minWidth: 180,
   },
   loadingText: {
-    marginTop: 12,
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: "600",
   },
   noPermissionContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 32,
+    padding: 40,
   },
   noPermissionText: {
-    fontSize: 16,
+    fontSize: 17,
     textAlign: "center",
-    marginVertical: 20,
+    marginVertical: 24,
+    lineHeight: 26,
+    fontWeight: "500",
   },
   permissionButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 18,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 4,
   },
   permissionButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
 });

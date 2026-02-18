@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   ScrollView,
   Platform,
   Pressable,
+  Dimensions,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -18,6 +20,7 @@ import Animated, {
   withTiming,
   withSequence,
   withDelay,
+  runOnJS,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -49,14 +52,24 @@ interface ToolBarProps {
   onThemeChange?: (isDark: boolean) => void;
 }
 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } =
+  Dimensions.get("window");
+const FAB_SIZE = 44;
+const MENU_BTN_SIZE = 42;
+const EDGE_MARGIN = 12;
+const MENU_RADIUS = 68;
+const SPREAD_ANGLE = (30 * Math.PI) / 180;
+
 const SPRING_CONFIG = {
-  damping: 15,
-  stiffness: 200,
-  mass: 0.8,
+  damping: 18,
+  stiffness: 250,
+  mass: 0.7,
 };
 
-const TIMING_CONFIG = {
-  duration: 300,
+const SNAP_SPRING = {
+  damping: 22,
+  stiffness: 300,
+  mass: 0.8,
 };
 
 const ToolBar: React.FC<ToolBarProps> = ({
@@ -73,134 +86,156 @@ const ToolBar: React.FC<ToolBarProps> = ({
   const insets = useSafeAreaInsets();
   const { user } = useSelector((state: RootState) => state.auth);
 
-  // Animation values
-  const fabScale = useSharedValue(1);
-  const fabRotation = useSharedValue(0);
-  const menuOpacity = useSharedValue(0);
-  const backdropOpacity = useSharedValue(0);
-  const pulseScale = useSharedValue(1);
-
-  // Button positions for radial menu (4 buttons)
-  const button1Position = useSharedValue({ x: 0, y: 0 });
-  const button2Position = useSharedValue({ x: 0, y: 0 });
-  const button3Position = useSharedValue({ x: 0, y: 0 });
-  const button4Position = useSharedValue({ x: 0, y: 0 });
-
-  // Button scales for staggered animation
-  const button1Scale = useSharedValue(0);
-  const button2Scale = useSharedValue(0);
-  const button3Scale = useSharedValue(0);
-  const button4Scale = useSharedValue(0);
-
   const isFreeUser = user?.subscription_type === "FREE";
 
-  const handleToggleMenu = useCallback(() => {
-    const newExpanded = !isExpanded;
-    setIsExpanded(newExpanded);
+  const initX = isRTL ? EDGE_MARGIN : SCREEN_WIDTH - EDGE_MARGIN - FAB_SIZE;
+  const initY = SCREEN_HEIGHT - (insets.bottom || 34) - 140;
 
-    const expandDirection = isRTL ? 1 : -1;
+  // Position shared values
+  const translateX = useSharedValue(initX);
+  const translateY = useSharedValue(initY);
+  const dragStartX = useSharedValue(initX);
+  const dragStartY = useSharedValue(initY);
 
-    fabScale.value = withSequence(
-      withTiming(0.95, { duration: 100 }),
-      withSpring(1, SPRING_CONFIG)
-    );
+  // FAB animation values
+  const fabScale = useSharedValue(1);
+  const fabRotation = useSharedValue(0);
+  const fabOpacity = useSharedValue(0.72);
+  const menuOpacity = useSharedValue(0);
+  const backdropOpacity = useSharedValue(0);
+  const isMenuOpen = useSharedValue(false);
 
-    if (newExpanded) {
-      fabRotation.value = withSpring(45, SPRING_CONFIG);
-      menuOpacity.value = withTiming(1, TIMING_CONFIG);
-      backdropOpacity.value = withTiming(0.4, TIMING_CONFIG);
+  // Menu button shared values
+  const btn1Scale = useSharedValue(0);
+  const btn2Scale = useSharedValue(0);
+  const btn3Scale = useSharedValue(0);
+  const btn4Scale = useSharedValue(0);
+  const btn1Pos = useSharedValue({ x: 0, y: 0 });
+  const btn2Pos = useSharedValue({ x: 0, y: 0 });
+  const btn3Pos = useSharedValue({ x: 0, y: 0 });
+  const btn4Pos = useSharedValue({ x: 0, y: 0 });
 
-      const radius = 80;
+  const expandMenuButtons = useCallback(
+    (buttonCount: number) => {
+      const scales = [btn1Scale, btn2Scale, btn3Scale, btn4Scale];
+      const positions = [btn1Pos, btn2Pos, btn3Pos, btn4Pos];
 
-      const angle1 = (0 * Math.PI) / 180; // 0 degrees (right-top)
-      const angle2 = (30 * Math.PI) / 180; // 30 degrees (right)
-      const angle3 = (60 * Math.PI) / 180; // 60 degrees (right-bottom)
-      const angle4 = (90 * Math.PI) / 180; // -90 degrees (right-bottom)
+      const fabCenterX = translateX.value + FAB_SIZE / 2;
+      const fabCenterY = translateY.value + FAB_SIZE / 2;
+      const dirX = SCREEN_WIDTH / 2 - fabCenterX;
+      const dirY = SCREEN_HEIGHT / 2 - fabCenterY;
 
-      // Language button
-      button1Position.value = withSpring(
-        {
-          x: expandDirection * radius * Math.cos(angle1),
-          y: -radius * Math.sin(angle1),
-        },
-        SPRING_CONFIG
-      );
-      button1Scale.value = withDelay(50, withSpring(1, SPRING_CONFIG));
+      const baseAngle = Math.atan2(-dirY, dirX);
 
-      // Theme button
-      button2Position.value = withSpring(
-        {
-          x: expandDirection * radius * Math.cos(angle2),
-          y: -radius * Math.sin(angle2),
-        },
-        SPRING_CONFIG
-      );
-      button2Scale.value = withDelay(100, withSpring(1, SPRING_CONFIG));
-
-      // Help button - ALWAYS visible
-      button3Position.value = withSpring(
-        {
-          x: expandDirection * radius * Math.cos(angle3),
-          y: -radius * Math.sin(angle3),
-        },
-        SPRING_CONFIG
-      );
-      button3Scale.value = withDelay(150, withSpring(1, SPRING_CONFIG));
-
-      // Sparkles/Subscription button (only for FREE users)
-      if (isFreeUser) {
-        button4Position.value = withSpring(
+      for (let i = 0; i < buttonCount; i++) {
+        const angleOffset = (i - (buttonCount - 1) / 2) * SPREAD_ANGLE;
+        const angle = baseAngle + angleOffset;
+        positions[i].value = withSpring(
           {
-            x: expandDirection * radius * Math.cos(angle4),
-            y: -radius * Math.sin(angle4),
+            x: MENU_RADIUS * Math.cos(angle),
+            y: -MENU_RADIUS * Math.sin(angle),
           },
           SPRING_CONFIG
         );
-        button4Scale.value = withDelay(200, withSpring(1, SPRING_CONFIG));
+        scales[i].value = withDelay(i * 40, withSpring(1, SPRING_CONFIG));
       }
-    } else {
-      fabRotation.value = withSpring(0, SPRING_CONFIG);
-      menuOpacity.value = withTiming(0, { duration: 200 });
-      backdropOpacity.value = withTiming(0, { duration: 200 });
+    },
+    [
+      translateX,
+      translateY,
+      btn1Pos,
+      btn2Pos,
+      btn3Pos,
+      btn4Pos,
+      btn1Scale,
+      btn2Scale,
+      btn3Scale,
+      btn4Scale,
+    ]
+  );
 
-      button1Scale.value = withTiming(0, { duration: 150 });
-      button2Scale.value = withTiming(0, { duration: 150 });
-      button3Scale.value = withTiming(0, { duration: 150 });
-      button4Scale.value = withTiming(0, { duration: 150 });
+  const collapseMenuButtons = useCallback(() => {
+    const scales = [btn1Scale, btn2Scale, btn3Scale, btn4Scale];
+    const positions = [btn1Pos, btn2Pos, btn3Pos, btn4Pos];
 
-      button1Position.value = withDelay(
-        100,
-        withSpring({ x: 0, y: 0 }, SPRING_CONFIG)
-      );
-      button2Position.value = withDelay(
-        100,
-        withSpring({ x: 0, y: 0 }, SPRING_CONFIG)
-      );
-      button3Position.value = withDelay(
-        100,
-        withSpring({ x: 0, y: 0 }, SPRING_CONFIG)
-      );
-      button4Position.value = withDelay(
-        100,
+    for (let i = 0; i < 4; i++) {
+      scales[i].value = withTiming(0, { duration: 120 });
+      positions[i].value = withDelay(
+        80,
         withSpring({ x: 0, y: 0 }, SPRING_CONFIG)
       );
     }
   }, [
+    btn1Scale,
+    btn2Scale,
+    btn3Scale,
+    btn4Scale,
+    btn1Pos,
+    btn2Pos,
+    btn3Pos,
+    btn4Pos,
+  ]);
+
+  const handleToggleMenu = useCallback(() => {
+    const newExpanded = !isExpanded;
+    setIsExpanded(newExpanded);
+    isMenuOpen.value = newExpanded;
+
+    fabScale.value = withSequence(
+      withTiming(0.88, { duration: 80 }),
+      withSpring(1, SPRING_CONFIG)
+    );
+
+    if (newExpanded) {
+      fabRotation.value = withSpring(135, SPRING_CONFIG);
+      menuOpacity.value = withTiming(1, { duration: 250 });
+      backdropOpacity.value = withTiming(0.3, { duration: 250 });
+      fabOpacity.value = withTiming(1, { duration: 150 });
+
+      const buttonCount = isFreeUser ? 4 : 3;
+      expandMenuButtons(buttonCount);
+    } else {
+      fabRotation.value = withSpring(0, SPRING_CONFIG);
+      menuOpacity.value = withTiming(0, { duration: 180 });
+      backdropOpacity.value = withTiming(0, { duration: 180 });
+      fabOpacity.value = withTiming(0.72, { duration: 400 });
+
+      collapseMenuButtons();
+    }
+  }, [
     isExpanded,
-    isRTL,
     isFreeUser,
-    fabRotation,
+    isMenuOpen,
     fabScale,
+    fabRotation,
     menuOpacity,
     backdropOpacity,
-    button1Position,
-    button2Position,
-    button3Position,
-    button4Position,
-    button1Scale,
-    button2Scale,
-    button3Scale,
-    button4Scale,
+    fabOpacity,
+    expandMenuButtons,
+    collapseMenuButtons,
+  ]);
+
+  const closeMenu = useCallback(() => {
+    if (!isExpanded) return;
+    setIsExpanded(false);
+    isMenuOpen.value = false;
+
+    fabRotation.value = withSpring(0, SPRING_CONFIG);
+    menuOpacity.value = withTiming(0, { duration: 180 });
+    backdropOpacity.value = withTiming(0, { duration: 180 });
+    fabOpacity.value = withTiming(0.72, { duration: 400 });
+    fabScale.value = withSpring(1, SPRING_CONFIG);
+
+    collapseMenuButtons();
+  }, [
+    isExpanded,
+    isMenuOpen,
+    fabRotation,
+    menuOpacity,
+    backdropOpacity,
+    fabOpacity,
+    fabScale,
+    collapseMenuButtons,
   ]);
 
   const handleLanguageToggle = useCallback(async () => {
@@ -208,7 +243,7 @@ const ToolBar: React.FC<ToolBarProps> = ({
     try {
       await changeLanguage(newLanguage);
       onLanguageChange?.(newLanguage);
-      handleToggleMenu();
+      closeMenu();
       ToastService.success(
         "Language Changed",
         `Switched to ${newLanguage === "he" ? "Hebrew" : "English"}`
@@ -217,19 +252,13 @@ const ToolBar: React.FC<ToolBarProps> = ({
       console.error("Error changing language:", error);
       ToastService.error("Error", "Failed to change language");
     }
-  }, [language, changeLanguage, handleToggleMenu, onLanguageChange]);
+  }, [language, changeLanguage, closeMenu, onLanguageChange]);
 
   const handleThemeToggle = useCallback(() => {
     try {
       toggleTheme();
       onThemeChange?.(!isDark);
-      handleToggleMenu();
-
-      pulseScale.value = withSequence(
-        withTiming(1.1, { duration: 150 }),
-        withTiming(1, { duration: 150 })
-      );
-
+      closeMenu();
       ToastService.success(
         "Theme Changed",
         `Switched to ${!isDark ? "dark" : "light"} theme`
@@ -238,77 +267,124 @@ const ToolBar: React.FC<ToolBarProps> = ({
       console.error("Error toggling theme:", error);
       ToastService.error("Error", "Failed to change theme");
     }
-  }, [toggleTheme, handleToggleMenu, onThemeChange, isDark, pulseScale]);
+  }, [toggleTheme, closeMenu, onThemeChange, isDark]);
 
   const handleHelpPress = useCallback(() => {
     setShowHelp(true);
-    handleToggleMenu();
-  }, [handleToggleMenu]);
+    closeMenu();
+  }, [closeMenu]);
 
   const handleSubscriptionComparisonPress = useCallback(() => {
     setShowSubscriptionComparison(true);
-    handleToggleMenu();
-  }, [handleToggleMenu]);
+    closeMenu();
+  }, [closeMenu]);
 
-  const handleCloseHelp = useCallback(() => {
-    setShowHelp(false);
-  }, []);
+  // --- Gestures ---
 
-  // Animated styles
-  const fabStyle = useAnimatedStyle(() => ({
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-8, 8])
+    .activeOffsetY([-8, 8])
+    .onStart(() => {
+      "worklet";
+      if (isMenuOpen.value) return;
+      dragStartX.value = translateX.value;
+      dragStartY.value = translateY.value;
+      fabScale.value = withSpring(1.12, SPRING_CONFIG);
+      fabOpacity.value = withTiming(1, { duration: 100 });
+    })
+    .onUpdate((event) => {
+      "worklet";
+      if (isMenuOpen.value) return;
+      translateX.value = dragStartX.value + event.translationX;
+      translateY.value = dragStartY.value + event.translationY;
+    })
+    .onEnd(() => {
+      "worklet";
+      if (isMenuOpen.value) return;
+
+      const snapLeft = translateX.value + FAB_SIZE / 2 < SCREEN_WIDTH / 2;
+      const snapX = snapLeft
+        ? EDGE_MARGIN
+        : SCREEN_WIDTH - EDGE_MARGIN - FAB_SIZE;
+
+      const minY = insets.top + 50;
+      const maxY = SCREEN_HEIGHT - (insets.bottom || 34) - FAB_SIZE - 80;
+      const snapY = Math.max(minY, Math.min(maxY, translateY.value));
+
+      translateX.value = withSpring(snapX, SNAP_SPRING);
+      translateY.value = withSpring(snapY, SNAP_SPRING);
+      fabScale.value = withSpring(1, SPRING_CONFIG);
+      fabOpacity.value = withTiming(0.72, { duration: 400 });
+    });
+
+  const tapGesture = Gesture.Tap().onEnd(() => {
+    "worklet";
+    runOnJS(handleToggleMenu)();
+  });
+
+  const composedGesture = Gesture.Exclusive(panGesture, tapGesture);
+
+  // --- Animated Styles ---
+
+  const fabContainerStyle = useAnimatedStyle(() => ({
     transform: [
-      { scale: fabScale.value -0.25 * pulseScale.value },
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+    ],
+  }));
+
+  // Menu overlay: positioned at FAB center, large enough for all buttons
+  const menuOverlayStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value + FAB_SIZE / 2 - MENU_RADIUS - MENU_BTN_SIZE },
+      { translateY: translateY.value + FAB_SIZE / 2 - MENU_RADIUS - MENU_BTN_SIZE },
+    ],
+    opacity: menuOpacity.value,
+  }));
+
+  const fabButtonStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: fabScale.value },
       { rotate: `${fabRotation.value}deg` },
     ],
+    opacity: fabOpacity.value,
   }));
 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
   }));
 
-  const menuContainerStyle = useAnimatedStyle(() => ({
-    opacity: menuOpacity.value,
-  }));
-
-  const button1Style = useAnimatedStyle(() => ({
+  const btn1Style = useAnimatedStyle(() => ({
     transform: [
-      { translateX: button1Position.value.x },
-      { translateY: button1Position.value.y },
-      { scale: button1Scale.value },
+      { translateX: btn1Pos.value.x },
+      { translateY: btn1Pos.value.y },
+      { scale: btn1Scale.value },
     ],
   }));
 
-  const button2Style = useAnimatedStyle(() => ({
+  const btn2Style = useAnimatedStyle(() => ({
     transform: [
-      { translateX: button2Position.value.x },
-      { translateY: button2Position.value.y },
-      { scale: button2Scale.value },
+      { translateX: btn2Pos.value.x },
+      { translateY: btn2Pos.value.y },
+      { scale: btn2Scale.value },
     ],
   }));
 
-  const button3Style = useAnimatedStyle(() => ({
+  const btn3Style = useAnimatedStyle(() => ({
     transform: [
-      { translateX: button3Position.value.x },
-      { translateY: button3Position.value.y },
-      { scale: button3Scale.value },
+      { translateX: btn3Pos.value.x },
+      { translateY: btn3Pos.value.y },
+      { scale: btn3Scale.value },
     ],
   }));
 
-  const button4Style = useAnimatedStyle(() => ({
+  const btn4Style = useAnimatedStyle(() => ({
     transform: [
-      { translateX: button4Position.value.x },
-      { translateY: button4Position.value.y },
-      { scale: button4Scale.value },
+      { translateX: btn4Pos.value.x },
+      { translateY: btn4Pos.value.y },
+      { scale: btn4Scale.value },
     ],
   }));
-
-  const toolbarPosition = useMemo(
-    () => ({
-      bottom: insets.bottom + 100,
-      [isRTL ? "left" : "right"]: 24,
-    }),
-    [insets.bottom, isRTL]
-  );
 
   return (
     <>
@@ -320,115 +396,144 @@ const ToolBar: React.FC<ToolBarProps> = ({
         >
           <Pressable
             style={StyleSheet.absoluteFillObject}
-            onPress={handleToggleMenu}
+            onPress={closeMenu}
           />
         </Animated.View>
       )}
 
-      {/* Main Container */}
-      <View style={[styles.container, toolbarPosition]}>
-        {/* Menu Items */}
-        <Animated.View style={[styles.menuContainer, menuContainerStyle]}>
-          {/* Language Button */}
-          <Animated.View style={[styles.menuButton, button1Style]}>
-            <TouchableOpacity
-              style={[
-                styles.buttonTouchable,
-                { backgroundColor: colors.primary },
-              ]}
-              onPress={handleLanguageToggle}
-              activeOpacity={0.8}
-            >
-              <View style={styles.buttonContent}>
-                <Globe size={20} color={colors.onPrimary} strokeWidth={2.5} />
-                <Text style={[styles.buttonLabel, { color: colors.onPrimary }]}>
+      {/* Menu Overlay - separate full-size container so buttons can receive touches */}
+      {isExpanded && (
+        <Animated.View
+          style={[styles.menuOverlay, menuOverlayStyle]}
+          pointerEvents="box-none"
+        >
+          {/* Menu buttons centered at MENU_RADIUS + MENU_BTN_SIZE offset */}
+          <View style={styles.menuCenter} pointerEvents="box-none">
+            {/* Language Button */}
+            <Animated.View style={[styles.menuBtnWrapper, btn1Style]}>
+              <TouchableOpacity
+                style={[
+                  styles.menuBtn,
+                  {
+                    backgroundColor: colors.primary,
+                    shadowColor: colors.shadow,
+                  },
+                ]}
+                onPress={handleLanguageToggle}
+                activeOpacity={0.8}
+              >
+                <Globe size={17} color={colors.onPrimary} strokeWidth={2.5} />
+                <Text
+                  style={[styles.menuBtnLabel, { color: colors.onPrimary }]}
+                >
                   {language === "he" ? "EN" : "עב"}
                 </Text>
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
+              </TouchableOpacity>
+            </Animated.View>
 
-          {/* Theme Button */}
-          <Animated.View style={[styles.menuButton, button2Style]}>
-            <TouchableOpacity
-              style={[
-                styles.buttonTouchable,
-                { backgroundColor: colors.primary },
-              ]}
-              onPress={handleThemeToggle}
-              activeOpacity={0.8}
-            >
-              <View style={styles.buttonContent}>
+            {/* Theme Button */}
+            <Animated.View style={[styles.menuBtnWrapper, btn2Style]}>
+              <TouchableOpacity
+                style={[
+                  styles.menuBtn,
+                  {
+                    backgroundColor: colors.primary,
+                    shadowColor: colors.shadow,
+                  },
+                ]}
+                onPress={handleThemeToggle}
+                activeOpacity={0.8}
+              >
                 {isDark ? (
-                  <Sun size={20} color={colors.onPrimary} strokeWidth={2.5} />
+                  <Sun size={17} color={colors.onPrimary} strokeWidth={2.5} />
                 ) : (
-                  <Moon size={20} color={colors.onPrimary} strokeWidth={2.5} />
+                  <Moon size={17} color={colors.onPrimary} strokeWidth={2.5} />
                 )}
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
+              </TouchableOpacity>
+            </Animated.View>
 
-          {/* Help Button - ALWAYS VISIBLE with ? icon */}
-          <Animated.View style={[styles.menuButton, button3Style]}>
-            <TouchableOpacity
-              style={[
-                styles.buttonTouchable,
-                { backgroundColor: colors.primary },
-              ]}
-              onPress={handleHelpPress}
-              activeOpacity={0.8}
-            >
-              <View style={styles.buttonContent}>
+            {/* Help Button */}
+            <Animated.View style={[styles.menuBtnWrapper, btn3Style]}>
+              <TouchableOpacity
+                style={[
+                  styles.menuBtn,
+                  {
+                    backgroundColor: colors.primary,
+                    shadowColor: colors.shadow,
+                  },
+                ]}
+                onPress={handleHelpPress}
+                activeOpacity={0.8}
+              >
                 <HelpCircle
-                  size={20}
+                  size={17}
                   color={colors.onPrimary}
                   strokeWidth={2.5}
                 />
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* Sparkles/Subscription Button - ONLY for FREE users */}
-          {isFreeUser && (
-            <Animated.View style={[styles.menuButton, button4Style]}>
-              <TouchableOpacity
-                style={[
-                  styles.buttonTouchable,
-                  { backgroundColor: colors.primary },
-                ]}
-                onPress={handleSubscriptionComparisonPress}
-                activeOpacity={0.8}
-              >
-                <View style={styles.buttonContent}>
-                  <Star size={25} color="#FFFFFF" strokeWidth={2.5} />
-                </View>
               </TouchableOpacity>
             </Animated.View>
-          )}
-        </Animated.View>
 
-        {/* Main FAB */}
-        <Animated.View style={fabStyle}>
-          <TouchableOpacity
-            style={styles.fab}
-            onPress={handleToggleMenu}
-            activeOpacity={0.9}
-          >
-            <LinearGradient
-              colors={[colors.primary, colors.primary]}
-              style={styles.fabGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              {isExpanded ? (
-                <X size={24} color={colors.onPrimary} strokeWidth={3} />
-              ) : (
-                <Settings size={24} color={colors.onPrimary} strokeWidth={3} />
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+            {/* Subscription Button (FREE users only) */}
+            {isFreeUser && (
+              <Animated.View style={[styles.menuBtnWrapper, btn4Style]}>
+                <TouchableOpacity
+                  style={[
+                    styles.menuBtn,
+                    {
+                      backgroundColor: colors.primary,
+                      shadowColor: colors.shadow,
+                    },
+                  ]}
+                  onPress={handleSubscriptionComparisonPress}
+                  activeOpacity={0.8}
+                >
+                  <Star size={17} color="#FFFFFF" strokeWidth={2.5} />
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+          </View>
         </Animated.View>
-      </View>
+      )}
+
+      {/* FAB Container - small, just for the button + gesture */}
+      <Animated.View style={[styles.fabContainer, fabContainerStyle]}>
+        <GestureDetector gesture={composedGesture}>
+          <Animated.View style={fabButtonStyle}>
+            <View
+              style={[
+                styles.fab,
+                {
+                  shadowColor: colors.shadow,
+                  borderColor: isDark
+                    ? "rgba(255,255,255,0.12)"
+                    : "rgba(0,0,0,0.06)",
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={
+                  isDark
+                    ? [colors.primary, `${colors.primary}CC`]
+                    : [colors.primary, `${colors.primary}EE`]
+                }
+                style={styles.fabGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                {isExpanded ? (
+                  <X size={18} color={colors.onPrimary} strokeWidth={2.5} />
+                ) : (
+                  <Settings
+                    size={18}
+                    color={colors.onPrimary}
+                    strokeWidth={2.5}
+                  />
+                )}
+              </LinearGradient>
+            </View>
+          </Animated.View>
+        </GestureDetector>
+      </Animated.View>
 
       {/* Help Modal */}
       <Modal
@@ -511,7 +616,10 @@ const ToolBar: React.FC<ToolBarProps> = ({
                   {helpContent ? (
                     <View>
                       <Text
-                        style={[styles.modalText, { color: colors.onSurface }]}
+                        style={[
+                          styles.modalText,
+                          { color: colors.onSurface },
+                        ]}
                       >
                         {helpContent.description}
                       </Text>
@@ -615,6 +723,8 @@ const ToolBar: React.FC<ToolBarProps> = ({
   );
 };
 
+const MENU_OVERLAY_SIZE = (MENU_RADIUS + MENU_BTN_SIZE) * 2;
+
 const styles = StyleSheet.create({
   backdrop: {
     position: "absolute",
@@ -622,64 +732,75 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
     zIndex: 998,
   },
-  container: {
+  menuOverlay: {
     position: "absolute",
+    left: 0,
+    top: 0,
+    width: MENU_OVERLAY_SIZE,
+    height: MENU_OVERLAY_SIZE,
+    zIndex: 1000,
+  },
+  menuCenter: {
+    position: "absolute",
+    left: MENU_RADIUS + MENU_BTN_SIZE,
+    top: MENU_RADIUS + MENU_BTN_SIZE,
+    width: 0,
+    height: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+  },
+  menuBtnWrapper: {
+    position: "absolute",
+  },
+  menuBtn: {
+    width: MENU_BTN_SIZE,
+    height: MENU_BTN_SIZE,
+    borderRadius: MENU_BTN_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  menuBtnLabel: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    textAlign: "center",
+    marginTop: 1,
+  },
+  fabContainer: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    width: FAB_SIZE,
+    height: FAB_SIZE,
     zIndex: 999,
     alignItems: "center",
     justifyContent: "center",
   },
-  menuContainer: {
-    position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  menuButton: {
-    position: "absolute",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  buttonTouchable: {
-    width: 48,
-    height: 48,
-    borderRadius: 28,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  buttonContent: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 8,
-  },
-  buttonLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-    textAlign: "center",
-    marginTop: 2,
-  },
   fab: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 12,
+    width: FAB_SIZE,
+    height: FAB_SIZE,
+    borderRadius: FAB_SIZE / 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
+    borderWidth: 1,
   },
   fabGradient: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 32,
+    borderRadius: FAB_SIZE / 2,
   },
+  // Modal styles
   modalOverlay: {
     flex: 1,
     justifyContent: "center",

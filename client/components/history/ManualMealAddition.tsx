@@ -157,9 +157,8 @@ export default function ManualMealAddition({
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
+        allowsEditing: false, // Disabled to preserve full image
+        quality: 0.85,
       });
 
       if (!result.canceled && result.assets[0]) {
@@ -178,9 +177,8 @@ export default function ManualMealAddition({
 
     try {
       const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
+        allowsEditing: false, // Disabled to preserve full image
+        quality: 0.85,
       });
 
       if (!result.canceled && result.assets[0]) {

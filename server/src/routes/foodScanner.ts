@@ -25,31 +25,32 @@ const imageSchema = z
 const addToMealSchema = z.object({
   productData: z.object({
     name: z.string(),
-    brand: z.string().optional(),
-    category: z.string(),
+    brand: z.string().optional().nullable(),
+    category: z.string().default("other"),
     nutrition_per_100g: z.object({
-      calories: z.number(),
-      protein: z.number(),
-      carbs: z.number(),
-      fat: z.number(),
-      fiber: z.number().optional(),
-      sugar: z.number().optional(),
-      sodium: z.number().optional(),
-    }),
-    ingredients: z.array(z.string()),
-    allergens: z.array(z.string()),
-    labels: z.array(z.string()),
-    health_score: z.number().optional(),
-    barcode: z.string().optional(),
+      calories: z.coerce.number().default(0),
+      protein: z.coerce.number().default(0),
+      carbs: z.coerce.number().default(0),
+      fat: z.coerce.number().default(0),
+      fiber: z.coerce.number().optional(),
+      sugar: z.coerce.number().optional(),
+      sodium: z.coerce.number().optional(),
+    }).default({ calories: 0, protein: 0, carbs: 0, fat: 0 }),
+    ingredients: z.array(z.string()).default([]),
+    allergens: z.array(z.string()).default([]),
+    labels: z.array(z.string()).default([]),
+    health_score: z.coerce.number().optional().nullable(),
+    barcode: z.string().optional().nullable(),
+    image_url: z.string().optional().nullable(),
     // Price estimation fields
-    estimated_price: z.number().optional(),
-    price_per_100g: z.number().optional(),
-    price_confidence: z.enum(["high", "medium", "low"]).optional(),
+    estimated_price: z.coerce.number().optional().nullable(),
+    price_per_100g: z.coerce.number().optional().nullable(),
+    price_confidence: z.enum(["high", "medium", "low"]).optional().nullable(),
   }),
-  quantity: z.number().min(1, "Quantity must be at least 1 gram"),
+  quantity: z.coerce.number().min(1, "Quantity must be at least 1 gram"),
   mealTiming: z.string().optional().default("snack"),
   is_mandatory: z.boolean().optional(),
-  estimated_price: z.number().optional(), // Final price for the quantity
+  estimated_price: z.coerce.number().optional(), // Final price for the quantity
 });
 
 // Scan barcode endpoint

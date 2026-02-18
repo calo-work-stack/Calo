@@ -9,7 +9,17 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  X,
+  Bell,
+  Mail,
+  UtensilsCrossed,
+  Dumbbell,
+  Droplets,
+  BarChart3,
+  Tag,
+  LucideIcon
+} from "lucide-react-native";
 
 interface NotificationSettingsProps {
   onClose: () => void;
@@ -35,48 +45,53 @@ export default function NotificationSettings({
     setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const notificationOptions = [
+  const notificationOptions: Array<{
+    key: string;
+    title: string;
+    description: string;
+    Icon: LucideIcon;
+  }> = [
     {
       key: "pushNotifications",
       title: t("profile.pushNotifications"),
       description: t("profile.pushNotificationsDesc"),
-      icon: "notifications-outline",
+      Icon: Bell,
     },
     {
       key: "emailNotifications",
       title: t("profile.emailNotifications"),
       description: t("profile.emailNotificationsDesc"),
-      icon: "mail-outline",
+      Icon: Mail,
     },
     {
       key: "mealReminders",
       title: t("profile.mealReminders"),
       description: t("profile.mealRemindersDesc"),
-      icon: "restaurant-outline",
+      Icon: UtensilsCrossed,
     },
     {
       key: "exerciseReminders",
       title: t("profile.exerciseReminders"),
       description: t("profile.exerciseRemindersDesc"),
-      icon: "fitness-outline",
+      Icon: Dumbbell,
     },
     {
       key: "waterReminders",
       title: t("profile.waterReminders"),
       description: t("profile.waterRemindersDesc"),
-      icon: "water-outline",
+      Icon: Droplets,
     },
     {
       key: "weeklyReports",
       title: t("profile.weeklyReports"),
       description: t("profile.weeklyReportsDesc"),
-      icon: "stats-chart-outline",
+      Icon: BarChart3,
     },
     {
       key: "promotionalEmails",
       title: t("profile.promotionalEmails"),
       description: t("profile.promotionalEmailsDesc"),
-      icon: "pricetag-outline",
+      Icon: Tag,
     },
   ];
 
@@ -84,7 +99,7 @@ export default function NotificationSettings({
     <View style={[styles.container, isRTL && styles.containerRTL]}>
       <View style={[styles.header, isRTL && styles.headerRTL]}>
         <TouchableOpacity onPress={onClose}>
-          <Ionicons name="close" size={24} color="#666" />
+          <X size={24} color="#666" />
         </TouchableOpacity>
         <Text style={[styles.title, isRTL && styles.titleRTL]}>
           {t("profile.notifications")}
@@ -98,8 +113,7 @@ export default function NotificationSettings({
             <View
               style={[styles.optionContent, isRTL && styles.optionContentRTL]}
             >
-              <Ionicons
-                name={option.icon as any}
+              <option.Icon
                 size={24}
                 color="#666"
                 style={[styles.optionIcon, isRTL && styles.optionIconRTL]}

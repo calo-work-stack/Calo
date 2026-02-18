@@ -10,6 +10,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   TextInput,
   Alert,
@@ -42,13 +43,17 @@ import {
 } from "lucide-react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { LinearGradient } from "expo-linear-gradient";
-import LoadingScreen from "@/components/LoadingScreen";
 import ManualMealAddition from "@/components/history/ManualMealAddition";
 import MealCard from "@/components/history/MealCard";
 import InsightsCard from "@/components/history/InsightsCard";
 import FilterModal from "@/components/history/FilterModal";
 import { FilterOptions } from "@/src/types/history";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
+import {
+  HistoryScreenSkeleton,
+  OperationLoader,
+  OperationType,
+} from "@/components/loaders";
 
 const { width } = Dimensions.get("window");
 
@@ -69,12 +74,23 @@ export default function HistoryScreen() {
 
   // Local state
   const [searchQuery, setSearchQuery] = useState("");
+  const [quickFilter, setQuickFilter] = useState<
+    "all" | "today" | "week" | "month" | "favorites"
+  >("all");
   const [showFilters, setShowFilters] = useState(false);
   const [showManualMealModal, setShowManualMealModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [highlightedMealId, setHighlightedMealId] = useState<string | null>(
-    null
+    null,
   );
+
+  // Operation loading states
+  const [operationLoading, setOperationLoading] = useState<{
+    visible: boolean;
+    type: OperationType;
+    message?: string;
+  }>({ visible: false, type: "loading" });
+
   const [filters, setFilters] = useState<FilterOptions>({
     category: "all",
     dateRange: "all",
@@ -105,7 +121,7 @@ export default function HistoryScreen() {
 
       const mealIndex = meals.findIndex(
         (meal: any) =>
-          (meal.meal_id?.toString() || meal.id?.toString()) === selectedMealId
+          (meal.meal_id?.toString() || meal.id?.toString()) === selectedMealId,
       );
 
       if (mealIndex !== -1) {
@@ -146,11 +162,11 @@ export default function HistoryScreen() {
         console.error("Failed to toggle favorite:", error);
         Alert.alert(
           t("common.error"),
-          t("history.messages.favoriteUpdateFailed")
+          t("history.messages.favoriteUpdateFailed"),
         );
       }
     },
-    [dispatch, t]
+    [dispatch, t],
   );
 
   // Duplicate meal
@@ -164,30 +180,37 @@ export default function HistoryScreen() {
           {
             text: t("common.copy"),
             onPress: async () => {
+              setOperationLoading({
+                visible: true,
+                type: "duplicate",
+                message: t("operations.duplicating"),
+              });
               try {
                 await dispatch(
                   duplicateMeal({
                     mealId,
                     newDate: new Date().toISOString().split("T")[0],
-                  })
+                  }),
                 ).unwrap();
+                setOperationLoading({ visible: false, type: "loading" });
                 Alert.alert(
                   t("common.success"),
-                  t("history.messages.mealDuplicated")
+                  t("operations.success.duplicated"),
                 );
               } catch (error) {
                 console.error("Failed to duplicate meal:", error);
+                setOperationLoading({ visible: false, type: "loading" });
                 Alert.alert(
                   t("common.error"),
-                  t("history.messages.duplicateFailed")
+                  t("operations.error.duplicateFailed"),
                 );
               }
             },
           },
-        ]
+        ],
       );
     },
-    [dispatch, t]
+    [dispatch, t],
   );
 
   // Delete meal
@@ -202,26 +225,38 @@ export default function HistoryScreen() {
             text: t("common.delete"),
             style: "destructive",
             onPress: async () => {
+              setOperationLoading({
+                visible: true,
+                type: "delete",
+                message: t("operations.deletingMeal"),
+              });
               try {
                 await dispatch(removeMeal(mealId)).unwrap();
+                setOperationLoading({ visible: false, type: "loading" });
               } catch (error) {
                 console.error("Failed to remove meal:", error);
+                setOperationLoading({ visible: false, type: "loading" });
                 Alert.alert(
                   t("common.error"),
-                  t("history.messages.deleteFailed")
+                  t("operations.error.mealDeleteFailed"),
                 );
               }
             },
           },
-        ]
+        ],
       );
     },
-    [dispatch, t]
+    [dispatch, t],
   );
 
   // Save ratings with feedback
   const handleSaveRatings = useCallback(
     async (mealId: string, ratings: any) => {
+      setOperationLoading({
+        visible: true,
+        type: "rate",
+        message: t("operations.rating"),
+      });
       try {
         console.log("⭐ Saving ratings for meal:", mealId, ratings);
         await dispatch(
@@ -233,16 +268,18 @@ export default function HistoryScreen() {
               energyRating: ratings.energy_rating,
               heavinessRating: ratings.heaviness_rating,
             },
-          })
+          }),
         ).unwrap();
         console.log("✅ Ratings saved successfully");
-        Alert.alert(t("common.success"), t("history.messages.ratingsSaved"));
+        setOperationLoading({ visible: false, type: "loading" });
+        Alert.alert(t("common.success"), t("operations.success.rated"));
       } catch (error) {
         console.error("Failed to save ratings:", error);
-        Alert.alert(t("common.error"), t("history.messages.ratingsSaveFailed"));
+        setOperationLoading({ visible: false, type: "loading" });
+        Alert.alert(t("common.error"), t("operations.error.rateFailed"));
       }
     },
-    [dispatch, t]
+    [dispatch, t],
   );
 
   // Filter meals
@@ -305,15 +342,20 @@ export default function HistoryScreen() {
       if (calories < filters.minCalories || calories > filters.maxCalories)
         return false;
 
-      // Favorites filter
+      // Favorites filter (from advanced filter OR quick filter)
       if (filters.showFavoritesOnly && !meal.is_favorite) return false;
+      if (quickFilter === "favorites" && !meal.is_favorite) return false;
 
-      // Date range filter
-      if (filters.dateRange !== "all") {
+      // Date range filter (from advanced filter OR quick filter)
+      const effectiveDateRange =
+        quickFilter !== "all" && quickFilter !== "favorites"
+          ? quickFilter
+          : filters.dateRange;
+      if (effectiveDateRange !== "all") {
         const mealDate = new Date(meal.created_at || meal.upload_time);
         const now = new Date();
 
-        switch (filters.dateRange) {
+        switch (effectiveDateRange) {
           case "today":
             if (mealDate.toDateString() !== now.toDateString()) return false;
             break;
@@ -330,7 +372,7 @@ export default function HistoryScreen() {
 
       return true;
     });
-  }, [meals, searchQuery, filters]);
+  }, [meals, searchQuery, filters, quickFilter]);
 
   // Calculate insights
   const insights = useMemo(() => {
@@ -338,18 +380,18 @@ export default function HistoryScreen() {
 
     const totalCalories = filteredMeals.reduce(
       (sum: number, meal: any) => sum + (meal.calories || 0),
-      0
+      0,
     );
     const avgCalories = Math.round(totalCalories / filteredMeals.length);
     const favoriteMeals = filteredMeals.filter((meal: any) => meal.is_favorite);
     const ratedMeals = filteredMeals.filter(
-      (meal: any) => meal.taste_rating && meal.taste_rating > 0
+      (meal: any) => meal.taste_rating && meal.taste_rating > 0,
     );
     const avgRating =
       ratedMeals.length > 0
         ? ratedMeals.reduce(
             (sum: number, meal: any) => sum + (meal.taste_rating || 0),
-            0
+            0,
           ) / ratedMeals.length
         : 0;
 
@@ -401,7 +443,7 @@ export default function HistoryScreen() {
       handleDuplicateMeal,
       handleSaveRatings,
       highlightedMealId,
-    ]
+    ],
   );
 
   // List data with insights card
@@ -417,7 +459,7 @@ export default function HistoryScreen() {
           meal.meal_id?.toString() ||
           meal.id?.toString() ||
           Math.random().toString(),
-      }))
+      })),
     );
   }, [filteredMeals, insights]);
 
@@ -464,7 +506,7 @@ export default function HistoryScreen() {
   );
 
   if (isLoading && meals.length === 0) {
-    return <LoadingScreen text={t("loading.loading", "loading.history")} />;
+    return <HistoryScreenSkeleton />;
   }
 
   return (
@@ -559,7 +601,6 @@ export default function HistoryScreen() {
             </LinearGradient>
           </TouchableOpacity>
         </View>
-
         {/* Meals List */}
         <FlatList
           ref={flatListRef}
@@ -609,6 +650,13 @@ export default function HistoryScreen() {
             refreshAllMealData();
           }}
         />
+
+        {/* Operation Loader */}
+        <OperationLoader
+          visible={operationLoading.visible}
+          type={operationLoading.type}
+          message={operationLoading.message}
+        />
       </SafeAreaView>
     </GestureHandlerRootView>
   );
@@ -620,24 +668,25 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
+    paddingTop: 12,
+    paddingBottom: 20,
   },
   headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 20,
   },
   headerTitle: {
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: "800",
-    letterSpacing: -0.8,
+    letterSpacing: -1,
   },
   headerSubtitle: {
-    fontSize: 15,
-    fontWeight: "500",
-    marginTop: 2,
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 4,
+    opacity: 0.7,
   },
   quickStats: {
     flexDirection: "row",
@@ -649,13 +698,13 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 8,
-    borderRadius: 16,
+    borderRadius: 20,
     gap: 4,
   },
   quickStatValue: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "800",
     letterSpacing: -0.5,
   },
@@ -667,17 +716,17 @@ const styles = StyleSheet.create({
   },
   searchRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 12,
   },
   searchBar: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    height: 52,
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    height: 54,
     gap: 12,
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
   searchInput: {
     flex: 1,
@@ -685,84 +734,113 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   filterButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 54,
+    height: 54,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
+    borderWidth: 1.5,
     position: "relative",
   },
   filterBadge: {
     position: "absolute",
-    top: -4,
-    right: -4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: "#EF4444",
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#FFF",
   },
   filterBadgeText: {
     color: "#FFF",
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "800",
+  },
+  quickFiltersScroll: {
+    flexGrow: 0,
+    marginBottom: 8,
+  },
+  quickFilters: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    gap: 8,
+    paddingVertical: 2,
+  },
+  quickFilterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  quickFilterText: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   listContent: {
     paddingBottom: 100,
-    paddingTop: 8,
+    paddingTop: 12,
   },
   emptyState: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 80,
+    paddingVertical: 100,
     paddingHorizontal: 40,
   },
   emptyIconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 28,
   },
   emptyTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "800",
-    marginBottom: 8,
+    marginBottom: 10,
     textAlign: "center",
+    letterSpacing: -0.5,
   },
   emptySubtitle: {
     fontSize: 15,
     fontWeight: "500",
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 24,
+    opacity: 0.7,
   },
   clearFiltersButton: {
-    marginTop: 20,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    marginTop: 24,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 16,
   },
   clearFiltersText: {
     color: "#FFF",
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "700",
+    letterSpacing: 0.3,
   },
   fab: {
     width: "100%",
     alignSelf: "center",
-    borderRadius: 16,
+    borderRadius: 20,
     paddingTop: 16,
   },
   fabGradient: {
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 24,
-    borderRadius: 16,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
+    gap: 10,
   },
 });

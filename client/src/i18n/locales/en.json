@@ -305,6 +305,16 @@
     "loadingData": "Loading your data...",
     "retry": "Retry",
     "unknownMeal": "Unknown Meal",
+    "yesterdaySummary": "Yesterday Summary",
+    "yesterdaySummaryTitle": "Yesterday's Summary",
+    "yesterdayNoData": "No meals were logged yesterday",
+    "yesterdayCalories": "Calories",
+    "yesterdayProtein": "Protein",
+    "yesterdayCarbs": "Carbs",
+    "yesterdayFat": "Fat",
+    "yesterdayMeals": "Meals Logged",
+    "yesterdayWater": "Water",
+    "yesterdayClose": "Close",
     "nutrition": {
       "calories": "Calories",
       "water": "Water",
@@ -365,7 +375,15 @@
       "totalMeals": "Total Meals",
       "avgCalories": "Avg Calories",
       "favorites": "Favorites",
-      "avgRating": "Avg Rating"
+      "avgRating": "Avg Rating",
+      "weeklyTrend": "Weekly Trend"
+    },
+    "filters": {
+      "all": "All",
+      "today": "Today",
+      "thisWeek": "This Week",
+      "thisMonth": "This Month",
+      "favorites": "Favorites"
     },
     "categories": {
       "all": "All Categories",
@@ -574,6 +592,9 @@
     "mealType": {
       "title": "Select Meal Type",
       "subtitle": "Choose the type of meal you're capturing",
+      "selectFirst": "Please select a meal type first",
+      "selectBeforePhoto": "Please select a meal type before taking a photo",
+      "selectBeforeGallery": "Please select a meal type before selecting from gallery",
       "currentTime": "Current time",
       "breakfast": "Breakfast",
       "lunch": "Lunch",
@@ -588,6 +609,25 @@
       "mealsRemaining": "{{remaining}}/{{limit}} meals left",
       "limitReached": "Limit reached ({{used}}/{{limit}})"
     },
+    "errors": {
+      "selectImageFirst": "Please select an image first",
+      "selectMealTypeFirst": "Please select a meal type first",
+      "noAnalysisData": "No analysis data to save"
+    },
+    "messages": {
+      "mealDiscarded": "Meal discarded"
+    },
+    "quickAnalyze": "Quick Analyze",
+    "addDetailsFirst": "Add Details",
+    "analysisLoader": {
+      "title": "Analyzing Your Meal",
+      "subtitle": "Our AI is identifying ingredients and calculating nutrition",
+      "step1": "Processing image...",
+      "step2": "Identifying ingredients...",
+      "step3": "Calculating nutrition...",
+      "step4": "Generating insights...",
+      "tip": "For best results, ensure good lighting"
+    },
     "imagePreview": {
       "title": "Selected Image",
       "retake": "Retake Photo",
@@ -595,7 +635,12 @@
       "analyze": "Analyze This Meal",
       "analyzing": "Analyzing...",
       "tapToAnalyze": "Tap to analyze this meal",
-      "improveAccuracy": "Add details to improve accuracy"
+      "improveAccuracy": "Add details to improve accuracy",
+      "exampleTags": {
+        "grilled": "Grilled",
+        "noOil": "No oil",
+        "homemade": "Homemade"
+      }
     },
     "results": {
       "title": "Analysis Results",
@@ -646,6 +691,22 @@
     "title": "Food Scanner",
     "subtitle": "Scan and analyze your food",
     "scanFood": "Scan Barcode",
+    "unknownProduct": "Unknown Product",
+    "by": "by",
+
+    "energyBreakdown": "Energy Breakdown",
+    "calories": "Calories",
+    "nutritionFacts": "Nutrition Facts",
+    "nutritionalQuality": "Nutritional Quality",
+    "balancedNutrition": "Balanced nutrition",
+    "goodProtein": "Good protein content",
+
+    "currency": "₪",
+    "pricePerUnit": "Price per 100g",
+    "confidence.high": "High",
+    "confidence.medium": "Medium",
+    "confidence.low": "Low",
+
     "takePicture": "Scan Image",
     "enterBarcode": "Enter barcode",
     "scan": "Scan",
@@ -844,6 +905,7 @@
   },
   "admin": {
     "dashboard": "Admin Dashboard",
+    "subtitle": "System Overview & Management",
     "overview": "Overview",
     "totalUsers": "Total Users",
     "todaySignups": "Today's Signups",
@@ -851,11 +913,18 @@
     "totalMeals": "Total Meals",
     "totalMenus": "Total Menus",
     "revenue": "Revenue",
+    "totalRevenue": "Total Revenue",
+    "transactions": "Transactions",
     "subscriptions": "Subscriptions",
     "users": "Users",
+    "analytics": "Analytics",
     "activity": "Recent Activity",
     "userDetails": "User Details",
-    "deleteUser": "Delete User"
+    "deleteUser": "Delete User",
+    "accessDenied": "Access Denied",
+    "adminRequired": "Admin privileges required",
+    "error": "Error",
+    "loadFailed": "Failed to load dashboard data"
   },
   "statistics": {
     "title": "Statistics",
@@ -1096,7 +1165,40 @@
     "location_permission": "Location Permission",
     "health_data_permission": "Health Data Permission",
     "bluetooth_permission": "Bluetooth Permission",
-    "notification_permission": "Notification Permission"
+    "notification_permission": "Notification Permission",
+    "upgrade_required": "Upgrade Required",
+    "upgrade_required_message": "Device integration is only available on Gold and Platinum plans.",
+    "cancel": "Cancel",
+    "upgrade": "Upgrade",
+    "error": "Error",
+    "device_not_found": "Device type not found",
+    "not_available": "Not Available",
+    "not_available_message": "integration is not available on this platform.",
+    "configuration_required": "Configuration Required",
+    "configuration_required_message": "Google Fit client secret is not configured. Please add EXPO_PUBLIC_GOOGLE_FIT_CLIENT_SECRET to your environment variables and restart the app.",
+    "connect_device": "Connect Device",
+    "connect_device_message": "This will request permission to access your health data.",
+    "connect": "Connect",
+    "success": "Success",
+    "connected_success": "connected successfully! You can now sync your health data.",
+    "connection_failed_message": "Failed to connect. This could be due to cancelled authorization, network issues, or configuration problems. Please try again or check your settings.",
+    "disconnect_device": "Disconnect Device",
+    "disconnect_device_message": "This will stop syncing data from this device.",
+    "disconnect": "Disconnect",
+    "disconnected_success": "Device disconnected successfully",
+    "no_devices": "No Devices",
+    "no_devices_message": "No connected devices to sync",
+    "sync_complete": "Sync Complete",
+    "sync_complete_message": "Successfully synced",
+    "sync_failed_message": "Failed to sync any devices. Please check your connections.",
+    "oops": "Oops! Something went wrong",
+    "try_again": "Try Again",
+    "sync_all": "Sync All",
+    "connect_first_device": "Connect Your First Device",
+    "connect_first_device_desc": "Connect fitness trackers and health apps to automatically sync your activity data",
+    "empty_state_title": "No Connected Devices",
+    "empty_state_desc": "Connect your fitness trackers and health apps to get comprehensive insights into your wellness journey",
+    "load_failed": "Failed to load device data. Please try again."
   },
   "ai_chat": {
     "title": "AI Nutrition Assistant",
@@ -1121,6 +1223,8 @@
     "healthy": "Healthy",
     "snacks": "Snacks",
     "typing": "AI is typing...",
+    "online": "Online",
+    "suggestions": "Suggested Questions",
     "error_message": "Sorry, there was an error processing your message. Please try again.",
     "network_error": "Network error occurred. Please check your connection.",
     "ai_thinking": "AI is thinking...",
@@ -1144,6 +1248,75 @@
       "allergies": "Allergies",
       "title": "Health & Safety Profile",
       "medical": "Medical Conditions"
+    }
+  },
+  "payment": {
+    "title": "Choose the Perfect Plan",
+    "changeTitle": "Change Your Plan",
+    "subtitle": "Start your nutritional journey with the right plan for you",
+    "changeSubtitle": "Select a new plan that suits you better",
+    "completeQuestionnaire": "Complete Questionnaire",
+    "completeQuestionnaireMessage": "Please complete the questionnaire before selecting a plan",
+    "mostPopular": "Most Popular",
+    "perMonth": "/month",
+    "startFree": "Start Free",
+    "selectPlan": "Select Plan",
+    "error": "Error",
+    "invalidCardNumber": "Invalid credit card number",
+    "invalidExpiryDate": "Invalid expiry date",
+    "invalidCvv": "Invalid CVV code",
+    "cardholderRequired": "Cardholder name is required",
+    "paymentFailed": "Payment failed. Please try again.",
+    "planUpdateFailed": "Failed to update plan",
+    "paymentDetails": "Payment Details",
+    "creditCardNumber": "Credit Card Number",
+    "expiryDate": "Expiry Date",
+    "cardholderName": "Cardholder Name",
+    "fullNameOnCard": "Full name as shown on card",
+    "securePayment": "Payment is secured with the highest level of encryption",
+    "monthlyBilling": "Monthly billing",
+    "cancel": "Cancel",
+    "payNow": "Pay Now",
+    "noCommitment": "No commitment • Cancel anytime • Full refund within 7 days",
+    "changeAnytime": "You can change or cancel your subscription anytime from account settings",
+    "plans": {
+      "free": {
+        "name": "Free Plan",
+        "description": "Perfect to get started",
+        "features": [
+          "5 meal analyses per month",
+          "Basic nutrition questionnaire (saved 7 days)",
+          "Calorie tracking",
+          "Recipe database access",
+          "No AI chat access"
+        ]
+      },
+      "gold": {
+        "name": "Gold Plan",
+        "description": "The popular choice",
+        "savings": "System Recommendation",
+        "features": [
+          "100 meal analyses per month",
+          "Full nutrition questionnaire",
+          "Up to 100 AI chat messages per month",
+          "Detailed macro and vitamin tracking",
+          "Personalized AI recommendations",
+          "Access to all recipes"
+        ]
+      },
+      "premium": {
+        "name": "Platinum Plan",
+        "description": "Advanced AI experience",
+        "features": [
+          "50 meal analyses per month",
+          "Full nutrition questionnaire",
+          "1000 AI chat tokens per month (~20 messages)",
+          "Custom AI-powered menu",
+          "Complete health tracking",
+          "Personal nutrition counseling",
+          "Priority support"
+        ]
+      }
     }
   },
   "recommended_menus": {
@@ -1438,7 +1611,14 @@
     "tip_keep_going_desc": "You're doing great. Stay consistent with your meals.",
     "journey_stats": "Your Journey",
     "started_on": "Started on {{date}}",
-    "completion_rate": "Completion Rate"
+    "completion_rate": "Completion Rate",
+    "eaten_label": "eaten",
+    "calories_consumed": "calories consumed",
+    "meals_done": "meals completed",
+    "planned_today": "planned today",
+    "planned_label": "planned",
+    "meals_label": "meals",
+    "day_n": "Day {{n}}"
   },
   "menu_creator": {
     "cuisines": {
@@ -1706,7 +1886,17 @@
       "creating_account": "Creating account...",
       "already_have_account": "Already have an account?",
       "sign_in": "Sign In",
-      "and": "and"
+      "and": "and",
+      "requirements": {
+        "title": "Requirements",
+        "name_min": "Minimum 2 characters",
+        "name_max": "Maximum 50 characters",
+        "email_valid": "Must be a valid email address",
+        "password_min": "Minimum 8 characters",
+        "password_uppercase": "At least one uppercase letter",
+        "password_lowercase": "At least one lowercase letter",
+        "password_number": "At least one number"
+      }
     },
     "account_created": "Account Created",
     "failed_create_account": "Failed to create account",
@@ -1755,12 +1945,12 @@
       "confirm_new_password": "Confirm New Password",
       "reset_successful": "Password reset successfully",
       "passwords_dont_match": "Passwords don't match",
-      "password_too_short": "Password must be at least 6 characters",
+      "password_too_short": "Password must be at least 8 characters",
       "invalid_token": "Invalid or expired reset token",
       "enter_new_password": "Enter your new password",
       "reset_password_title": "Reset Your Password",
       "password_requirements": "Password Requirements",
-      "password_requirement_length": "At least 6 characters long"
+      "password_requirement_length": "At least 8 characters long"
     },
 
     "forgot_password_page": {
@@ -1789,7 +1979,7 @@
 
     "errors": {
       "invalid_email": "Please enter a valid email address",
-      "invalid_password": "Password must be at least 6 characters",
+      "invalid_password": "Password must be at least 8 characters",
       "passwords_dont_match": "Passwords don't match",
       "email_already_exists": "Email already exists",
       "invalid_credentials": "Invalid email or password",
@@ -1827,7 +2017,16 @@
   "language": {
     "select": "Language Selection",
     "english": "English",
-    "hebrew": "עברית"
+    "hebrew": "עברית",
+    "change_note": "Language will change after selection"
+  },
+  "notFound": {
+    "pageTitle": "Page Not Found",
+    "title": "Oops! Page Not Found",
+    "subtitle": "The page you're looking for wandered off into the digital jungle",
+    "goHome": "Go Home",
+    "goBack": "Go Back",
+    "fallbackLink": "Or tap here to return to the main app"
   },
   "calendar": {
     "title": "Goal Calendar",
@@ -1838,9 +2037,11 @@
     "bestStreak": "Best Streak",
     "currentStreak": "Current Streak",
     "dayDetails": "Day Details",
-    "caloriesGoal": "Calorie Goal",
-    "proteinGoal": "Protein Goal",
-    "waterGoal": "Water Goal",
+    "caloriesGoal": "Calories",
+    "proteinGoal": "Protein",
+    "carbsGoal": "Carbs",
+    "fatGoal": "Fat",
+    "waterGoal": "Water",
     "consumed": "Consumed",
     "goal": "Goal",
     "deviation": "Deviation",
@@ -1996,6 +2197,8 @@
     }
   },
   "common": {
+    "upgradeRequired": "Upgrade Required",
+    "upgradePlan": "Upgrade",
     "all": "All",
     "of": "of",
     "shekels": "₪",
@@ -2035,6 +2238,7 @@
     "view": "View",
     "hide": "Hide",
     "show": "Show",
+    "showLess": "Show Less",
     "select": "Select",
     "deselect": "Deselect",
     "clear": "Clear",
@@ -2194,6 +2398,63 @@
       }
     }
   },
+  "operations": {
+    "deleting": "Deleting...",
+    "adding": "Adding...",
+    "saving": "Saving...",
+    "updating": "Updating...",
+    "uploading": "Uploading...",
+    "downloading": "Downloading...",
+    "duplicating": "Duplicating...",
+    "rating": "Rating...",
+    "syncing": "Syncing...",
+    "loading": "Loading...",
+    "deleteMeal": "Deleting meal...",
+    "deleteMenu": "Deleting menu...",
+    "addMeal": "Adding meal...",
+    "addMenu": "Adding menu...",
+    "saveMeal": "Saving meal...",
+    "saveMenu": "Saving menu...",
+    "updateMeal": "Updating meal...",
+    "updateMenu": "Updating menu...",
+    "analyzingMeal": "Analyzing meal...",
+    "processingImage": "Processing image...",
+    "uploadingAvatar": "Uploading avatar...",
+    "syncingData": "Syncing data...",
+    "loadingMeals": "Loading meals...",
+    "loadingMenus": "Loading menus...",
+    "loadingProfile": "Loading profile...",
+    "togglingFavorite": "Updating favorite...",
+    "savingFeedback": "Saving feedback...",
+    "generatingMenu": "Generating menu...",
+    "clearingHistory": "Clearing history...",
+    "deletingMenu": "Deleting menu...",
+    "deletingMeal": "Deleting meal...",
+    "menuDeleted": "Menu deleted successfully",
+    "duplicated": "Meal duplicated successfully",
+    "rated": "Rating saved successfully",
+
+    "success": {
+      "deleted": "Deleted successfully",
+      "added": "Added successfully",
+      "saved": "Saved successfully",
+      "updated": "Updated successfully",
+      "uploaded": "Uploaded successfully",
+      "synced": "Synced successfully",
+      "duplicated": "Duplicated successfully",
+      "menuDeleted": "Menu deleted successfully",
+      "rated": "Rating saved successfully"
+    },
+    "error": {
+      "deleteFailed": "Failed to delete",
+      "addFailed": "Failed to add",
+      "saveFailed": "Failed to save",
+      "updateFailed": "Failed to update",
+      "uploadFailed": "Failed to upload",
+      "syncFailed": "Failed to sync",
+      "duplicateFailed": "Failed to duplicate"
+    }
+  },
   "achievements": {
     "title": "Achievements",
     "subtitle": "Track your progress",
@@ -2259,7 +2520,12 @@
     "no_image": "No image",
     "duplicate_title": "Duplicate Ingredient",
     "duplicate_message": "\"{{name}}\" is already in the ingredient list",
-    "name_required": "Ingredient name is required"
+    "name_required": "Ingredient name is required",
+    "total_cost": "Total Cost"
+  },
+  "instructions": {
+    "cooking_steps": "Cooking Steps",
+    "step": "Step"
   },
   "shoppingList": {
     "addSingle": {
@@ -2698,5 +2964,71 @@
       "openai_link": "OpenAI Privacy Policy",
       "google_analytics_link": "Google Analytics Privacy Policy"
     }
+  },
+  "meal_completion": {
+    "great_job": "Great Job!",
+    "capture_meal": "Want to capture your meal?",
+    "take_photo": "Take Photo",
+    "skip_photo": "Skip",
+    "rate_meal": "How was this meal?",
+    "complete_meal": "Complete Meal",
+    "saved_to_history": "Saved to your nutrition history!",
+    "saving": "Saving...",
+    "meal_completed": "Meal Completed!",
+    "add_notes": "Add any notes... (optional)",
+    "capture_meal_desc": "Share a photo of your meal",
+    "from_gallery": "Gallery",
+    "taste": "Taste",
+    "fullness": "Fullness",
+    "energy": "Energy",
+    "heaviness": "Heaviness"
+  },
+  "active_meal": {
+    "its_time": "It's {{type}} time!",
+    "up_next": "Up next",
+    "starts_in": "Starts in {{mins}}m",
+    "no_more_meals": "All meals done for today!",
+    "current_meal": "Current Meal",
+    "mark_done": "Mark as Done",
+    "meals_done": "{{done}} of {{total}} meals done"
+  },
+  "menu_crud": {
+    "edit_menu": "Edit Menu",
+    "delete_menu": "Delete Menu",
+    "delete_confirm": "Are you sure you want to delete this menu? This action cannot be undone.",
+    "stop_menu": "Stop Menu",
+    "stop_confirm": "Are you sure you want to stop this menu?",
+    "start_menu": "Start Menu",
+    "edit_meal": "Edit Meal",
+    "delete_meal": "Delete Meal",
+    "delete_meal_confirm": "Are you sure you want to delete this meal?",
+    "add_meal": "Add Meal",
+    "meal_updated": "Meal updated successfully",
+    "meal_deleted": "Meal deleted successfully",
+    "meal_added": "Meal added successfully",
+    "menu_stopped": "Menu stopped",
+    "menu_updated": "Menu updated successfully",
+    "menu_deleted": "Menu deleted successfully",
+    "menu_title": "Menu Title",
+    "menu_description": "Description",
+    "save_changes": "Save Changes",
+    "cancel": "Cancel",
+    "meal_name": "Meal Name",
+    "instructions": "Instructions",
+    "add_ingredient": "Add Ingredient",
+    "ingredient_name": "Ingredient Name",
+    "quantity": "Quantity",
+    "unit": "Unit"
+  },
+  "timeline": {
+    "breakfast_time": "Breakfast Time",
+    "lunch_time": "Lunch Time",
+    "dinner_time": "Dinner Time",
+    "snack_time": "Snack Time",
+    "completed": "Completed",
+    "current": "Current",
+    "upcoming": "Upcoming",
+    "today": "Today",
+    "currently_active": "Currently Active"
   }
 }

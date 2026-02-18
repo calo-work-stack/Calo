@@ -27,7 +27,6 @@ import {
   clearError,
 } from "../../src/store/calendarSlice";
 import StatisticsCarousel from "@/components/calendar/StatisticsCarousel";
-import { Ionicons } from "@expo/vector-icons";
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -41,8 +40,29 @@ import {
   CreditCard as Edit,
   Eye,
   Star,
+  Trash2,
+  X,
+  Dumbbell,
+  Droplets,
+  Wheat,
+  Award,
+  Users,
+  Stethoscope,
+  Plane,
+  Briefcase,
+  LucideIcon,
 } from "lucide-react-native";
-import LoadingScreen from "@/components/LoadingScreen";
+
+// Event type icon mapping
+const EVENT_TYPE_ICONS: Record<string, LucideIcon> = {
+  calendar: CalendarIcon,
+  fitness: Dumbbell,
+  people: Users,
+  medical: Stethoscope,
+  airplane: Plane,
+  briefcase: Briefcase,
+};
+import { CalendarSkeleton } from "@/components/loaders";
 import { DayData, MonthStats } from "@/src/types/calendar";
 import { useTranslation } from "react-i18next";
 
@@ -135,13 +155,14 @@ const AnimatedDayCell = React.memo(
             {
               backgroundColor: isSelected
                 ? isDark
-                  ? "rgba(16, 185, 129, 0.15)"
-                  : "rgba(16, 185, 129, 0.08)"
+                  ? "rgba(16, 185, 129, 0.20)"
+                  : "rgba(16, 185, 129, 0.12)"
                 : "transparent",
               transform: [{ scale: pressed ? 0.95 : 1 }],
+              borderWidth: isSelected ? 1.5 : 0,
+              borderColor: isSelected ? primaryColor : "transparent",
             },
             isToday && styles.todayCell,
-            isSelected && { borderColor: primaryColor, borderWidth: 1.5 },
           ]}
         >
           {/* Day Number */}
@@ -149,16 +170,14 @@ const AnimatedDayCell = React.memo(
             style={[
               styles.sleekDayNumber,
               {
-                color: isToday
+                color: isSelected
                   ? primaryColor
-                  : hasData
-                    ? isDark
-                      ? "#F9FAFB"
-                      : "#1F2937"
-                    : isDark
-                      ? "#6B7280"
-                      : "#9CA3AF",
-                fontWeight: isToday ? "700" : "600",
+                  : isToday
+                    ? primaryColor
+                    : hasData
+                      ? isDark ? "#F9FAFB" : "#1F2937"
+                      : isDark ? "#6B7280" : "#9CA3AF",
+                fontWeight: isSelected || isToday ? "700" : "600",
               },
             ]}
           >
@@ -195,19 +214,6 @@ const AnimatedDayCell = React.memo(
           )}
         </Pressable>
       </View>
-    );
-  },
-  (prevProps, nextProps) => {
-    // Custom comparison - only re-render if these specific props change
-    return (
-      prevProps.dayData.date === nextProps.dayData.date &&
-      prevProps.dayData.calories_actual === nextProps.dayData.calories_actual &&
-      prevProps.dayData.calories_goal === nextProps.dayData.calories_goal &&
-      prevProps.dayData.events.length === nextProps.dayData.events.length &&
-      prevProps.isToday === nextProps.isToday &&
-      prevProps.isSelected === nextProps.isSelected &&
-      prevProps.isDark === nextProps.isDark &&
-      prevProps.primaryColor === nextProps.primaryColor
     );
   },
 );
@@ -785,7 +791,7 @@ export default function CalendarScreen() {
     (isLoading || isLoadingCalendar) &&
     Object.keys(calendarData).length === 0
   ) {
-    return <LoadingScreen text={t("loading.calendar", "loading.calendar")} />;
+    return <CalendarSkeleton />;
   }
 
   const hasNoData =
@@ -966,471 +972,245 @@ export default function CalendarScreen() {
         {selectedDay ? (
           <View style={dynamicStyles.section}>
             <View style={dynamicStyles.dayDetailsContainer}>
-              <LinearGradient
-                colors={
-                  isDark
-                    ? [colors.surface, colors.surfaceVariant]
-                    : [colors.card, colors.surfaceVariant]
-                }
-                style={styles.dayDetailsGradient}
-              >
-                {/* Elegant Header */}
-                <View style={styles.dayDetailsHeader}>
-                  <View style={styles.dayDetailsDateContainer}>
-                    <View
-                      style={[
-                        styles.dayDetailsDateCircle,
-                        { backgroundColor: `${getDayColor(selectedDay)}20` },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.dayDetailsDateText,
-                          { color: getDayColor(selectedDay) },
-                        ]}
-                      >
-                        {new Date(selectedDay.date).getDate()}
-                      </Text>
-                    </View>
-                    <View style={styles.dayDetailsHeaderText}>
-                      <Text
-                        style={[
-                          styles.dayDetailsMonthText,
-                          { color: colors.text },
-                        ]}
-                      >
-                        {monthNames[new Date(selectedDay.date).getMonth()]}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.dayDetailsYearText,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        {new Date(selectedDay.date).getFullYear()}
+              <View style={[styles.daySummaryCard, { backgroundColor: colors.card }]}>
+                {/* Header with gradient accent */}
+                <LinearGradient
+                  colors={[getDayColor(selectedDay), getDayColor(selectedDay) + "80"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.daySummaryAccent}
+                />
+                <View style={styles.daySummaryHeader}>
+                  <View style={[styles.daySummaryDateBubble, { backgroundColor: getDayColor(selectedDay) + "18" }]}>
+                    <Text style={[styles.daySummaryDateNum, { color: getDayColor(selectedDay) }]}>
+                      {new Date(selectedDay.date).getDate()}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.daySummaryTitle, { color: colors.text }]}>
+                      {monthNames[new Date(selectedDay.date).getMonth()]}{" "}
+                      {new Date(selectedDay.date).getFullYear()}
+                    </Text>
+                    <View style={styles.daySummaryStatusRow}>
+                      {getProgressPercentage(selectedDay.calories_actual, selectedDay.calories_goal) >= 100 ? (
+                        <CheckCircle size={13} color={colors.success} />
+                      ) : (
+                        <XCircle size={13} color={getDayColor(selectedDay)} />
+                      )}
+                      <Text style={[styles.daySummaryStatusLabel, { color: getDayColor(selectedDay) }]}>
+                        {getDayStatus(selectedDay)}
                       </Text>
                     </View>
                   </View>
-                  <View
-                    style={[
-                      styles.dayDetailsStatusBadge,
-                      { backgroundColor: `${getDayColor(selectedDay)}15` },
-                    ]}
-                  >
-                    {getProgressPercentage(
-                      selectedDay.calories_actual,
-                      selectedDay.calories_goal,
-                    ) >= 100 ? (
-                      <CheckCircle size={20} color={colors.success} />
-                    ) : (
-                      <XCircle size={20} color={colors.error} />
-                    )}
-                    <Text
-                      style={[
-                        styles.dayDetailsStatusText,
-                        { color: getDayColor(selectedDay) },
-                      ]}
-                    >
-                      {getDayStatus(selectedDay)}
+                  {/* Quality score badge */}
+                  {selectedDay.quality_score > 0 && (
+                    <View style={[styles.qualityBadge, { backgroundColor: isDark ? "#F59E0B18" : "#FFFBEB" }]}>
+                      <Award size={13} color="#F59E0B" />
+                      <Text style={styles.qualityBadgeText}>{selectedDay.quality_score}</Text>
+                    </View>
+                  )}
+                  <View style={[styles.daySummaryPercent, { backgroundColor: getDayColor(selectedDay) + "15" }]}>
+                    <Text style={[styles.daySummaryPercentText, { color: getDayColor(selectedDay) }]}>
+                      {Math.round(getProgressPercentage(selectedDay.calories_actual, selectedDay.calories_goal))}%
                     </Text>
                   </View>
                 </View>
 
-                {/* Metrics Grid */}
-                <View style={styles.dayDetailsMetrics}>
-                  {/* Daily Goal Card */}
-                  <View
-                    style={[dynamicStyles.metricCard, styles.metricCardLarge]}
-                  >
-                    <LinearGradient
-                      colors={[colors.primary, colors.emerald600]}
-                      style={styles.metricGradient}
-                    >
-                      <View style={styles.metricIconContainer}>
-                        <Target size={24} color="#FFFFFF" />
-                      </View>
-                      <Text style={styles.metricTitleWhite}>
-                        {t("calendar.dailyGoal")}
-                      </Text>
-                      <Text style={styles.metricValueWhite}>
-                        {selectedDay.calories_goal}{" "}
-                        <Text style={styles.metricUnitWhite}>
-                          {t("calendar.kcal")}
-                        </Text>
-                      </Text>
-                      <View style={styles.metricProgressBar}>
-                        <View
-                          style={[
-                            styles.metricProgressFill,
-                            {
-                              width: `${Math.min(
-                                (selectedDay.calories_actual /
-                                  selectedDay.calories_goal) *
-                                  100,
-                                100,
-                              )}%`,
-                            },
-                          ]}
-                        />
-                      </View>
-                    </LinearGradient>
-                  </View>
-
-                  {/* Meals Progress Card */}
-                  <View
-                    style={[dynamicStyles.metricCard, styles.metricCardLarge]}
-                  >
-                    <LinearGradient
-                      colors={[colors.error, "#DC2626"]}
-                      style={styles.metricGradient}
-                    >
-                      <View style={styles.metricIconContainer}>
-                        <Flame size={24} color="#FFFFFF" />
-                      </View>
-                      <Text style={styles.metricTitleWhite}>
-                        {t("calendar.meals")}
-                      </Text>
-                      <Text style={styles.metricValueWhite}>
-                        {selectedDay.meal_count}/{user?.meals_per_day || 4}
-                      </Text>
-                      <View style={styles.metricProgressBar}>
-                        <View
-                          style={[
-                            styles.metricProgressFill,
-                            {
-                              width: `${Math.min(
-                                (selectedDay.meal_count /
-                                  (user?.meals_per_day || 4)) *
-                                  100,
-                                100,
-                              )}%`,
-                            },
-                          ]}
-                        />
-                      </View>
-                    </LinearGradient>
-                  </View>
-
-                  {/* Nutrition Cards */}
-                  <View style={dynamicStyles.metricCard}>
-                    <View style={styles.metricHeader}>
-                      <View
-                        style={[
-                          styles.metricIconBadge,
-                          { backgroundColor: "#FEF3C7" },
-                        ]}
-                      >
-                        <Flame size={16} color="#F59E0B" />
-                      </View>
-                      <Text
-                        style={[
-                          styles.metricTitle,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
+                {/* Calories hero card */}
+                <View style={[styles.caloriesHero, { backgroundColor: isDark ? colors.surface : "#F8FAFC" }]}>
+                  <View style={styles.caloriesHeroTop}>
+                    <View style={[styles.caloriesHeroIconWrap, { backgroundColor: isDark ? "#FF9F0A20" : "#FFF4E6" }]}>
+                      <Flame size={18} color="#FF9F0A" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.caloriesHeroLabel, { color: colors.textSecondary }]}>
                         {t("calendar.caloriesGoal")}
                       </Text>
                     </View>
-                    <Text style={[styles.metricValue, { color: colors.text }]}>
+                    <Text style={[styles.caloriesHeroValue, { color: colors.text }]}>
                       {selectedDay.calories_actual}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.metricTarget,
-                        { color: colors.textTertiary },
-                      ]}
-                    >
-                      {t("common.of")} {selectedDay.calories_goal}{" "}
-                      {t("calendar.kcal")}
-                    </Text>
-                    <View style={styles.deviationContainer}>
-                      {selectedDay.calories_actual >
-                      selectedDay.calories_goal ? (
-                        <TrendingUp size={12} color={colors.error} />
-                      ) : (
-                        <TrendingDown size={12} color="#3B82F6" />
-                      )}
-                      <Text
-                        style={[
-                          styles.deviationValue,
-                          {
-                            color:
-                              selectedDay.calories_actual >
-                              selectedDay.calories_goal
-                                ? colors.error
-                                : "#3B82F6",
-                          },
-                        ]}
-                      >
-                        {Math.abs(
-                          selectedDay.calories_actual -
-                            selectedDay.calories_goal,
-                        )}{" "}
-                        {t("calendar.kcal")}
+                      <Text style={[styles.caloriesHeroUnit, { color: colors.textSecondary }]}>
+                        {" "}/{selectedDay.calories_goal}
                       </Text>
-                    </View>
+                    </Text>
                   </View>
+                  <View style={[styles.caloriesHeroBarBg, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#E5E7EB" }]}>
+                    <LinearGradient
+                      colors={[getDayColor(selectedDay), getDayColor(selectedDay) + "AA"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.caloriesHeroBarFill, {
+                        width: `${Math.min((selectedDay.calories_actual / selectedDay.calories_goal) * 100, 100)}%`,
+                      }]}
+                    />
+                  </View>
+                  <View style={styles.caloriesHeroDeviation}>
+                    {selectedDay.calories_actual > selectedDay.calories_goal ? (
+                      <TrendingUp size={10} color={colors.error} />
+                    ) : (
+                      <TrendingDown size={10} color="#3B82F6" />
+                    )}
+                    <Text style={[styles.caloriesHeroDevText, {
+                      color: selectedDay.calories_actual > selectedDay.calories_goal ? colors.error : "#3B82F6",
+                    }]}>
+                      {selectedDay.calories_actual > selectedDay.calories_goal ? "+" : "-"}
+                      {Math.abs(selectedDay.calories_actual - selectedDay.calories_goal)} {t("calendar.kcal")}
+                    </Text>
+                  </View>
+                </View>
 
-                  <View style={dynamicStyles.metricCard}>
-                    <View style={styles.metricHeader}>
-                      <View
-                        style={[
-                          styles.metricIconBadge,
-                          { backgroundColor: "#F3E8FF" },
-                        ]}
-                      >
-                        <Target size={16} color="#8B5CF6" />
-                      </View>
-                      <Text
-                        style={[
-                          styles.metricTitle,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
+                {/* Macros grid - 2x2 */}
+                <View style={styles.macroGrid}>
+                  {/* Protein */}
+                  <View style={[styles.macroCard, { backgroundColor: isDark ? "#8B5CF612" : "#F5F3FF" }]}>
+                    <View style={styles.macroCardHeader}>
+                      <Dumbbell size={13} color="#8B5CF6" />
+                      <Text style={[styles.macroCardTitle, { color: colors.textSecondary }]}>
                         {t("calendar.proteinGoal")}
                       </Text>
                     </View>
-                    <Text style={[styles.metricValue, { color: colors.text }]}>
+                    <Text style={[styles.macroCardValue, { color: colors.text }]}>
                       {selectedDay.protein_actual}
+                      <Text style={[styles.macroCardUnit, { color: colors.textSecondary }]}>
+                        /{selectedDay.protein_goal}{t("calendar.g")}
+                      </Text>
                     </Text>
-                    <Text
-                      style={[
-                        styles.metricTarget,
-                        { color: colors.textTertiary },
-                      ]}
-                    >
-                      {t("common.of")} {selectedDay.protein_goal}{" "}
-                      {t("calendar.g")}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.metricPercentage,
-                        { color: colors.success },
-                      ]}
-                    >
-                      {Math.round(
-                        (selectedDay.protein_actual /
-                          selectedDay.protein_goal) *
-                          100,
-                      )}
-                      %
-                    </Text>
+                    <View style={[styles.macroBarBg, { backgroundColor: isDark ? "rgba(139,92,246,0.15)" : "#EDE9FE" }]}>
+                      <View style={[styles.macroBarFill, {
+                        width: `${Math.min((selectedDay.protein_actual / (selectedDay.protein_goal || 1)) * 100, 100)}%`,
+                        backgroundColor: "#8B5CF6",
+                      }]} />
+                    </View>
                   </View>
-
-                  <View style={dynamicStyles.metricCard}>
-                    <View style={styles.metricHeader}>
-                      <View
-                        style={[
-                          styles.metricIconBadge,
-                          { backgroundColor: "#DBEAFE" },
-                        ]}
-                      >
-                        <Target size={16} color="#3B82F6" />
-                      </View>
-                      <Text
-                        style={[
-                          styles.metricTitle,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
+                  {/* Carbs */}
+                  <View style={[styles.macroCard, { backgroundColor: isDark ? "#10B98112" : "#F0FDF4" }]}>
+                    <View style={styles.macroCardHeader}>
+                      <Wheat size={13} color="#10B981" />
+                      <Text style={[styles.macroCardTitle, { color: colors.textSecondary }]}>
+                        {t("calendar.carbsGoal") || "Carbs"}
+                      </Text>
+                    </View>
+                    <Text style={[styles.macroCardValue, { color: colors.text }]}>
+                      {selectedDay.carbs_actual}
+                      <Text style={[styles.macroCardUnit, { color: colors.textSecondary }]}>
+                        /{selectedDay.carbs_goal}{t("calendar.g")}
+                      </Text>
+                    </Text>
+                    <View style={[styles.macroBarBg, { backgroundColor: isDark ? "rgba(16,185,129,0.15)" : "#D1FAE5" }]}>
+                      <View style={[styles.macroBarFill, {
+                        width: `${Math.min((selectedDay.carbs_actual / (selectedDay.carbs_goal || 1)) * 100, 100)}%`,
+                        backgroundColor: "#10B981",
+                      }]} />
+                    </View>
+                  </View>
+                  {/* Fat */}
+                  <View style={[styles.macroCard, { backgroundColor: isDark ? "#3B82F612" : "#EFF6FF" }]}>
+                    <View style={styles.macroCardHeader}>
+                      <Droplets size={13} color="#3B82F6" />
+                      <Text style={[styles.macroCardTitle, { color: colors.textSecondary }]}>
+                        {t("calendar.fatGoal") || "Fat"}
+                      </Text>
+                    </View>
+                    <Text style={[styles.macroCardValue, { color: colors.text }]}>
+                      {selectedDay.fat_actual}
+                      <Text style={[styles.macroCardUnit, { color: colors.textSecondary }]}>
+                        /{selectedDay.fat_goal}{t("calendar.g")}
+                      </Text>
+                    </Text>
+                    <View style={[styles.macroBarBg, { backgroundColor: isDark ? "rgba(59,130,246,0.15)" : "#DBEAFE" }]}>
+                      <View style={[styles.macroBarFill, {
+                        width: `${Math.min((selectedDay.fat_actual / (selectedDay.fat_goal || 1)) * 100, 100)}%`,
+                        backgroundColor: "#3B82F6",
+                      }]} />
+                    </View>
+                  </View>
+                  {/* Water + Meals */}
+                  <View style={[styles.macroCard, { backgroundColor: isDark ? "#06B6D412" : "#ECFEFF" }]}>
+                    <View style={styles.macroCardHeader}>
+                      <Droplets size={13} color="#06B6D4" />
+                      <Text style={[styles.macroCardTitle, { color: colors.textSecondary }]}>
                         {t("calendar.waterGoal")}
                       </Text>
                     </View>
-                    <Text style={[styles.metricValue, { color: colors.text }]}>
+                    <Text style={[styles.macroCardValue, { color: colors.text }]}>
                       {selectedDay.water_intake_ml}
+                      <Text style={[styles.macroCardUnit, { color: colors.textSecondary }]}> {t("calendar.ml")}</Text>
                     </Text>
-                    <Text
-                      style={[
-                        styles.metricTarget,
-                        { color: colors.textTertiary },
-                      ]}
-                    >
-                      {t("calendar.ml")}
-                    </Text>
+                    <View style={styles.mealCountRow}>
+                      <Flame size={11} color="#EF4444" />
+                      <Text style={[styles.mealCountText, { color: colors.textSecondary }]}>
+                        {selectedDay.meal_count}/{user?.meals_per_day || 4} {t("calendar.meals")}
+                      </Text>
+                    </View>
                   </View>
                 </View>
 
                 {selectedDay.events.length > 0 && (
-                  <View style={dynamicStyles.eventsSection}>
-                    <View
-                      style={[
-                        dynamicStyles.eventsSectionHeader,
-                        isRTL && dynamicStyles.eventsSectionHeaderRTL,
-                      ]}
-                    >
-                      <Ionicons
-                        name="calendar"
-                        size={20}
-                        color={colors.primary}
-                      />
-                      <Text
-                        style={[
-                          dynamicStyles.eventsTitle,
-                          isRTL && dynamicStyles.textRTL,
-                        ]}
-                      >
+                  <View style={[styles.daySummaryEvents, { borderTopColor: colors.border }]}>
+                    <View style={[dynamicStyles.eventsSectionHeader, isRTL && dynamicStyles.eventsSectionHeaderRTL]}>
+                      <CalendarIcon size={16} color={colors.primary} />
+                      <Text style={[dynamicStyles.eventsTitle, isRTL && dynamicStyles.textRTL]}>
                         {t("calendar.events.title")}
                       </Text>
                     </View>
                     {selectedDay.events.map((event, index) => (
-                      <View key={event.id} style={dynamicStyles.eventItem}>
+                      <TouchableOpacity
+                        key={event.id}
+                        style={[styles.daySummaryEventItem, { backgroundColor: isDark ? colors.surface : "#F8FAFC" }]}
+                        onPress={() => handleViewEvent(event, selectedDay)}
+                        activeOpacity={0.7}
+                      >
                         <LinearGradient
-                          colors={
-                            isDark
-                              ? [colors.surface, colors.surfaceVariant]
-                              : [colors.card, colors.surfaceVariant]
-                          }
-                          style={styles.eventGradient}
+                          colors={[colors.primary, colors.emerald600]}
+                          style={styles.daySummaryEventIcon}
                         >
-                          <TouchableOpacity
-                            style={[
-                              dynamicStyles.eventMainContent,
-                              isRTL && dynamicStyles.eventMainContentRTL,
-                            ]}
-                            onPress={() => handleViewEvent(event, selectedDay)}
-                            activeOpacity={0.8}
-                          >
-                            <View style={dynamicStyles.eventIconContainer}>
-                              <LinearGradient
-                                colors={[colors.primary, colors.emerald600]}
-                                style={styles.eventIconGradient}
-                              >
-                                <Ionicons
-                                  name="calendar"
-                                  size={18}
-                                  color="#fff"
-                                />
-                              </LinearGradient>
-                            </View>
-                            <View
-                              style={[
-                                dynamicStyles.eventTextContainer,
-                                isRTL && dynamicStyles.eventTextContainerRTL,
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  dynamicStyles.eventText,
-                                  isRTL && dynamicStyles.textRTL,
-                                ]}
-                              >
-                                {event.title}
-                              </Text>
-                              <Text
-                                style={[
-                                  dynamicStyles.eventTypeText,
-                                  isRTL && dynamicStyles.textRTL,
-                                ]}
-                              >
-                                {event.type}
-                              </Text>
-                              <Text
-                                style={[
-                                  dynamicStyles.eventTimeText,
-                                  isRTL && dynamicStyles.textRTL,
-                                ]}
-                              >
-                                {new Date(event.created_at).toLocaleTimeString(
-                                  [],
-                                  {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  },
-                                )}
-                              </Text>
-                            </View>
-                            <View
-                              style={[
-                                dynamicStyles.eventNumberBadge,
-                                {
-                                  backgroundColor: colors.surfaceVariant,
-                                  borderColor: colors.border,
-                                },
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  dynamicStyles.eventNumberText,
-                                  { color: colors.textSecondary },
-                                ]}
-                              >
-                                {index + 1}
-                              </Text>
-                            </View>
-                          </TouchableOpacity>
-                          <View
-                            style={[
-                              dynamicStyles.eventActions,
-                              isRTL && dynamicStyles.eventActionsRTL,
-                            ]}
-                          >
-                            <TouchableOpacity
-                              style={dynamicStyles.eventActionButton}
-                              onPress={() => {
-                                setSelectedEvent({
-                                  ...event,
-                                  date: selectedDay.date,
-                                });
-                                handleEditEvent();
-                              }}
-                              activeOpacity={0.8}
-                            >
-                              <Edit size={16} color="#3B82F6" />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={dynamicStyles.eventActionButton}
-                              onPress={() =>
-                                handleViewEvent(event, selectedDay)
-                              }
-                              activeOpacity={0.8}
-                            >
-                              <Eye size={16} color={colors.success} />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={dynamicStyles.deleteEventButton}
-                              onPress={() =>
-                                handleDeleteEvent(event.id, selectedDay.date)
-                              }
-                              disabled={isDeletingEvent}
-                              activeOpacity={0.8}
-                            >
-                              {isDeletingEvent ? (
-                                <ActivityIndicator
-                                  size="small"
-                                  color={colors.error}
-                                />
-                              ) : (
-                                <Ionicons
-                                  name="trash"
-                                  size={16}
-                                  color={colors.error}
-                                />
-                              )}
-                            </TouchableOpacity>
-                          </View>
+                          <CalendarIcon size={14} color="#fff" />
                         </LinearGradient>
-                      </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.daySummaryEventTitle, { color: colors.text }]} numberOfLines={1}>
+                            {event.title}
+                          </Text>
+                          <Text style={[styles.daySummaryEventMeta, { color: colors.textSecondary }]}>
+                            {event.type} · {new Date(event.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </Text>
+                        </View>
+                        <View style={styles.daySummaryEventActions}>
+                          <TouchableOpacity
+                            onPress={() => {
+                              setSelectedEvent({ ...event, date: selectedDay.date });
+                              handleEditEvent();
+                            }}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Edit size={14} color="#3B82F6" />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => handleDeleteEvent(event.id, selectedDay.date)}
+                            disabled={isDeletingEvent}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Trash2 size={14} color={colors.error} />
+                          </TouchableOpacity>
+                        </View>
+                      </TouchableOpacity>
                     ))}
                   </View>
                 )}
 
-                <View style={styles.modalButtons}>
-                  <TouchableOpacity
-                    style={[
-                      dynamicStyles.modalButton,
-                      dynamicStyles.addEventButton,
-                    ]}
-                    onPress={() => {
-                      setSelectedDay(null);
-                      handleAddEvent(selectedDay.date);
-                    }}
-                  >
-                    <Text style={dynamicStyles.addEventButtonText}>
-                      {t("calendar.events.addEvent")}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </LinearGradient>
+                {/* Add Event Button */}
+                <TouchableOpacity
+                  style={[styles.daySummaryAddBtn, { backgroundColor: colors.primary }]}
+                  onPress={() => {
+                    setSelectedDay(null);
+                    handleAddEvent(selectedDay.date);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.daySummaryAddBtnText}>
+                    {t("calendar.events.addEvent")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         ) : (
@@ -1472,8 +1252,7 @@ export default function CalendarScreen() {
                 <TouchableOpacity
                   onPress={() => setShowEventDetailsModal(false)}
                 >
-                  <Ionicons
-                    name="close"
+                  <X
                     size={24}
                     color={colors.textSecondary}
                   />
@@ -1562,7 +1341,7 @@ export default function CalendarScreen() {
                         <ActivityIndicator color="white" size="small" />
                       ) : (
                         <>
-                          <Ionicons name="trash" size={16} color="#fff" />
+                          <Trash2 size={16} color="#fff" />
                           <Text style={dynamicStyles.deleteButtonText}>
                             {t("common.delete")}
                           </Text>
@@ -1679,7 +1458,9 @@ export default function CalendarScreen() {
                         label: t("calendar.events.eventTypes.work"),
                         icon: "briefcase",
                       },
-                    ].map((type) => (
+                    ].map((type) => {
+                      const IconComponent = EVENT_TYPE_ICONS[type.icon] || CalendarIcon;
+                      return (
                       <TouchableOpacity
                         key={type.key}
                         style={[
@@ -1689,8 +1470,7 @@ export default function CalendarScreen() {
                         ]}
                         onPress={() => setEventType(type.key)}
                       >
-                        <Ionicons
-                          name={type.icon as any}
+                        <IconComponent
                           size={16}
                           color={
                             eventType === type.key ? "#fff" : colors.primary
@@ -1706,7 +1486,7 @@ export default function CalendarScreen() {
                           {type.label}
                         </Text>
                       </TouchableOpacity>
-                    ))}
+                    );})}
                   </View>
                 </View>
 
@@ -1777,8 +1557,7 @@ export default function CalendarScreen() {
                   🏆 {t("achievements.title")}
                 </Text>
                 <TouchableOpacity onPress={() => setShowBadgesModal(false)}>
-                  <Ionicons
-                    name="close"
+                  <X
                     size={24}
                     color={colors.textSecondary}
                   />
@@ -1876,8 +1655,7 @@ export default function CalendarScreen() {
                   📊 {t("calendar.insights.title")}
                 </Text>
                 <TouchableOpacity onPress={() => setShowInsightsModal(false)}>
-                  <Ionicons
-                    name="close"
+                  <X
                     size={24}
                     color={colors.textSecondary}
                   />
@@ -2845,5 +2623,222 @@ const styles = StyleSheet.create({
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
+  },
+  // Day Summary redesign
+  daySummaryCard: {
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  daySummaryAccent: {
+    height: 4,
+    width: "100%",
+  },
+  daySummaryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 18,
+    paddingBottom: 14,
+  },
+  daySummaryDateBubble: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  daySummaryDateNum: {
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  daySummaryTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+  },
+  daySummaryStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
+  daySummaryStatusLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  qualityBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  qualityBadgeText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#F59E0B",
+  },
+  daySummaryPercent: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  daySummaryPercentText: {
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  caloriesHero: {
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 18,
+    marginBottom: 12,
+    gap: 8,
+  },
+  caloriesHeroTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  caloriesHeroIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  caloriesHeroValue: {
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  caloriesHeroUnit: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  caloriesHeroLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  caloriesHeroBarBg: {
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  caloriesHeroBarFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  caloriesHeroDeviation: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    alignSelf: "flex-end",
+  },
+  caloriesHeroDevText: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  macroGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingBottom: 4,
+  },
+  macroCard: {
+    width: (width - 82) / 2,
+    borderRadius: 14,
+    padding: 12,
+    gap: 6,
+  },
+  macroCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  macroCardTitle: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  macroCardValue: {
+    fontSize: 17,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  macroCardUnit: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  macroBarBg: {
+    height: 4,
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  macroBarFill: {
+    height: "100%",
+    borderRadius: 2,
+  },
+  mealCountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  mealCountText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  daySummaryEvents: {
+    marginTop: 12,
+    marginHorizontal: 18,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    gap: 8,
+  },
+  daySummaryEventItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+  },
+  daySummaryEventIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  daySummaryEventTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  daySummaryEventMeta: {
+    fontSize: 11,
+    fontWeight: "500",
+    marginTop: 1,
+  },
+  daySummaryEventActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  daySummaryAddBtn: {
+    marginTop: 14,
+    marginHorizontal: 18,
+    marginBottom: 18,
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  daySummaryAddBtnText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });

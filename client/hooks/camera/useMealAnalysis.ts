@@ -19,6 +19,8 @@ interface UseMealAnalysisOptions {
   isRTL?: boolean;
 }
 
+export type AnalysisPhase = 'idle' | 'uploading' | 'processing' | 'analyzing' | 'generating' | 'complete';
+
 export function useMealAnalysis(options: UseMealAnalysisOptions = {}) {
   const dispatch = useDispatch<AppDispatch>();
   const { pendingMeal, isAnalyzing, isPosting, isUpdating } = useSelector(
@@ -27,6 +29,9 @@ export function useMealAnalysis(options: UseMealAnalysisOptions = {}) {
 
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [hasBeenAnalyzed, setHasBeenAnalyzed] = useState(false);
+  const [analysisPhase, setAnalysisPhase] = useState<AnalysisPhase>('idle');
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [analysisStatusMessage, setAnalysisStatusMessage] = useState('');
 
   const processImage = async (imageUri: string): Promise<string | null> => {
     try {
@@ -103,11 +108,22 @@ export function useMealAnalysis(options: UseMealAnalysisOptions = {}) {
     if (!canProceed) return false;
 
     try {
+      setAnalysisPhase('uploading');
+      setAnalysisProgress(10);
+      setAnalysisStatusMessage('Uploading image...');
+
       const base64Image = await processImage(imageUri);
       if (!base64Image) {
+        setAnalysisPhase('idle');
+        setAnalysisProgress(0);
+        setAnalysisStatusMessage('');
         Alert.alert("Error", "Could not process image.");
         return false;
       }
+
+      setAnalysisPhase('processing');
+      setAnalysisProgress(30);
+      setAnalysisStatusMessage('Processing image...');
 
       const analysisParams = {
         imageBase64: base64Image,
@@ -120,6 +136,9 @@ export function useMealAnalysis(options: UseMealAnalysisOptions = {}) {
       };
 
       console.log("📡 Dispatching analyzeMeal thunk...");
+      setAnalysisPhase('analyzing');
+      setAnalysisProgress(50);
+      setAnalysisStatusMessage('Analyzing meal...');
       const result = await dispatch(analyzeMeal(analysisParams));
       console.log("📬 Thunk result received:", {
         type: result.type,
@@ -129,6 +148,9 @@ export function useMealAnalysis(options: UseMealAnalysisOptions = {}) {
 
       if (analyzeMeal.fulfilled.match(result)) {
         console.log("✅ Analysis fulfilled, setting state...");
+        setAnalysisPhase('generating');
+        setAnalysisProgress(90);
+        setAnalysisStatusMessage('Generating insights...');
         // CRITICAL: Set analysisData from the result so UI can display it
         const analysis = result.payload?.analysis;
         if (analysis) {
@@ -140,6 +162,9 @@ export function useMealAnalysis(options: UseMealAnalysisOptions = {}) {
           // Force state update synchronously
           setAnalysisData(analysis);
           setHasBeenAnalyzed(true);
+          setAnalysisPhase('complete');
+          setAnalysisProgress(100);
+          setAnalysisStatusMessage('Analysis complete!');
           console.log("🎬 State updated, calling onAnalysisComplete callback...");
           // Use setTimeout to ensure state update has propagated
           setTimeout(() => {
@@ -154,6 +179,9 @@ export function useMealAnalysis(options: UseMealAnalysisOptions = {}) {
         return true;
       } else {
         console.log("❌ Analysis failed/rejected:", result.payload);
+        setAnalysisPhase('idle');
+        setAnalysisProgress(0);
+        setAnalysisStatusMessage('');
         const errorMessage = result.payload || "Analysis failed";
         Alert.alert(
           "Analysis Failed",
@@ -163,6 +191,9 @@ export function useMealAnalysis(options: UseMealAnalysisOptions = {}) {
       }
     } catch (error) {
       console.error("Analysis error:", error);
+      setAnalysisPhase('idle');
+      setAnalysisProgress(0);
+      setAnalysisStatusMessage('');
       Alert.alert("Analysis Failed", "Analysis failed");
       return false;
     }
@@ -242,6 +273,9 @@ export function useMealAnalysis(options: UseMealAnalysisOptions = {}) {
   const reset = () => {
     setAnalysisData(null);
     setHasBeenAnalyzed(false);
+    setAnalysisPhase('idle');
+    setAnalysisProgress(0);
+    setAnalysisStatusMessage('');
     dispatch(clearPendingMeal());
     dispatch(clearError());
   };
@@ -255,6 +289,9 @@ export function useMealAnalysis(options: UseMealAnalysisOptions = {}) {
     isPosting,
     isUpdating,
     pendingMeal,
+    analysisPhase,
+    analysisProgress,
+    analysisStatusMessage,
     analyzeImage,
     reAnalyze,
     saveMeal,

@@ -22,7 +22,15 @@
       "Bash(timeout 10 npm run dev:*)",
       "Bash(node -e:*)",
       "Bash(npx ts-node -e \"import ''./src/services/nutrition''\")",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(test:*)",
+      "Bash(npx prisma validate:*)",
+      "Bash(timeout 15 npm run dev:*)",
+      "Bash(taskkill:*)",
+      "Bash(pkill:*)",
+      "WebSearch",
+      "Bash(__NEW_LINE_6ca9698622160aa7__ echo \"\")",
+      "Bash(head:*)"
     ]
   }
 }

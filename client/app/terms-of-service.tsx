@@ -10,7 +10,7 @@ import {
   Linking,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { Ionicons } from "@expo/vector-icons";
+import { FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Shield, Scale, Calendar, ShieldCheck, Mail } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/src/context/ThemeContext";
 
@@ -338,8 +338,7 @@ const TermsOfServiceScreen = () => {
           <View style={styles.sectionHeaderContent}>
             <View style={styles.sectionTitleContainer}>
               <View style={styles.sectionIcon}>
-                <Ionicons
-                  name="document-text"
+                <FileText
                   size={18}
                   color={colors.primary}
                 />
@@ -354,11 +353,11 @@ const TermsOfServiceScreen = () => {
                 isExpanded && styles.iconContainerExpanded,
               ]}
             >
-              <Ionicons
-                name={isExpanded ? "chevron-up" : "chevron-down"}
-                size={20}
-                color={isExpanded ? colors.primary : colors.icon}
-              />
+              {isExpanded ? (
+                <ChevronUp size={20} color={colors.primary} />
+              ) : (
+                <ChevronDown size={20} color={colors.icon} />
+              )}
             </View>
           </View>
         </TouchableOpacity>
@@ -418,11 +417,11 @@ const TermsOfServiceScreen = () => {
           style={styles.backButton}
           activeOpacity={0.6}
         >
-          <Ionicons
-            name={isRTL ? "chevron-forward" : "chevron-back"}
-            size={24}
-            color={colors.text}
-          />
+          {isRTL ? (
+            <ChevronRight size={24} color={colors.text} />
+          ) : (
+            <ChevronLeft size={24} color={colors.text} />
+          )}
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>{t("terms.title")}</Text>
@@ -438,14 +437,13 @@ const TermsOfServiceScreen = () => {
         <View style={styles.introSection}>
           <View style={styles.introHeader}>
             <View style={styles.termsIcon}>
-              <Ionicons name="document-text" size={40} color={colors.primary} />
+              <FileText size={40} color={colors.primary} />
             </View>
             <Text style={styles.introTitle}>{t("terms.header")}</Text>
           </View>
           <Text style={styles.introText}>{t("terms.intro")}</Text>
           <View style={styles.lastUpdatedContainer}>
-            <Ionicons
-              name="calendar-outline"
+            <Calendar
               size={18}
               color={colors.primary}
             />
@@ -485,8 +483,7 @@ const TermsOfServiceScreen = () => {
             >
               <View style={styles.linkContent}>
                 <View style={styles.linkIconContainer}>
-                  <Ionicons
-                    name="shield-checkmark-outline"
+                  <ShieldCheck
                     size={20}
                     color={colors.primary}
                   />
@@ -495,8 +492,7 @@ const TermsOfServiceScreen = () => {
                   {t("terms.footer.privacy_policy_link")}
                 </Text>
               </View>
-              <Ionicons
-                name="chevron-forward"
+              <ChevronRight
                 size={18}
                 color={colors.textSecondary}
               />
@@ -509,8 +505,7 @@ const TermsOfServiceScreen = () => {
             >
               <View style={styles.linkContent}>
                 <View style={styles.linkIconContainer}>
-                  <Ionicons
-                    name="mail-outline"
+                  <Mail
                     size={20}
                     color={colors.primary}
                   />
@@ -519,8 +514,7 @@ const TermsOfServiceScreen = () => {
                   {t("terms.footer.contact_support")}
                 </Text>
               </View>
-              <Ionicons
-                name="chevron-forward"
+              <ChevronRight
                 size={18}
                 color={colors.textSecondary}
               />

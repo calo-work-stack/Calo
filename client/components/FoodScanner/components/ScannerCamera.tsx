@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import { CameraView } from "expo-camera";
 import { QrCode, Camera as CameraIcon, Sparkles } from "lucide-react-native";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useTranslation } from "react-i18next";
+import * as Haptics from "expo-haptics";
 
 const { width, height } = Dimensions.get("window");
 const SCANNER_SIZE = Math.min(width - 48, height * 0.45);
@@ -33,6 +34,11 @@ export default function ScannerCamera({
 }: ScannerCameraProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
+
+  const handleBarcodeScan = useCallback((result: any) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onBarcodeScan(result);
+  }, [onBarcodeScan]);
 
   const scanLineTranslateY = scanLineAnimation.interpolate({
     inputRange: [0, 1],
@@ -152,7 +158,7 @@ export default function ScannerCamera({
       ) : (
         <CameraView
           style={styles.cameraView}
-          onBarcodeScanned={onBarcodeScan}
+          onBarcodeScanned={handleBarcodeScan}
           barcodeScannerSettings={{
             barcodeTypes: ["ean13", "ean8", "upc_a", "code128", "code39"],
           }}
@@ -168,8 +174,13 @@ const styles = StyleSheet.create({
   cameraWrapper: {
     width: SCANNER_SIZE,
     height: SCANNER_SIZE,
-    borderRadius: 24,
+    borderRadius: 28,
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
   },
   cameraView: {
     flex: 1,
@@ -203,56 +214,66 @@ const styles = StyleSheet.create({
   },
   cornerBracket: {
     position: "absolute",
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
+    borderRadius: 4,
   },
   scanLine: {
     position: "absolute",
-    left: 20,
-    right: 20,
-    height: 2,
-    borderRadius: 1,
+    left: 16,
+    right: 16,
+    height: 3,
+    borderRadius: 2,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
   },
   centerGlow: {
     position: "absolute",
     top: "50%",
     left: "50%",
-    marginTop: -28,
-    marginLeft: -28,
+    marginTop: -32,
+    marginLeft: -32,
   },
   glowCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 2,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2.5,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
   },
   overlayBottom: {
     flex: 1,
     justifyContent: "flex-start",
-    paddingTop: 20,
+    paddingTop: 24,
   },
   instructionContainer: {
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
   aiIndicator: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   aiIndicatorText: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "700",
   },
   instructionText: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: 15,
+    fontWeight: "600",
     textAlign: "center",
     paddingHorizontal: 24,
+    lineHeight: 22,
   },
 });

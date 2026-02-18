@@ -51,6 +51,9 @@ function CameraScreenContent() {
     isAnalyzing,
     isPosting,
     isUpdating,
+    analysisPhase,
+    analysisProgress,
+    analysisStatusMessage,
     analyzeImage,
     reAnalyze,
     saveMeal,
@@ -134,8 +137,8 @@ function CameraScreenContent() {
   const handleTakePhoto = async () => {
     if (!selectedMealType) {
       Alert.alert(
-        "Select Meal Type",
-        "Please select a meal type before taking a photo",
+        t("camera.mealType.title"),
+        t("camera.mealType.selectBeforePhoto"),
       );
       return;
     }
@@ -150,8 +153,8 @@ function CameraScreenContent() {
   const handleSelectFromGallery = async () => {
     if (!selectedMealType) {
       Alert.alert(
-        "Select Meal Type",
-        "Please select a meal type before selecting from gallery",
+        t("camera.mealType.title"),
+        t("camera.mealType.selectBeforeGallery"),
       );
       return;
     }
@@ -165,11 +168,11 @@ function CameraScreenContent() {
 
   const handleAnalyzeImage = async () => {
     if (!selectedImage) {
-      Alert.alert(t("common.error"), "Please select an image first");
+      Alert.alert(t("common.error"), t("camera.errors.selectImageFirst"));
       return;
     }
     if (!selectedMealType) {
-      Alert.alert(t("common.error"), "Please select a meal type first");
+      Alert.alert(t("common.error"), t("camera.errors.selectMealTypeFirst"));
       return;
     }
 
@@ -192,11 +195,11 @@ function CameraScreenContent() {
 
   const handleSaveMeal = async () => {
     if (!analysisData && !pendingMeal?.analysis) {
-      Alert.alert(t("common.error"), "No analysis data to save");
+      Alert.alert(t("common.error"), t("camera.errors.noAnalysisData"));
       return;
     }
     if (!selectedMealType) {
-      Alert.alert(t("common.error"), "Please select a meal type");
+      Alert.alert(t("common.error"), t("camera.errors.selectMealTypeFirst"));
       return;
     }
 
@@ -210,7 +213,7 @@ function CameraScreenContent() {
   const confirmDeleteMeal = () => {
     handleReset();
     setShowDeleteConfirm(false);
-    Alert.alert(t("common.success"), "Meal discarded");
+    Alert.alert(t("common.success"), t("camera.messages.mealDiscarded"));
   };
 
   const handleMealTypeSelect = (mealType: MealType) => {
@@ -441,6 +444,9 @@ function CameraScreenContent() {
           userComment={userComment}
           isAnalyzing={isAnalyzing}
           hasBeenAnalyzed={hasBeenAnalyzed}
+          analysisPhase={analysisPhase}
+          analysisProgress={analysisProgress}
+          analysisStatusMessage={analysisStatusMessage}
           onRemoveImage={handleReset}
           onRetakePhoto={handleTakePhoto}
           onAnalyze={handleAnalyzeImage}

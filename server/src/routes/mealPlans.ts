@@ -449,7 +449,19 @@ router.get("/current", authenticateToken, async (req: AuthRequest, res) => {
         },
       });
 
-      if (recommendedMenu && recommendedMenu.meals?.length > 0) {
+      // BUGFIX: Validate that the menu is actually active (is_active = true)
+      // This prevents showing a "completed" menu as active due to stale active_menu_id
+      if (recommendedMenu && !recommendedMenu.is_active) {
+        console.log(
+          "⚠️ Found menu but is_active = false, cleaning up stale active_menu_id"
+        );
+        // Clean up the stale reference
+        await prisma.user.update({
+          where: { user_id: user_id },
+          data: { active_menu_id: null },
+        });
+        // Don't show this menu as active
+      } else if (recommendedMenu && recommendedMenu.meals?.length > 0) {
         console.log(
           "✅ Active recommended menu found with",
           recommendedMenu.meals.length,

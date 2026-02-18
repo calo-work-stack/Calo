@@ -74,16 +74,23 @@ export async function optimizeImageForUpload(
         ? ImageManipulator.SaveFormat.PNG
         : ImageManipulator.SaveFormat.WEBP;
 
+    // Only specify ONE dimension to let expo-image-manipulator maintain aspect ratio perfectly
+    // This prevents any potential cropping or distortion
+    const needsResize = originalWidth > maxWidth || originalHeight > maxHeight;
+    const resizeAction: ImageManipulator.Action[] = needsResize
+      ? [
+          {
+            resize:
+              originalWidth > originalHeight
+                ? { width: targetWidth } // Landscape: constrain by width only
+                : { height: targetHeight }, // Portrait: constrain by height only
+          },
+        ]
+      : [];
+
     const manipulatedImage = await ImageManipulator.manipulateAsync(
       imageUri,
-      [
-        {
-          resize: {
-            width: targetWidth,
-            height: targetHeight,
-          },
-        },
-      ],
+      resizeAction,
       {
         compress: quality,
         format: manipulatorFormat,
@@ -104,15 +111,17 @@ export async function optimizeImageForUpload(
         "⚠️ Image still too large after optimization, attempting higher compression..."
       );
 
-      // Try with higher compression
+      // Try with higher compression - only specify ONE dimension
+      const smallerWidth = Math.round(targetWidth * 0.8);
+      const smallerHeight = Math.round(targetHeight * 0.8);
       const recompressedImage = await ImageManipulator.manipulateAsync(
         imageUri,
         [
           {
-            resize: {
-              width: Math.round(targetWidth * 0.8),
-              height: Math.round(targetHeight * 0.8),
-            },
+            resize:
+              originalWidth > originalHeight
+                ? { width: smallerWidth }
+                : { height: smallerHeight },
           },
         ],
         {

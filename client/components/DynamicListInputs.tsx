@@ -7,7 +7,7 @@ import {
   StyleSheet,
   ScrollView,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { XCircle, PlusCircle } from "lucide-react-native";
 
 interface DynamicListInputsProps {
   placeholder: string;
@@ -66,7 +66,7 @@ export default function DynamicListInputs({
               style={styles.removeButton}
               onPress={() => removeItem(index)}
             >
-              <Ionicons name="close-circle" size={24} color="#FF3B30" />
+              <XCircle size={24} color="#FF3B30" />
             </TouchableOpacity>
           </View>
         ))}
@@ -86,7 +86,7 @@ export default function DynamicListInputs({
             onPress={addItem}
             disabled={!inputValue.trim()}
           >
-            <Ionicons name="add-circle" size={24} color="#007AFF" />
+            <PlusCircle size={24} color="#007AFF" />
           </TouchableOpacity>
         </View>
       )}

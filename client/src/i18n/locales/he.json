@@ -260,6 +260,8 @@
     }
   },
   "common": {
+    "upgradeRequired": "נדרש שדרוג",
+    "upgradePlan": "שדרג",
     "save": "שמור",
     "cancel": "בטל",
     "delete": "מחק",
@@ -301,6 +303,7 @@
     "view": "צפייה",
     "hide": "הסתרה",
     "show": "הצגה",
+    "showLess": "הצג פחות",
     "select": "בחירה",
     "deselect": "ביטול בחירה",
     "clear": "ניקוי",
@@ -584,6 +587,16 @@
     "loadingData": "טוען מידע...",
     "retry": "נסה שוב",
     "unknownMeal": "ארוחה לא ידועה",
+    "yesterdaySummary": "סיכום אתמול",
+    "yesterdaySummaryTitle": "סיכום יום אתמול",
+    "yesterdayNoData": "לא נרשמו ארוחות אתמול",
+    "yesterdayCalories": "קלוריות",
+    "yesterdayProtein": "חלבון",
+    "yesterdayCarbs": "פחמימות",
+    "yesterdayFat": "שומן",
+    "yesterdayMeals": "ארוחות שנרשמו",
+    "yesterdayWater": "מים",
+    "yesterdayClose": "סגור",
     "nutrition": {
       "calories": "קלוריות",
       "water": "מים",
@@ -644,7 +657,15 @@
       "totalMeals": "סה\"כ ארוחות",
       "avgCalories": "ממוצע קלוריות",
       "favorites": "מועדפות",
-      "avgRating": "דירוג ממוצע"
+      "avgRating": "דירוג ממוצע",
+      "weeklyTrend": "מגמה שבועית"
+    },
+    "filters": {
+      "all": "הכל",
+      "today": "היום",
+      "thisWeek": "השבוע",
+      "thisMonth": "החודש",
+      "favorites": "מועדפים"
     },
     "categories": {
       "all": "כל הקטגוריות",
@@ -859,6 +880,9 @@
     "mealType": {
       "title": "בחר סוג ארוחה",
       "subtitle": "בחר את סוג הארוחה שאתה מתעד",
+      "selectFirst": "אנא בחר סוג ארוחה תחילה",
+      "selectBeforePhoto": "אנא בחר סוג ארוחה לפני צילום",
+      "selectBeforeGallery": "אנא בחר סוג ארוחה לפני בחירה מהגלריה",
       "currentTime": "שעה נוכחית",
       "breakfast": "ארוחת בוקר",
       "lunch": "ארוחת צהריים",
@@ -872,6 +896,25 @@
       "pm": "אחה״צ",
       "mealsRemaining": "נותרו {{remaining}}/{{limit}} ארוחות",
       "limitReached": "הגעת למגבלה ({{used}}/{{limit}})"
+    },
+    "errors": {
+      "selectImageFirst": "אנא בחר תמונה תחילה",
+      "selectMealTypeFirst": "אנא בחר סוג ארוחה תחילה",
+      "noAnalysisData": "אין נתוני ניתוח לשמירה"
+    },
+    "messages": {
+      "mealDiscarded": "הארוחה נמחקה"
+    },
+    "quickAnalyze": "ניתוח מהיר",
+    "addDetailsFirst": "הוסף פרטים",
+    "analysisLoader": {
+      "title": "מנתח את הארוחה שלך",
+      "subtitle": "הבינה המלאכותית מזהה רכיבים ומחשבת ערכים תזונתיים",
+      "step1": "מעבד תמונה...",
+      "step2": "מזהה רכיבים...",
+      "step3": "מחשב ערכים תזונתיים...",
+      "step4": "מייצר תובנות...",
+      "tip": "לתוצאות מיטביות, וודא תאורה טובה"
     },
     "healthInsights": "תובנות בריאותיות",
     "aiRecommendations": "המלצות מבוססות AI",
@@ -887,7 +930,12 @@
       "analyze": "נתח ארוחה זו",
       "analyzing": "מנתח...",
       "tapToAnalyze": "לחץ לניתוח הארוחה",
-      "improveAccuracy": "הוסף פרטים לשיפור הדיוק"
+      "improveAccuracy": "הוסף פרטים לשיפור הדיוק",
+      "exampleTags": {
+        "grilled": "צלוי",
+        "noOil": "ללא שמן",
+        "homemade": "ביתי"
+      }
     }
   },
   "foodScanner": {
@@ -899,6 +947,14 @@
     "scan": "סרוק",
     "quantity": "כמות",
     "isBeverage": "האם משקה",
+    "unknownProduct": "מוצר לא ידוע",
+    "by": "מאת",
+    "nutritionFacts": "ערכים תזונתיים",
+    "currency": "₪",
+    "pricePerUnit": "מחיר ל-100 גרם",
+    "confidence.high": "גבוהה",
+    "confidence.medium": "בינונית",
+    "confidence.low": "נמוכה",
     "addToShoppingList": "הוסף לרשימת קניות",
     "addToMealHistory": "הוסף להיסטוריית ארוחות",
     "rescan": "סרוק שוב",
@@ -1092,6 +1148,7 @@
   },
   "admin": {
     "dashboard": "לוח בקרה למנהל",
+    "subtitle": "סקירת מערכת וניהול",
     "overview": "סקירה",
     "totalUsers": "סה\"כ משתמשים",
     "todaySignups": "הרשמות היום",
@@ -1099,11 +1156,18 @@
     "totalMeals": "סה\"כ ארוחות",
     "totalMenus": "סה\"כ תפריטים",
     "revenue": "הכנסות",
+    "totalRevenue": "סה\"כ הכנסות",
+    "transactions": "עסקאות",
     "subscriptions": "מנויים",
     "users": "משתמשים",
+    "analytics": "אנליטיקה",
     "activity": "פעילות אחרונה",
     "userDetails": "פרטי משתמש",
-    "deleteUser": "מחק משתמש"
+    "deleteUser": "מחק משתמש",
+    "accessDenied": "הגישה נדחתה",
+    "adminRequired": "נדרשות הרשאות מנהל",
+    "error": "שגיאה",
+    "loadFailed": "טעינת נתוני לוח הבקרה נכשלה"
   },
   "statistics": {
     "title": "סטטיסטיקות",
@@ -1344,7 +1408,40 @@
     "location_permission": "הרשאת מיקום",
     "health_data_permission": "הרשאת נתוני בריאות",
     "bluetooth_permission": "הרשאת בלוטות'",
-    "notification_permission": "הרשאת התראות"
+    "notification_permission": "הרשאת התראות",
+    "upgrade_required": "נדרש שדרוג",
+    "upgrade_required_message": "חיבור מכשירים זמין רק במנויי Gold ו-Platinum.",
+    "cancel": "ביטול",
+    "upgrade": "שדרג",
+    "error": "שגיאה",
+    "device_not_found": "סוג המכשיר לא נמצא",
+    "not_available": "לא זמין",
+    "not_available_message": "אינו זמין בפלטפורמה זו.",
+    "configuration_required": "נדרשת הגדרה",
+    "configuration_required_message": "סוד לקוח Google Fit לא מוגדר. הוסף את EXPO_PUBLIC_GOOGLE_FIT_CLIENT_SECRET למשתני הסביבה והפעל מחדש את האפליקציה.",
+    "connect_device": "חבר מכשיר",
+    "connect_device_message": "פעולה זו תבקש הרשאה לגשת לנתוני הבריאות שלך.",
+    "connect": "חבר",
+    "success": "הצלחה",
+    "connected_success": "חובר בהצלחה! כעת תוכל לסנכרן את נתוני הבריאות שלך.",
+    "connection_failed_message": "החיבור נכשל. ייתכן שהסיבה היא ביטול הרשאה, בעיות רשת, או בעיות הגדרה. אנא נסה שוב או בדוק את ההגדרות.",
+    "disconnect_device": "נתק מכשיר",
+    "disconnect_device_message": "פעולה זו תפסיק את סנכרון הנתונים מהמכשיר.",
+    "disconnect": "נתק",
+    "disconnected_success": "המכשיר נותק בהצלחה",
+    "no_devices": "אין מכשירים",
+    "no_devices_message": "אין מכשירים מחוברים לסנכרון",
+    "sync_complete": "הסנכרון הושלם",
+    "sync_complete_message": "סונכרנו בהצלחה",
+    "sync_failed_message": "הסנכרון נכשל לכל המכשירים. בדוק את החיבורים.",
+    "oops": "אופס! משהו השתבש",
+    "try_again": "נסה שוב",
+    "sync_all": "סנכרן הכל",
+    "connect_first_device": "חבר את המכשיר הראשון שלך",
+    "connect_first_device_desc": "חבר עוקבי כושר ואפליקציות בריאות לסנכרון אוטומטי של נתוני הפעילות",
+    "empty_state_title": "אין מכשירים מחוברים",
+    "empty_state_desc": "חבר עוקבי כושר ואפליקציות בריאות לקבלת תובנות מקיפות על מסע הבריאות שלך",
+    "load_failed": "טעינת נתוני המכשיר נכשלה. אנא נסה שוב."
   },
   "ai_chat": {
     "title": "עוזר תזונה AI",
@@ -1369,6 +1466,8 @@
     "healthy": "בריא",
     "snacks": "חטיפים",
     "typing": "AI מקליד...",
+    "online": "מקוון",
+    "suggestions": "שאלות מוצעות",
     "error_message": "מצטער, אירעה שגיאה בעיבוד ההודעה שלך. אנא נסה שוב.",
     "network_error": "אירעה שגיאה ברשת. אנא בדוק את החיבור שלך.",
     "ai_thinking": "AI חושב...",
@@ -1392,6 +1491,75 @@
       "allergies": "אלרגיות",
       "title": "פרופיל בריאות ובטיחות",
       "medical": "מצבים רפואיים"
+    }
+  },
+  "payment": {
+    "title": "בחר את התוכנית המושלמת",
+    "changeTitle": "שנה את התוכנית שלך",
+    "subtitle": "התחל במסע התזונתי שלך עם התוכנית המתאימה לך",
+    "changeSubtitle": "בחר תוכנית חדשה שמתאימה לך יותר",
+    "completeQuestionnaire": "השלם שאלון",
+    "completeQuestionnaireMessage": "אנא השלם את השאלון לפני בחירת תוכנית",
+    "mostPopular": "הכי פופולרי",
+    "perMonth": "/חודש",
+    "startFree": "התחל חינם",
+    "selectPlan": "בחר תוכנית",
+    "error": "שגיאה",
+    "invalidCardNumber": "מספר כרטיס אשראי לא תקין",
+    "invalidExpiryDate": "תאריך תפוגה לא תקין",
+    "invalidCvv": "קוד CVV לא תקין",
+    "cardholderRequired": "שם בעל הכרטיס נדרש",
+    "paymentFailed": "התשלום נכשל. אנא נסה שוב.",
+    "planUpdateFailed": "נכשל בעדכון התוכנית",
+    "paymentDetails": "פרטי תשלום",
+    "creditCardNumber": "מספר כרטיס אשראי",
+    "expiryDate": "תאריך תפוגה",
+    "cardholderName": "שם בעל הכרטיס",
+    "fullNameOnCard": "שם מלא כפי שמופיע על הכרטיס",
+    "securePayment": "התשלום מאובטח ומוצפן ברמה הגבוהה ביותר",
+    "monthlyBilling": "חיוב חודשי",
+    "cancel": "ביטול",
+    "payNow": "שלם עכשיו",
+    "noCommitment": "ללא התחייבות • ביטול בכל עת • החזר כספי מלא תוך 7 ימים",
+    "changeAnytime": "ניתן לשנות או לבטל את המנוי בכל עת מהגדרות החשבון",
+    "plans": {
+      "free": {
+        "name": "תוכנית חינמית",
+        "description": "מושלם להתחלה",
+        "features": [
+          "5 ניתוחי ארוחות בחודש",
+          "שאלון תזונה בסיסי (נשמר 7 ימים)",
+          "מעקב קלוריות",
+          "גישה למאגר מתכונים",
+          "ללא גישה לצ'אט AI"
+        ]
+      },
+      "gold": {
+        "name": "תוכנית זהב",
+        "description": "הבחירה הפופולרית",
+        "savings": "המלצת המערכת",
+        "features": [
+          "100 ניתוחי ארוחות בחודש",
+          "שאלון תזונה מלא",
+          "עד 100 הודעות בצ'אט AI בחודש",
+          "מעקב מפורט אחר מקרו וויטמינים",
+          "המלצות AI מותאמות אישית",
+          "גישה לכל המתכונים"
+        ]
+      },
+      "premium": {
+        "name": "תוכנית פלטינום",
+        "description": "חוויית AI מתקדמת",
+        "features": [
+          "50 ניתוחי ארוחות בחודש",
+          "שאלון תזונה מלא",
+          "1000 טוקנים לצ'אט AI בחודש (כ-20 הודעות)",
+          "תפריט מותאם אישית עם AI מתקדם",
+          "מעקב בריאותי מלא",
+          "ייעוץ תזונתי אישי",
+          "תמיכה עדיפות גבוהה"
+        ]
+      }
     }
   },
   "recommended_menus": {
@@ -1631,7 +1799,14 @@
     "tip_keep_going_desc": "אתה עושה עבודה מצוינת. שמור על עקביות עם הארוחות.",
     "journey_stats": "המסע שלך",
     "started_on": "התחיל ב-{{date}}",
-    "completion_rate": "אחוז השלמה"
+    "completion_rate": "אחוז השלמה",
+    "eaten_label": "נאכלו",
+    "calories_consumed": "קלוריות שנצרכו",
+    "meals_done": "ארוחות שהושלמו",
+    "planned_today": "מתוכננות היום",
+    "planned_label": "מתוכנן",
+    "meals_label": "ארוחות",
+    "day_n": "יום {{n}}"
   },
   "menu_details": {
     "day": "יום",
@@ -1957,7 +2132,17 @@
       "creating_account": "יוצר חשבון...",
       "already_have_account": "כבר יש לך חשבון?",
       "sign_in": "התחבר",
-      "and": "ו"
+      "and": "ו",
+      "requirements": {
+        "title": "דרישות",
+        "name_min": "לפחות 2 תווים",
+        "name_max": "עד 50 תווים",
+        "email_valid": "כתובת אימייל תקינה",
+        "password_min": "לפחות 8 תווים",
+        "password_uppercase": "לפחות אות גדולה אחת",
+        "password_lowercase": "לפחות אות קטנה אחת",
+        "password_number": "לפחות ספרה אחת"
+      }
     },
     "sign_in": {
       "title": "התחברות",
@@ -1983,12 +2168,12 @@
       "confirm_new_password": "אימות סיסמה חדשה",
       "reset_successful": "הסיסמה אופסה בהצלחה",
       "passwords_dont_match": "הסיסמאות אינן תואמות",
-      "password_too_short": "הסיסמה חייבת להכיל לפחות 6 תווים",
+      "password_too_short": "הסיסמה חייבת להכיל לפחות 8 תווים",
       "invalid_token": "טוקן לא תקין או שפג תוקפו",
       "enter_new_password": "הזן סיסמה חדשה",
       "reset_password_title": "איפוס הסיסמה שלך",
       "password_requirements": "דרישות סיסמה",
-      "password_requirement_length": "לפחות 6 תווים"
+      "password_requirement_length": "לפחות 8 תווים"
     },
 
     "forgot_password_page": {
@@ -2017,7 +2202,7 @@
 
     "errors": {
       "invalid_email": "אנא הזן כתובת אימייל תקינה",
-      "invalid_password": "הסיסמה חייבת להכיל לפחות 6 תווים",
+      "invalid_password": "הסיסמה חייבת להכיל לפחות 8 תווים",
       "passwords_dont_match": "הסיסמאות אינן תואמות",
       "email_already_exists": "כתובת האימייל כבר קיימת",
       "invalid_credentials": "אימייל או סיסמה שגויים",
@@ -2055,7 +2240,16 @@
   "language": {
     "select": "בחירת שפה",
     "english": "English",
-    "hebrew": "עברית"
+    "hebrew": "עברית",
+    "change_note": "השפה תשתנה לאחר הבחירה"
+  },
+  "notFound": {
+    "pageTitle": "הדף לא נמצא",
+    "title": "אופס! הדף לא נמצא",
+    "subtitle": "הדף שחיפשת נעלם לג'ונגל הדיגיטלי",
+    "goHome": "חזרה הביתה",
+    "goBack": "חזרה אחורה",
+    "fallbackLink": "או לחץ כאן לחזור לאפליקציה הראשית"
   },
   "calendar": {
     "title": "לוח יעדים",
@@ -2066,9 +2260,11 @@
     "bestStreak": "רצף הטוב ביותר",
     "currentStreak": "רצף נוכחי",
     "dayDetails": "פרטי היום",
-    "caloriesGoal": "יעד קלוריות",
-    "proteinGoal": "יעד חלבון",
-    "waterGoal": "יעד מים",
+    "caloriesGoal": "קלוריות",
+    "proteinGoal": "חלבון",
+    "carbsGoal": "פחמימות",
+    "fatGoal": "שומן",
+    "waterGoal": "מים",
     "consumed": "נצרך",
     "goal": "יעד",
     "deviation": "סטייה",
@@ -2214,7 +2410,12 @@
     "no_image": "אין תמונה",
     "duplicate_title": "מרכיב כפול",
     "duplicate_message": "\"{{name}}\" כבר נמצא ברשימת המרכיבים",
-    "name_required": "שם המרכיב נדרש"
+    "name_required": "שם המרכיב נדרש",
+    "total_cost": "עלות כוללת"
+  },
+  "instructions": {
+    "cooking_steps": "שלבי הכנה",
+    "step": "שלב"
   },
   "privacy": {
     "title": "מדיניות פרטיות",
@@ -2588,5 +2789,136 @@
     "selectBottle": "בחירת גודל בקבוק",
     "selectBottleDesc": "בחרו כמה מים שתיתם",
     "tip": "שתיית מים באופן קבוע עוזרת לשמור על רמות האנרגיה ותומכת בחילוף החומרים שלכם. שאפו לפחות ל-8 כוסות (2 ליטר) ביום."
+  },
+  "operations": {
+    "deleting": "מוחק...",
+    "adding": "מוסיף...",
+    "saving": "שומר...",
+    "updating": "מעדכן...",
+    "uploading": "מעלה...",
+    "downloading": "מוריד...",
+    "duplicating": "משכפל...",
+    "rating": "מדרג...",
+    "syncing": "מסנכרן...",
+    "loading": "טוען...",
+    "processing": "מעבד...",
+    "analyzing": "מנתח...",
+    "deletingMeal": "מוחק ארוחה...",
+    "deletingMenu": "מוחק תפריט...",
+    "addingMeal": "מוסיף ארוחה...",
+    "addingMenu": "מוסיף תפריט...",
+    "savingChanges": "שומר שינויים...",
+    "updatingProfile": "מעדכן פרופיל...",
+    "syncingDevices": "מסנכרן מכשירים...",
+    "generatingMenu": "מייצר תפריט...",
+    "analyzingMeal": "מנתח ארוחה...",
+    "fetchingData": "מביא נתונים...",
+    "sendingMessage": "שולח הודעה...",
+    "menuDeleted": "התפריט נמחק בהצלחה",
+    "duplicated": "הארוחה שוכפלה בהצלחה",
+    "rated": "הדירוג נשמר בהצלחה",
+    "menuDeleteFailed": "מחיקת התפריט נכשלה",
+    "duplicateFailed": "שכפול הארוחה נכשל",
+    "rateFailed": "שמירת הדירוג נכשלה",
+    "mealDeleteFailed": "מחיקת הארוחה נכשלה",
+    "success": {
+      "deleted": "נמחק בהצלחה",
+      "added": "נוסף בהצלחה",
+      "saved": "נשמר בהצלחה",
+      "updated": "עודכן בהצלחה",
+      "uploaded": "הועלה בהצלחה",
+      "downloaded": "הורד בהצלחה",
+      "duplicated": "שוכפל בהצלחה",
+      "rated": "דורג בהצלחה",
+      "synced": "סונכרן בהצלחה",
+      "mealDeleted": "הארוחה נמחקה בהצלחה",
+      "menuDeleted": "התפריט נמחק בהצלחה",
+      "mealAdded": "הארוחה נוספה בהצלחה",
+      "menuAdded": "התפריט נוסף בהצלחה",
+      "profileUpdated": "הפרופיל עודכן בהצלחה",
+      "messageSent": "ההודעה נשלחה בהצלחה"
+    },
+    "error": {
+      "deleteFailed": "המחיקה נכשלה",
+      "addFailed": "ההוספה נכשלה",
+      "saveFailed": "השמירה נכשלה",
+      "updateFailed": "העדכון נכשל",
+      "uploadFailed": "ההעלאה נכשלה",
+      "downloadFailed": "ההורדה נכשלה",
+      "duplicateFailed": "השכפול נכשל",
+      "rateFailed": "הדירוג נכשל",
+      "syncFailed": "הסנכרון נכשל",
+      "mealDeleteFailed": "מחיקת הארוחה נכשלה",
+      "menuDeleteFailed": "מחיקת התפריט נכשלה",
+      "mealAddFailed": "הוספת הארוחה נכשלה",
+      "menuAddFailed": "הוספת התפריט נכשלה",
+      "tryAgain": "אנא נסה שוב"
+    }
+  },
+  "meal_completion": {
+    "great_job": "כל הכבוד!",
+    "capture_meal": "רוצה לצלם את הארוחה?",
+    "take_photo": "צלם תמונה",
+    "skip_photo": "דלג",
+    "rate_meal": "איך הייתה הארוחה?",
+    "complete_meal": "סיים ארוחה",
+    "saved_to_history": "נשמר בהיסטוריית התזונה שלך!",
+    "saving": "שומר...",
+    "meal_completed": "הארוחה הושלמה!",
+    "add_notes": "הוסף הערות... (אופציונלי)",
+    "capture_meal_desc": "שתף תמונה של הארוחה שלך",
+    "from_gallery": "גלריה",
+    "taste": "טעם",
+    "fullness": "שובע",
+    "energy": "אנרגיה",
+    "heaviness": "כבדות"
+  },
+  "active_meal": {
+    "its_time": "הגיע זמן {{type}}!",
+    "up_next": "הבא",
+    "starts_in": "מתחיל בעוד {{mins}} דק'",
+    "no_more_meals": "כל הארוחות הושלמו להיום!",
+    "current_meal": "ארוחה נוכחית",
+    "mark_done": "סמן כבוצע",
+    "meals_done": "{{done}} מתוך {{total}} ארוחות הושלמו"
+  },
+  "menu_crud": {
+    "edit_menu": "ערוך תפריט",
+    "delete_menu": "מחק תפריט",
+    "delete_confirm": "האם אתה בטוח שברצונך למחוק תפריט זה? לא ניתן לבטל פעולה זו.",
+    "stop_menu": "עצור תפריט",
+    "stop_confirm": "האם אתה בטוח שברצונך לעצור תפריט זה?",
+    "start_menu": "התחל תפריט",
+    "edit_meal": "ערוך ארוחה",
+    "delete_meal": "מחק ארוחה",
+    "delete_meal_confirm": "האם אתה בטוח שברצונך למחוק ארוחה זו?",
+    "add_meal": "הוסף ארוחה",
+    "meal_updated": "הארוחה עודכנה בהצלחה",
+    "meal_deleted": "הארוחה נמחקה בהצלחה",
+    "meal_added": "הארוחה נוספה בהצלחה",
+    "menu_stopped": "התפריט הופסק",
+    "menu_updated": "התפריט עודכן בהצלחה",
+    "menu_deleted": "התפריט נמחק בהצלחה",
+    "menu_title": "שם התפריט",
+    "menu_description": "תיאור",
+    "save_changes": "שמור שינויים",
+    "cancel": "ביטול",
+    "meal_name": "שם הארוחה",
+    "instructions": "הוראות",
+    "add_ingredient": "הוסף מרכיב",
+    "ingredient_name": "שם המרכיב",
+    "quantity": "כמות",
+    "unit": "יחידה"
+  },
+  "timeline": {
+    "breakfast_time": "זמן ארוחת בוקר",
+    "lunch_time": "זמן ארוחת צהריים",
+    "dinner_time": "זמן ארוחת ערב",
+    "snack_time": "זמן חטיף",
+    "completed": "הושלם",
+    "current": "נוכחי",
+    "upcoming": "עתידי",
+    "today": "היום",
+    "currently_active": "פעיל כעת"
   }
 }

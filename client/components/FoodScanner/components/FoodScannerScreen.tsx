@@ -6,14 +6,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
-  Modal,
   Dimensions,
   Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Camera } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
-import { ScanLine, Search, Package } from "lucide-react-native";
+import { ScanLine, Search, Package, QrCode, Camera as CameraIcon } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { api } from "@/src/services/api";
@@ -23,6 +22,7 @@ import { ToastService } from "@/src/services/totastService";
 import { useTheme } from "@/src/context/ThemeContext";
 import ScannedProducts from "@/components/ScannedProducts";
 import { PriceEstimate, ProductData, ScanResult } from "@/src/types/statistics";
+import { OperationLoader } from "@/components/loaders/OperationLoader";
 
 // Import new components
 import ScannerCamera from "./ScannerCamera";
@@ -72,6 +72,10 @@ export default function FoodScannerScreen() {
   const scaleAnimation = useRef(new Animated.Value(1)).current;
   const scanLineAnimation = useRef(new Animated.Value(0)).current;
   const pulseAnimation = useRef(new Animated.Value(1)).current;
+
+  // Debounce ref to prevent multiple rapid barcode scans
+  const lastScanTime = useRef<number>(0);
+  const lastScannedBarcode = useRef<string>("");
 
   useEffect(() => {
     getCameraPermissions();
@@ -273,14 +277,40 @@ export default function FoodScannerScreen() {
   };
 
   const handleBarcodeScan = async (scanningResult: any) => {
+    // Prevent processing if already loading
     if (isLoading) return;
+
+    // Validate scan result
+    if (!scanningResult?.data) {
+      console.warn("Invalid barcode scan result");
+      return;
+    }
+
+    const barcode = scanningResult.data;
+    const now = Date.now();
+
+    // Debounce: ignore if same barcode scanned within 2 seconds
+    if (
+      barcode === lastScannedBarcode.current &&
+      now - lastScanTime.current < 2000
+    ) {
+      return;
+    }
+
+    // Debounce: ignore any scan within 500ms of the last scan
+    if (now - lastScanTime.current < 500) {
+      return;
+    }
+
+    lastScanTime.current = now;
+    lastScannedBarcode.current = barcode;
 
     setIsLoading(true);
     setLoadingText(t("foodScanner.analyzing"));
 
     try {
       const response = await api.post("/food-scanner/barcode", {
-        barcode: scanningResult.data,
+        barcode: barcode,
       });
 
       if (response.data.success && response.data.data) {
@@ -322,19 +352,30 @@ export default function FoodScannerScreen() {
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
+        allowsEditing: false, // Disabled to prevent cropping
+        quality: 0.85,
         base64: true,
+        exif: false, // Reduce data size
       });
 
-      if (!result.canceled && result.assets[0].base64) {
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+
+        // Validate we have valid image data
+        if (!asset.base64 || asset.base64.length < 100) {
+          ToastService.error(
+            t("foodScanner.scanError"),
+            t("foodScanner.couldNotIdentifyProduct"),
+          );
+          return;
+        }
+
         setIsLoading(true);
         setLoadingText(t("foodScanner.analyzing"));
 
         try {
           const response = await api.post("/food-scanner/image", {
-            imageBase64: result.assets[0].base64,
+            imageBase64: asset.base64,
           });
 
           if (response.data.success && response.data.data) {
@@ -368,6 +409,8 @@ export default function FoodScannerScreen() {
       }
     } catch (error) {
       console.error("Camera error:", error);
+      setIsLoading(false);
+      setLoadingText("");
       ToastService.error(
         t("foodScanner.scanError"),
         t("foodScanner.couldNotOpenCamera"),
@@ -467,10 +510,16 @@ export default function FoodScannerScreen() {
     setShowResults(false);
     setBarcodeInput("");
     setQuantity(100);
+    // Reset debounce refs to allow scanning the same barcode again
+    lastScannedBarcode.current = "";
+    lastScanTime.current = 0;
   };
 
-  const handleProductSearch = async () => {
-    if (!searchQuery.trim() || searchQuery.length < 2) {
+  const handleProductSearch = async (retryCount: number = 0) => {
+    const MAX_RETRIES = 2;
+    const trimmedQuery = searchQuery.trim();
+
+    if (!trimmedQuery || trimmedQuery.length < 2) {
       ToastService.error(
         t("foodScanner.searchError"),
         t("foodScanner.searchQueryTooShort"),
@@ -478,10 +527,16 @@ export default function FoodScannerScreen() {
       return;
     }
 
+    // Clear previous results and set loading state
+    if (retryCount === 0) {
+      setSearchResults([]);
+    }
     setIsSearching(true);
+
     try {
       const response = await api.get("/food-scanner/search", {
-        params: { q: searchQuery.trim() },
+        params: { q: trimmedQuery },
+        timeout: 20000, // 20 second timeout for external API calls
       });
 
       if (response.data.success && response.data.data) {
@@ -492,9 +547,35 @@ export default function FoodScannerScreen() {
             t("foodScanner.tryDifferentSearch"),
           );
         }
+      } else {
+        // Handle unsuccessful response
+        setSearchResults([]);
+        if (retryCount < MAX_RETRIES) {
+          console.log(`🔄 Retrying search (attempt ${retryCount + 2}/${MAX_RETRIES + 1})...`);
+          await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)));
+          return handleProductSearch(retryCount + 1);
+        }
+        ToastService.error(
+          t("foodScanner.searchError"),
+          response.data.error || t("common.tryAgain"),
+        );
       }
     } catch (error: any) {
       console.error("Product search error:", error);
+
+      // Retry on network errors or timeouts
+      const isRetryable = error.code === "ECONNABORTED" ||
+                          error.code === "ERR_NETWORK" ||
+                          !error.response;
+
+      if (isRetryable && retryCount < MAX_RETRIES) {
+        console.log(`🔄 Retrying search after error (attempt ${retryCount + 2}/${MAX_RETRIES + 1})...`);
+        await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)));
+        return handleProductSearch(retryCount + 1);
+      }
+
+      // Clear results on final failure
+      setSearchResults([]);
       const serverMessage = error?.response?.data?.error;
       ToastService.error(
         t("foodScanner.scanError"),
@@ -506,13 +587,26 @@ export default function FoodScannerScreen() {
   };
 
   const handleSelectSearchResult = async (product: any) => {
+    if (!product) {
+      ToastService.error(
+        t("foodScanner.scanError"),
+        t("common.tryAgain"),
+      );
+      return;
+    }
+
     setIsLoading(true);
     setLoadingText(t("foodScanner.loadingProduct"));
     try {
       console.log("🔍 Selected product:", product);
 
       // Save the selected product to scan history
-      await saveProductToHistory(product);
+      try {
+        await saveProductToHistory(product);
+      } catch (saveError) {
+        console.warn("Failed to save product to history:", saveError);
+        // Continue even if save fails
+      }
 
       // Create a scan result from the search result
       const scanData = {
@@ -650,6 +744,56 @@ export default function FoodScannerScreen() {
 
       {!showResults ? (
         <>
+          {/* Scan Mode Toggle */}
+          <View style={styles.scanModeToggle}>
+            <TouchableOpacity
+              style={[
+                styles.scanModeBtn,
+                scanMode === "barcode" && [styles.scanModeBtnActive, { backgroundColor: colors.primary }],
+                scanMode !== "barcode" && { backgroundColor: colors.surface },
+              ]}
+              onPress={() => setScanMode("barcode")}
+              activeOpacity={0.7}
+            >
+              <QrCode
+                size={18}
+                color={scanMode === "barcode" ? colors.onPrimary : colors.textSecondary}
+                strokeWidth={2}
+              />
+              <Text
+                style={[
+                  styles.scanModeBtnText,
+                  { color: scanMode === "barcode" ? colors.onPrimary : colors.textSecondary },
+                ]}
+              >
+                {t("foodScanner.scanFood")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.scanModeBtn,
+                scanMode === "image" && [styles.scanModeBtnActive, { backgroundColor: colors.primary }],
+                scanMode !== "image" && { backgroundColor: colors.surface },
+              ]}
+              onPress={() => setScanMode("image")}
+              activeOpacity={0.7}
+            >
+              <CameraIcon
+                size={18}
+                color={scanMode === "image" ? colors.onPrimary : colors.textSecondary}
+                strokeWidth={2}
+              />
+              <Text
+                style={[
+                  styles.scanModeBtnText,
+                  { color: scanMode === "image" ? colors.onPrimary : colors.textSecondary },
+                ]}
+              >
+                {t("foodScanner.takePicture")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Camera Scanner */}
           <View style={styles.scannerContainer}>
             <ScannerCamera
@@ -725,23 +869,11 @@ export default function FoodScannerScreen() {
       )}
 
       {/* Loading Overlay */}
-      {isLoading && (
-        <Modal visible={isLoading} transparent animationType="fade">
-          <View style={styles.loadingOverlay}>
-            <View
-              style={[
-                styles.loadingContent,
-                { backgroundColor: colors.surface },
-              ]}
-            >
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.loadingText, { color: colors.text }]}>
-                {loadingText}
-              </Text>
-            </View>
-          </View>
-        </Modal>
-      )}
+      <OperationLoader
+        visible={isLoading}
+        type="loading"
+        message={loadingText}
+      />
 
       {/* History Modal */}
       <ScanHistoryModal
@@ -814,9 +946,37 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  scanModeToggle: {
+    flexDirection: "row",
+    marginHorizontal: 20,
+    borderRadius: 14,
+    overflow: "hidden",
+    gap: 4,
+    marginBottom: 4,
+  },
+  scanModeBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  scanModeBtnActive: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  scanModeBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
   scannerContainer: {
     flex: 1,
-    paddingTop: 24,
+    paddingTop: 16,
     alignItems: "center",
   },
   scanInstructions: {
@@ -847,20 +1007,6 @@ const styles = StyleSheet.create({
   scanButtonText: {
     fontWeight: "700",
     fontSize: 16,
-  },
-  loadingOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(15,23,42,0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingContent: {
-    padding: 28,
-    borderRadius: 20,
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 12,
   },
   noPermissionContainer: {
     flex: 1,

@@ -30,6 +30,46 @@ import {
   Leaf,
   Moon,
   Settings,
+  // Goal icons
+  TrendingDown,
+  Dumbbell,
+  Scale,
+  Hospital,
+  Trophy,
+  // Activity level icons
+  Armchair,
+  Footprints,
+  PersonStanding,
+  Zap,
+  // Sport frequency icons
+  BedDouble,
+  Timer,
+  Flame,
+  Award,
+  // Cooking icons
+  ChefHat,
+  Package,
+  Salad,
+  // Meals per day icons
+  UtensilsCrossed,
+  Soup,
+  CookingPot,
+  // Dietary icons
+  Beef,
+  Egg,
+  Carrot,
+  Vegan,
+  Fish,
+  // Commitment icons
+  Smile,
+  Crosshair,
+  // Gender icons
+  User,
+  UserCircle,
+  Users,
+  // Smoking icons
+  Ban,
+  Cigarette,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/context/ThemeContext";
@@ -725,31 +765,31 @@ const QuestionnaireScreen: React.FC = () => {
         key: "WEIGHT_LOSS",
         label: t("questionnaire.loseWeight"),
         description: t("questionnaire.loseWeightDesc"),
-        icon: <Text style={styles.emoji}>🏃‍♀️</Text>,
+        icon: <TrendingDown size={24} color={colors.primary} />,
       },
       {
         key: "WEIGHT_GAIN",
         label: t("questionnaire.gainWeight"),
         description: t("questionnaire.gainWeightDesc"),
-        icon: <Text style={styles.emoji}>💪</Text>,
+        icon: <Dumbbell size={24} color={colors.primary} />,
       },
       {
         key: "WEIGHT_MAINTENANCE",
         label: t("questionnaire.maintainWeight"),
         description: t("questionnaire.maintainWeightDesc"),
-        icon: <Text style={styles.emoji}>⚖️</Text>,
+        icon: <Scale size={24} color={colors.primary} />,
       },
       {
         key: "MEDICAL_CONDITION",
         label: t("questionnaire.improveHealth"),
         description: t("questionnaire.improveHealthDesc"),
-        icon: <Text style={styles.emoji}>🏥</Text>,
+        icon: <Hospital size={24} color={colors.primary} />,
       },
       {
         key: "SPORTS_PERFORMANCE",
         label: t("questionnaire.buildMuscle"),
         description: t("questionnaire.buildMuscleDesc"),
-        icon: <Text style={styles.emoji}>🏆</Text>,
+        icon: <Trophy size={24} color={colors.primary} />,
       },
     ];
 
@@ -758,25 +798,25 @@ const QuestionnaireScreen: React.FC = () => {
         key: "NONE",
         label: t("questionnaire.notActive"),
         description: t("questionnaire.notActiveDesc"),
-        icon: <Text style={styles.emoji}>🪑</Text>,
+        icon: <Armchair size={24} color={colors.primary} />,
       },
       {
         key: "LIGHT",
         label: t("questionnaire.lightlyActive"),
         description: t("questionnaire.lightlyActiveDesc"),
-        icon: <Text style={styles.emoji}>🚶‍♀️</Text>,
+        icon: <Footprints size={24} color={colors.primary} />,
       },
       {
         key: "MODERATE",
         label: t("questionnaire.moderatelyActive"),
         description: t("questionnaire.moderatelyActiveDesc"),
-        icon: <Text style={styles.emoji}>🏃‍♀️</Text>,
+        icon: <Activity size={24} color={colors.primary} />,
       },
       {
         key: "HIGH",
         label: t("questionnaire.veryActive"),
         description: t("questionnaire.veryActiveDesc"),
-        icon: <Text style={styles.emoji}>🏋️‍♀️</Text>,
+        icon: <Dumbbell size={24} color={colors.primary} />,
       },
     ];
 
@@ -784,27 +824,27 @@ const QuestionnaireScreen: React.FC = () => {
       {
         key: "NONE",
         label: t("questionnaire.notActive"),
-        icon: <Text style={styles.emoji}>😴</Text>,
+        icon: <BedDouble size={24} color={colors.primary} />,
       },
       {
         key: "ONCE_A_WEEK",
         label: "1x " + t("common.weekly"),
-        icon: <Text style={styles.emoji}>🚶</Text>,
+        icon: <Footprints size={24} color={colors.primary} />,
       },
       {
         key: "TWO_TO_THREE",
         label: "2-3x " + t("common.weekly"),
-        icon: <Text style={styles.emoji}>🏃</Text>,
+        icon: <Activity size={24} color={colors.primary} />,
       },
       {
         key: "FOUR_TO_FIVE",
         label: "4-5x " + t("common.weekly"),
-        icon: <Text style={styles.emoji}>💪</Text>,
+        icon: <Flame size={24} color={colors.primary} />,
       },
       {
         key: "MORE_THAN_FIVE",
         label: "5+x " + t("common.weekly"),
-        icon: <Text style={styles.emoji}>🏆</Text>,
+        icon: <Award size={24} color={colors.primary} />,
       },
     ];
 
@@ -813,25 +853,25 @@ const QuestionnaireScreen: React.FC = () => {
         key: "cooked",
         label: t("questionnaire.cooked"),
         description: t("questionnaire.cookedDesc"),
-        icon: <Text style={styles.emoji}>👨‍🍳</Text>,
+        icon: <ChefHat size={24} color={colors.primary} />,
       },
       {
         key: "easy_prep",
         label: t("questionnaire.easyPrep"),
         description: t("questionnaire.easyPrepDesc"),
-        icon: <Text style={styles.emoji}>⚡</Text>,
+        icon: <Zap size={24} color={colors.primary} />,
       },
       {
         key: "ready_made",
         label: t("questionnaire.readyMade"),
         description: t("questionnaire.readyMadeDesc"),
-        icon: <Text style={styles.emoji}>📦</Text>,
+        icon: <Package size={24} color={colors.primary} />,
       },
       {
         key: "no_cooking",
         label: t("questionnaire.noCooking"),
         description: t("questionnaire.noCookingDesc"),
-        icon: <Text style={styles.emoji}>🥗</Text>,
+        icon: <Salad size={24} color={colors.primary} />,
       },
     ];
 
@@ -860,25 +900,25 @@ const QuestionnaireScreen: React.FC = () => {
         key: "2",
         label: t("questionnaire.twoMeals"),
         description: t("questionnaire.twoMealsDesc"),
-        icon: <Text style={styles.emoji}>🍽️</Text>,
+        icon: <UtensilsCrossed size={24} color={colors.primary} />,
       },
       {
         key: "3",
         label: t("questionnaire.threeMeals"),
         description: t("questionnaire.threeMealsDesc"),
-        icon: <Text style={styles.emoji}>🥗</Text>,
+        icon: <Utensils size={24} color={colors.primary} />,
       },
       {
         key: "4",
         label: t("questionnaire.fourMeals"),
         description: t("questionnaire.fourMealsDesc"),
-        icon: <Text style={styles.emoji}>🍲</Text>,
+        icon: <Soup size={24} color={colors.primary} />,
       },
       {
         key: "5",
         label: t("questionnaire.fivePlusMeals"),
         description: t("questionnaire.fivePlusMealsDesc"),
-        icon: <Text style={styles.emoji}>🥘</Text>,
+        icon: <CookingPot size={24} color={colors.primary} />,
       },
     ];
 
@@ -887,37 +927,37 @@ const QuestionnaireScreen: React.FC = () => {
         key: "regular",
         label: t("questionnaire.omnivore"),
         description: t("questionnaire.omnivoreDesc"),
-        icon: <Text style={styles.emoji}>🍽️</Text>,
+        icon: <Utensils size={24} color={colors.primary} />,
       },
       {
         key: "low_carb",
         label: t("questionnaire.lowCarb"),
         description: t("questionnaire.lowCarbDesc"),
-        icon: <Text style={styles.emoji}>🥩</Text>,
+        icon: <Beef size={24} color={colors.primary} />,
       },
       {
         key: "keto",
         label: t("questionnaire.keto"),
         description: t("questionnaire.ketoDesc"),
-        icon: <Text style={styles.emoji}>🥑</Text>,
+        icon: <Egg size={24} color={colors.primary} />,
       },
       {
         key: "vegetarian",
         label: t("questionnaire.vegetarian"),
         description: t("questionnaire.vegetarianDesc"),
-        icon: <Text style={styles.emoji}>🌱</Text>,
+        icon: <Carrot size={24} color={colors.primary} />,
       },
       {
         key: "vegan",
         label: t("questionnaire.vegan"),
         description: t("questionnaire.veganDesc"),
-        icon: <Text style={styles.emoji}>🌿</Text>,
+        icon: <Vegan size={24} color={colors.primary} />,
       },
       {
         key: "mediterranean",
         label: t("questionnaire.mediterranean"),
         description: t("questionnaire.mediterraneanDesc"),
-        icon: <Text style={styles.emoji}>🫒</Text>,
+        icon: <Fish size={24} color={colors.primary} />,
       },
     ];
 
@@ -926,19 +966,19 @@ const QuestionnaireScreen: React.FC = () => {
         key: "easy",
         label: t("questionnaire.easy"),
         description: t("questionnaire.easyDesc"),
-        icon: <Text style={styles.emoji}>😌</Text>,
+        icon: <Smile size={24} color={colors.primary} />,
       },
       {
         key: "moderate",
         label: t("questionnaire.moderate"),
         description: t("questionnaire.moderateDesc"),
-        icon: <Text style={styles.emoji}>💪</Text>,
+        icon: <Dumbbell size={24} color={colors.primary} />,
       },
       {
         key: "strict",
         label: t("questionnaire.strict"),
         description: t("questionnaire.strictDesc"),
-        icon: <Text style={styles.emoji}>🎯</Text>,
+        icon: <Crosshair size={24} color={colors.primary} />,
       },
     ];
 
@@ -946,17 +986,17 @@ const QuestionnaireScreen: React.FC = () => {
       {
         key: "male",
         label: t("questionnaire.male"),
-        icon: <Text style={styles.emoji}>👨</Text>,
+        icon: <User size={24} color={colors.primary} />,
       },
       {
         key: "female",
         label: t("questionnaire.female"),
-        icon: <Text style={styles.emoji}>👩</Text>,
+        icon: <UserCircle size={24} color={colors.primary} />,
       },
       {
         key: "other",
         label: t("questionnaire.other"),
-        icon: <Text style={styles.emoji}>👤</Text>,
+        icon: <Users size={24} color={colors.primary} />,
       },
     ];
 
@@ -1323,12 +1363,12 @@ const QuestionnaireScreen: React.FC = () => {
                 {
                   key: "NO",
                   label: t("questionnaire.nonSmoker"),
-                  icon: <Text style={styles.emoji}>🚭</Text>,
+                  icon: <Ban size={24} color={colors.primary} />,
                 },
                 {
                   key: "YES",
                   label: t("questionnaire.smoker"),
-                  icon: <Text style={styles.emoji}>🚬</Text>,
+                  icon: <Cigarette size={24} color={colors.primary} />,
                 },
               ]}
               selectedValue={formData.smoking_status || ""}
@@ -1692,9 +1732,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
-  },
-  emoji: {
-    fontSize: 24,
   },
   textRTL: {
     textAlign: "right",

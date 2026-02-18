@@ -10,8 +10,24 @@ import {
   RefreshControl,
   Platform,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import {
+  AlertTriangle,
+  RefreshCw,
+  Footprints,
+  Flame,
+  Clock,
+  Heart,
+  ArrowDown,
+  ArrowUp,
+  BarChart3,
+  X,
+  PlusCircle,
+  Activity,
+  Watch,
+  Smartphone,
+  LucideIcon,
+} from "lucide-react-native";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,10 +40,9 @@ import {
   DailyBalance,
 } from "../../src/services/deviceAPI";
 import { HealthData } from "../../src/services/healthKit";
-import LoadingScreen from "@/components/LoadingScreen";
+import { DeviceCardSkeleton } from "@/components/loaders";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import axios from "axios";
-import { SupportedDevice } from "@/src/types/devices";
 
 const getApiBaseUrl = () => {
   if (__DEV__) {
@@ -36,11 +51,20 @@ const getApiBaseUrl = () => {
   return "https://your-production-api.com/api";
 };
 
-const SUPPORTED_DEVICES: SupportedDevice[] = [
+interface DeviceConfig {
+  type: string;
+  name: string;
+  Icon: LucideIcon;
+  color: string;
+  available: boolean;
+  description: string;
+}
+
+const SUPPORTED_DEVICES: DeviceConfig[] = [
   {
     type: "APPLE_HEALTH",
     name: "Apple Health",
-    icon: "logo-apple",
+    Icon: Smartphone,
     color: "#000000",
     available: Platform.OS === "ios",
     description: "Sync steps, calories, heart rate, and more from Apple Health",
@@ -48,7 +72,7 @@ const SUPPORTED_DEVICES: SupportedDevice[] = [
   {
     type: "GOOGLE_FIT",
     name: "Google Fit",
-    icon: "fitness",
+    Icon: Activity,
     color: "#4285F4",
     available: true,
     description:
@@ -57,7 +81,7 @@ const SUPPORTED_DEVICES: SupportedDevice[] = [
   {
     type: "FITBIT",
     name: "Fitbit",
-    icon: "watch" as const,
+    Icon: Watch,
     color: "#00B0B9",
     available: true,
     description: "Sync your Fitbit device data including sleep and activity",
@@ -65,7 +89,7 @@ const SUPPORTED_DEVICES: SupportedDevice[] = [
   {
     type: "GARMIN",
     name: "Garmin",
-    icon: "watch" as const,
+    Icon: Watch,
     color: "#007CC3",
     available: true,
     description: "Connect Garmin devices for detailed fitness metrics",
@@ -73,7 +97,7 @@ const SUPPORTED_DEVICES: SupportedDevice[] = [
   {
     type: "WHOOP",
     name: "Whoop",
-    icon: "fitness" as const,
+    Icon: Activity,
     color: "#FF6B35",
     available: true,
     description: "Track recovery, strain, and sleep with Whoop integration",
@@ -81,7 +105,7 @@ const SUPPORTED_DEVICES: SupportedDevice[] = [
   {
     type: "POLAR",
     name: "Polar",
-    icon: "heart" as const,
+    Icon: Heart,
     color: "#0066CC",
     available: true,
     description: "Sync Polar heart rate and training data",
@@ -89,7 +113,7 @@ const SUPPORTED_DEVICES: SupportedDevice[] = [
   {
     type: "SAMSUNG_HEALTH",
     name: "Samsung Health",
-    icon: "heart" as const,
+    Icon: Heart,
     color: "#1428A0",
     available: Platform.OS === "android",
     description: "Connect Samsung Health for comprehensive health tracking",
@@ -120,18 +144,16 @@ export default function DevicesScreen() {
     // Check subscription access
     if (!user || user.subscription_type === "FREE") {
       Alert.alert(
-        language === "he" ? "שדרוג נדרש" : "Upgrade Required",
-        language === "he"
-          ? "חיבור מכשירים זמין רק במנויי Gold ו-Platinum"
-          : "Device integration is only available on Gold and Platinum plans.",
+        t("devices.upgrade_required"),
+        t("devices.upgrade_required_message"),
         [
           {
-            text: language === "he" ? "ביטול" : "Cancel",
+            text: t("devices.cancel"),
             onPress: () => router.replace("/(tabs)"),
             style: "cancel",
           },
           {
-            text: language === "he" ? "שדרג" : "Upgrade",
+            text: t("devices.upgrade"),
             onPress: () => router.replace("/payment-plan"),
           },
         ]
@@ -166,7 +188,7 @@ export default function DevicesScreen() {
       }
     } catch (error) {
       console.error("💥 Failed to load device data:", error);
-      setError("Failed to load device data. Please try again.");
+      setError(t("devices.load_failed"));
     } finally {
       setIsLoading(false);
     }
@@ -186,15 +208,15 @@ export default function DevicesScreen() {
 
     if (!deviceInfo) {
       console.log("❌ Device info not found for type:", deviceType);
-      Alert.alert("Error", "Device type not found");
+      Alert.alert(t("devices.error"), t("devices.device_not_found"));
       return;
     }
 
     if (!deviceInfo.available) {
       console.log("❌ Device not available:", deviceInfo.name);
       Alert.alert(
-        "Not Available",
-        `${deviceInfo.name} integration is not available on this platform.`
+        t("devices.not_available"),
+        `${deviceInfo.name} ${t("devices.not_available_message")}`
       );
       return;
     }
@@ -203,20 +225,20 @@ export default function DevicesScreen() {
       const clientSecret = process.env.EXPO_PUBLIC_GOOGLE_FIT_CLIENT_SECRET;
       if (!clientSecret) {
         Alert.alert(
-          "Configuration Required",
-          "Google Fit client secret is not configured. Please add EXPO_PUBLIC_GOOGLE_FIT_CLIENT_SECRET to your environment variables and restart the app.",
+          t("devices.configuration_required"),
+          t("devices.configuration_required_message"),
           [{ text: "OK" }]
         );
         return;
       }
 
       Alert.alert(
-        "Connect Device",
-        `Connect to ${deviceInfo.name}?\n\n${deviceInfo.description}\n\nThis will request permission to access your health data.`,
+        t("devices.connect_device"),
+        `${deviceInfo.name}?\n\n${deviceInfo.description}\n\n${t("devices.connect_device_message")}`,
         [
-          { text: "Cancel", style: "cancel" },
+          { text: t("devices.cancel"), style: "cancel" },
           {
-            text: "Connect",
+            text: t("devices.connect"),
             onPress: async () => {
               console.log("🔄 User pressed Connect for Google Fit");
               setConnectingDevices((prev) => new Set(prev).add(deviceType));
@@ -251,21 +273,19 @@ export default function DevicesScreen() {
                   }
 
                   Alert.alert(
-                    "Success",
-                    `${deviceInfo.name} connected successfully! You can now sync your health data.`
+                    t("devices.success"),
+                    `${deviceInfo.name} ${t("devices.connected_success")}`
                   );
                   await loadDeviceData();
                 } else {
                   Alert.alert(
-                    "Connection Failed",
-                    `Failed to connect to ${deviceInfo.name}. ${result.error}`
+                    t("devices.connection_failed"),
+                    `${deviceInfo.name}: ${result.error}`
                   );
                 }
               } catch (error) {
                 console.error("💥 Connection error:", error);
-                setError(
-                  `Failed to connect to ${deviceInfo.name}. Please try again.`
-                );
+                setError(t("devices.connection_failed_message"));
               } finally {
                 setConnectingDevices((prev) => {
                   const newSet = new Set(prev);
@@ -281,12 +301,12 @@ export default function DevicesScreen() {
     }
 
     Alert.alert(
-      "Connect Device",
-      `Connect to ${deviceInfo.name}?\n\n${deviceInfo.description}\n\nThis will request permission to access your health data.`,
+      t("devices.connect_device"),
+      `${deviceInfo.name}?\n\n${deviceInfo.description}\n\n${t("devices.connect_device_message")}`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("devices.cancel"), style: "cancel" },
         {
-          text: "Connect",
+          text: t("devices.connect"),
           onPress: async () => {
             console.log("🔄 User pressed Connect for:", deviceType);
             setConnectingDevices((prev) => new Set(prev).add(deviceType));
@@ -302,21 +322,19 @@ export default function DevicesScreen() {
 
               if (success) {
                 Alert.alert(
-                  "Success",
-                  `${deviceInfo.name} connected successfully! You can now sync your health data.`
+                  t("devices.success"),
+                  `${deviceInfo.name} ${t("devices.connected_success")}`
                 );
                 await loadDeviceData();
               } else {
                 Alert.alert(
-                  "Connection Failed",
-                  `Failed to connect to ${deviceInfo.name}. This could be due to:\n\n• Cancelled authorization\n• Network issues\n• Configuration problems\n\nPlease try again or check your settings.`
+                  t("devices.connection_failed"),
+                  t("devices.connection_failed_message")
                 );
               }
             } catch (error) {
               console.error("💥 Connection error:", error);
-              setError(
-                `Failed to connect to ${deviceInfo.name}. Please try again.`
-              );
+              setError(t("devices.connection_failed_message"));
             } finally {
               setConnectingDevices((prev) => {
                 const newSet = new Set(prev);
@@ -335,25 +353,25 @@ export default function DevicesScreen() {
     if (!device) return;
 
     Alert.alert(
-      "Disconnect Device",
-      `Are you sure you want to disconnect ${device.name}? This will stop syncing data from this device.`,
+      t("devices.disconnect_device"),
+      `${device.name}: ${t("devices.disconnect_device_message")}`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("devices.cancel"), style: "cancel" },
         {
-          text: "Disconnect",
+          text: t("devices.disconnect"),
           style: "destructive",
           onPress: async () => {
             try {
               const success = await deviceAPI.disconnectDevice(deviceId);
               if (success) {
-                Alert.alert("Success", "Device disconnected successfully");
+                Alert.alert(t("devices.success"), t("devices.disconnected_success"));
                 await loadDeviceData();
               } else {
-                Alert.alert("Error", "Failed to disconnect device");
+                Alert.alert(t("devices.error"), t("devices.sync_failed"));
               }
             } catch (error) {
               console.error("💥 Disconnect error:", error);
-              Alert.alert("Error", "Failed to disconnect device");
+              Alert.alert(t("devices.error"), t("devices.sync_failed"));
             }
           },
         },
@@ -367,17 +385,14 @@ export default function DevicesScreen() {
     try {
       const success = await deviceAPI.syncDevice(deviceId);
       if (success) {
-        Alert.alert("Success", "Device synced successfully!");
+        Alert.alert(t("devices.success"), t("devices.sync_successful"));
         await loadDeviceData();
       } else {
-        Alert.alert(
-          "Error",
-          "Failed to sync device. Please check your connection and try again."
-        );
+        Alert.alert(t("devices.error"), t("devices.sync_failed_message"));
       }
     } catch (error) {
       console.error("💥 Sync error:", error);
-      Alert.alert("Error", "Failed to sync device");
+      Alert.alert(t("devices.error"), t("devices.sync_failed"));
     } finally {
       setSyncingDevices((prev) => {
         const newSet = new Set(prev);
@@ -389,7 +404,7 @@ export default function DevicesScreen() {
 
   const handleSyncAllDevices = async () => {
     if (connectedDevices.length === 0) {
-      Alert.alert("No Devices", "No connected devices to sync");
+      Alert.alert(t("devices.no_devices"), t("devices.no_devices_message"));
       return;
     }
 
@@ -397,26 +412,31 @@ export default function DevicesScreen() {
       const result = await deviceAPI.syncAllDevices();
       if (result.success > 0) {
         Alert.alert(
-          "Sync Complete",
-          `Successfully synced ${result.success} device(s)${
+          t("devices.sync_complete"),
+          `${t("devices.sync_complete_message")} ${result.success}${
             result.failed > 0 ? `, ${result.failed} failed` : ""
           }`
         );
         await loadDeviceData();
       } else {
-        Alert.alert(
-          "Sync Failed",
-          "Failed to sync any devices. Please check your connections."
-        );
+        Alert.alert(t("devices.sync_failed"), t("devices.sync_failed_message"));
       }
     } catch (error) {
       console.error("💥 Sync all error:", error);
-      Alert.alert("Error", "Failed to sync devices");
+      Alert.alert(t("devices.error"), t("devices.sync_failed"));
     }
   };
 
   if (isLoading) {
-    return <LoadingScreen text={t("loading.loading", "loading.devices")} />;
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={{ padding: 16, gap: 12 }}>
+          <DeviceCardSkeleton />
+          <DeviceCardSkeleton />
+          <DeviceCardSkeleton />
+        </View>
+      </View>
+    );
   }
 
   if (error) {
@@ -424,13 +444,12 @@ export default function DevicesScreen() {
       <View
         style={[styles.errorContainer, { backgroundColor: colors.background }]}
       >
-        <Ionicons
-          name="warning-outline"
+        <AlertTriangle
           size={64}
           color={colors.error || "#ef4444"}
         />
         <Text style={[styles.errorTitle, { color: colors.text }]}>
-          Oops! Something went wrong
+          {t("devices.oops")}
         </Text>
         <Text style={[styles.errorText, { color: colors.subtext }]}>
           {error}
@@ -445,8 +464,8 @@ export default function DevicesScreen() {
             loadDeviceData();
           }}
         >
-          <Ionicons name="refresh" size={20} color="#ffffff" />
-          <Text style={styles.retryButtonText}>Try Again</Text>
+          <RefreshCw size={20} color="#ffffff" />
+          <Text style={styles.retryButtonText}>{t("devices.try_again")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -499,7 +518,7 @@ export default function DevicesScreen() {
               </Text>
               <View style={styles.balanceContainer}>
                 <View style={styles.balanceItem}>
-                  <Ionicons name="arrow-down" size={24} color="#10b981" />
+                  <ArrowDown size={24} color="#10b981" />
                   <Text style={[styles.balanceValue, { color: colors.text }]}>
                     {dailyBalance.caloriesIn}
                   </Text>
@@ -510,7 +529,7 @@ export default function DevicesScreen() {
                   </Text>
                 </View>
                 <View style={styles.balanceItem}>
-                  <Ionicons name="arrow-up" size={24} color="#ef4444" />
+                  <ArrowUp size={24} color="#ef4444" />
                   <Text style={[styles.balanceValue, { color: colors.text }]}>
                     {dailyBalance.caloriesOut}
                   </Text>
@@ -521,7 +540,7 @@ export default function DevicesScreen() {
                   </Text>
                 </View>
                 <View style={styles.balanceItem}>
-                  <Ionicons name="analytics" size={24} color="#6366f1" />
+                  <BarChart3 size={24} color="#6366f1" />
                   <Text style={[styles.balanceValue, { color: colors.text }]}>
                     {dailyBalance.balance > 0 ? "+" : ""}
                     {dailyBalance.balance}
@@ -549,7 +568,7 @@ export default function DevicesScreen() {
                     { backgroundColor: colors.surface },
                   ]}
                 >
-                  <Ionicons name="walk" size={28} color="#10b981" />
+                  <Footprints size={28} color="#10b981" />
                   <Text style={[styles.activityValue, { color: colors.text }]}>
                     {activityData.steps.toLocaleString()}
                   </Text>
@@ -565,7 +584,7 @@ export default function DevicesScreen() {
                     { backgroundColor: colors.surface },
                   ]}
                 >
-                  <Ionicons name="flame" size={28} color="#ef4444" />
+                  <Flame size={28} color="#ef4444" />
                   <Text style={[styles.activityValue, { color: colors.text }]}>
                     {activityData.caloriesBurned}
                   </Text>
@@ -581,7 +600,7 @@ export default function DevicesScreen() {
                     { backgroundColor: colors.surface },
                   ]}
                 >
-                  <Ionicons name="time" size={28} color="#3b82f6" />
+                  <Clock size={28} color="#3b82f6" />
                   <Text style={[styles.activityValue, { color: colors.text }]}>
                     {activityData.activeMinutes}
                   </Text>
@@ -598,7 +617,7 @@ export default function DevicesScreen() {
                       { backgroundColor: colors.surface },
                     ]}
                   >
-                    <Ionicons name="heart" size={28} color="#e91e63" />
+                    <Heart size={28} color="#e91e63" />
                     <Text
                       style={[styles.activityValue, { color: colors.text }]}
                     >
@@ -629,8 +648,8 @@ export default function DevicesScreen() {
                   ]}
                   onPress={handleSyncAllDevices}
                 >
-                  <Ionicons name="refresh" size={16} color="#ffffff" />
-                  <Text style={styles.syncAllText}>Sync All</Text>
+                  <RefreshCw size={16} color="#ffffff" />
+                  <Text style={styles.syncAllText}>{t("devices.sync_all")}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -639,6 +658,7 @@ export default function DevicesScreen() {
                   (d) => d.type === device.type
                 );
                 const isSyncing = syncingDevices.has(device.id);
+                const DeviceIcon = deviceInfo?.Icon || Watch;
 
                 return (
                   <View
@@ -656,8 +676,7 @@ export default function DevicesScreen() {
                             { backgroundColor: deviceInfo?.color + "20" },
                           ]}
                         >
-                          <Ionicons
-                            name={deviceInfo?.icon || "watch"}
+                          <DeviceIcon
                             size={24}
                             color={deviceInfo?.color || "#666"}
                           />
@@ -687,9 +706,9 @@ export default function DevicesScreen() {
                               ]}
                             >
                               {device.status === "CONNECTED"
-                                ? "Connected"
-                                : "Disconnected"}
-                              {device.isPrimary && " • Primary"}
+                                ? t("devices.connected")
+                                : t("devices.disconnected")}
+                              {device.isPrimary && ` • ${t("devices.primary")}`}
                             </Text>
                           </View>
                         </View>
@@ -710,8 +729,7 @@ export default function DevicesScreen() {
                               color={colors.primary}
                             />
                           ) : (
-                            <Ionicons
-                              name="refresh"
+                            <RefreshCw
                               size={16}
                               color={colors.primary}
                             />
@@ -725,14 +743,14 @@ export default function DevicesScreen() {
                           ]}
                           onPress={() => handleDisconnectDevice(device.id)}
                         >
-                          <Ionicons name="close" size={16} color="#ef4444" />
+                          <X size={16} color="#ef4444" />
                         </TouchableOpacity>
                       </View>
                     </View>
 
                     {device.lastSync && (
                       <Text style={[styles.lastSync, { color: colors.muted }]}>
-                        Last synced:{" "}
+                        {t("devices.last_sync")}:{" "}
                         {new Date(device.lastSync).toLocaleString()}
                       </Text>
                     )}
@@ -746,13 +764,12 @@ export default function DevicesScreen() {
           <View style={[styles.section, { backgroundColor: colors.card }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               {connectedDevices.length === 0
-                ? "Connect Your First Device"
-                : "Available Devices"}
+                ? t("devices.connect_first_device")
+                : t("devices.available_devices")}
             </Text>
             {connectedDevices.length === 0 && (
               <Text style={[styles.sectionSubtitle, { color: colors.subtext }]}>
-                Connect fitness trackers and health apps to automatically sync
-                your activity data
+                {t("devices.connect_first_device_desc")}
               </Text>
             )}
 
@@ -763,6 +780,7 @@ export default function DevicesScreen() {
                 )
             ).map((device) => {
               const isConnecting = connectingDevices.has(device.type);
+              const DeviceIcon = device.Icon;
 
               return (
                 <TouchableOpacity
@@ -785,8 +803,7 @@ export default function DevicesScreen() {
                       { backgroundColor: device.color + "20" },
                     ]}
                   >
-                    <Ionicons
-                      name={device.icon}
+                    <DeviceIcon
                       size={24}
                       color={device.available ? device.color : "#ccc"}
                     />
@@ -811,7 +828,7 @@ export default function DevicesScreen() {
                     </Text>
                     {!device.available && (
                       <Text style={styles.unavailableText}>
-                        Not available on this platform
+                        {t("devices.not_available_on_platform")}
                       </Text>
                     )}
                   </View>
@@ -821,8 +838,7 @@ export default function DevicesScreen() {
                       {isConnecting ? (
                         <ActivityIndicator size="small" color={device.color} />
                       ) : (
-                        <Ionicons
-                          name="add-circle"
+                        <PlusCircle
                           size={24}
                           color={device.color}
                         />
@@ -837,13 +853,12 @@ export default function DevicesScreen() {
           {/* Empty State */}
           {connectedDevices.length === 0 && (
             <View style={styles.emptyState}>
-              <Ionicons name="fitness-outline" size={80} color={colors.muted} />
+              <Activity size={80} color={colors.muted} />
               <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                No Connected Devices
+                {t("devices.empty_state_title")}
               </Text>
               <Text style={[styles.emptyText, { color: colors.subtext }]}>
-                Connect your fitness trackers and health apps to get
-                comprehensive insights into your wellness journey
+                {t("devices.empty_state_desc")}
               </Text>
             </View>
           )}

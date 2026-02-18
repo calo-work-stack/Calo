@@ -69,6 +69,9 @@ model User {
   Session                    Session[]
   shoppingLists              ShoppingList[]
   mealPlans                  UserMealPlan[]
+  deviceTokens               DeviceToken[]
+  notificationPreferences    NotificationPreference?
+  notificationHistory        NotificationHistory[]
 }
 
 model Session {
@@ -467,6 +470,8 @@ model RecommendedMeal {
   image_url         String?
   language          String?                 @default("en")
   dietary_tags      String[]                @default([])
+  is_completed      Boolean                 @default(false)
+  completed_at      DateTime?
   ingredientChecks  IngredientCheck[]
   ingredients       RecommendedIngredient[]
   menu              RecommendedMenu         @relation(fields: [menu_id], references: [menu_id], onDelete: Cascade)
@@ -668,6 +673,11 @@ model MealCompletion {
   rating           Int?
   notes            String?
   prep_time_actual Int?
+  image_url        String?
+  meal_id_ref      String?
+  saved_to_history Boolean  @default(false)
+  history_meal_id  Int?
+  ingredients_json Json?
   created_at       DateTime @default(now())
   user             User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
@@ -847,4 +857,95 @@ enum AchievementCategory {
   GOAL
   IMPROVEMENT
   CONSISTENCY
+}
+
+// Push Notification Device Tokens
+model DeviceToken {
+  id              String   @id @default(cuid())
+  user_id         String
+  token           String   @unique
+  platform        Platform
+  device_name     String?
+  app_version     String?
+  is_active       Boolean  @default(true)
+  last_used_at    DateTime @default(now())
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  user            User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([token])
+  @@index([is_active])
+  @@map("device_tokens")
+}
+
+// Notification Preferences per user
+model NotificationPreference {
+  id                      String   @id @default(cuid())
+  user_id                 String   @unique
+  meal_reminders          Boolean  @default(true)
+  water_reminders         Boolean  @default(true)
+  goal_reminders          Boolean  @default(true)
+  achievement_alerts      Boolean  @default(true)
+  weekly_reports          Boolean  @default(true)
+  quiet_hours_enabled     Boolean  @default(false)
+  quiet_hours_start       String?  @default("22:00")
+  quiet_hours_end         String?  @default("07:00")
+  timezone                String   @default("Asia/Jerusalem")
+  breakfast_reminder_time String?  @default("08:00")
+  lunch_reminder_time     String?  @default("12:30")
+  dinner_reminder_time    String?  @default("19:00")
+  snack_reminder_time     String?  @default("15:30")
+  water_reminder_interval Int?     @default(120)
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
+  user                    User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+// Notification History for tracking sent notifications
+model NotificationHistory {
+  id                String             @id @default(cuid())
+  user_id           String
+  title             String
+  body              String
+  type              NotificationType
+  data              Json?
+  status            NotificationStatus @default(PENDING)
+  sent_at           DateTime?
+  read_at           DateTime?
+  error_message     String?
+  created_at        DateTime           @default(now())
+  user              User               @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([type])
+  @@index([status])
+  @@index([created_at])
+  @@map("notification_history")
+}
+
+enum Platform {
+  IOS
+  ANDROID
+}
+
+enum NotificationType {
+  MEAL_REMINDER
+  WATER_REMINDER
+  GOAL_REMINDER
+  ACHIEVEMENT
+  STREAK
+  WEEKLY_REPORT
+  SYSTEM
+  PROMOTIONAL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
 }

@@ -5,40 +5,59 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
   StatusBar,
+  Animated,
+  Keyboard,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { userAPI } from "@/src/services/api";
-import { Ionicons } from "@expo/vector-icons";
-
-const { width, height } = Dimensions.get("window");
+import { ChevronLeft, ChevronRight, ShieldCheck } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { ToastService } from "@/src/services/totastService";
+import Toast from "react-native-toast-message";
 
 export default function ResetPasswordVerifyScreen() {
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { email } = useLocalSearchParams();
 
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
+  const [timeLeft, setTimeLeft] = useState(300);
   const [canResend, setCanResend] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(0);
 
-  // Refs for input fields
   const inputRefs = useRef<TextInput[]>([]);
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -52,6 +71,34 @@ export default function ResetPasswordVerifyScreen() {
 
     return () => clearInterval(timer);
   }, []);
+
+  const shake = () => {
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const animateButton = (pressed: boolean) => {
+    Animated.spring(buttonScale, {
+      toValue: pressed ? 0.97 : 1,
+      friction: 5,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const startProgressAnimation = () => {
+    progressAnim.setValue(0);
+    Animated.loop(
+      Animated.timing(progressAnim, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: false,
+      }),
+    ).start();
+  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -89,46 +136,50 @@ export default function ResetPasswordVerifyScreen() {
   };
 
   const handleVerifyCode = async (verificationCode?: string) => {
+    Keyboard.dismiss();
     const codeToVerify = verificationCode || code.join("");
 
     if (!codeToVerify || codeToVerify.length !== 6) {
-      Alert.alert(
+      shake();
+      ToastService.error(
         t("common.error"),
-        t("auth.reset_password_verify.invalid_code")
+        t("auth.reset_password_verify.invalid_code"),
       );
       return;
     }
 
     if (!/^\d{6}$/.test(codeToVerify)) {
-      Alert.alert(
+      shake();
+      ToastService.error(
         t("common.error"),
-        t("auth.reset_password_verify.invalid_code")
+        t("auth.reset_password_verify.invalid_code"),
       );
       return;
     }
 
     try {
       setIsLoading(true);
+      startProgressAnimation();
 
       const response = await userAPI.verifyResetCode(
         email as string,
-        codeToVerify
+        codeToVerify,
       );
 
       if (response.success && response.resetToken) {
+        progressAnim.stopAnimation();
         router.push({
           pathname: "/(auth)/resetPassword",
-          params: {
-            resetToken: response.resetToken,
-          },
+          params: { resetToken: response.resetToken },
         });
       } else {
         throw new Error(response.error);
       }
     } catch (error: any) {
-      Alert.alert(
+      shake();
+      ToastService.error(
         t("common.error"),
-        error.message || t("auth.reset_password_verify.invalid_code")
+        error.message || t("auth.reset_password_verify.invalid_code"),
       );
 
       setCode(["", "", "", "", "", ""]);
@@ -137,6 +188,7 @@ export default function ResetPasswordVerifyScreen() {
       }, 100);
     } finally {
       setIsLoading(false);
+      progressAnim.stopAnimation();
     }
   };
 
@@ -149,9 +201,9 @@ export default function ResetPasswordVerifyScreen() {
       const response = await userAPI.forgotPassword(email as string);
 
       if (response.success) {
-        Alert.alert(
+        ToastService.success(
           t("common.success"),
-          t("auth.forgot_password_page.reset_code_sent")
+          t("auth.forgot_password_page.reset_code_sent"),
         );
 
         setTimeLeft(300);
@@ -173,248 +225,382 @@ export default function ResetPasswordVerifyScreen() {
         throw new Error(response.error);
       }
     } catch (error: any) {
-      Alert.alert(
+      shake();
+      ToastService.error(
         t("common.error"),
-        error.message || t("auth.reset_password.resend_failed")
+        error.message || t("auth.reset_password.reset_failed"),
       );
     } finally {
       setResendLoading(false);
     }
   };
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    header: {
-      paddingTop: Platform.OS === "ios" ? 50 : 30,
-      paddingHorizontal: 24,
-      paddingBottom: 20,
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    backButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: "rgba(0, 0, 0, 0.05)",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    headerTitle: {
-      flex: 1,
-      fontSize: 17,
-      fontWeight: "600",
-      color: "#1C1C1E",
-      textAlign: "center",
-      marginRight: 36,
-    },
-    content: {
-      flex: 1,
-      paddingHorizontal: 24,
-      justifyContent: "center",
-    },
-    logoSection: {
-      alignItems: "center",
-      marginBottom: 48,
-    },
-    logoContainer: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: colors.primary,
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: 16,
-    },
-    title: {
-      fontSize: 28,
-      fontWeight: "700",
-      color: "#1C1C1E",
-      textAlign: "center",
-      marginBottom: 8,
-    },
-    subtitle: {
-      fontSize: 17,
-      color: "#8E8E93",
-      textAlign: "center",
-      lineHeight: 24,
-      paddingHorizontal: 20,
-    },
-    emailText: {
-      fontWeight: "600",
-      color: colors.primary,
-    },
-    formContainer: {
-      backgroundColor: "white",
-      borderRadius: 16,
-      padding: 24,
-      marginTop: 32,
-    },
-    codeLabel: {
-      fontSize: 17,
-      fontWeight: "600",
-      color: "#1C1C1E",
-      textAlign: "center",
-      marginBottom: 24,
-    },
-    codeContainer: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginBottom: 32,
-    },
-    codeInput: {
-      width: 45,
-      height: 55,
-      borderRadius: 12,
-      backgroundColor: "#F8F9FA",
-      borderWidth: 2,
-      borderColor: "#E5E5EA",
-      fontSize: 24,
-      fontWeight: "700",
-      color: "#1C1C1E",
-      textAlign: "center",
-    },
-    codeInputFilled: {
-      borderColor: colors.primary,
-      backgroundColor: "white",
-    },
-    verifyButton: {
-      backgroundColor: colors.primary,
-      borderRadius: 12,
-      paddingVertical: 16,
-      alignItems: "center",
-      marginBottom: 24,
-    },
-    verifyButtonDisabled: {
-      opacity: 0.6,
-    },
-    verifyButtonText: {
-      fontSize: 17,
-      fontWeight: "600",
-      color: "white",
-    },
-    resendContainer: {
-      alignItems: "center",
-    },
-    resendText: {
-      fontSize: 15,
-      color: "#8E8E93",
-      marginBottom: 12,
-      textAlign: "center",
-    },
-    resendButtonText: {
-      fontSize: 15,
-      color: colors.primary,
-      fontWeight: "500",
-    },
-    resendDisabledText: {
-      fontSize: 15,
-      color: "#C7C7CC",
-    },
+  const isCodeComplete = code.every((c) => c !== "");
+
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
   });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" translucent />
-
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="chevron-back" size={20} color="#1C1C1E" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {t("auth.reset_password_verify.title")}
-        </Text>
-      </View>
-
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
       >
-        <View style={styles.content}>
-          <View style={styles.logoSection}>
-            <View style={styles.logoContainer}>
-              <Ionicons name="shield-checkmark" size={40} color="white" />
-            </View>
-            <Text style={styles.title}>
-              {t("auth.reset_password_verify.title")}
-            </Text>
-            <Text style={styles.subtitle}>
-              {t("auth.reset_password_verify.subtitle")}
-              {"\n"}
-              <Text style={styles.emailText}>{email}</Text>
-            </Text>
-          </View>
+        <StatusBar
+          barStyle={isDark ? "light-content" : "dark-content"}
+          backgroundColor={colors.background}
+        />
 
-          <View style={styles.formContainer}>
-            <Text style={styles.codeLabel}>
-              {t("auth.reset_password_verify.enter_code")}
-            </Text>
-
-            <View style={styles.codeContainer}>
-              {code.map((digit, index) => (
-                <TextInput
-                  key={index}
-                  ref={(ref) => (inputRefs.current[index] = ref!)}
-                  style={[styles.codeInput, digit && styles.codeInputFilled]}
-                  value={digit}
-                  onChangeText={(text) => handleCodeChange(text, index)}
-                  onKeyPress={({ nativeEvent }) =>
-                    handleKeyPress(nativeEvent.key, index)
-                  }
-                  keyboardType="numeric"
-                  maxLength={1}
-                  textAlign="center"
-                  editable={!isLoading}
-                  selectTextOnFocus
-                  autoFocus={index === 0}
-                />
-              ))}
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.verifyButton,
-                (!code.every((c) => c !== "") || isLoading) &&
-                  styles.verifyButtonDisabled,
-              ]}
-              onPress={() => handleVerifyCode(code.join(""))}
-              disabled={!code.every((c) => c !== "") || isLoading}
-            >
-              <Text style={styles.verifyButtonText}>
-                {isLoading
-                  ? t("auth.loading.verifying")
-                  : t("auth.reset_password_verify.verify_and_continue")}
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.resendContainer}>
-              <Text style={styles.resendText}>
-                {t("auth.reset_password_verify.resend_code")}
-              </Text>
-
-              {canResend ? (
-                <TouchableOpacity onPress={handleResendCode}>
-                  <Text style={styles.resendButtonText}>
-                    {resendLoading
-                      ? t("auth.loading.sending_reset")
-                      : t("auth.reset_password_verify.resend_code")}
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <Text style={styles.resendDisabledText}>
-                  {t("auth.reset_password_verify.code_expires_in")}{" "}
-                  {formatTime(timeLeft)}
-                </Text>
-              )}
-            </View>
-          </View>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={[
+              styles.backButton,
+              {
+                backgroundColor: colors.card,
+                shadowColor: colors.shadow,
+              },
+            ]}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            {isRTL ? (
+              <ChevronRight size={22} color={colors.primary} />
+            ) : (
+              <ChevronLeft size={22} color={colors.primary} />
+            )}
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t("auth.reset_password_verify.title")}
+          </Text>
+          <View style={styles.backButton} />
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+
+        <KeyboardAvoidingView
+          style={styles.keyboardView}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <Animated.View
+            style={[
+              styles.content,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            {/* Logo Section */}
+            <View style={styles.logoSection}>
+              <LinearGradient
+                colors={[colors.primary, colors.emerald600]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[
+                  styles.logoContainer,
+                  { shadowColor: colors.primary },
+                ]}
+              >
+                <ShieldCheck size={38} color={colors.onPrimary} />
+              </LinearGradient>
+              <Text style={[styles.title, { color: colors.text }]}>
+                {t("auth.reset_password_verify.title")}
+              </Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                {t("auth.reset_password_verify.subtitle")}
+                {"\n"}
+                <Text style={{ fontWeight: "600", color: colors.primary }}>
+                  {email}
+                </Text>
+              </Text>
+            </View>
+
+            {/* Code Inputs */}
+            <Animated.View
+              style={[
+                styles.formContainer,
+                { transform: [{ translateX: shakeAnim }] },
+              ]}
+            >
+              <Text style={[styles.codeLabel, { color: colors.text }]}>
+                {t("auth.reset_password_verify.enter_code")}
+              </Text>
+
+              <View style={styles.codeContainer}>
+                {code.map((digit, index) => (
+                  <TextInput
+                    key={index}
+                    ref={(ref) => (inputRefs.current[index] = ref!)}
+                    style={[
+                      styles.codeInput,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor:
+                          focusedIndex === index
+                            ? colors.primary
+                            : digit
+                              ? colors.primary
+                              : colors.border,
+                        color: colors.text,
+                      },
+                      focusedIndex === index && {
+                        transform: [{ scale: 1.05 }],
+                      },
+                    ]}
+                    value={digit}
+                    onChangeText={(text) => handleCodeChange(text, index)}
+                    onKeyPress={({ nativeEvent }) =>
+                      handleKeyPress(nativeEvent.key, index)
+                    }
+                    onFocus={() => setFocusedIndex(index)}
+                    onBlur={() => setFocusedIndex(-1)}
+                    keyboardType="numeric"
+                    maxLength={1}
+                    textAlign="center"
+                    editable={!isLoading}
+                    selectTextOnFocus
+                    autoFocus={index === 0}
+                  />
+                ))}
+              </View>
+
+              {/* Verify Button */}
+              <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+                <TouchableOpacity
+                  style={[
+                    styles.verifyButton,
+                    {
+                      backgroundColor: colors.primary,
+                      shadowColor: colors.primary,
+                    },
+                    (!isCodeComplete || isLoading) && styles.verifyButtonDisabled,
+                  ]}
+                  onPress={() => handleVerifyCode(code.join(""))}
+                  onPressIn={() => animateButton(true)}
+                  onPressOut={() => animateButton(false)}
+                  disabled={!isCodeComplete || isLoading}
+                  activeOpacity={0.9}
+                >
+                  {isLoading ? (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color={colors.onPrimary} />
+                      <Text
+                        style={[styles.loadingText, { color: colors.onPrimary }]}
+                      >
+                        {t("auth.loading.verifying")}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text
+                      style={[
+                        styles.verifyButtonText,
+                        { color: colors.onPrimary },
+                      ]}
+                    >
+                      {t("auth.reset_password_verify.verify_and_continue")}
+                    </Text>
+                  )}
+
+                  {isLoading && (
+                    <Animated.View
+                      style={[styles.progressBar, { width: progressWidth }]}
+                    />
+                  )}
+                </TouchableOpacity>
+              </Animated.View>
+
+              {/* Resend Section */}
+              <View style={styles.resendContainer}>
+                <Text
+                  style={[styles.resendText, { color: colors.textSecondary }]}
+                >
+                  {t("auth.reset_password_verify.resend_code")}
+                </Text>
+
+                {canResend ? (
+                  <TouchableOpacity
+                    style={[
+                      styles.resendButton,
+                      { backgroundColor: `${colors.primary}15` },
+                    ]}
+                    onPress={handleResendCode}
+                    disabled={resendLoading}
+                  >
+                    <Text
+                      style={[styles.resendButtonText, { color: colors.primary }]}
+                    >
+                      {resendLoading
+                        ? t("auth.loading.sending_reset")
+                        : t("auth.reset_password_verify.resend_code")}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text
+                    style={[
+                      styles.resendDisabledText,
+                      { color: colors.textTertiary },
+                    ]}
+                  >
+                    {t("auth.reset_password_verify.code_expires_in")}{" "}
+                    {formatTime(timeLeft)}
+                  </Text>
+                )}
+              </View>
+            </Animated.View>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+      <Toast />
+    </>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 8,
+  },
+  logoSection: {
+    alignItems: "center",
+    marginBottom: 36,
+  },
+  logoContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: "700",
+    marginBottom: 8,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 22,
+    paddingHorizontal: 20,
+  },
+  formContainer: {
+    gap: 16,
+  },
+  codeLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  codeContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8,
+  },
+  codeInput: {
+    width: 48,
+    height: 58,
+    borderRadius: 14,
+    borderWidth: 2,
+    fontSize: 26,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  verifyButton: {
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+    overflow: "hidden",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  verifyButtonDisabled: {
+    opacity: 0.6,
+    shadowOpacity: 0.1,
+  },
+  verifyButtonText: {
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  progressBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    height: 3,
+    backgroundColor: "rgba(255, 255, 255, 0.4)",
+    borderRadius: 2,
+  },
+  resendContainer: {
+    alignItems: "center",
+    marginTop: 8,
+  },
+  resendText: {
+    fontSize: 15,
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  resendButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  resendButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  resendDisabledText: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+});

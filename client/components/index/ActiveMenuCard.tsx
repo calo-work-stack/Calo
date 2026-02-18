@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/context/ThemeContext";
@@ -14,12 +13,11 @@ import {
   ChefHat,
   ChevronRight,
   Calendar,
-  Flame,
   Clock,
+  CheckCircle2,
+  Utensils,
 } from "lucide-react-native";
 import { api } from "@/src/services/api";
-
-const { width } = Dimensions.get("window");
 
 interface ActivePlanData {
   plan_id: string;
@@ -30,33 +28,56 @@ interface ActivePlanData {
   daily_calorie_target?: number;
 }
 
+interface TodayMealsData {
+  total: number;
+  completed: number;
+  nextMealName?: string;
+}
+
 const ActiveMenuCard = React.memo(() => {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const [activePlan, setActivePlan] = useState<ActivePlanData | null>(null);
+  const [todayMeals, setTodayMeals] = useState<TodayMealsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadActivePlan = useCallback(async () => {
     try {
       const response = await api.get("/meal-plans/current");
-      if (
-        response.data.success &&
-        response.data.hasActivePlan
-      ) {
-        // Use top-level values first, fallback to data object
+      if (response.data.success && response.data.hasActivePlan) {
         const data = response.data.data || {};
+        const planId = response.data.planId || response.data.menuId;
+
         setActivePlan({
-          plan_id: response.data.planId || response.data.menuId,
+          plan_id: planId,
           name: response.data.planName || t("menus.active_plan"),
           days_count: response.data.days_count || data.rotation_frequency_days || 7,
           start_date: response.data.start_date || data.start_date,
           end_date: response.data.end_date || data.end_date,
           daily_calorie_target: response.data.target_calories_daily || data.target_calories_daily,
         });
+
+        // Fetch today's meals progress
+        try {
+          const todayRes = await api.get(`/recommended-menus/${planId}/today-meals`);
+          if (todayRes.data.success && todayRes.data.data) {
+            const todayData = todayRes.data.data;
+            const meals = todayData.meals || [];
+            const completed = todayData.completed_meals_today ?? meals.filter((m: any) => m.is_completed).length;
+            const nextMeal = meals.find((m: any) => !m.is_completed);
+            setTodayMeals({
+              total: todayData.total_meals_today ?? meals.length,
+              completed,
+              nextMealName: nextMeal?.name,
+            });
+          }
+        } catch {
+          // today-meals endpoint may not exist yet, that's fine
+        }
       } else {
         setActivePlan(null);
       }
-    } catch (error) {
+    } catch {
       setActivePlan(null);
     } finally {
       setIsLoading(false);
@@ -69,7 +90,6 @@ const ActiveMenuCard = React.memo(() => {
     }, [loadActivePlan])
   );
 
-  // Calculate days remaining and current day
   const getDayInfo = useCallback(() => {
     if (!activePlan?.start_date || !activePlan?.end_date) {
       return { currentDay: 1, daysRemaining: 0, totalDays: 7 };
@@ -99,9 +119,25 @@ const ActiveMenuCard = React.memo(() => {
 
   const { currentDay, daysRemaining, totalDays } = getDayInfo();
 
-  // Return empty fragment instead of null to avoid hooks issues
-  if (isLoading || !activePlan) {
-    return <></>;
+  if (!activePlan && !isLoading) {
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.card, { backgroundColor: colors.warmOrange + '20', borderRadius: 20, padding: 18 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: colors.border, opacity: 0.3 }} />
+            <View style={{ flex: 1, gap: 8 }}>
+              <View style={{ width: '40%', height: 12, borderRadius: 6, backgroundColor: colors.border, opacity: 0.3 }} />
+              <View style={{ width: '70%', height: 16, borderRadius: 8, backgroundColor: colors.border, opacity: 0.3 }} />
+              <View style={{ width: '50%', height: 10, borderRadius: 5, backgroundColor: colors.border, opacity: 0.3 }} />
+            </View>
+          </View>
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -113,11 +149,15 @@ const ActiveMenuCard = React.memo(() => {
         }
       >
         <LinearGradient
-          colors={[colors.emerald500, colors.emerald600 || "#059669"]}
+          colors={[colors.warmOrange, "#D97706"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.card}
         >
+          {/* Decorative circles */}
+          <View style={styles.decoCircle1} />
+          <View style={styles.decoCircle2} />
+
           <View style={styles.content}>
             <View style={styles.leftSection}>
               <View style={styles.iconContainer}>
@@ -159,6 +199,31 @@ const ActiveMenuCard = React.memo(() => {
             </View>
           </View>
 
+          {/* Today's meals progress */}
+          {todayMeals && (
+            <View style={styles.todayProgress}>
+              <View style={styles.todayRow}>
+                <View style={styles.metaItem}>
+                  <CheckCircle2 size={14} color="rgba(255,255,255,0.9)" />
+                  <Text style={styles.todayText}>
+                    {t("active_meal.meals_done", "{{done}} of {{total}} meals done", {
+                      done: todayMeals.completed,
+                      total: todayMeals.total,
+                    })}
+                  </Text>
+                </View>
+                {todayMeals.nextMealName && (
+                  <View style={styles.metaItem}>
+                    <Utensils size={12} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.nextMealText} numberOfLines={1}>
+                      {t("active_meal.up_next", "Up next")}: {todayMeals.nextMealName}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+
           {/* Progress bar */}
           <View style={styles.progressContainer}>
             <View style={styles.progressBg}>
@@ -184,6 +249,25 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 20,
     padding: 18,
+    overflow: "hidden",
+  },
+  decoCircle1: {
+    position: "absolute",
+    top: -20,
+    right: -20,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  decoCircle2: {
+    position: "absolute",
+    bottom: -30,
+    left: -10,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
   content: {
     flexDirection: "row",
@@ -243,8 +327,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  todayProgress: {
+    marginTop: 12,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  todayRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  todayText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.95)",
+  },
+  nextMealText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.8)",
+    maxWidth: 140,
+  },
   progressContainer: {
-    marginTop: 14,
+    marginTop: 12,
   },
   progressBg: {
     height: 4,

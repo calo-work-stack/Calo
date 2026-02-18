@@ -84,7 +84,7 @@ export default function DashboardScreen() {
       user?.is_admin || user?.is_super_admin || user?.subscription_type === ADMIN_PLAN;
 
     if (!hasAdminAccess) {
-      Alert.alert("Access Denied", "Admin privileges required");
+      Alert.alert(t("admin.accessDenied"), t("admin.adminRequired"));
       router.replace("/(tabs)");
       return;
     }
@@ -100,7 +100,7 @@ export default function DashboardScreen() {
       }
     } catch (error) {
       console.error("Failed to load stats:", error);
-      Alert.alert("Error", "Failed to load dashboard data");
+      Alert.alert(t("admin.error"), t("admin.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -134,30 +134,30 @@ export default function DashboardScreen() {
   const renderOverview = () => (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        Overview
+        {t("admin.overview")}
       </Text>
 
       <View style={styles.statsGrid}>
         {renderStatCard(
-          "Total Users",
+          t("admin.totalUsers"),
           stats?.overview.totalUsers.toLocaleString() || "0",
           <Users size={24} color="#10B981" />,
           "#10B981"
         )}
         {renderStatCard(
-          "Today's Signups",
+          t("admin.todaySignups"),
           stats?.overview.todaySignups || "0",
           <UserPlus size={24} color="#3B82F6" />,
           "#3B82F6"
         )}
         {renderStatCard(
-          "Today's Logins",
+          t("admin.todayLogins"),
           stats?.overview.todayLogins || "0",
           <LogIn size={24} color="#8B5CF6" />,
           "#8B5CF6"
         )}
         {renderStatCard(
-          "Total Meals",
+          t("admin.totalMeals"),
           stats?.overview.totalMeals.toLocaleString() || "0",
           <ShoppingCart size={24} color="#F59E0B" />,
           "#F59E0B"
@@ -166,7 +166,7 @@ export default function DashboardScreen() {
 
       <View style={[styles.card, { backgroundColor: colors.card }]}>
         <Text style={[styles.cardTitle, { color: colors.text }]}>
-          Subscriptions
+          {t("admin.subscriptions")}
         </Text>
         <View style={styles.subscriptionsGrid}>
           {stats?.subscriptions &&
@@ -193,7 +193,7 @@ export default function DashboardScreen() {
       </View>
 
       <View style={[styles.card, { backgroundColor: colors.card }]}>
-        <Text style={[styles.cardTitle, { color: colors.text }]}>Revenue</Text>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>{t("admin.revenue")}</Text>
         <View style={styles.revenueContainer}>
           <View style={styles.revenueItem}>
             <DollarSign size={32} color="#10B981" />
@@ -203,7 +203,7 @@ export default function DashboardScreen() {
             <Text
               style={[styles.revenueLabel, { color: colors.textSecondary }]}
             >
-              Total Revenue
+              {t("admin.totalRevenue")}
             </Text>
           </View>
           <View style={styles.revenueItem}>
@@ -214,7 +214,7 @@ export default function DashboardScreen() {
             <Text
               style={[styles.revenueLabel, { color: colors.textSecondary }]}
             >
-              Transactions
+              {t("admin.transactions")}
             </Text>
           </View>
         </View>
@@ -260,9 +260,9 @@ export default function DashboardScreen() {
             <Shield size={32} color="#FFFFFF" />
           </View>
           <View>
-            <Text style={styles.headerTitle}>Admin Dashboard</Text>
+            <Text style={styles.headerTitle}>{t("admin.dashboard")}</Text>
             <Text style={styles.headerSubtitle}>
-              System Overview & Management
+              {t("admin.subtitle")}
             </Text>
           </View>
         </View>
@@ -286,7 +286,7 @@ export default function DashboardScreen() {
               },
             ]}
           >
-            Overview
+            {t("admin.overview")}
           </Text>
         </TouchableOpacity>
 
@@ -306,7 +306,7 @@ export default function DashboardScreen() {
               },
             ]}
           >
-            Users
+            {t("admin.users")}
           </Text>
         </TouchableOpacity>
 
@@ -327,7 +327,7 @@ export default function DashboardScreen() {
               },
             ]}
           >
-            Analytics
+            {t("admin.analytics")}
           </Text>
         </TouchableOpacity>
       </View>

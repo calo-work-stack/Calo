@@ -19,6 +19,7 @@ class OptimizedImageProcessor {
 
   /**
    * Process and optimize image with caching
+   * Maintains original aspect ratio - never crops the image
    */
   async processImage(
     imageUri: string,
@@ -40,17 +41,65 @@ class OptimizedImageProcessor {
       console.log("🖼️ Starting image optimization...");
       const startTime = Date.now();
 
-      // Resize and compress image
+      // First, get original image dimensions without modifying
+      const imageInfo = await ImageManipulator.manipulateAsync(imageUri, [], {
+        format: ImageManipulator.SaveFormat.JPEG,
+      });
+
+      const originalWidth = imageInfo.width;
+      const originalHeight = imageInfo.height;
+      console.log(`📐 Original dimensions: ${originalWidth}x${originalHeight}`);
+
+      // Calculate target dimensions maintaining aspect ratio
+      let targetWidth = originalWidth;
+      let targetHeight = originalHeight;
+
+      if (originalWidth > maxWidth || originalHeight > maxHeight) {
+        const aspectRatio = originalWidth / originalHeight;
+
+        if (aspectRatio > 1) {
+          // Landscape: constrain by width
+          targetWidth = Math.min(maxWidth, originalWidth);
+          targetHeight = Math.round(targetWidth / aspectRatio);
+        } else {
+          // Portrait or square: constrain by height
+          targetHeight = Math.min(maxHeight, originalHeight);
+          targetWidth = Math.round(targetHeight * aspectRatio);
+        }
+
+        // Ensure we don't exceed either dimension
+        if (targetWidth > maxWidth) {
+          targetWidth = maxWidth;
+          targetHeight = Math.round(targetWidth / aspectRatio);
+        }
+        if (targetHeight > maxHeight) {
+          targetHeight = maxHeight;
+          targetWidth = Math.round(targetHeight * aspectRatio);
+        }
+      }
+
+      console.log(`📐 Target dimensions: ${targetWidth}x${targetHeight}`);
+
+      // Only resize if dimensions changed
+      // IMPORTANT: Only specify ONE dimension to let expo-image-manipulator maintain aspect ratio perfectly
+      // This prevents any potential cropping or distortion
+      const actions: ImageManipulator.Action[] = [];
+      if (targetWidth !== originalWidth || targetHeight !== originalHeight) {
+        // Use only one dimension constraint - the library will calculate the other
+        const aspectRatio = originalWidth / originalHeight;
+        if (aspectRatio > 1) {
+          // Landscape: constrain by width only
+          actions.push({ resize: { width: targetWidth } });
+        } else {
+          // Portrait or square: constrain by height only
+          actions.push({ resize: { height: targetHeight } });
+        }
+      }
+
+      // Process the image
       const manipResult = await ImageManipulator.manipulateAsync(
         imageUri,
-        [
-          {
-            resize: {
-              width: maxWidth,
-              height: maxHeight,
-            },
-          },
-        ],
+        actions,
         {
           compress: quality,
           format:
@@ -61,9 +110,11 @@ class OptimizedImageProcessor {
         }
       );
 
-      // Read as base64 - Fix: Use correct encoding constant
+      console.log(`📐 Final dimensions: ${manipResult.width}x${manipResult.height}`);
+
+      // Read as base64
       const base64 = await FileSystem.readAsStringAsync(manipResult.uri, {
-        encoding: "base64", // Use string literal instead of EncodingType
+        encoding: "base64",
       });
 
       // Clean up temp file
@@ -89,12 +140,13 @@ class OptimizedImageProcessor {
 
   /**
    * Fast processing for preview/thumbnail
+   * Preserves aspect ratio - never crops
    */
   async processThumbnail(imageUri: string): Promise<string> {
     return this.processImage(imageUri, {
       maxWidth: 400,
       maxHeight: 400,
-      quality: 0.5,
+      quality: 0.6,
       format: "jpeg",
     });
   }
@@ -136,29 +188,30 @@ class OptimizedImageProcessor {
   /**
    * Ultra-fast compression for analysis
    * Optimized specifically for AI analysis where quality can be lower
+   * Preserves full image content - never crops
    */
   async processForAnalysis(imageUri: string): Promise<string> {
     console.log("⚡ Ultra-fast processing for analysis...");
     try {
-      // Use aggressive compression
+      // Use compression but preserve aspect ratio
       const result = await this.processImage(imageUri, {
-        maxWidth: 800, // Smaller for faster upload
-        maxHeight: 800,
-        quality: 0.65, // Lower quality is fine for AI
+        maxWidth: 1024, // Increased for better AI recognition
+        maxHeight: 1024,
+        quality: 0.75, // Slightly higher quality for better analysis
         format: "jpeg",
       });
 
       // Validate size isn't too large
       const sizeKB = result.length / 1024;
-      if (sizeKB > 500) {
+      if (sizeKB > 800) {
         console.warn(
           `⚠️ Image still large (${sizeKB.toFixed(2)} KB), re-compressing...`
         );
-        // Recompress with even lower quality
+        // Recompress with lower quality but keep same dimensions
         return this.processImage(imageUri, {
-          maxWidth: 600,
-          maxHeight: 600,
-          quality: 0.5,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          quality: 0.6,
           format: "jpeg",
         });
       }

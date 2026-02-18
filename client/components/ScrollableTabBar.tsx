@@ -259,7 +259,6 @@ const CameraTab = React.memo(
             style={[
               styles.cameraTab,
               {
-                backgroundColor: isFocused ? colors.primary : colors.surface,
                 borderColor: colors.border,
               },
             ]}
@@ -521,7 +520,6 @@ export function ScrollableTabBar({
           styles.background,
           {
             backgroundColor: colors.background,
-            borderTopColor: colors.border,
           },
         ]}
       />
@@ -588,15 +586,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingVertical: 10,
+    backgroundColor: "transparent", // ← fix the typo here
   },
-
   background: {
     position: "absolute",
+    backgroundColor: "rgba(0,0,0,0)",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    borderTopWidth: 0.5,
   },
 
   content: {

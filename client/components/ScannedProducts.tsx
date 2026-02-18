@@ -195,7 +195,7 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
           {product.image_url ? (
             <Image
               source={{ uri: product.image_url }}
-              style={StyleSheet.absoluteFill}
+              style={[StyleSheet.absoluteFill, { resizeMode: 'contain' }]}
             />
           ) : (
             <View style={styles.imagePlaceholder}>
@@ -238,7 +238,7 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
                 <Text
                   style={[styles.statText, { color: colors.textSecondary }]}
                 >
-                  {(product.nutrition_per_100g?.calories || 0).toFixed(1)}
+                  {Number(product.nutrition_per_100g?.calories || 0).toFixed(1)}
                 </Text>
               </View>
               <View style={styles.stat}>
@@ -250,7 +250,7 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
                 <Text
                   style={[styles.statText, { color: colors.textSecondary }]}
                 >
-                  {(product.nutrition_per_100g?.protein || 0).toFixed(1)}g
+                  {Number(product.nutrition_per_100g?.protein || 0).toFixed(1)}g
                 </Text>
               </View>
             </View>
@@ -274,28 +274,28 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
       {
         icon: Flame,
         label: t("statistics.calories"),
-        value: (selectedProduct.nutrition_per_100g?.calories || 0).toFixed(1),
+        value: Number(selectedProduct.nutrition_per_100g?.calories || 0).toFixed(1),
         unit: "",
         color: "#EF4444",
       },
       {
         icon: Activity,
         label: t("statistics.protein"),
-        value: (selectedProduct.nutrition_per_100g?.protein || 0).toFixed(1),
+        value: Number(selectedProduct.nutrition_per_100g?.protein || 0).toFixed(1),
         unit: "g",
         color: "#10B981",
       },
       {
         icon: Droplets,
         label: t("foodScanner.carbs"),
-        value: (selectedProduct.nutrition_per_100g?.carbs || 0).toFixed(1),
+        value: Number(selectedProduct.nutrition_per_100g?.carbs || 0).toFixed(1),
         unit: "g",
         color: "#3B82F6",
       },
       {
         icon: Wheat,
         label: t("foodScanner.fat"),
-        value: (selectedProduct.nutrition_per_100g?.fat || 0).toFixed(1),
+        value: Number(selectedProduct.nutrition_per_100g?.fat || 0).toFixed(1),
         unit: "g",
         color: "#F59E0B",
       },
@@ -337,7 +337,7 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
                     <Image
                       source={{ uri: selectedProduct.image_url }}
                       style={styles.modalProductImage}
-                      resizeMode="cover"
+                      resizeMode="contain"
                     />
                   ) : (
                     <Package
@@ -396,7 +396,7 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
                     <Text
                       style={[styles.quickStatValue, { color: colors.text }]}
                     >
-                      {(
+                      {Number(
                         selectedProduct.nutrition_per_100g?.calories || 0
                       ).toFixed(1)}
                     </Text>
@@ -420,7 +420,7 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
                     <Text
                       style={[styles.quickStatValue, { color: colors.text }]}
                     >
-                      {(
+                      {Number(
                         selectedProduct.nutrition_per_100g?.protein || 0
                       ).toFixed(1)}
                       g
@@ -445,7 +445,7 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
                     <Text
                       style={[styles.quickStatValue, { color: colors.text }]}
                     >
-                      {(selectedProduct.nutrition_per_100g?.carbs || 0).toFixed(
+                      {Number(selectedProduct.nutrition_per_100g?.carbs || 0).toFixed(
                         1,
                       )}
                       g
@@ -553,7 +553,7 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
                             { color: colors.text },
                           ]}
                         >
-                          {selectedProduct.nutrition_per_100g.fiber.toFixed(1)}g
+                          {Number(selectedProduct.nutrition_per_100g.fiber || 0).toFixed(1)}g
                         </Text>
                       </View>
                     )}
@@ -574,7 +574,7 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
                             { color: colors.text },
                           ]}
                         >
-                          {selectedProduct.nutrition_per_100g.sugar.toFixed(1)}g
+                          {Number(selectedProduct.nutrition_per_100g.sugar || 0).toFixed(1)}g
                         </Text>
                       </View>
                     )}
@@ -595,7 +595,7 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
                             { color: colors.text },
                           ]}
                         >
-                          {selectedProduct.nutrition_per_100g.sodium.toFixed(1)}
+                          {Number(selectedProduct.nutrition_per_100g.sodium || 0).toFixed(1)}
                           mg
                         </Text>
                       </View>
@@ -933,8 +933,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   gridImage: {
-    height: 140,
+    height: 160,
     position: "relative",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
   },
   gridContent: {
     padding: 14,
@@ -952,10 +955,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   listImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
+    width: 90,
+    height: 90,
+    borderRadius: 18,
     position: "relative",
+    overflow: 'hidden',
   },
   listContent: {
     flex: 1,
@@ -1050,8 +1054,8 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   modalImageWrapper: {
-    width: 200,
-    height: 200,
+    width: 220,
+    height: 220,
     borderRadius: 32,
     justifyContent: "center",
     alignItems: "center",

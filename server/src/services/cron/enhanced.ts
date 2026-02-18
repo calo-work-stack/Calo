@@ -2,6 +2,8 @@ import cron from "node-cron";
 import { EnhancedDailyGoalsService } from "../database/dailyGoals";
 import { EnhancedAIRecommendationService } from "../database/aiRecommendations";
 import { DatabaseOptimizationService } from "../database/optimization";
+import { ScheduledNotificationService } from "../scheduledNotifications";
+import { MenuExpirationService } from "../menuExpiration";
 
 export class EnhancedCronJobService {
   private static isRunning = false;
@@ -82,6 +84,37 @@ export class EnhancedCronJobService {
         }
       });
     });
+
+    // Menu expiration check at 00:15 AM every day
+    cron.schedule(
+      "15 0 * * *",
+      async () => {
+        await this.runJobSafely("menu-expiration", async () => {
+          console.log("📅 Running menu expiration check at 00:15 AM");
+
+          // First fix any menus without end_date
+          const fixed = await MenuExpirationService.fixMenusWithoutEndDate();
+          if (fixed > 0) {
+            console.log(`🔧 Fixed ${fixed} menus without end_date`);
+          }
+
+          // Then deactivate expired menus
+          const result = await MenuExpirationService.deactivateExpiredMenus();
+          console.log("✅ Menu expiration check completed:", result);
+
+          if (result.errors.length > 0) {
+            console.warn(`⚠️ ${result.errors.length} errors during expiration check`);
+          }
+        });
+      },
+      {
+        scheduled: true,
+        timezone: "UTC",
+      }
+    );
+
+    // Initialize scheduled push notifications
+    ScheduledNotificationService.initialize();
 
     console.log("✅ Enhanced cron jobs initialized");
 
@@ -183,6 +216,20 @@ export class EnhancedCronJobService {
         console.log("ℹ️ Skipping AI recommendations (no OpenAI API key configured)");
       }
 
+      // 5. Check for expired menus on startup (run in background, non-blocking)
+      console.log("📅 Checking for expired menus...");
+      MenuExpirationService.deactivateExpiredMenus()
+        .then((result) => {
+          if (result.deactivated > 0) {
+            console.log(`✅ Deactivated ${result.deactivated} expired menus on startup`);
+          } else {
+            console.log("✅ No expired menus found");
+          }
+        })
+        .catch((error) => {
+          console.warn("⚠️ Menu expiration check failed (non-critical):", error.message);
+        });
+
       console.log("✅ Startup tasks completed");
     } catch (error) {
       console.error("💥 Startup tasks failed:", error);
@@ -246,6 +293,7 @@ export class EnhancedCronJobService {
         "ai-recommendations": "06:00 AM daily",
         "database-optimization": "Every 6 hours",
         "health-check": "Every 2 hours",
+        "menu-expiration": "00:15 AM daily",
       },
     };
   }
