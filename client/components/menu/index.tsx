@@ -15,6 +15,9 @@ export { DailyTipsCard } from "./DailyTipsCard";
 export { WeeklySummaryCard } from "./WeeklySummaryCard";
 export { QuickTipsGuide } from "./QuickTipsGuide";
 
+// Daily breakdown
+export { DailyBreakdownCard } from "./DailyBreakdownCard";
+
 // Warm theme components
 export { MealCompletionFlow } from "./MealCompletionFlow";
 export { MenuEditModal } from "./MenuEditModal";

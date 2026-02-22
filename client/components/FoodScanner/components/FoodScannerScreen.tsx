@@ -8,11 +8,23 @@ import {
   TextInput,
   Dimensions,
   Animated,
+  Easing,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Camera } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
-import { ScanLine, Search, Package, QrCode, Camera as CameraIcon } from "lucide-react-native";
+import {
+  ScanLine,
+  Search,
+  Package,
+  QrCode,
+  Camera as CameraIcon,
+  History,
+  Sparkles,
+  Zap,
+  ChevronRight,
+} from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { api } from "@/src/services/api";
@@ -24,7 +36,6 @@ import ScannedProducts from "@/components/ScannedProducts";
 import { PriceEstimate, ProductData, ScanResult } from "@/src/types/statistics";
 import { OperationLoader } from "@/components/loaders/OperationLoader";
 
-// Import new components
 import ScannerCamera from "./ScannerCamera";
 import ProductDetails from "./ProductDetails";
 import ProductSearchModal from "./ProductSearchModal";
@@ -37,43 +48,32 @@ export default function FoodScannerScreen() {
   const { language } = useLanguage();
   const { theme, colors, isDark } = useTheme();
 
-  // Camera and scanning states
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanMode, setScanMode] = useState<"barcode" | "image">("barcode");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
-
-  // Product and analysis states
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [priceEstimate, setPriceEstimate] = useState<PriceEstimate | null>(
     null,
   );
   const [showResults, setShowResults] = useState(false);
-
-  // Input states
   const [barcodeInput, setBarcodeInput] = useState("");
   const [quantity, setQuantity] = useState(100);
-
-  // UI states
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [scanHistory, setScanHistory] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [showProductsGallery, setShowProductsGallery] = useState(false);
-
-  // Manual product search states
   const [showManualSearch, setShowManualSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Animation values
-  const slideAnimation = useRef(new Animated.Value(0)).current;
+  const slideAnimation = useRef(new Animated.Value(20)).current;
   const fadeAnimation = useRef(new Animated.Value(0)).current;
   const scaleAnimation = useRef(new Animated.Value(1)).current;
   const scanLineAnimation = useRef(new Animated.Value(0)).current;
   const pulseAnimation = useRef(new Animated.Value(1)).current;
 
-  // Debounce ref to prevent multiple rapid barcode scans
   const lastScanTime = useRef<number>(0);
   const lastScannedBarcode = useRef<string>("");
 
@@ -81,52 +81,52 @@ export default function FoodScannerScreen() {
     getCameraPermissions();
     loadScanHistory();
 
-    // Animate screen entrance
     Animated.parallel([
-      Animated.timing(slideAnimation, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
       Animated.timing(fadeAnimation, {
         toValue: 1,
-        duration: 1000,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnimation, {
+        toValue: 0,
+        tension: 80,
+        friction: 12,
         useNativeDriver: true,
       }),
     ]).start();
 
-    // Start scanning animation
     startScanAnimation();
   }, []);
 
   const startScanAnimation = () => {
-    // Pulse animation
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnimation, {
-          toValue: 1.1,
-          duration: 1500,
+          toValue: 1.08,
+          duration: 1600,
+          easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnimation, {
           toValue: 1,
-          duration: 1500,
+          duration: 1600,
+          easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
       ]),
     ).start();
 
-    // Scan line animation
     Animated.loop(
       Animated.sequence([
         Animated.timing(scanLineAnimation, {
           toValue: 1,
-          duration: 2000,
+          duration: 2200,
+          easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(scanLineAnimation, {
           toValue: 0,
-          duration: 100,
+          duration: 80,
           useNativeDriver: true,
         }),
       ]),
@@ -148,15 +148,10 @@ export default function FoodScannerScreen() {
     setIsLoadingHistory(true);
     try {
       const response = await api.get("/food-scanner/history");
-      if (response.data.success) {
-        setScanHistory(response.data.data);
-      }
+      if (response.data.success) setScanHistory(response.data.data);
     } catch (error) {
       console.error("Error loading scan history:", error);
-      ToastService.error(
-        t("foodScanner.scanError"),
-        t("common.tryAgain"),
-      );
+      ToastService.error(t("foodScanner.scanError"), t("common.tryAgain"));
     } finally {
       setIsLoadingHistory(false);
     }
@@ -164,30 +159,18 @@ export default function FoodScannerScreen() {
 
   const saveProductToHistory = async (product: ProductData) => {
     try {
-      console.log("💾 Attempting to save product:", product.name);
-
-      const response = await api.post("/food-scanner/search/save", {
-        product: product,
-      });
-
-      console.log("📡 Save response:", response.data);
-
+      const response = await api.post("/food-scanner/search/save", { product });
       if (response.data.success) {
-        console.log("✅ Product saved to scan history!");
         await loadScanHistory();
         ToastService.success(
           t("foodScanner.productSaved"),
           `${product.name} ${t("foodScanner.addedToHistory")}`,
         );
-      } else {
-        console.error("❌ Failed to save:", response.data);
       }
     } catch (error: any) {
-      console.error("❌ Error saving product to history:", error);
-      const serverMessage = error?.response?.data?.error;
       ToastService.error(
         t("foodScanner.scanError"),
-        serverMessage || t("common.tryAgain"),
+        error?.response?.data?.error || t("common.tryAgain"),
       );
     }
   };
@@ -196,41 +179,45 @@ export default function FoodScannerScreen() {
     productData: ProductData,
   ): Promise<PriceEstimate | null> => {
     try {
-      setLoadingText(t("foodScanner.estimatingPrice"));
       const basePrice = getBasePriceByCategory(productData.category);
       const sizeMultiplier = quantity > 100 ? 1.5 : 1;
       const estimatedPrice = Math.round(basePrice * sizeMultiplier);
-
       return {
         estimated_price: estimatedPrice,
-        price_range: `${estimatedPrice - 2}-${estimatedPrice + 5} ${t(
-          "common.shekels",
-        )}`,
+        price_range: `${estimatedPrice - 2}-${estimatedPrice + 5} ${t("common.shekels")}`,
         currency: "ILS",
         confidence: "medium",
         market_context: "Estimated based on category and size",
       };
-    } catch (error: any) {
-      console.error("Price estimation error:", error);
+    } catch {
+      return null;
     }
-    return null;
   };
 
   const getBasePriceByCategory = (category: string): number => {
-    const lowerCategory = category.toLowerCase();
-    if (lowerCategory.includes("dairy") || lowerCategory.includes("milk"))
-      return 8;
-    if (lowerCategory.includes("meat") || lowerCategory.includes("protein"))
-      return 25;
-    if (lowerCategory.includes("vegetable") || lowerCategory.includes("fruit"))
-      return 6;
-    if (lowerCategory.includes("snack") || lowerCategory.includes("candy"))
-      return 5;
-    if (lowerCategory.includes("beverage") || lowerCategory.includes("drink"))
-      return 4;
-    if (lowerCategory.includes("bread") || lowerCategory.includes("bakery"))
-      return 7;
+    const c = category.toLowerCase();
+    if (c.includes("dairy") || c.includes("milk")) return 8;
+    if (c.includes("meat") || c.includes("protein")) return 25;
+    if (c.includes("vegetable") || c.includes("fruit")) return 6;
+    if (c.includes("snack") || c.includes("candy")) return 5;
+    if (c.includes("beverage") || c.includes("drink")) return 4;
+    if (c.includes("bread") || c.includes("bakery")) return 7;
     return 10;
+  };
+
+  const animateResultAppearance = () => {
+    Animated.sequence([
+      Animated.timing(scaleAnimation, {
+        toValue: 1.05,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnimation, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
 
   const handleBarcodeSearch = async () => {
@@ -241,15 +228,12 @@ export default function FoodScannerScreen() {
       );
       return;
     }
-
     setIsLoading(true);
     setLoadingText(t("foodScanner.scanning"));
-
     try {
       const response = await api.post("/food-scanner/barcode", {
         barcode: barcodeInput.trim(),
       });
-
       if (response.data.success) {
         setScanResult(response.data.data);
         const price = await estimatePrice(response.data.data.product);
@@ -264,11 +248,9 @@ export default function FoodScannerScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Barcode scan error:", error);
-      const serverMessage = error?.response?.data?.error;
       ToastService.error(
         t("foodScanner.scanError"),
-        serverMessage || t("foodScanner.productNotFound"),
+        error?.response?.data?.error || t("foodScanner.productNotFound"),
       );
     } finally {
       setIsLoading(false);
@@ -277,42 +259,21 @@ export default function FoodScannerScreen() {
   };
 
   const handleBarcodeScan = async (scanningResult: any) => {
-    // Prevent processing if already loading
-    if (isLoading) return;
-
-    // Validate scan result
-    if (!scanningResult?.data) {
-      console.warn("Invalid barcode scan result");
-      return;
-    }
-
+    if (isLoading || !scanningResult?.data) return;
     const barcode = scanningResult.data;
     const now = Date.now();
-
-    // Debounce: ignore if same barcode scanned within 2 seconds
     if (
       barcode === lastScannedBarcode.current &&
       now - lastScanTime.current < 2000
-    ) {
+    )
       return;
-    }
-
-    // Debounce: ignore any scan within 500ms of the last scan
-    if (now - lastScanTime.current < 500) {
-      return;
-    }
-
+    if (now - lastScanTime.current < 500) return;
     lastScanTime.current = now;
     lastScannedBarcode.current = barcode;
-
     setIsLoading(true);
     setLoadingText(t("foodScanner.analyzing"));
-
     try {
-      const response = await api.post("/food-scanner/barcode", {
-        barcode: barcode,
-      });
-
+      const response = await api.post("/food-scanner/barcode", { barcode });
       if (response.data.success && response.data.data) {
         setScanResult(response.data.data);
         const price = await estimatePrice(response.data.data.product);
@@ -327,11 +288,9 @@ export default function FoodScannerScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Barcode scan error:", error);
-      const serverMessage = error?.response?.data?.error;
       ToastService.error(
         t("foodScanner.scanError"),
-        serverMessage || t("foodScanner.productNotFound"),
+        error?.response?.data?.error || t("foodScanner.productNotFound"),
       );
     } finally {
       setIsLoading(false);
@@ -349,19 +308,15 @@ export default function FoodScannerScreen() {
         );
         return;
       }
-
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false, // Disabled to prevent cropping
+        allowsEditing: false,
         quality: 0.85,
         base64: true,
-        exif: false, // Reduce data size
+        exif: false,
       });
-
-      if (!result.canceled && result.assets && result.assets[0]) {
+      if (!result.canceled && result.assets?.[0]) {
         const asset = result.assets[0];
-
-        // Validate we have valid image data
         if (!asset.base64 || asset.base64.length < 100) {
           ToastService.error(
             t("foodScanner.scanError"),
@@ -369,15 +324,12 @@ export default function FoodScannerScreen() {
           );
           return;
         }
-
         setIsLoading(true);
         setLoadingText(t("foodScanner.analyzing"));
-
         try {
           const response = await api.post("/food-scanner/image", {
             imageBase64: asset.base64,
           });
-
           if (response.data.success && response.data.data) {
             setScanResult(response.data.data);
             const price = await estimatePrice(response.data.data.product);
@@ -396,19 +348,17 @@ export default function FoodScannerScreen() {
             );
           }
         } catch (error: any) {
-          console.error("Image scan error:", error);
-          const serverMessage = error?.response?.data?.error;
           ToastService.error(
             t("foodScanner.scanError"),
-            serverMessage || t("foodScanner.couldNotIdentifyProduct"),
+            error?.response?.data?.error ||
+              t("foodScanner.couldNotIdentifyProduct"),
           );
         } finally {
           setIsLoading(false);
           setLoadingText("");
         }
       }
-    } catch (error) {
-      console.error("Camera error:", error);
+    } catch {
       setIsLoading(false);
       setLoadingText("");
       ToastService.error(
@@ -418,36 +368,19 @@ export default function FoodScannerScreen() {
     }
   };
 
-  const animateResultAppearance = () => {
-    Animated.sequence([
-      Animated.timing(scaleAnimation, {
-        toValue: 1.1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnimation, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
   const handleAddToShoppingList = async () => {
     if (!scanResult) return;
-
     setIsLoading(true);
     try {
       const response = await api.post("/shopping-lists", {
         name: scanResult.product.name,
-        quantity: quantity,
+        quantity,
         unit: t("home.nutrition.units.grams"),
         category: scanResult.product.category,
         added_from: "scanner",
         product_barcode: scanResult.product.barcode,
         estimated_price: priceEstimate?.estimated_price,
       });
-
       if (response.data.success) {
         ToastService.success(
           t("foodScanner.shoppingListUpdated"),
@@ -462,11 +395,9 @@ export default function FoodScannerScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Add to shopping list error:", error);
-      const serverMessage = error?.response?.data?.error;
       ToastService.error(
         t("foodScanner.scanError"),
-        serverMessage || t("common.tryAgain"),
+        error?.response?.data?.error || t("common.tryAgain"),
       );
     } finally {
       setIsLoading(false);
@@ -475,7 +406,6 @@ export default function FoodScannerScreen() {
 
   const handleAddToMealHistory = async () => {
     if (!scanResult) return;
-
     setIsLoading(true);
     try {
       const response = await api.post("/food-scanner/add-to-meal", {
@@ -483,7 +413,6 @@ export default function FoodScannerScreen() {
         quantity,
         mealTiming: "SNACK",
       });
-
       if (response.data.success) {
         ToastService.mealAdded(scanResult.product.name);
       } else {
@@ -493,11 +422,9 @@ export default function FoodScannerScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Add to meal history error:", error);
-      const serverMessage = error?.response?.data?.error;
       ToastService.error(
         t("foodScanner.scanError"),
-        serverMessage || t("common.tryAgain"),
+        error?.response?.data?.error || t("common.tryAgain"),
       );
     } finally {
       setIsLoading(false);
@@ -510,7 +437,6 @@ export default function FoodScannerScreen() {
     setShowResults(false);
     setBarcodeInput("");
     setQuantity(100);
-    // Reset debounce refs to allow scanning the same barcode again
     lastScannedBarcode.current = "";
     lastScanTime.current = 0;
   };
@@ -518,7 +444,6 @@ export default function FoodScannerScreen() {
   const handleProductSearch = async (retryCount: number = 0) => {
     const MAX_RETRIES = 2;
     const trimmedQuery = searchQuery.trim();
-
     if (!trimmedQuery || trimmedQuery.length < 2) {
       ToastService.error(
         t("foodScanner.searchError"),
@@ -526,33 +451,23 @@ export default function FoodScannerScreen() {
       );
       return;
     }
-
-    // Clear previous results and set loading state
-    if (retryCount === 0) {
-      setSearchResults([]);
-    }
+    if (retryCount === 0) setSearchResults([]);
     setIsSearching(true);
-
     try {
       const response = await api.get("/food-scanner/search", {
         params: { q: trimmedQuery },
-        timeout: 20000, // 20 second timeout for external API calls
+        timeout: 20000,
       });
-
       if (response.data.success && response.data.data) {
         setSearchResults(response.data.data);
-        if (response.data.data.length === 0) {
+        if (response.data.data.length === 0)
           ToastService.info(
             t("foodScanner.noResults"),
             t("foodScanner.tryDifferentSearch"),
           );
-        }
       } else {
-        // Handle unsuccessful response
-        setSearchResults([]);
         if (retryCount < MAX_RETRIES) {
-          console.log(`🔄 Retrying search (attempt ${retryCount + 2}/${MAX_RETRIES + 1})...`);
-          await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)));
+          await new Promise((r) => setTimeout(r, 500 * (retryCount + 1)));
           return handleProductSearch(retryCount + 1);
         }
         ToastService.error(
@@ -561,25 +476,18 @@ export default function FoodScannerScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Product search error:", error);
-
-      // Retry on network errors or timeouts
-      const isRetryable = error.code === "ECONNABORTED" ||
-                          error.code === "ERR_NETWORK" ||
-                          !error.response;
-
+      const isRetryable =
+        !error.response ||
+        error.code === "ECONNABORTED" ||
+        error.code === "ERR_NETWORK";
       if (isRetryable && retryCount < MAX_RETRIES) {
-        console.log(`🔄 Retrying search after error (attempt ${retryCount + 2}/${MAX_RETRIES + 1})...`);
-        await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)));
+        await new Promise((r) => setTimeout(r, 500 * (retryCount + 1)));
         return handleProductSearch(retryCount + 1);
       }
-
-      // Clear results on final failure
       setSearchResults([]);
-      const serverMessage = error?.response?.data?.error;
       ToastService.error(
         t("foodScanner.scanError"),
-        serverMessage || t("common.tryAgain"),
+        error?.response?.data?.error || t("common.tryAgain"),
       );
     } finally {
       setIsSearching(false);
@@ -588,27 +496,17 @@ export default function FoodScannerScreen() {
 
   const handleSelectSearchResult = async (product: any) => {
     if (!product) {
-      ToastService.error(
-        t("foodScanner.scanError"),
-        t("common.tryAgain"),
-      );
+      ToastService.error(t("foodScanner.scanError"), t("common.tryAgain"));
       return;
     }
-
     setIsLoading(true);
     setLoadingText(t("foodScanner.loadingProduct"));
     try {
-      console.log("🔍 Selected product:", product);
-
-      // Save the selected product to scan history
       try {
         await saveProductToHistory(product);
-      } catch (saveError) {
-        console.warn("Failed to save product to history:", saveError);
-        // Continue even if save fails
+      } catch {
+        /* silent */
       }
-
-      // Create a scan result from the search result
       const scanData = {
         product: {
           ...product,
@@ -632,7 +530,6 @@ export default function FoodScannerScreen() {
           health_assessment: t("foodScanner.productSelected"),
         },
       };
-
       setScanResult(scanData);
       const price = await estimatePrice(scanData.product);
       setPriceEstimate(price);
@@ -642,11 +539,9 @@ export default function FoodScannerScreen() {
       animateResultAppearance();
       setShowResults(true);
     } catch (error: any) {
-      console.error("Error selecting product:", error);
-      const serverMessage = error?.response?.data?.error;
       ToastService.error(
         t("foodScanner.scanError"),
-        serverMessage || t("common.tryAgain"),
+        error?.response?.data?.error || t("common.tryAgain"),
       );
     } finally {
       setIsLoading(false);
@@ -654,11 +549,10 @@ export default function FoodScannerScreen() {
     }
   };
 
-  if (hasPermission === null) {
+  if (hasPermission === null)
     return (
       <LoadingScreen text={t("foodScanner.requestingCameraPermissions")} />
     );
-  }
 
   if (hasPermission === false) {
     return (
@@ -668,7 +562,17 @@ export default function FoodScannerScreen() {
           { backgroundColor: colors.background },
         ]}
       >
-        <Ionicons name="camera" size={48} color={colors.textSecondary} />
+        <View
+          style={[
+            styles.noPermissionIconWrap,
+            {
+              backgroundColor: colors.primary + "15",
+              borderColor: colors.primary + "30",
+            },
+          ]}
+        >
+          <Ionicons name="camera-outline" size={36} color={colors.primary} />
+        </View>
         <Text
           style={[styles.noPermissionText, { color: colors.textSecondary }]}
         >
@@ -677,6 +581,7 @@ export default function FoodScannerScreen() {
         <TouchableOpacity
           style={[styles.permissionButton, { backgroundColor: colors.primary }]}
           onPress={getCameraPermissions}
+          activeOpacity={0.85}
         >
           <Text
             style={[styles.permissionButtonText, { color: colors.onPrimary }]}
@@ -688,114 +593,151 @@ export default function FoodScannerScreen() {
     );
   }
 
+  // Header gradient colors
+  const headerGradient: [string, string] = isDark
+    ? ["#0f172a", "#1a2744"]
+    : ["#10b981", "#059669"];
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      {/* Header */}
-      <View style={styles.modernHeader}>
-        <View style={styles.headerTop}>
+      {/* ── HEADER ── */}
+      <LinearGradient
+        colors={headerGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        {/* Title row */}
+        <View style={styles.headerRow}>
           <View
             style={[
-              styles.headerIconContainer,
-              { backgroundColor: colors.glass },
+              styles.headerIconBox,
+              { backgroundColor: "rgba(255,255,255,0.15)" },
             ]}
           >
-            <ScanLine size={28} color={colors.text} strokeWidth={2.5} />
+            <ScanLine size={22} color="#fff" strokeWidth={2.5} />
           </View>
 
-          <View style={styles.headerTextContainer}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
-              {t("foodScanner.title")}
-            </Text>
-            <Text
-              style={[
-                styles.headerSubtitle,
-                {
-                  color: colors.text,
-                  opacity: 0.75,
-                },
-              ]}
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>{t("foodScanner.title")}</Text>
+            <View style={styles.headerSubRow}>
+              <Sparkles
+                size={10}
+                color="rgba(255,255,255,0.75)"
+                strokeWidth={2}
+              />
+              <Text style={styles.headerSubtitle}>
+                {t("foodScanner.subtitle")}
+              </Text>
+            </View>
+          </View>
+
+          {/* Action buttons */}
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={() => setShowHistoryModal(true)}
+              activeOpacity={0.75}
             >
-              {t("foodScanner.subtitle")}
-            </Text>
+              <History size={18} color="#fff" strokeWidth={2} />
+              {scanHistory.length > 0 && (
+                <View style={styles.headerBtnBadge}>
+                  <Text style={styles.headerBtnBadgeText}>
+                    {Math.min(scanHistory.length, 99)}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={() => setShowManualSearch(true)}
+              activeOpacity={0.75}
+            >
+              <Search size={18} color="#fff" strokeWidth={2} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={() => setShowProductsGallery(true)}
+              activeOpacity={0.75}
+            >
+              <Package size={18} color="#fff" strokeWidth={2} />
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={[
-              styles.galleryButton,
-              { backgroundColor: colors.glass, marginRight: 8 },
-            ]}
-            onPress={() => setShowManualSearch(true)}
-            activeOpacity={0.7}
-          >
-            <Search size={24} color={colors.text} strokeWidth={2.5} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.galleryButton, { backgroundColor: colors.glass }]}
-            onPress={() => setShowProductsGallery(true)}
-            activeOpacity={0.7}
-          >
-            <Package size={24} color={colors.text} strokeWidth={2.5} />
-          </TouchableOpacity>
         </View>
-      </View>
+      </LinearGradient>
 
       {!showResults ? (
-        <>
-          {/* Scan Mode Toggle */}
-          <View style={styles.scanModeToggle}>
-            <TouchableOpacity
+        <Animated.View
+          style={[
+            styles.body,
+            {
+              opacity: fadeAnimation,
+              transform: [{ translateY: slideAnimation }],
+            },
+          ]}
+        >
+          {/* ── MODE TOGGLE ── */}
+          <View style={styles.toggleWrapper}>
+            <View
               style={[
-                styles.scanModeBtn,
-                scanMode === "barcode" && [styles.scanModeBtnActive, { backgroundColor: colors.primary }],
-                scanMode !== "barcode" && { backgroundColor: colors.surface },
+                styles.toggle,
+                { backgroundColor: isDark ? colors.surface : "#F1F5F9" },
               ]}
-              onPress={() => setScanMode("barcode")}
-              activeOpacity={0.7}
             >
-              <QrCode
-                size={18}
-                color={scanMode === "barcode" ? colors.onPrimary : colors.textSecondary}
-                strokeWidth={2}
-              />
-              <Text
-                style={[
-                  styles.scanModeBtnText,
-                  { color: scanMode === "barcode" ? colors.onPrimary : colors.textSecondary },
-                ]}
-              >
-                {t("foodScanner.scanFood")}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.scanModeBtn,
-                scanMode === "image" && [styles.scanModeBtnActive, { backgroundColor: colors.primary }],
-                scanMode !== "image" && { backgroundColor: colors.surface },
-              ]}
-              onPress={() => setScanMode("image")}
-              activeOpacity={0.7}
-            >
-              <CameraIcon
-                size={18}
-                color={scanMode === "image" ? colors.onPrimary : colors.textSecondary}
-                strokeWidth={2}
-              />
-              <Text
-                style={[
-                  styles.scanModeBtnText,
-                  { color: scanMode === "image" ? colors.onPrimary : colors.textSecondary },
-                ]}
-              >
-                {t("foodScanner.takePicture")}
-              </Text>
-            </TouchableOpacity>
+              {(["barcode", "image"] as const).map((mode) => {
+                const active = scanMode === mode;
+                return (
+                  <TouchableOpacity
+                    key={mode}
+                    style={[
+                      styles.toggleBtn,
+                      active && {
+                        backgroundColor: colors.primary,
+                        shadowColor: colors.primary,
+                        shadowOffset: { width: 0, height: 3 },
+                        shadowOpacity: 0.35,
+                        shadowRadius: 8,
+                        elevation: 4,
+                      },
+                    ]}
+                    onPress={() => setScanMode(mode)}
+                    activeOpacity={0.8}
+                  >
+                    {mode === "barcode" ? (
+                      <QrCode
+                        size={15}
+                        color={active ? "#fff" : colors.textSecondary}
+                        strokeWidth={2.5}
+                      />
+                    ) : (
+                      <CameraIcon
+                        size={15}
+                        color={active ? "#fff" : colors.textSecondary}
+                        strokeWidth={2.5}
+                      />
+                    )}
+                    <Text
+                      style={[
+                        styles.toggleBtnText,
+                        { color: active ? "#fff" : colors.textSecondary },
+                      ]}
+                    >
+                      {mode === "barcode"
+                        ? t("foodScanner.scanFood")
+                        : t("foodScanner.takePicture")}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
-          {/* Camera Scanner */}
-          <View style={styles.scannerContainer}>
+          {/* ── CAMERA ── */}
+          <View style={styles.cameraSection}>
             <ScannerCamera
               scanMode={scanMode}
               onBarcodeScan={handleBarcodeScan}
@@ -803,58 +745,59 @@ export default function FoodScannerScreen() {
               scanLineAnimation={scanLineAnimation}
               pulseAnimation={pulseAnimation}
             />
-
-            <Text
-              style={[styles.scanInstructions, { color: colors.textSecondary }]}
-            >
-              {t("foodScanner.alignFood")}
-            </Text>
           </View>
 
-          {/* Manual Input */}
+          {/* ── BARCODE INPUT ── */}
           {scanMode === "barcode" && (
-            <View style={styles.manualInputContainer}>
-              <View style={styles.inputWrapper}>
+            <View style={styles.inputSection}>
+              <View
+                style={[
+                  styles.inputCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <QrCode
+                  size={16}
+                  color={colors.textSecondary}
+                  strokeWidth={2}
+                />
                 <TextInput
-                  style={[
-                    styles.barcodeInput,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.border,
-                      color: colors.text,
-                    },
-                  ]}
+                  style={[styles.textInput, { color: colors.text }]}
                   placeholder={t("foodScanner.enterBarcode")}
                   placeholderTextColor={colors.textSecondary}
                   value={barcodeInput}
                   onChangeText={setBarcodeInput}
                   keyboardType="numeric"
+                  selectionColor={colors.primary}
+                  returnKeyType="search"
+                  onSubmitEditing={handleBarcodeSearch}
                 />
                 <TouchableOpacity
                   style={[
-                    styles.scanButton,
-                    { backgroundColor: colors.primary },
+                    styles.submitBtn,
+                    {
+                      backgroundColor: isLoading
+                        ? colors.primary + "50"
+                        : colors.primary,
+                    },
                   ]}
                   onPress={handleBarcodeSearch}
                   disabled={isLoading}
+                  activeOpacity={0.85}
                 >
                   {isLoading ? (
-                    <ActivityIndicator size="small" color={colors.onPrimary} />
+                    <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text
-                      style={[
-                        styles.scanButtonText,
-                        { color: colors.onPrimary },
-                      ]}
-                    >
-                      {t("foodScanner.scan")}
-                    </Text>
+                    <ChevronRight size={18} color="#fff" strokeWidth={2.5} />
                   )}
                 </TouchableOpacity>
               </View>
             </View>
           )}
-        </>
+        </Animated.View>
       ) : (
         scanResult && (
           <ProductDetails
@@ -868,14 +811,12 @@ export default function FoodScannerScreen() {
         )
       )}
 
-      {/* Loading Overlay */}
       <OperationLoader
         visible={isLoading}
         type="loading"
         message={loadingText}
       />
 
-      {/* History Modal */}
       <ScanHistoryModal
         visible={showHistoryModal}
         scanHistory={scanHistory}
@@ -883,13 +824,11 @@ export default function FoodScannerScreen() {
         onClose={() => setShowHistoryModal(false)}
       />
 
-      {/* Products Gallery */}
       <ScannedProducts
         visible={showProductsGallery}
         onClose={() => setShowProductsGallery(false)}
       />
 
-      {/* Product Search Modal */}
       <ProductSearchModal
         visible={showManualSearch}
         searchQuery={searchQuery}
@@ -905,56 +844,91 @@ export default function FoodScannerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  modernHeader: {
-    paddingHorizontal: 20,
+  container: { flex: 1 },
+  body: { flex: 1 },
+
+  // ── HEADER ──
+  header: {
+    paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 20,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  headerTop: {
+  headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 10,
   },
-  headerIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  galleryButton: {
+  headerIconBox: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
   },
-  scanModeToggle: {
-    flexDirection: "row",
-    marginHorizontal: 20,
-    borderRadius: 14,
-    overflow: "hidden",
-    gap: 4,
-    marginBottom: 4,
+  headerText: { flex: 1 },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: -0.4,
   },
-  scanModeBtn: {
+  headerSubRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.72)",
+    fontWeight: "500",
+  },
+  headerActions: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+  },
+  headerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerBtnBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#F59E0B",
+    borderRadius: 8,
+    minWidth: 15,
+    height: 15,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+  },
+  headerBtnBadgeText: {
+    color: "#fff",
+    fontSize: 9,
+    fontWeight: "800",
+  },
+
+  // ── TOGGLE ──
+  toggleWrapper: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  toggle: {
+    flexDirection: "row",
+    borderRadius: 16,
+    padding: 4,
+    gap: 4,
+  },
+  toggleBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
@@ -963,69 +937,74 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
   },
-  scanModeBtnActive: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  scanModeBtnText: {
+  toggleBtnText: {
     fontSize: 13,
     fontWeight: "700",
   },
-  scannerContainer: {
+
+  // ── CAMERA ──
+  cameraSection: {
     flex: 1,
-    paddingTop: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+  },
+
+  // ── INPUT ──
+  inputSection: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  inputCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    gap: 10,
+    overflow: "hidden",
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 15,
+    paddingVertical: 13,
+  },
+  submitBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    justifyContent: "center",
     alignItems: "center",
   },
-  scanInstructions: {
-    marginTop: 20,
-    fontSize: 14,
-  },
-  manualInputContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  inputWrapper: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  barcodeInput: {
-    flex: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    borderWidth: 1,
-  },
-  scanButton: {
-    borderRadius: 14,
-    paddingHorizontal: 24,
-    justifyContent: "center",
-  },
-  scanButtonText: {
-    fontWeight: "700",
-    fontSize: 16,
-  },
+
+  // ── NO PERMISSION ──
   noPermissionContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 32,
+    gap: 18,
+  },
+  noPermissionIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   noPermissionText: {
     fontSize: 16,
     textAlign: "center",
-    marginVertical: 20,
+    lineHeight: 24,
   },
   permissionButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 13,
+    borderRadius: 14,
   },
   permissionButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
   },
 });

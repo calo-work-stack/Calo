@@ -695,6 +695,27 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
   const availableCookingMethods = questionnaire?.available_cooking_methods || [];
   const dailyCookingTime = questionnaire?.daily_cooking_time;
 
+  // Build initial dietary restrictions from questionnaire
+  const getInitialDietaryRestrictions = useCallback((): string[] => {
+    const restrictions: string[] = [];
+    const style = questionnaire?.dietary_style?.toLowerCase() || "";
+    if (style.includes("vegan")) restrictions.push("vegan");
+    else if (style.includes("vegetarian")) restrictions.push("vegetarian");
+    if (style.includes("gluten")) restrictions.push("gluten_free");
+    if (style.includes("keto")) restrictions.push("keto");
+    if (style.includes("low_carb") || style.includes("lowcarb")) restrictions.push("low_carb");
+    if (style.includes("paleo")) restrictions.push("paleo");
+    if (style.includes("dairy_free") || style.includes("dairy free")) restrictions.push("dairy_free");
+    if (questionnaire?.kosher) restrictions.push("kosher");
+    // Check halal in allergies_text or dietary_style
+    const allergiesTextArr = Array.isArray(questionnaire?.allergies_text)
+      ? questionnaire.allergies_text
+      : [];
+    const allergiesText = allergiesTextArr.join(" ").toLowerCase();
+    if (style.includes("halal") || allergiesText.includes("halal")) restrictions.push("halal");
+    return restrictions;
+  }, [questionnaire]);
+
   // States
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedIngredients, setSelectedIngredients] = useState<
@@ -703,9 +724,10 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
   const [customIngredient, setCustomIngredient] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingProgress, setGeneratingProgress] = useState(0);
   const [menuPreferences, setMenuPreferences] = useState<MenuPreferences>({
     cuisine: "mediterranean",
-    dietary_restrictions: [],
+    dietary_restrictions: getInitialDietaryRestrictions(),
     meal_count: questionnaire?.meals_per_day || 3,
     duration_days: 7,
     budget_amount: userBudget || "",
@@ -927,12 +949,42 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
 
   // Generate menu
   const isGeneratingRef = useRef(false);
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startProgressSimulation = useCallback(() => {
+    setGeneratingProgress(0);
+    // Simulate progress up to 90% over ~45 seconds
+    let progress = 0;
+    progressIntervalRef.current = setInterval(() => {
+      progress += Math.random() * 3 + 1;
+      if (progress >= 90) {
+        progress = 90;
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+        }
+      }
+      setGeneratingProgress(Math.round(progress));
+    }, 1000);
+  }, []);
+
+  const stopProgressSimulation = useCallback((success: boolean) => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    if (success) {
+      setGeneratingProgress(100);
+    } else {
+      setGeneratingProgress(0);
+    }
+  }, []);
 
   const generateMenu = useCallback(async () => {
     if (isGenerating || isGeneratingRef.current) return;
 
     setIsGenerating(true);
     isGeneratingRef.current = true;
+    startProgressSimulation();
 
     try {
       const enhancedPrompt = customMenuName
@@ -944,6 +996,10 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
           ...menuPreferences,
           custom_name: customMenuName,
           enhanced_prompt: enhancedPrompt,
+          // Include questionnaire context for better AI generation
+          cooking_preference: cookingPreference,
+          available_cooking_methods: availableCookingMethods,
+          daily_cooking_time: dailyCookingTime,
         },
         ingredients: selectedIngredients,
         user_ingredients: selectedIngredients.map((ing) => ({
@@ -957,25 +1013,29 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
       const response = await api.post(
         "/recommended-menus/generate-with-ingredients",
         menuData,
-        { timeout: 30000 }
+        { timeout: 90000 } // Increased to 90s for complex menus
       );
 
       if (response.data.success) {
-        setIsGenerating(false);
-        onCreateMenu(response.data.data);
-        onClose();
+        stopProgressSimulation(true);
+        setTimeout(() => {
+          setIsGenerating(false);
+          onCreateMenu(response.data.data);
+          onClose();
 
-        if (response.data.data?.is_generating) {
-          Alert.alert(
-            t("menuCreator.menuCreated"),
-            t("menuCreator.menuCreatedDesc"),
-            [{ text: t("common.gotIt") }]
-          );
-        }
+          if (response.data.data?.is_generating) {
+            Alert.alert(
+              t("menuCreator.menuCreated"),
+              t("menuCreator.menuCreatedDesc"),
+              [{ text: t("common.gotIt") }]
+            );
+          }
+        }, 400); // Brief pause to show 100%
       } else {
         throw new Error(response.data.error || t("menuCreator.failedToGenerate"));
       }
     } catch (error: any) {
+      stopProgressSimulation(false);
       const isNetworkError =
         errorMessageIncludesAny(error, ["Network", "network"]) ||
         error?.code === "ERR_NETWORK" ||
@@ -999,7 +1059,6 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
         },
       });
     } finally {
-      setIsGenerating(false);
       isGeneratingRef.current = false;
     }
   }, [
@@ -1007,8 +1066,13 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
     customMenuName,
     menuPreferences,
     selectedIngredients,
+    cookingPreference,
+    availableCookingMethods,
+    dailyCookingTime,
     onCreateMenu,
     onClose,
+    startProgressSimulation,
+    stopProgressSimulation,
     t,
   ]);
 
@@ -1313,6 +1377,24 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
         </Text>
       </View>
 
+      {/* Auto-applied from questionnaire notice */}
+      {getInitialDietaryRestrictions().length > 0 && (
+        <View
+          style={[
+            styles.autoAppliedNotice,
+            { backgroundColor: colors.emerald500 + "10", borderColor: colors.emerald500 + "30" },
+          ]}
+        >
+          <Sparkles size={14} color={colors.emerald500} />
+          <Text style={[styles.autoAppliedText, { color: colors.emerald600 }]}>
+            {t("menuCreator.autoAppliedFromProfile", {
+              count: getInitialDietaryRestrictions().length,
+              fallback: `${getInitialDietaryRestrictions().length} dietary preferences auto-applied from your profile`,
+            })}
+          </Text>
+        </View>
+      )}
+
       <View style={styles.dietaryGrid}>
         {dietaryOptions.map((option) => (
           <DietaryChip
@@ -1596,8 +1678,17 @@ export const EnhancedMenuCreator: React.FC<MenuCreatorProps> = ({
                   {t("menuCreator.creatingMenu")}
                 </Text>
                 <Text style={styles.generateSubtext}>
-                  {t("menuCreator.aiCraftingRecipes")}
+                  {generatingProgress}% — {t("menuCreator.aiCraftingRecipes")}
                 </Text>
+                {/* Progress bar */}
+                <View style={styles.generateProgressTrack}>
+                  <Animated.View
+                    style={[
+                      styles.generateProgressFill,
+                      { width: `${generatingProgress}%` },
+                    ]}
+                  />
+                </View>
               </>
             ) : (
               <>
@@ -2340,6 +2431,34 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.85)",
     fontSize: 13,
     fontWeight: "600",
+    marginBottom: 8,
+  },
+  autoAppliedNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  autoAppliedText: {
+    fontSize: 13,
+    fontWeight: "600",
+    flex: 1,
+  },
+  generateProgressTrack: {
+    width: "80%",
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    borderRadius: 2,
+    overflow: "hidden",
+    marginTop: 4,
+  },
+  generateProgressFill: {
+    height: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 2,
   },
   // Navigation
   navigation: {

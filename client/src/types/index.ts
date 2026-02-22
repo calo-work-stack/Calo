@@ -98,6 +98,7 @@ export interface User {
   meals_per_day?: number;
   is_admin?: boolean;
   is_super_admin?: boolean;
+  preferred_lang?: string;
 }
 
 export interface Meal {

@@ -52,7 +52,6 @@ import { schemaValidationRoutes } from "./routes/schema-validation";
 import { authenticateToken, AuthRequest } from "./middleware/auth";
 import enhancedMenuRouter from "./routes/enhancedMenu";
 import adminRoutes from "./routes/admin";
-import { promoteAdminRoutes } from "./routes/promote-admin";
 import dashboardRoutes from "./routes/dashboard";
 import notificationsRoutes from "./routes/notifications";
 
@@ -156,9 +155,9 @@ app.use(requestLoggingMiddleware({ slowThreshold: config.performance.slowRequest
 const corsOptions = {
   origin: getCorsOrigins(),
   credentials: config.security.cors.credentials,
-  methods: config.security.cors.methods,
-  allowedHeaders: config.security.cors.allowedHeaders,
-  exposedHeaders: config.security.cors.exposedHeaders,
+  methods: [...config.security.cors.methods] as string[],
+  allowedHeaders: [...config.security.cors.allowedHeaders] as string[],
+  exposedHeaders: [...config.security.cors.exposedHeaders] as string[],
   maxAge: config.security.cors.maxAge,
 };
 app.use(cors(corsOptions));
@@ -302,7 +301,6 @@ apiRouter.use("/notifications", notificationsRoutes);
 // Routes mounted at root of /api
 apiRouter.use("/", statisticsRoutes);
 apiRouter.use("/", achievementsRouter);
-apiRouter.use("/", promoteAdminRoutes);
 
 // Development-only test endpoints
 if (config.isDevelopment) {

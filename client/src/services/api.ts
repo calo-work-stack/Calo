@@ -113,8 +113,14 @@ const getCachedResponse = (cacheKey: string): any | null => {
   return entry.data;
 };
 
-// Set cached response
+// Set cached response with max-size eviction (LRU-lite: drop oldest entry)
+const MAX_CACHE_SIZE = 50;
 const setCachedResponse = (cacheKey: string, data: any, ttl: number): void => {
+  if (responseCache.size >= MAX_CACHE_SIZE) {
+    // Delete the first (oldest) entry
+    const firstKey = responseCache.keys().next().value;
+    if (firstKey !== undefined) responseCache.delete(firstKey);
+  }
   responseCache.set(cacheKey, {
     data,
     timestamp: Date.now(),
@@ -192,8 +198,6 @@ class APIError extends Error {
 
 const getApiBaseUrl = (): string => {
   const baseUrl = process.env.EXPO_PUBLIC_API_URL;
-
-  console.log("🌐 API Base URL:", baseUrl); // DEBUG
 
   if (!baseUrl) {
     console.error("❌ EXPO_PUBLIC_API_URL is not set!");

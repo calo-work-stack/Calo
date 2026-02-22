@@ -38,6 +38,7 @@ import { MealEditModal } from "@/components/menu/MealEditModal";
 import { NutritionPills } from "@/components/menu/shared/NutritionPills";
 import { InstructionSteps } from "@/components/menu/shared/InstructionSteps";
 import { IngredientList } from "@/components/menu/shared/IngredientList";
+import { DailyBreakdownCard } from "@/components/menu/DailyBreakdownCard";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -382,7 +383,10 @@ export default function MenuDetailsScreen() {
   );
 
   const uniqueDays = useMemo(
-    () => [...new Set(menu?.meals.map((m) => m.day_number) || [])].sort((a, b) => a - b),
+    () =>
+      [...new Set(menu?.meals.map((m) => m.day_number) || [])]
+        .filter((d) => d >= 1 && d <= (menu?.days_count ?? Infinity))
+        .sort((a, b) => a - b),
     [menu]
   );
 
@@ -494,6 +498,9 @@ export default function MenuDetailsScreen() {
             {menu.description}
           </Text>
         ) : null}
+
+        {/* ===== DAILY BREAKDOWN (goal alignment + macros) ===== */}
+        <DailyBreakdownCard menuId={menu.menu_id} />
 
         {/* ===== DAY PILLS ===== */}
         <ScrollView

@@ -199,12 +199,12 @@ export class NutritionService {
       ingredients_count: analysis.ingredients?.length || 0,
     });
 
-    // Update request count asynchronously to not block response
+    // Atomically increment request count — prevents race condition from concurrent requests
     setImmediate(async () => {
       try {
         await prisma.user.update({
           where: { user_id },
-          data: { ai_requests_count: user.ai_requests_count + 1 },
+          data: { ai_requests_count: { increment: 1 } },
         });
       } catch (error) {
         console.warn("Failed to update request count:", error);
@@ -349,14 +349,14 @@ export class NutritionService {
 
     // ✅ CORRECT CODE - PRESERVES NUTRITION DATA + AI PRICING
     const responseData = {
-      ingredients,
       healthScore: (analysis.confidence || 75).toString(),
       recommendations:
         analysis.healthNotes ||
         analysis.recommendations ||
         "Meal analysis completed successfully.",
       estimated_price: Math.round(totalEstimatedPrice * 100) / 100, // Total meal price from AI
-      ...mappedMealWithoutImage, // Spread LAST to include all nutrition fields
+      ...mappedMealWithoutImage, // Spread to include all nutrition fields
+      ingredients, // Override after spread to use enriched ingredients array
     };
 
     // Validation (optional but recommended)
@@ -436,7 +436,7 @@ export class NutritionService {
       // Call the AI analysis with the update text and existing context
       const analysisResult = await this.analyzeMeal(user_id, {
         imageBase64,
-        language: params.language,
+        language: (params.language as "english" | "hebrew") || "english",
         date: new Date().toISOString().split("T")[0],
         updateText: params.updateText,
         editedIngredients: existingIngredients,
@@ -1042,21 +1042,21 @@ export class NutritionService {
     newDate?: string,
   ) {
     try {
-      const originalMeal = await prisma.meal.findFirst({
-        where: { meal_id: parseInt(meal_id), user_id },
-      });
-      if (!originalMeal) throw new Error("Meal not found");
-
       const duplicateDate = newDate ? new Date(newDate) : new Date();
-      const duplicatedMeal = await prisma.meal.create({
-        data: mapExistingMealToPrismaInput(
-          originalMeal,
-          user_id,
-          duplicateDate,
-        ),
+
+      // Use transaction to prevent race: original meal can't be deleted mid-duplication
+      const duplicatedMeal = await prisma.$transaction(async (tx) => {
+        const originalMeal = await tx.meal.findFirst({
+          where: { meal_id: parseInt(meal_id), user_id },
+        });
+        if (!originalMeal) throw new Error("Meal not found");
+
+        return tx.meal.create({
+          data: mapExistingMealToPrismaInput(originalMeal, user_id, duplicateDate),
+        });
       });
 
-      // Clear related caches
+      // Only clear caches after successful transaction
       this.clearUserCaches(user_id);
 
       return transformMealForClient(duplicatedMeal);

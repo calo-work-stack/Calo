@@ -1,14 +1,53 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { z } from "zod";
+import rateLimit from "express-rate-limit";
 import { AuthService } from "../services/auth";
 import { signUpSchema, signInSchema } from "../types/auth";
 import { authenticateToken, AuthRequest } from "../middleware/auth";
 import { prisma } from "../lib/database";
+import { PushNotificationService } from "../services/pushNotificationService";
 
 const router = Router();
 
-router.post("/signup", async (req, res, next) => {
+// Strict rate limiter for login — 10 attempts per 15 minutes per IP
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Too many login attempts. Please try again in 15 minutes." },
+  skipSuccessfulRequests: true, // Don't count successful logins
+});
+
+// Rate limiter for password reset — 5 per hour per IP
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Too many password reset requests. Please try again in 1 hour." },
+});
+
+// Rate limiter for email verification — 10 per 15 minutes per IP
+const verificationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Too many verification attempts. Please try again in 15 minutes." },
+});
+
+// Rate limiter for signup — 5 per hour per IP
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Too many signup attempts. Please try again in 1 hour." },
+});
+
+router.post("/signup", signupLimiter, async (req, res, next) => {
   try {
     console.log("🔄 Processing signup request...");
     console.log("📱 Request body:", { ...req.body, password: "***" });
@@ -64,7 +103,7 @@ router.post("/signup", async (req, res, next) => {
   }
 });
 
-router.post("/verify-email", async (req, res, next) => {
+router.post("/verify-email", verificationLimiter, async (req, res, next) => {
   try {
     console.log("🔄 Processing email verification request...");
     console.log("📧 Request body:", req.body);
@@ -118,7 +157,7 @@ router.post("/verify-email", async (req, res, next) => {
 
 // FIXED: This endpoint should NOT require authentication
 // Users need to resend verification codes BEFORE they're logged in
-router.post("/resend-verification", async (req, res) => {
+router.post("/resend-verification", verificationLimiter, async (req, res) => {
   try {
     console.log("🔄 Processing resend verification request...");
     const { email } = req.body;
@@ -140,18 +179,14 @@ router.post("/resend-verification", async (req, res) => {
       },
     });
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: "User not found",
-      });
-    }
+    // Return a generic response to prevent email enumeration
+    const genericResponse = {
+      success: true,
+      message: "If this email is registered and unverified, a new code has been sent.",
+    };
 
-    if (user.email_verified) {
-      return res.status(400).json({
-        success: false,
-        error: "Email already verified",
-      });
+    if (!user || user.email_verified) {
+      return res.json(genericResponse);
     }
 
     // Generate new 6-digit verification code
@@ -172,12 +207,7 @@ router.post("/resend-verification", async (req, res) => {
       user.name || "User",
     );
 
-    console.log("✅ Verification code resent successfully to:", email);
-
-    res.json({
-      success: true,
-      message: "Verification code resent successfully",
-    });
+    res.json(genericResponse);
   } catch (error) {
     console.error("💥 Resend verification error:", error);
     res.status(500).json({
@@ -190,7 +220,7 @@ router.post("/resend-verification", async (req, res) => {
   }
 });
 
-router.post("/signin", async (req, res, next) => {
+router.post("/signin", loginLimiter, async (req, res, next) => {
   try {
     console.log("🔄 Processing signin request...");
 
@@ -251,6 +281,33 @@ router.post("/signin", async (req, res, next) => {
       user: userData,
       token: result.token,
     });
+
+    // ============================================================
+    // 🔔 LOGIN NOTIFICATION - fires on every successful user login
+    // Sent asynchronously so it never blocks the signin response
+    // ============================================================
+    setImmediate(async () => {
+      try {
+        const userId = result.user.user_id;
+        const userName = (result.user as any).name || "there";
+        const lang = (result.user as any).preferred_lang === "HE" ? "he" : "en";
+
+        const title = lang === "he" ? "ברוך שובך! 👋" : `Welcome back, ${userName}! 👋`;
+        const body  = lang === "he"
+          ? "היום היא הזדמנות נהדרת להמשיך את המסע שלך!"
+          : "Today is a great opportunity to continue your journey!";
+
+        await PushNotificationService.sendToUser(
+          userId,
+          { title, body, data: { type: "LOGIN", screen: "home" } },
+          "SYSTEM"
+        );
+        console.log(`🔔 Login notification sent to user ${userId}`);
+      } catch (notifErr) {
+        // Non-critical — never propagate
+        console.warn("⚠️ Login notification failed (non-critical):", notifErr);
+      }
+    });
   } catch (error) {
     console.error("💥 Signin error:", error);
     if (error instanceof Error) {
@@ -267,6 +324,7 @@ router.post("/signin", async (req, res, next) => {
 // User questionnaire cache for /me endpoint
 const meCache = new Map<string, { data: any; timestamp: number }>();
 const ME_CACHE_TTL = 120000; // 2 minutes cache
+const ME_CACHE_MAX = 1000;   // evict oldest entry when exceeded
 
 router.get("/me", authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -320,7 +378,11 @@ router.get("/me", authenticateToken, async (req: AuthRequest, res) => {
       ai_requests_reset_at: req.user.ai_requests_reset_at,
     };
 
-    // Update cache
+    // Update cache (evict oldest entry if at capacity)
+    if (meCache.size >= ME_CACHE_MAX) {
+      const oldestKey = meCache.keys().next().value;
+      if (oldestKey !== undefined) meCache.delete(oldestKey);
+    }
     meCache.set(userId, { data: userData, timestamp: Date.now() });
 
     res.json({
@@ -367,7 +429,7 @@ router.post(
   },
 );
 
-router.post("/forgot-password", async (req, res) => {
+router.post("/forgot-password", forgotPasswordLimiter, async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -378,27 +440,27 @@ router.post("/forgot-password", async (req, res) => {
       });
     }
 
-    console.log("🔄 Processing forgot password request for:", email);
+    console.log("🔄 Processing forgot password request");
 
-    await AuthService.sendPasswordResetEmail(email);
-
-    res.json({
+    // Always return generic success to prevent email enumeration
+    const genericResponse = {
       success: true,
-      message: "Password reset email sent successfully",
-    });
+      message: "If this email is registered, a password reset email has been sent.",
+    };
+
+    try {
+      await AuthService.sendPasswordResetEmail(email);
+    } catch {
+      // Silently swallow errors — never reveal whether the email exists
+    }
+
+    res.json(genericResponse);
   } catch (error) {
     console.error("💥 Forgot password error:", error);
-    if (error instanceof Error) {
-      res.status(400).json({
-        success: false,
-        error: error.message,
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        error: "Failed to send password reset email",
-      });
-    }
+    res.status(500).json({
+      success: false,
+      error: "Failed to process request",
+    });
   }
 });
 

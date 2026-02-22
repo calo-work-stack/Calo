@@ -11,6 +11,7 @@ export interface Message {
   hasWarning?: boolean;
   allergenWarning?: string[];
   suggestions?: string[];
+  isError?: boolean;
 }
 
 export interface UserProfile {

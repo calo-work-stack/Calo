@@ -1,5 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { authAPI } from "../services/api";
+// 🔔 LOGIN NOTIFICATION — import for on-device popup (like WhatsApp) on every login
+import { NotificationService } from "../services/notifications";
 import type { User, SignUpData, SignInData, AuthResponse } from "../types";
 
 // Import clearAllQueries dynamically to avoid cycles
@@ -65,6 +67,29 @@ export const signIn = createAsyncThunk(
 
       if (response.success && response.token && response.user) {
         console.log("✅ Sign in successful");
+
+        // ============================================================
+        // 🔔 LOGIN NOTIFICATION — pops up on device immediately
+        //    (like a WhatsApp message) every time a user logs in.
+        //    Uses expo-notifications (local, no Firebase needed).
+        //    Fire-and-forget: never blocks or delays login.
+        // ============================================================
+        const userName = (response.user as any).name || "";
+        const userLang = (response.user as any).preferred_lang === "HE" ? "he" : "en";
+        const notifTitle =
+          userLang === "he" ? "ברוך שובך! 👋" : `Welcome back${userName ? `, ${userName}` : ""}! 👋`;
+        const notifBody =
+          userLang === "he"
+            ? "היום היא הזדמנות נהדרת להמשיך את המסע שלך!"
+            : "Today is a great opportunity to continue your journey!";
+        NotificationService.sendInstantNotification(notifTitle, notifBody, {
+          type: "LOGIN",
+          screen: "home",
+        }).catch(() => {
+          // Silently ignore — never block login on notification failure
+        });
+        // ============================================================
+
         return response;
       }
 

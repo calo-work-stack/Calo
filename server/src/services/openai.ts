@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import {
+  Ingredient,
   MealAnalysisResult,
   MealPlanRequest,
   MealPlanResponse,
@@ -68,7 +69,6 @@ export const openai = process.env.OPENAI_API_KEY
 
 // Helper function to validate and clean base64 image data
 function validateAndCleanBase64(imageBase64: string): string {
-  console.log("🔍 Validating base64 image data...");
 
   if (!imageBase64 || imageBase64.trim() === "") {
     throw new Error("Empty image data provided");
@@ -133,7 +133,7 @@ const ingredientEmojiMap: { [key: string]: string } = {
   // Vegetables
   carrot: "🥕", broccoli: "🥦", lettuce: "🥬", spinach: "🥬", cabbage: "🥬",
   cucumber: "🥒", pepper: "🌶️", onion: "🧅", garlic: "🧄", potato: "🥔",
-  eggplant: "🍆", mushroom: "🍄", corn: "🌽", peas: "🫛", beans: "🫘",
+  eggplant: "🍆", mushroom: "🍄", peas: "🫛", beans: "🫘",
   celery: "🥬", zucchini: "🥒", squash: "🎃", pumpkin: "🎃", asparagus: "🥦",
   // Nuts & Seeds
   peanut: "🥜", almond: "🥜", walnut: "🥜", cashew: "🥜", pistachio: "🥜",
@@ -246,17 +246,17 @@ export class OpenAIService {
           {
             role: "system",
             content:
-              "You are a nutritionist specializing in Israeli cuisine. Return valid JSON only, no markdown. Create practical meal plans with accurate nutrition and costs in Shekels.",
+              "You are an expert clinical nutritionist and meal planning specialist with deep knowledge of Israeli cuisine, Mediterranean diet, and evidence-based nutrition science. Your task is to create practical, delicious, and nutritionally accurate meal plans. CRITICAL: Return ONLY valid JSON — no markdown fences, no preamble, no explanation. All nutritional values must be accurate and internally consistent (ingredient calories must sum to meal total ±5%). All prices must be realistic Israeli shekel values (2024-2025 supermarket prices).",
           },
           {
             role: "user",
             content:
-              prompt.length > 4000 ? prompt.substring(0, 4000) + "..." : prompt,
+              prompt.length > 8000 ? prompt.substring(0, 8000) + "..." : prompt,
           },
         ],
         max_completion_tokens: Math.min(maxTokens, 4096),
-        temperature: 0.6,
-        top_p: 0.9,
+        temperature: 0.5, // Lower for nutritionally accurate, consistent meal plans
+        top_p: 0.88,
       });
 
       const content = response?.choices[0]?.message?.content || "";
@@ -464,8 +464,8 @@ export class OpenAIService {
 
     // Final fallback based on meal name if available
     const mealNameMatch = content.match(/"meal_name"\s*:\s*"([^"]+)"/);
-    if (mealNameMatch) {
-      const mealName = mealNameMatch[1];
+    const mealName = mealNameMatch ? mealNameMatch[1] : undefined;
+    if (mealName) {
       console.log(`🍽️ Creating ingredients based on meal name: ${mealName}`);
 
       // Create ingredients based on meal name
@@ -716,28 +716,93 @@ export class OpenAIService {
         .join("; ")}`;
     }
 
-    const systemPrompt = `Nutritionist AI. Analyze food images and return ONLY valid JSON.
+    const systemPrompt = `You are an expert clinical nutritionist and food scientist with deep knowledge of portion estimation, food composition, and culinary techniques. Your sole task is to analyze food images and return precise, evidence-based nutritional data.
 
-RULES:
-- Return JSON only, no text/apologies
-- Language: ${language === "hebrew" ? "Hebrew" : "English"}
-- Be conservative with estimates
-- Identify each ingredient separately
-${updateText ? `- Context: "${updateText}"` : ""}
+OUTPUT RULE: Respond with ONLY a valid JSON object — no markdown fences, no explanations, no apologies. If you are uncertain about any value, make a calibrated estimate rather than refusing.
 
-JSON format:
-{"meal_name":"string","calories":num,"protein_g":num,"carbs_g":num,"fats_g":num,"fiber_g":num,"sugar_g":num,"sodium_mg":num,"serving_size_g":num,"confidence":0-1,"food_category":"string","cooking_method":"string","health_risk_notes":"string","allergens_json":{"possible_allergens":[]},"ingredients":[{"name":"specific name","calories":num,"protein_g":num,"carbs_g":num,"fats_g":num,"estimated_portion_g":num}]}`;
+LANGUAGE: All string values (meal_name, food_category, cooking_method, health_risk_notes, ingredient names, allergens) must be in ${language === "hebrew" ? "Hebrew" : "English"}.
 
-    const prompt = `Analyze this food image. List each ingredient separately with specific names (not "mixed" or "various"). Include portion estimates and nutritional data per ingredient.${updateText ? ` Context: ${updateText}` : ""}`;
+ANALYSIS METHODOLOGY:
+1. IDENTIFICATION — Name every visible component specifically. Use culinary precision:
+   - "grilled chicken breast (skinless)" not "chicken" or "meat"
+   - "basmati rice, steamed" not "rice" or "grain"
+   - "extra virgin olive oil" not "oil" or "fat"
+   - "whole egg, scrambled" not "egg"
 
-    let userPrompt =
-      "Please analyze this food image and provide detailed nutritional information.";
+2. PORTION ESTIMATION — Estimate weight in grams using visual anchors:
+   - Standard dinner plate ≈ 26–28 cm diameter
+   - Typical restaurant chicken breast ≈ 150–180g
+   - Cup of cooked rice ≈ 180–200g
+   - Be conservative: slightly underestimate rather than overestimate
+
+3. MACRONUTRIENT CALCULATION — Use Atwater factors:
+   - Protein & Carbohydrates: 4 kcal/g
+   - Fat: 9 kcal/g
+   - Alcohol: 7 kcal/g
+   - Cross-check: total calories should equal (protein×4) + (carbs×4) + (fat×9)
+
+4. COOKING METHOD IMPACT — Adjust fat content based on preparation:
+   - Deep-fried: add 8–15g fat per 100g
+   - Sautéed/stir-fried: add 3–8g fat per 100g
+   - Grilled/baked: minimal added fat
+   - Always account for cooking oils, marinades, and sauces
+
+5. ALLERGEN DETECTION — Carefully identify potential allergens: gluten, dairy, eggs, tree nuts, peanuts, shellfish, fish, soy, sesame, mustard, sulfites
+
+6. CONFIDENCE SCORE — Set 0.0–1.0 based on:
+   - 0.85–0.95: Clear image, single known dish, all ingredients visible
+   - 0.70–0.84: Slight ambiguity in portions or minor hidden ingredients
+   - 0.55–0.69: Blurry image, complex mixed dish, or many hidden components
+${updateText ? `\n7. USER CONTEXT — The user provided this note: "${updateText}". Adjust your analysis to incorporate this information (e.g., if they mention added butter, include it as an ingredient).` : ""}
+
+CRITICAL RULES:
+- NEVER use vague names like "Unknown ingredient", "Mixed vegetables", "Various spices"
+- ALWAYS account for hidden calories: cooking fats, sauces, dressings, marinades
+- If multiple portions are visible on one plate, analyze ONE standard serving
+- Sauces and dressings can add 100–300 kcal — include them explicitly
+- The ingredients array calories MUST approximately sum to the total meal calories (±10%)
+
+REQUIRED JSON STRUCTURE:
+{
+  "meal_name": "descriptive meal name",
+  "calories": number,
+  "protein_g": number,
+  "carbs_g": number,
+  "fats_g": number,
+  "fiber_g": number,
+  "sugar_g": number,
+  "sodium_mg": number,
+  "serving_size_g": number,
+  "confidence": number (0.0-1.0),
+  "food_category": "Breakfast|Lunch|Dinner|Snack|Dessert|Beverage",
+  "cooking_method": "specific method(s)",
+  "health_risk_notes": "brief health observations (max 2 sentences)",
+  "allergens_json": { "possible_allergens": ["list", "of", "allergens"] },
+  "ingredients": [
+    {
+      "name": "specific ingredient name",
+      "calories": number,
+      "protein_g": number,
+      "carbs_g": number,
+      "fats_g": number,
+      "fiber_g": number,
+      "sugar_g": number,
+      "sodium_mg": number,
+      "estimated_portion_g": number
+    }
+  ]
+}`;
+
+    const userPromptParts: string[] = [
+      "Analyze this food image in detail. Identify every component separately — include main ingredients, side dishes, sauces, dressings, and garnishes. Provide accurate portion weights and complete nutritional data for each ingredient and the total meal.",
+    ];
     if (updateText) {
-      userPrompt += ` Additional context: ${updateText}`;
+      userPromptParts.push(`User note: ${updateText}`);
     }
     if (ingredientsContext) {
-      userPrompt += ingredientsContext;
+      userPromptParts.push(ingredientsContext);
     }
+    const userPrompt = userPromptParts.join(" ");
 
     console.log("🚀 CALLING OPENAI API!");
 
@@ -753,21 +818,21 @@ JSON format:
           content: [
             {
               type: "text",
-              text: prompt,
+              text: userPrompt,
             },
             {
               type: "image_url",
               image_url: {
                 url: `data:image/jpeg;base64,${cleanBase64}`,
-                detail: "low", // Use low detail for faster processing - sufficient for food recognition
+                detail: "high", // High detail for accurate ingredient and portion recognition
               },
             },
           ],
         },
       ],
-      max_completion_tokens: 2048, // Reduced from 16000 - meal analysis rarely needs more
-      temperature: 0.5, // Lower temperature for more consistent, faster responses
-      top_p: 0.9,
+      max_completion_tokens: 3000, // Enough for detailed ingredient breakdown with full nutritional data
+      temperature: 0.3, // Low temperature for factual, consistent nutritional estimates
+      top_p: 0.85,
     });
 
     const content = response?.choices[0]?.message?.content;
@@ -944,6 +1009,7 @@ JSON format:
 
       return {
         name: mealName,
+        recommendations: healthNotes,
         description:
           language === "hebrew"
             ? "ארוחה מחושבת מחדש עם רכיבים מותאמים"
@@ -1013,6 +1079,7 @@ JSON format:
     }
     const analysisResult: MealAnalysisResult = {
       name: parsed.meal_name || "AI Analyzed Meal",
+      recommendations: parsed.healthNotes || parsed.recommendations || "",
       description: parsed.description || "",
       calories: Math.max(0, Number(parsed.calories) || 0),
       // Check both field name variants - AI may return protein or protein_g
@@ -1078,7 +1145,7 @@ JSON format:
         100,
         Math.max(0, Number(parsed.confidence) * 100 || 85)
       ),
-      ingredients: (() => {
+      ingredients: ((() => {
         // Use parsed ingredients, ingredients_list, or parsed.ingredients as fallback
         const sourceIngredients =
           parsed.ingredients || parsed.ingredients_list || [];
@@ -1228,7 +1295,7 @@ JSON format:
             fats_g: addFat,
           },
         ];
-      })(),
+      })()) as Ingredient[],
       servingSize: parsed.servingSize || "1 serving",
       cookingMethod: parsed.cookingMethod || "Unknown",
       healthNotes: parsed.healthNotes || "",
@@ -1243,7 +1310,7 @@ JSON format:
     // Add visual data (emoji + color) for each ingredient - INSTANT, no API calls
     if (analysisResult.ingredients && analysisResult.ingredients.length > 0) {
       console.log("🎨 Adding ingredient visuals (instant)...");
-      analysisResult.ingredients = this.addIngredientVisuals(analysisResult.ingredients);
+      analysisResult.ingredients = this.addIngredientVisuals(analysisResult.ingredients) as Ingredient[];
       console.log("✅ Ingredient visuals added successfully");
     }
 
@@ -1868,10 +1935,147 @@ Language: ${language}`;
         return this.generateFallbackMealPlan(userProfile);
       }
 
-      console.log("🔄 Using reliable fallback meal plan generation");
-      return this.generateFallbackMealPlan(userProfile);
+      return await this.callOpenAIForMealPlan(userProfile);
     } catch (error) {
       console.error("💥 OpenAI meal plan generation error:", error);
+      return this.generateFallbackMealPlan(userProfile);
+    }
+  }
+
+  private static async callOpenAIForMealPlan(
+    userProfile: MealPlanRequest
+  ): Promise<MealPlanResponse> {
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const mealTimings = this.generateMealTimings(userProfile.meals_per_day, userProfile.snacks_per_day);
+
+    const allergiesStr = Array.isArray(userProfile.allergies) && userProfile.allergies.length > 0
+      ? userProfile.allergies.join(", ")
+      : "None";
+    const excludedStr = userProfile.excluded_ingredients.length > 0
+      ? userProfile.excluded_ingredients.join(", ")
+      : "None";
+    const preferencesStr = userProfile.dietary_preferences.length > 0
+      ? userProfile.dietary_preferences.join(", ")
+      : "No restrictions";
+
+    const systemPrompt = `You are an expert clinical nutritionist and meal plan designer. Create a complete 7-day meal plan as a single valid JSON object. Return ONLY the JSON — no markdown, no text outside the JSON.
+
+NUTRITIONAL ACCURACY REQUIREMENTS:
+- Total daily calories must be within ±50kcal of the target
+- Macros must sum correctly: calories = (protein×4) + (carbs×4) + (fats×9)
+- Ingredient portions must be realistic (specify grams for solids, ml for liquids)
+- Vary meals across the week — no meal should repeat more than twice
+- Account for cultural food preferences and cooking skill level
+
+COST REQUIREMENTS (Israeli market 2024-2025):
+- Chicken breast: ~45 NIS/kg | Ground beef: ~60 NIS/kg | Eggs: ~3 NIS each
+- Vegetables: ~5-15 NIS/kg | Grains (rice, pasta): ~10-20 NIS/kg
+- Dairy (yogurt 200g): ~5-8 NIS | Cheese per 100g: ~8-15 NIS
+- Legumes (canned): ~8-12 NIS | Olive oil (100ml): ~10-15 NIS`;
+
+    const userPrompt = `Create a personalized 7-day meal plan for this user:
+
+USER PROFILE:
+- Age: ${userProfile.age} | Weight: ${userProfile.weight_kg}kg | Height: ${userProfile.height_cm}cm
+- Goal: ${userProfile.main_goal}
+- Activity Level: ${userProfile.physical_activity_level} | Sport: ${userProfile.sport_frequency}
+
+DAILY NUTRITION TARGETS (MUST HIT THESE):
+- Calories: ${userProfile.target_calories_daily} kcal
+- Protein: ${userProfile.target_protein_daily}g
+- Carbohydrates: ${userProfile.target_carbs_daily}g
+- Fats: ${userProfile.target_fats_daily}g
+
+MEAL SCHEDULE:
+- Meals per day: ${userProfile.meals_per_day}
+- Snacks per day: ${userProfile.snacks_per_day}
+- Meal timings: ${mealTimings.join(", ")}
+
+DIETARY CONSTRAINTS:
+- Allergies (NEVER include these): ${allergiesStr}
+- Excluded ingredients: ${excludedStr}
+- Dietary preferences: ${preferencesStr}
+- Meal texture preference: ${userProfile.meal_texture_preference || "No preference"}
+
+PRACTICAL CONSTRAINTS:
+- Cooking skill: ${userProfile.cooking_skill_level}
+- Available cooking time: ${userProfile.available_cooking_time}
+- Kitchen equipment: ${userProfile.kitchen_equipment.join(", ") || "Standard kitchen"}
+- Include leftovers: ${userProfile.include_leftovers ? "Yes" : "No"}
+- Fixed meal times: ${userProfile.fixed_meal_times ? "Yes" : "No"}
+- Meal rotation every: ${userProfile.rotation_frequency_days} days
+
+Return this exact JSON structure (fill all 7 days, each day with ${userProfile.meals_per_day + userProfile.snacks_per_day} meals):
+{
+  "weekly_plan": [
+    {
+      "day": "Sunday",
+      "day_index": 0,
+      "meals": [
+        {
+          "name": "meal name",
+          "description": "brief appetizing description",
+          "meal_timing": "${mealTimings[0] || "BREAKFAST"}",
+          "dietary_category": "omnivore|vegetarian|vegan|keto|etc",
+          "prep_time_minutes": 15,
+          "difficulty_level": 1,
+          "calories": 400,
+          "protein_g": 30,
+          "carbs_g": 35,
+          "fats_g": 15,
+          "fiber_g": 5,
+          "sugar_g": 8,
+          "sodium_mg": 400,
+          "ingredients": [{"name": "chicken breast", "quantity": 150, "unit": "g", "category": "Protein"}],
+          "instructions": [{"step": 1, "text": "instruction text"}],
+          "allergens": [],
+          "image_url": "",
+          "portion_multiplier": 1,
+          "is_optional": false
+        }
+      ]
+    }
+  ],
+  "weekly_nutrition_summary": {
+    "avg_daily_calories": ${userProfile.target_calories_daily},
+    "avg_daily_protein": ${userProfile.target_protein_daily},
+    "avg_daily_carbs": ${userProfile.target_carbs_daily},
+    "avg_daily_fats": ${userProfile.target_fats_daily},
+    "goal_adherence_percentage": 95
+  },
+  "shopping_tips": ["practical tip 1", "practical tip 2", "practical tip 3"],
+  "meal_prep_suggestions": ["prep suggestion 1", "prep suggestion 2"]
+}`;
+
+    console.log("🚀 Calling OpenAI for AI meal plan generation...");
+
+    try {
+      const response = await this.openai!.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_completion_tokens: 4096,
+        temperature: 0.5,
+        top_p: 0.88,
+      });
+
+      const content = response?.choices[0]?.message?.content || "";
+      console.log("✅ OpenAI meal plan response received, length:", content.length);
+
+      const cleanedContent = extractCleanJSON(content);
+      const parsed = JSON.parse(cleanedContent) as MealPlanResponse;
+
+      // Validate basic structure
+      if (!parsed.weekly_plan || !Array.isArray(parsed.weekly_plan) || parsed.weekly_plan.length === 0) {
+        throw new Error("Invalid meal plan structure from AI");
+      }
+
+      console.log(`✅ AI meal plan generated: ${parsed.weekly_plan.length} days`);
+      return parsed;
+    } catch (aiError) {
+      console.error("💥 AI meal plan generation failed, falling back:", aiError);
       return this.generateFallbackMealPlan(userProfile);
     }
   }

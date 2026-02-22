@@ -47,12 +47,23 @@ router.post(
         });
       }
 
-      const { message, language = "hebrew" } = req.body;
+      const { message } = req.body;
+
+      // Language is always derived from the user's DB profile preference.
+      // The client does not control this — changing it only happens in profile settings.
+      const language = req.user?.preferred_lang === "HE" ? "hebrew" : "english";
 
       if (!message || typeof message !== "string" || message.trim() === "") {
         return res.status(400).json({
           success: false,
           error: "Message is required and must be a non-empty string",
+        });
+      }
+
+      if (message.length > 2000) {
+        return res.status(400).json({
+          success: false,
+          error: "Message is too long. Maximum 2000 characters allowed.",
         });
       }
 
@@ -74,17 +85,11 @@ router.post(
         });
       }
 
-      console.log("🔄 Processing chat message for user:", userId);
-      console.log("📝 Message:", message);
-      console.log("🌐 Language:", language);
-
       const response = await ChatService.processMessage(
         userId,
         message,
         language
       );
-
-      console.log("✅ Chat service response:", response);
 
       const actualTokens =
         Math.ceil(message.length / 4) +
@@ -129,16 +134,13 @@ router.get(
     }
 
     try {
-      const limit = parseInt(req.query.limit as string) || 50;
-      console.log("📜 Getting chat history for user:", userId, "limit:", limit);
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
 
       const messages = await prisma.chatMessage.findMany({
         where: { user_id: userId },
         orderBy: { created_at: "desc" },
         take: limit,
       });
-
-      console.log("✅ Found", messages.length, "chat messages");
 
       res.json({
         success: true,

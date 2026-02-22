@@ -30,6 +30,8 @@ export const updateProfileSchema = z.object({
       if (typeof arg === "string" || arg instanceof Date) return new Date(arg);
     }, z.date())
     .optional(),
+  // ── Language preference — only changeable via profile ──
+  preferred_lang: z.enum(["EN", "HE"]).optional(),
 });
 
 export const updateSubscriptionSchema = z.object({

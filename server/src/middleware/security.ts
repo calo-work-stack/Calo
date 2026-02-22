@@ -133,29 +133,42 @@ function sanitizeObject(obj: Record<string, any>): Record<string, any> {
 }
 
 /**
- * Sanitize string to prevent XSS and injection
+ * Sanitize string to prevent XSS, injection, and other malicious payloads
  */
 function sanitizeString(str: string): string {
   if (!str || typeof str !== "string") return str;
 
-  // Remove null bytes (potential security issue)
+  // Limit string length first to prevent DoS before any processing
+  const MAX_STRING_LENGTH = 100000;
+  if (str.length > MAX_STRING_LENGTH) {
+    str = str.substring(0, MAX_STRING_LENGTH);
+  }
+
+  // Remove null bytes
   let sanitized = str.replace(/\0/g, "");
 
   // Trim excessive whitespace
   sanitized = sanitized.trim();
 
-  // Remove potential script injections (basic)
-  // Note: This is a basic sanitization - for HTML content, use a proper library like DOMPurify
-  sanitized = sanitized
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/javascript:/gi, "")
-    .replace(/on\w+\s*=/gi, "");
+  // Remove script tags (including variations with whitespace and attributes)
+  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
 
-  // Limit string length to prevent DoS
-  const MAX_STRING_LENGTH = 100000;
-  if (sanitized.length > MAX_STRING_LENGTH) {
-    sanitized = sanitized.substring(0, MAX_STRING_LENGTH);
-  }
+  // Remove other dangerous HTML tags that can execute code
+  sanitized = sanitized.replace(/<(iframe|object|embed|applet|form|meta|link|base)\b[^>]*>/gi, "");
+
+  // Block javascript: and data: URI schemes
+  sanitized = sanitized.replace(/javascript\s*:/gi, "");
+  sanitized = sanitized.replace(/data\s*:\s*text\s*\/\s*(html|javascript)/gi, "");
+  sanitized = sanitized.replace(/vbscript\s*:/gi, "");
+
+  // Remove inline event handlers (onclick=, onerror=, onload=, etc.)
+  sanitized = sanitized.replace(/on\w+\s*=/gi, "");
+
+  // Block expression() CSS injection (IE legacy)
+  sanitized = sanitized.replace(/expression\s*\(/gi, "");
+
+  // Remove SVG-based XSS vectors
+  sanitized = sanitized.replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, "");
 
   return sanitized;
 }
@@ -228,6 +241,35 @@ export function preventParameterPollution(req: Request, res: Response, next: Nex
       }
     }
   }
+  next();
+}
+
+/**
+ * Validate Content-Type for POST/PUT/PATCH requests to prevent unexpected payloads
+ */
+export function validateContentType(req: Request, res: Response, next: NextFunction): void {
+  const methodsRequiringBody = ["POST", "PUT", "PATCH"];
+
+  if (methodsRequiringBody.includes(req.method)) {
+    const contentType = req.headers["content-type"] || "";
+
+    // Allow multipart for file uploads, JSON for API calls
+    const isJson = contentType.includes("application/json");
+    const isMultipart = contentType.includes("multipart/form-data");
+    const isUrlEncoded = contentType.includes("application/x-www-form-urlencoded");
+
+    // Skip validation for empty bodies (some PATCH requests may have no body)
+    const hasBody = req.headers["content-length"] && parseInt(req.headers["content-length"]) > 0;
+
+    if (hasBody && !isJson && !isMultipart && !isUrlEncoded) {
+      res.status(415).json({
+        success: false,
+        error: "Unsupported Media Type. Use application/json.",
+      });
+      return;
+    }
+  }
+
   next();
 }
 

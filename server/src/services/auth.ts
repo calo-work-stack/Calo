@@ -263,14 +263,14 @@ export class AuthService {
           pass: cleanPassword, // Use cleaned password
         },
         tls: {
-          rejectUnauthorized: false,
+          rejectUnauthorized: process.env.NODE_ENV === "production",
         },
         // Add timeout settings
         connectionTimeout: 60000, // 60 seconds
         greetingTimeout: 30000, // 30 seconds
         socketTimeout: 60000, // 60 seconds
-        debug: true, // Always enable debug for troubleshooting
-        logger: true, // Always enable logger
+        debug: process.env.NODE_ENV !== "production",
+        logger: process.env.NODE_ENV !== "production",
       });
 
       // Test the connection with better error handling
@@ -492,8 +492,10 @@ export class AuthService {
         });
       }
 
-      // Fallback to console logging
-      console.log(`📧 FALLBACK - Verification code: ${code}`);
+      // Email failed — in dev, log without exposing the code
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`📧 DEV: Verification email failed to send. Check SMTP config. Code is stored in DB.`);
+      }
 
       // In production, throw error so signup knows email failed
       if (process.env.NODE_ENV === "production") {
@@ -507,7 +509,6 @@ export class AuthService {
   }
 
   static async verifyEmail(email: string, code: string) {
-    console.log(`🔒 Verifying email ${email} with code ${code}`);
 
     // Single query with OR for both email_hash and plain email
     const emailHashValue = hashEmail(email);
@@ -548,7 +549,9 @@ export class AuthService {
       throw new Error("Verification code expired");
     }
 
-    const isCodeValid = await bcrypt.compare(code, user.email_verification_code);
+    const isCodeValid = user.email_verification_code
+      ? await bcrypt.compare(code, user.email_verification_code)
+      : false;
     if (!isCodeValid) {
       console.log(
         `❌ Invalid verification code for: ${email}`,
@@ -729,11 +732,15 @@ export class AuthService {
     await prisma.session.deleteMany({ where: { token } });
   }
   static async sendPasswordResetEmail(email: string): Promise<void> {
-    console.log("🔄 Sending password reset email to:", email);
-
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // Find user by email_hash (supports encrypted emails) with plain email fallback
+    const emailHashValue = hashEmail(email);
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email_hash: emailHashValue },
+          { email: email },
+        ],
+      },
     });
 
     if (!user) {
@@ -743,11 +750,11 @@ export class AuthService {
     // Generate reset code (same as email verification)
     const resetCode = crypto.randomInt(100000, 999999).toString();
     const hashedResetCode = await bcrypt.hash(resetCode, 10);
-    const resetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes (same as email verification)
+    const resetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
-    // Store hashed reset code in database
+    // Store hashed reset code in database (use user_id — stable primary key)
     await prisma.user.update({
-      where: { email },
+      where: { user_id: user.user_id },
       data: {
         password_reset_code: hashedResetCode,
         password_reset_expires: resetExpires,
@@ -781,7 +788,7 @@ export class AuthService {
           pass: process.env.EMAIL_PASSWORD,
         },
         tls: {
-          rejectUnauthorized: false,
+          rejectUnauthorized: process.env.NODE_ENV === "production",
         },
         debug: process.env.NODE_ENV !== "production",
         logger: process.env.NODE_ENV !== "production",
@@ -989,26 +996,29 @@ export class AuthService {
     } catch (error: any) {
       console.error("❌ Failed to send password reset email:", error);
 
-      // Fallback to console logging if email fails
-      console.log(`📧 FALLBACK - Password reset code for ${email}`);
-      console.log(`👤 Name: ${name}`);
-      console.log(`🔑 Reset Code: ${code}`);
-      console.log(`⏰ Code expires in 15 minutes`);
-
-      // Don't throw error - let the process continue even if email fails
+      // Email failed — log for ops but never log the code itself
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`📧 DEV: Password reset email failed to send for ${email}. Check SMTP config.`);
+      }
+      // Don't throw — password reset code is already stored in DB; user can retry
       return true;
     }
   }
 
   static async verifyResetCode(email: string, code: string): Promise<string> {
-    console.log("🔒 Verifying reset code for:", email);
-
     if (!code || code.trim() === "") {
       throw new Error("Reset code is required");
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // Find user by email_hash (supports encrypted emails) with plain email fallback
+    const emailHashValue = hashEmail(email);
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email_hash: emailHashValue },
+          { email: email },
+        ],
+      },
     });
 
     if (!user) {
@@ -1052,20 +1062,16 @@ export class AuthService {
         throw new Error("Invalid reset token");
       }
 
-      const user = await prisma.user.findUnique({
-        where: { email: decoded.email },
-      });
-
-      if (!user) {
-        throw new Error("User not found");
-      }
+      // Use userId from JWT (stable primary key — no encrypted email lookup needed)
+      const userId = decoded.userId;
+      if (!userId) throw new Error("Invalid reset token");
 
       // Hash new password
       const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-      // Update password and clear reset fields (like email verification clears verification fields)
+      // Update password and clear reset fields
       await prisma.user.update({
-        where: { email: decoded.email },
+        where: { user_id: userId },
         data: {
           password_hash: hashedPassword,
           password_reset_code: null,
@@ -1075,10 +1081,8 @@ export class AuthService {
 
       // Invalidate all existing sessions for security
       await prisma.session.deleteMany({
-        where: { user_id: user.user_id },
+        where: { user_id: userId },
       });
-
-      console.log("✅ Password reset successfully for:", decoded.email);
     } catch (error) {
       console.error("💥 Password reset error:", error);
       throw new Error("Invalid or expired reset token");
@@ -1090,10 +1094,11 @@ export class AuthService {
     try {
       const decoded = verifyPasswordResetToken(token);
 
-      // Optional: Check if user still exists
-      const user = await prisma.user.findUnique({
-        where: { email: decoded.email },
-        select: { email: true, email_verified: true },
+      // Look up user by email hash (supports encrypted emails)
+      const emailHashValue = hashEmail(decoded.email);
+      const user = await prisma.user.findFirst({
+        where: { OR: [{ email_hash: emailHashValue }, { email: decoded.email }] },
+        select: { email_verified: true },
       });
 
       if (!user || !user.email_verified) {

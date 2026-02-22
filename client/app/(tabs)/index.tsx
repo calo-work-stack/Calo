@@ -1092,7 +1092,7 @@ const HomeScreen = React.memo(() => {
                       if (mealId) {
                         router.push({
                           pathname: "/(tabs)/history",
-                          params: { selectedMealId: mealId.toString() },
+                          params: { mealId: mealId.toString() },
                         });
                       }
                     }}

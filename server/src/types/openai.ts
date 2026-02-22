@@ -1,5 +1,5 @@
 export interface Ingredient {
-  estimated_cost: number;
+  estimated_cost?: number;
   name: string;
   calories: number;
   protein: number;

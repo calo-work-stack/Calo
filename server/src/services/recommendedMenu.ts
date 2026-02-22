@@ -2164,9 +2164,33 @@ Generate a COMPLETE new menu in JSON format with the same structure as before, b
         0,
       );
 
+      // Group by category for a smarter shopping experience
+      const categoryMap = new Map<string, { items: typeof items; category_cost: number }>();
+      for (const item of items) {
+        const cat = (item.category || "other").toLowerCase();
+        if (!categoryMap.has(cat)) {
+          categoryMap.set(cat, { items: [], category_cost: 0 });
+        }
+        const group = categoryMap.get(cat)!;
+        group.items.push(item);
+        group.category_cost += item.estimated_cost || 0;
+      }
+
+      const grouped_by_category = Object.fromEntries(
+        Array.from(categoryMap.entries()).map(([cat, group]) => [
+          cat,
+          {
+            items: group.items,
+            category_cost: Math.round(group.category_cost * 100) / 100,
+            item_count: group.items.length,
+          },
+        ]),
+      );
+
       return {
         menu_id: menuId,
         items,
+        grouped_by_category,
         total_estimated_cost: totalCost,
         generated_at: new Date().toISOString(),
       };

@@ -128,6 +128,199 @@ router.get(
   },
 );
 
+// ─────────────────────────────────────────────────────────────────────────────
+// FEATURE: Menu Clone — POST /:menuId/clone
+// Deep-copies a menu (all meals + ingredients) into a new menu for the user.
+// Useful for iterating on a menu that worked well or trying variations.
+// ─────────────────────────────────────────────────────────────────────────────
+router.post(
+  "/:menuId/clone",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) return res.status(401).json({ success: false, error: "Unauthorized" });
+
+      const { menuId } = req.params;
+
+      // Check menu limit before cloning
+      const limitCheck = await checkMenuLimit(userId);
+      if (!limitCheck.allowed) {
+        return res.status(400).json({
+          success: false,
+          error: `Menu limit reached (${limitCheck.currentCount}/${MAX_MENUS_PER_USER}). Delete a menu before cloning.`,
+        });
+      }
+
+      // Load source menu with all meals and ingredients
+      const source = await prisma.recommendedMenu.findFirst({
+        where: { menu_id: menuId, user_id: userId },
+        include: { meals: { include: { ingredients: true } } },
+      });
+
+      if (!source) {
+        return res.status(404).json({ success: false, error: "Menu not found" });
+      }
+
+      // Create the cloned menu (no active state, no dates)
+      const cloned = await prisma.recommendedMenu.create({
+        data: {
+          user_id: userId,
+          title: `${source.title} (Copy)`,
+          description: source.description,
+          total_calories: source.total_calories,
+          total_protein: source.total_protein,
+          total_carbs: source.total_carbs,
+          total_fat: source.total_fat,
+          total_fiber: source.total_fiber,
+          days_count: source.days_count,
+          dietary_category: source.dietary_category,
+          estimated_cost: source.estimated_cost,
+          prep_time_minutes: source.prep_time_minutes,
+          difficulty_level: source.difficulty_level,
+          is_active: false,
+          meals: {
+            create: source.meals.map((meal) => ({
+              name: meal.name,
+              meal_type: meal.meal_type,
+              day_number: meal.day_number,
+              calories: meal.calories,
+              protein: meal.protein,
+              carbs: meal.carbs,
+              fat: meal.fat,
+              fiber: meal.fiber,
+              prep_time_minutes: meal.prep_time_minutes,
+              cooking_method: meal.cooking_method,
+              instructions: meal.instructions,
+              image_url: meal.image_url,
+              language: meal.language,
+              dietary_tags: meal.dietary_tags,
+              ingredients: {
+                create: meal.ingredients.map((ing) => ({
+                  name: ing.name,
+                  quantity: ing.quantity,
+                  unit: ing.unit,
+                  category: ing.category,
+                  estimated_cost: ing.estimated_cost,
+                })),
+              },
+            })),
+          },
+        },
+        include: { meals: { include: { ingredients: true } } },
+      });
+
+      console.log(`✅ Menu cloned: ${source.menu_id} → ${cloned.menu_id}`);
+      res.json({ success: true, data: cloned, message: "Menu cloned successfully" });
+    } catch (error) {
+      console.error("💥 Error cloning menu:", error);
+      res.status(500).json({ success: false, error: "Failed to clone menu" });
+    }
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FEATURE: Daily Nutrition Breakdown — GET /:menuId/daily-breakdown
+// Returns per-day nutritional totals across all meals.
+// Powers the day-selector strip on the menu detail screen.
+// ─────────────────────────────────────────────────────────────────────────────
+router.get(
+  "/:menuId/daily-breakdown",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) return res.status(401).json({ success: false, error: "Unauthorized" });
+
+      const { menuId } = req.params;
+
+      const menu = await prisma.recommendedMenu.findFirst({
+        where: { menu_id: menuId, user_id: userId },
+        include: {
+          meals: {
+            include: { ingredients: true },
+            orderBy: [{ day_number: "asc" }, { meal_type: "asc" }],
+          },
+        },
+      });
+
+      if (!menu) return res.status(404).json({ success: false, error: "Menu not found" });
+
+      // Group meals by day and calculate totals
+      const dayMap = new Map<number, {
+        day: number;
+        calories: number;
+        protein: number;
+        carbs: number;
+        fat: number;
+        fiber: number;
+        meals: { meal_id: string; name: string; meal_type: string; calories: number; is_completed: boolean }[];
+      }>();
+
+      for (let d = 1; d <= menu.days_count; d++) {
+        dayMap.set(d, { day: d, calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, meals: [] });
+      }
+
+      menu.meals.forEach((meal) => {
+        const day = dayMap.get(meal.day_number);
+        if (!day) return;
+        day.calories += meal.calories || 0;
+        day.protein  += meal.protein  || 0;
+        day.carbs    += meal.carbs    || 0;
+        day.fat      += meal.fat      || 0;
+        day.fiber    += meal.fiber    || 0;
+        day.meals.push({
+          meal_id: meal.meal_id,
+          name: meal.name,
+          meal_type: meal.meal_type,
+          calories: meal.calories,
+          is_completed: meal.is_completed,
+        });
+      });
+
+      // Fetch user questionnaire target calories for goal alignment
+      const questionnaire = await prisma.userQuestionnaire.findFirst({
+        where: { user_id: userId },
+        orderBy: { date_completed: "desc" },
+        select: { target_calories: true } as any,
+      });
+
+      const targetCalories = (questionnaire as any)?.target_calories || null;
+      const days = Array.from(dayMap.values());
+      const avgCalories = days.length
+        ? Math.round(days.reduce((s, d) => s + d.calories, 0) / days.length)
+        : 0;
+
+      const goalAlignment = targetCalories
+        ? {
+            target: targetCalories,
+            average: avgCalories,
+            deviation_pct: Math.round(((avgCalories - targetCalories) / targetCalories) * 100),
+            status: Math.abs(avgCalories - targetCalories) <= targetCalories * 0.1
+              ? "on_track"
+              : avgCalories > targetCalories
+              ? "over"
+              : "under",
+          }
+        : null;
+
+      res.json({
+        success: true,
+        data: {
+          menu_id: menuId,
+          days_count: menu.days_count,
+          days,
+          avg_calories_per_day: avgCalories,
+          goal_alignment: goalAlignment,
+        },
+      });
+    } catch (error) {
+      console.error("💥 Error getting daily breakdown:", error);
+      res.status(500).json({ success: false, error: "Failed to get daily breakdown" });
+    }
+  },
+);
+
 router.delete(
   "/:menuId",
   authenticateToken,
@@ -557,7 +750,9 @@ router.get(
     try {
       const userId = req.user.user_id;
       const { menuId, mealId } = req.params;
-      const { language = "en" } = req.query;
+
+      // Language always comes from user's DB profile preference
+      const language = req.user?.preferred_lang === "HE" ? "he" : "en";
 
       console.log("🔄 Getting meal alternatives for:", { menuId, mealId, language });
 
@@ -646,7 +841,7 @@ router.post(
       }
 
       // Create or update meal completion record as skipped
-      await prisma.mealCompletion.upsert({
+      await (prisma.mealCompletion as any).upsert({
         where: {
           user_id_menu_id_day_number_meal_type: {
             user_id: userId,
@@ -695,7 +890,10 @@ router.post(
     try {
       const userId = req.user.user_id;
       const { menuId } = req.params;
-      const { mealId, preferences, language = "en" } = req.body;
+      const { mealId, preferences } = req.body;
+
+      // Language always comes from user's DB profile preference
+      const language = req.user?.preferred_lang === "HE" ? "he" : "en";
 
       console.log("🔄 Replace meal request:", { menuId, mealId, language, alternativeName: preferences?.alternativeName });
 
@@ -1598,11 +1796,10 @@ router.post(
         orderBy: { date_completed: "desc" },
       });
 
-      // Detect language based on ingredients or preferences
-      const hasHebrew =
-        hasIngredients &&
-        ingredients.some((ing: any) => /[\u0590-\u05FF]/.test(ing.name));
-      const menuLanguage = hasHebrew ? "Hebrew" : "English";
+      // Language is derived from the user's profile preference stored in the DB.
+      // This ensures all generated menu names, descriptions, and ingredient names
+      // are consistently in the user's chosen language.
+      const menuLanguage = req.user?.preferred_lang === "HE" ? "Hebrew" : "English";
 
       // Create ingredients list if provided, otherwise AI will suggest
       const ingredientsList = hasIngredients
@@ -2332,6 +2529,9 @@ router.get(
       menu.meals.forEach((meal) => {
         const dayNumber = meal.day_number;
 
+        // Skip meals whose day_number falls outside the menu's declared range
+        if (dayNumber < 1 || dayNumber > menu.days_count) return;
+
         if (!daysMap.has(dayNumber)) {
           // Calculate date for this day (add days to normalized start date, keep noon UTC)
           const dayDate = new Date(baseStartDate);
@@ -2902,6 +3102,80 @@ router.get(
       res.status(500).json({ success: false, error: "Failed to get today's meals" });
     }
   }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FEATURE: Menu Completion Streak — GET /:menuId/streak
+// Returns the count of consecutive days (from day 1) where all meals were
+// logged as completed. Powers the 🔥 streak badge on the active menu.
+// ─────────────────────────────────────────────────────────────────────────────
+router.get(
+  "/:menuId/streak",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) return res.status(401).json({ success: false, error: "Unauthorized" });
+
+      const { menuId } = req.params;
+
+      const menu = await prisma.recommendedMenu.findFirst({
+        where: { menu_id: menuId, user_id: userId },
+        include: {
+          meals: {
+            select: { meal_id: true, day_number: true, meal_type: true, is_completed: true },
+            orderBy: { day_number: "asc" },
+          },
+        },
+      });
+
+      if (!menu) return res.status(404).json({ success: false, error: "Menu not found" });
+
+      // Group meals by day
+      const dayMealMap = new Map<number, { total: number; completed: number }>();
+      for (const meal of menu.meals) {
+        const d = meal.day_number;
+        if (!dayMealMap.has(d)) dayMealMap.set(d, { total: 0, completed: 0 });
+        const day = dayMealMap.get(d)!;
+        day.total += 1;
+        if (meal.is_completed) day.completed += 1;
+      }
+
+      // Count consecutive fully-completed days starting from day 1
+      let streak = 0;
+      for (let d = 1; d <= menu.days_count; d++) {
+        const day = dayMealMap.get(d);
+        if (day && day.total > 0 && day.completed >= day.total) {
+          streak++;
+        } else {
+          break; // streak broken
+        }
+      }
+
+      // Also compute current day for context
+      let currentDay = 1;
+      if (menu.start_date) {
+        const startRaw = new Date(menu.start_date);
+        const start = new Date(Date.UTC(startRaw.getUTCFullYear(), startRaw.getUTCMonth(), startRaw.getUTCDate(), 12, 0, 0));
+        const now = new Date();
+        const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0));
+        const diff = Math.round((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        currentDay = Math.max(1, Math.min(diff + 1, menu.days_count));
+      }
+
+      res.json({
+        success: true,
+        data: {
+          streak,
+          current_day: currentDay,
+          days_count: menu.days_count,
+        },
+      });
+    } catch (error) {
+      console.error("💥 Error getting streak:", error);
+      res.status(500).json({ success: false, error: "Failed to get streak" });
+    }
+  },
 );
 
 export default router;

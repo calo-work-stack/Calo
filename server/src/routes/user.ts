@@ -33,6 +33,7 @@ router.put(
           created_at: true,
           email_verified: true,
           is_questionnaire_completed: true,
+          preferred_lang: true,
         },
       });
 
@@ -299,6 +300,7 @@ router.patch(
           created_at: true,
           email_verified: true,
           is_questionnaire_completed: true,
+          preferred_lang: true,
         },
       });
 

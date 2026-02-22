@@ -242,6 +242,19 @@ const AppContent = React.memo(() => {
 
   const authInitialized = true;
 
+  // ── Sync i18n language from user's preferred_lang on login / session restore ──
+  // The preferred_lang stored in the DB is the single source of truth.
+  // This runs whenever the user object (or their language preference) changes.
+  useEffect(() => {
+    if (!user?.preferred_lang) return;
+    const targetLang = user.preferred_lang === "HE" ? "he" : "en";
+    // Only switch if different from currently active language to avoid flicker
+    if (i18n.language !== targetLang) {
+      i18n.changeLanguage(targetLang).catch(() => {});
+      AsyncStorage.setItem("userLanguage", targetLang).catch(() => {});
+    }
+  }, [user?.preferred_lang]);
+
   // ✅ CRITICAL: Add bypass flag for questionnaire loop
   const [questionnaireBypass, setQuestionnaireBypass] = useState(false);
   const bypassCheckRef = useRef(false);

@@ -184,6 +184,22 @@ const AnimatedDayCell = React.memo(
             {dayNumber}
           </Text>
 
+          {/* Calorie value - shown when there's data */}
+          {hasData && (
+            <Text
+              style={{
+                fontSize: 9,
+                fontWeight: "700",
+                color: statusColors.text,
+                textAlign: "center",
+                marginBottom: 2,
+              }}
+              numberOfLines={1}
+            >
+              {dayData.calories_actual}
+            </Text>
+          )}
+
           {/* Progress Bar - Sleek horizontal style */}
           <View style={styles.sleekProgressContainer}>
             <View
@@ -2400,12 +2416,12 @@ const styles = StyleSheet.create({
   },
   emptyDayCell: {
     width: (width - 72) / 7,
-    height: 52,
+    height: 64,
     marginBottom: 4,
   },
   dayCellWrapper: {
     width: (width - 72) / 7,
-    height: 52,
+    height: 64,
     marginBottom: 4,
   },
   sleekDayCell: {

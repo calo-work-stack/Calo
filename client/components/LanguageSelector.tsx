@@ -13,6 +13,10 @@ import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { ChevronRight, Languages, X, CheckCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { api } from "@/src/services/api";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/src/store";
+import { updateUser } from "@/src/store/authSlice";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -27,6 +31,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
 }) => {
   const { t } = useTranslation();
   const { currentLanguage, changeLanguage, isRTL } = useLanguage();
+  const dispatch = useDispatch<AppDispatch>();
   const [modalVisible, setModalVisible] = useState(false);
   const [slideAnim] = useState(new Animated.Value(screenWidth));
 
@@ -48,7 +53,23 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   const currentLang = languages.find((lang) => lang.code === currentLanguage);
 
   const handleLanguageSelect = async (languageCode: string) => {
+    // 1. Apply locally (i18n + AsyncStorage)
     await changeLanguage(languageCode);
+
+    // 2. Persist to DB so AI-generated content (meals, menus, chat) uses this language.
+    //    This is the ONLY place preferred_lang is written to the server —
+    //    language can only be changed here in profile settings.
+    const dbLang = languageCode === "he" ? "HE" : "EN";
+    try {
+      const response = await api.put("/user/profile", { preferred_lang: dbLang });
+      if (response.data?.user) {
+        // Sync Redux so the rest of the app sees the updated preference immediately
+        dispatch(updateUser({ preferred_lang: dbLang as "HE" | "EN" }));
+      }
+    } catch {
+      // Local change still applied — server sync is best-effort
+    }
+
     closeModal();
   };
 

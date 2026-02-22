@@ -6,7 +6,6 @@ import {
   TextInput,
   Pressable,
   Alert,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Dimensions,
@@ -32,8 +31,6 @@ import { chatAPI, nutritionAPI, questionnaireAPI } from "@/src/services/api";
 import { AIChatSkeleton } from "@/components/loaders";
 import { errorMessageIncludes } from "@/src/utils/errorHandler";
 import Animated, {
-  FadeInDown,
-  FadeIn,
   FadeInUp,
   useAnimatedStyle,
   useSharedValue,
@@ -138,7 +135,6 @@ export default function AIChatScreen({
               },
             ],
           );
-          router.replace("/(tabs)");
           return;
         }
 
@@ -158,7 +154,6 @@ export default function AIChatScreen({
               },
             ],
           );
-          router.replace("/(tabs)");
           return;
         }
 
@@ -353,8 +348,7 @@ export default function AIChatScreen({
         timestamp: new Date(),
         hasWarning: allergens.length > 0,
         allergenWarning: allergens.length ? allergens : undefined,
-        suggestions:
-          Math.random() > 0.7 ? getCommonQuestions().slice(0, 3) : undefined,
+        suggestions: undefined,
       };
 
       setMessages((p) => [...p, aiMsg]);

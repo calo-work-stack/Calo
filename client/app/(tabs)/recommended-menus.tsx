@@ -57,6 +57,7 @@ import {
   SortAsc,
   Crown,
   Percent,
+  Copy,
 } from "lucide-react-native";
 import { api } from "@/src/services/api";
 import { router, useFocusEffect } from "expo-router";
@@ -301,6 +302,7 @@ const MenuCard = React.memo(
     onStart,
     onView,
     onDelete,
+    onClone,
     index,
     userSubscription,
   }: any) => {
@@ -533,6 +535,17 @@ const MenuCard = React.memo(
             <TouchableOpacity
               style={[
                 styles.actionBtn,
+                styles.cloneBtn,
+                { backgroundColor: "#6366f115" },
+              ]}
+              onPress={() => onClone(menu.menu_id)}
+            >
+              <Copy size={16} color="#6366f1" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
                 styles.deleteBtn,
                 { backgroundColor: colors.error + "15" },
               ]}
@@ -547,10 +560,106 @@ const MenuCard = React.memo(
   },
 );
 
+// ==================== TODAY WIDGET ====================
+
+const TodayWidget = React.memo(({ planId, colors, t, onPress }: any) => {
+  const [todayData, setTodayData] = useState<{
+    day_number: number;
+    total_days: number;
+    total_meals_today: number;
+    completed_meals_today: number;
+    meals: { meal_id: string; name: string; meal_type: string; calories: number; is_completed: boolean }[];
+    menu_name: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!planId) return;
+    api
+      .get(`/recommended-menus/${planId}/today-meals`)
+      .then((res) => {
+        if (res.data.success) setTodayData(res.data.data);
+      })
+      .catch(() => {});
+  }, [planId]);
+
+  if (!todayData) return null;
+
+  const { day_number, total_days, total_meals_today, completed_meals_today, meals } = todayData;
+  const remainingMeals = total_meals_today - completed_meals_today;
+  const totalCalToday = meals.reduce((s, m) => s + m.calories, 0);
+  const doneCalToday = meals
+    .filter((m) => m.is_completed)
+    .reduce((s, m) => s + m.calories, 0);
+  const remainingCal = totalCalToday - doneCalToday;
+  const pct = total_meals_today > 0 ? Math.round((completed_meals_today / total_meals_today) * 100) : 0;
+
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.88} style={{ marginBottom: 16 }}>
+      <View style={[styles.todayWidget, { backgroundColor: colors.card }]}>
+        {/* Top row */}
+        <View style={styles.todayWidgetTop}>
+          <View style={styles.todayWidgetLeft}>
+            <View style={[styles.todayDayBadge, { backgroundColor: colors.warmOrange + "20" }]}>
+              <Zap size={12} color={colors.warmOrange} />
+              <Text style={[styles.todayDayText, { color: colors.warmOrange }]}>
+                {t("menus.day_label", "Day")} {day_number}/{total_days}
+              </Text>
+            </View>
+            <Text style={[styles.todayTitle, { color: colors.text }]}>
+              {t("menus.todays_plan", "Today's Plan")}
+            </Text>
+          </View>
+
+          {/* Circular progress */}
+          <View style={[styles.todayCircle, { borderColor: pct === 100 ? "#10b981" : colors.warmOrange }]}>
+            <Text style={[styles.todayCirclePct, { color: pct === 100 ? "#10b981" : colors.warmOrange }]}>
+              {pct}%
+            </Text>
+          </View>
+        </View>
+
+        {/* Progress bar */}
+        <View style={[styles.todayBar, { backgroundColor: colors.surface }]}>
+          <Animated.View
+            style={[
+              styles.todayBarFill,
+              {
+                width: `${pct}%` as any,
+                backgroundColor: pct === 100 ? "#10b981" : colors.warmOrange,
+              },
+            ]}
+          />
+        </View>
+
+        {/* Stats row */}
+        <View style={styles.todayStats}>
+          <View style={styles.todayStatItem}>
+            <CheckCircle size={14} color={pct === 100 ? "#10b981" : colors.icon} />
+            <Text style={[styles.todayStatText, { color: colors.text }]}>
+              <Text style={{ fontWeight: "700" }}>{completed_meals_today}</Text>/{total_meals_today}{" "}
+              {t("menus.meals_done", "meals done")}
+            </Text>
+          </View>
+          {remainingMeals > 0 && (
+            <View style={styles.todayStatItem}>
+              <Flame size={14} color={colors.warmOrange} />
+              <Text style={[styles.todayStatText, { color: colors.text }]}>
+                <Text style={{ fontWeight: "700" }}>{remainingCal}</Text>{" "}
+                {t("menus.kcal_left", "kcal left")}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
 // ==================== ACTIVE PLAN BANNER ====================
 
 const ActivePlanBanner = React.memo(({ plan, colors, t, onContinue }: any) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [streak, setStreak] = useState(0);
 
   useEffect(() => {
     const pulse = Animated.loop(
@@ -570,6 +679,17 @@ const ActivePlanBanner = React.memo(({ plan, colors, t, onContinue }: any) => {
     pulse.start();
     return () => pulse.stop();
   }, [pulseAnim]);
+
+  useEffect(() => {
+    const planId = plan?.plan_id || plan?.menu_id;
+    if (!planId) return;
+    api
+      .get(`/recommended-menus/${planId}/streak`)
+      .then((res) => {
+        if (res.data.success) setStreak(res.data.data.streak || 0);
+      })
+      .catch(() => {});
+  }, [plan?.plan_id, plan?.menu_id]);
 
   return (
     <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
@@ -596,8 +716,16 @@ const ActivePlanBanner = React.memo(({ plan, colors, t, onContinue }: any) => {
               </Text>
             </View>
 
-            <View style={styles.activePlanArrow}>
-              <ChevronRight size={28} color="#ffffff" />
+            <View style={styles.activePlanRight}>
+              {streak > 0 && (
+                <View style={styles.streakBadge}>
+                  <Flame size={16} color="#ffffff" />
+                  <Text style={styles.streakText}>{streak}</Text>
+                </View>
+              )}
+              <View style={styles.activePlanArrow}>
+                <ChevronRight size={28} color="#ffffff" />
+              </View>
             </View>
           </View>
         </LinearGradient>
@@ -1051,6 +1179,45 @@ export default function RecommendedMenusScreen() {
     [t, activePlanData],
   );
 
+  const handleCloneMenu = useCallback(
+    async (menuId: string) => {
+      if (!canCreateMore) {
+        Alert.alert(
+          t("menus.limit_reached", "Menu Limit Reached"),
+          t("menus.limit_message", `Maximum ${maxMenus} menus allowed. Please delete a menu first.`),
+        );
+        return;
+      }
+      setOperationLoading({
+        visible: true,
+        type: "loading",
+        message: t("operations.cloningMenu", "Duplicating menu..."),
+      });
+      try {
+        const response = await api.post(`/recommended-menus/${menuId}/clone`);
+        if (response.data.success) {
+          setMenus((prev) => [response.data.data, ...prev]);
+          setMenuCount((prev) => prev + 1);
+          if (menuCount + 1 >= maxMenus) setCanCreateMore(false);
+          setOperationLoading({ visible: false, type: "loading" });
+          Alert.alert(
+            t("common.success"),
+            t("menus.cloned_success", "Menu duplicated successfully!"),
+          );
+        } else {
+          throw new Error(response.data.error || "Failed to clone menu");
+        }
+      } catch (error: any) {
+        setOperationLoading({ visible: false, type: "loading" });
+        Alert.alert(
+          t("common.error"),
+          error.response?.data?.error || error.message || t("menus.clone_failed", "Failed to duplicate menu"),
+        );
+      }
+    },
+    [t, canCreateMore, maxMenus, menuCount],
+  );
+
   // Filter and sort menus
   const filteredMenus = useMemo(() => {
     let filtered = menus.filter((menu) => {
@@ -1326,6 +1493,16 @@ export default function RecommendedMenusScreen() {
           />
         )}
 
+        {/* Today Widget — shown when there's an active plan */}
+        {hasActivePlan && activePlanData?.plan_id && (
+          <TodayWidget
+            planId={activePlanData.plan_id}
+            colors={colors}
+            t={t}
+            onPress={() => router.push(`/menu/activeMenu?planId=${activePlanData.plan_id}`)}
+          />
+        )}
+
         {/* Category Pills */}
         <CategoryPills
           colors={colors}
@@ -1353,6 +1530,7 @@ export default function RecommendedMenusScreen() {
                 onStart={handleStartMenu}
                 onView={handleViewMenu}
                 onDelete={handleDeleteMenu}
+                onClone={handleCloneMenu}
                 index={index}
               />
             ))}
@@ -1559,6 +1737,76 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
 
+  // Today Widget
+  todayWidget: {
+    borderRadius: 20,
+    padding: 18,
+  },
+  todayWidgetTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  todayWidgetLeft: {
+    flex: 1,
+  },
+  todayDayBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+    gap: 5,
+    marginBottom: 6,
+  },
+  todayDayText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  todayTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  todayCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 12,
+  },
+  todayCirclePct: {
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  todayBar: {
+    height: 6,
+    borderRadius: 3,
+    marginBottom: 14,
+    overflow: "hidden",
+  },
+  todayBarFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  todayStats: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  todayStatItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  todayStatText: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+
   // Active Plan Banner
   activePlanBanner: {
     borderRadius: 20,
@@ -1599,6 +1847,25 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.8)",
     fontSize: 14,
     fontWeight: "500",
+  },
+  activePlanRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  streakBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  streakText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "800",
   },
   activePlanArrow: {
     width: 44,
@@ -1811,6 +2078,9 @@ const styles = StyleSheet.create({
   },
   startBtn: {
     flex: 2,
+  },
+  cloneBtn: {
+    width: 44,
   },
   deleteBtn: {
     width: 44,

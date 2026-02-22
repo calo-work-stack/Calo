@@ -184,10 +184,11 @@ export default function MealCard({
     MEAL_PERIOD_CONFIG[mealPeriod] || MEAL_PERIOD_CONFIG.other;
   const PeriodIcon = periodConfig.icon;
 
-  const mealId = meal.id || meal.meal_id?.toString();
+  const mealId = (meal.id || meal.meal_id?.toString()) ?? "";
 
-  // Normalize ingredients - handle both string arrays (manual meals) and object arrays (AI analyzed meals)
-  const normalizeIngredients = (rawIngredients: any): Ingredient[] => {
+  // Normalize ingredients - memoized to avoid re-running on every render
+  const ingredients: Ingredient[] = React.useMemo(() => {
+    const rawIngredients = meal.ingredients;
     if (!rawIngredients || !Array.isArray(rawIngredients)) return [];
 
     return rawIngredients.map((ing: any) => {
@@ -205,28 +206,14 @@ export default function MealCard({
       }
       // If it's a string (from manual meal), convert to object
       if (typeof ing === "string") {
-        return {
-          name: ing,
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
-        };
+        return { name: ing, calories: 0, protein: 0, carbs: 0, fat: 0 };
       }
-      // Fallback for unexpected types
-      return {
-        name: String(ing) || "Unknown",
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-      };
+      return { name: String(ing) || "Unknown", calories: 0, protein: 0, carbs: 0, fat: 0 };
     });
-  };
-
-  const ingredients: Ingredient[] = normalizeIngredients(meal.ingredients);
+  }, [meal.ingredients]);
 
   const handleToggleFavorite = useCallback(() => {
+    if (!mealId) return;
     Animated.sequence([
       Animated.timing(scaleAnim, {
         toValue: 1.4,
@@ -255,6 +242,7 @@ export default function MealCard({
   }, []);
 
   const handleSaveRatings = useCallback(() => {
+    if (!mealId) return;
     onSaveRatings(mealId, localRatings);
     setHasUnsavedChanges(false);
   }, [mealId, localRatings, onSaveRatings]);

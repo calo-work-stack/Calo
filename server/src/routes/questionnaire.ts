@@ -592,6 +592,81 @@ router.post("/", authenticateToken, async (req: AuthRequest, res) => {
       console.log("ℹ️ Skipping menu generation for questionnaire update");
     }
 
+    // ============================================================
+    // SYNC QUESTIONNAIRE NOTIFICATION PREFERENCES
+    // Wire notifications_preference + meals_per_day → NotificationPreference
+    // ============================================================
+    setImmediate(async () => {
+      try {
+        const notifPref = validatedData.notifications_preference;
+        const mealsPerDay = validatedData.meals_per_day || 3;
+
+        // Determine which notification types are enabled based on preference
+        const isDailyEnabled = notifPref === "DAILY";
+        const isWeeklyEnabled = notifPref === "WEEKLY" || notifPref === "DAILY";
+        const isNone = !notifPref || notifPref === "NONE";
+
+        // Determine meal-level reminder times based on meals_per_day
+        // 1 meal  → only lunch
+        // 2 meals → breakfast + dinner
+        // 3 meals → breakfast + lunch + dinner
+        // 4+ meals → breakfast + lunch + dinner + snack
+        let breakfastTime: string | null = null;
+        let lunchTime: string | null = null;
+        let dinnerTime: string | null = null;
+        let snackTime: string | null = null;
+
+        if (isDailyEnabled) {
+          if (mealsPerDay >= 1) lunchTime = "13:00";
+          if (mealsPerDay >= 2) { breakfastTime = "08:00"; dinnerTime = "19:00"; }
+          if (mealsPerDay >= 4) snackTime = "16:00";
+        }
+
+        // Parse existing meal times from questionnaire if provided (e.g. "8:00, 12:00, 18:00")
+        if (isDailyEnabled && validatedData.meal_times) {
+          const timeParts = String(validatedData.meal_times)
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean);
+          if (timeParts[0]) breakfastTime = timeParts[0].padStart(5, "0").substring(0, 5);
+          if (timeParts[1]) lunchTime   = timeParts[1].padStart(5, "0").substring(0, 5);
+          if (timeParts[2]) dinnerTime  = timeParts[2].padStart(5, "0").substring(0, 5);
+          if (timeParts[3]) snackTime   = timeParts[3].padStart(5, "0").substring(0, 5);
+        }
+
+        await prisma.notificationPreference.upsert({
+          where: { user_id: userId },
+          update: {
+            meal_reminders:          isDailyEnabled,
+            water_reminders:         isDailyEnabled,
+            goal_reminders:          isDailyEnabled,
+            achievement_alerts:      !isNone,
+            weekly_reports:          isWeeklyEnabled,
+            breakfast_reminder_time: breakfastTime,
+            lunch_reminder_time:     lunchTime,
+            dinner_reminder_time:    dinnerTime,
+            snack_reminder_time:     snackTime,
+          },
+          create: {
+            user_id:                 userId,
+            meal_reminders:          isDailyEnabled,
+            water_reminders:         isDailyEnabled,
+            goal_reminders:          isDailyEnabled,
+            achievement_alerts:      !isNone,
+            weekly_reports:          isWeeklyEnabled,
+            breakfast_reminder_time: breakfastTime,
+            lunch_reminder_time:     lunchTime,
+            dinner_reminder_time:    dinnerTime,
+            snack_reminder_time:     snackTime,
+          },
+        });
+
+        console.log(`✅ Notification preferences synced for user ${userId} (${notifPref || "NONE"}, ${mealsPerDay} meals/day)`);
+      } catch (notifError) {
+        console.error("⚠️ Failed to sync notification preferences:", notifError);
+      }
+    });
+
     // Schedule async validation of open-text fields in the background
     // This validates inputs without blocking the user's workflow
     QuestionnaireValidationService.scheduleValidation(userId, validatedData);

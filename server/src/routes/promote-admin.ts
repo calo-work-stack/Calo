@@ -1,3 +1,16 @@
+/**
+ * ⚠️  DANGER: THIS FILE IS INTENTIONALLY NOT REGISTERED IN index.ts ⚠️
+ *
+ * This was a one-time bootstrap helper to create the first super admin.
+ * It has been DISABLED because it allowed ANY authenticated user to
+ * self-promote to super admin — a critical privilege escalation vulnerability.
+ *
+ * To grant admin access, use the secure endpoint instead:
+ *   PATCH /api/admin/users/:userId/role   (requires is_super_admin = true)
+ *
+ * DO NOT re-register this router in index.ts or any other entry point.
+ */
+
 import { Router, Response } from "express";
 import { authenticateToken, AuthRequest } from "../middleware/auth";
 import { prisma } from "../lib/database";
@@ -5,15 +18,7 @@ import { prisma } from "../lib/database";
 const router = Router();
 
 /**
- * ONE-TIME USE ENDPOINT: Promote current user to admin
- * This endpoint should be removed after initial setup
- *
- * Usage:
- * 1. Log in with your account
- * 2. Call POST /api/promote-me-to-admin
- * 3. You will be promoted to admin and super admin
- * 4. Log out and log back in to see changes
- * 5. REMOVE THIS ENDPOINT from production
+ * DISABLED — see file header comment above.
  */
 router.post(
   "/promote-me-to-admin",

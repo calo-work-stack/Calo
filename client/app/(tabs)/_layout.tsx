@@ -19,7 +19,6 @@ export default function TabLayout() {
   const { user } = useOptimizedAuthSelector();
   const router = useRouter();
   const colorScheme = useColorScheme();
-
   // Since your tab bar is floating, calculate the space it occupies
   const TAB_BAR_HEIGHT = 30;
   const FLOATING_MARGIN = 16;

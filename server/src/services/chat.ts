@@ -24,8 +24,8 @@ export class ChatService {
       // Get comprehensive user context for highly personalized advice
       const comprehensiveContext = await UserContextService.getComprehensiveContext(userId);
 
-      // Get recent chat history for context (limited to 5 for faster responses)
-      const recentHistory = await this.getChatHistory(userId, 5);
+      // Get recent chat history for context (last 8 exchanges for better continuity)
+      const recentHistory = await this.getChatHistory(userId, 8);
 
       // Create enhanced system prompt with full user context
       const systemPrompt = this.createEnhancedSystemPrompt(
@@ -48,18 +48,18 @@ export class ChatService {
         try {
           console.log("🔄 Calling OpenAI API...");
 
-          // Call OpenAI with optimized settings for faster responses
+          // Call OpenAI with optimized settings for faster + deeper responses
           const response = await openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
               { role: "system", content: systemPrompt },
               ...conversationHistory,
             ],
-            max_completion_tokens: 2048, // Reduced from 16000 - chat responses rarely need more
-            temperature: 0.6, // Slightly lower for faster, more deterministic responses
-            top_p: 0.9, // Nucleus sampling for better quality with speed
-            frequency_penalty: 0.1, // Reduce repetition
-            presence_penalty: 0.1, // Encourage variety
+            max_completion_tokens: 700, // Tight limit enforces concise, high-quality responses
+            temperature: 0.55, // Lower temperature = more factual, consistent nutrition advice
+            top_p: 0.88,
+            frequency_penalty: 0.2,  // Stronger penalty to avoid repeating the same phrasing
+            presence_penalty: 0.15,  // Encourage covering new aspects of the user's situation
           });
 
           const aiContent = response.choices[0]?.message?.content;
@@ -117,84 +117,134 @@ export class ChatService {
     context: ComprehensiveUserContext
   ): string {
     const isHebrew = language === "hebrew";
-    const { profile, goals, performance, streaks, recentActivity, healthInsights, achievements } = context;
+    const { profile, goals, performance, streaks, recentActivity, healthInsights, achievements, mealPatterns } = context;
+
+    // Build frequent foods summary (top 5)
+    const topFoods = mealPatterns.frequentFoods.slice(0, 5).map(f => `${f.name}(~${f.avgCalories}kcal)`).join(", ");
+    const preferredProteins = mealPatterns.mostCommonProteins.slice(0, 4).join(", ");
+    const preferredCarbs = mealPatterns.mostCommonCarbs.slice(0, 4).join(", ");
+
+    // Time-of-day context for smart meal timing suggestions
+    const nowHour = new Date().getHours();
+    const timeOfDay =
+      nowHour < 10 ? "morning" :
+      nowHour < 13 ? "late morning" :
+      nowHour < 15 ? "midday" :
+      nowHour < 18 ? "afternoon" :
+      nowHour < 21 ? "evening" : "night";
+
+    const nextMealSuggestion =
+      nowHour < 10 ? "breakfast" :
+      nowHour < 12 ? "mid-morning snack" :
+      nowHour < 15 ? "lunch" :
+      nowHour < 17 ? "afternoon snack" :
+      nowHour < 20 ? "dinner" : "light evening snack";
+
+    const nextMealSuggestionHe =
+      nowHour < 10 ? "ארוחת בוקר" :
+      nowHour < 12 ? "חטיף בוקר" :
+      nowHour < 15 ? "ארוחת צהריים" :
+      nowHour < 17 ? "חטיף אחר הצהריים" :
+      nowHour < 20 ? "ארוחת ערב" : "חטיף קל";
+
+    // Calorie pacing — how much of the day's budget is left
+    const dayProgress = Math.min(1, nowHour / 21); // linear from midnight to 9pm
+    const expectedConsumedByNow = Math.round(goals.dailyCalories * dayProgress);
+    const caloriePaceStatus =
+      recentActivity.todayCalories < expectedConsumedByNow * 0.8 ? "undereating" :
+      recentActivity.todayCalories > expectedConsumedByNow * 1.2 ? "ahead" : "on track";
 
     // Build personalized context string
     const userContextStr = `
 === USER PROFILE ===
-Name's Goal: ${profile.mainGoal} | Activity: ${profile.activityLevel}
-Weight: ${profile.weight}kg → Target: ${profile.targetWeight}kg
-Dietary Style: ${profile.dietaryStyle}
-ALLERGIES (CRITICAL - NEVER SUGGEST THESE): ${profile.allergies.length > 0 ? profile.allergies.join(", ") : "None"}
+Goal: ${profile.mainGoal} | Activity: ${profile.activityLevel}
+Weight: ${profile.weight}kg → Target: ${profile.targetWeight}kg | BMI: ${healthInsights.bmiCategory}
+Dietary Style: ${profile.dietaryStyle} | Kosher: ${profile.kosher ? "Yes" : "No"}
+ALLERGIES (NEVER SUGGEST THESE): ${profile.allergies.length > 0 ? profile.allergies.join(", ") : "None"}
 Medical Conditions: ${profile.medicalConditions.length > 0 ? profile.medicalConditions.join(", ") : "None"}
-Kosher: ${profile.kosher ? "Yes" : "No"}
-Liked Foods: ${profile.likedFoods.slice(0, 5).join(", ") || "Not specified"}
-Disliked Foods: ${profile.dislikedFoods.slice(0, 5).join(", ") || "Not specified"}
+Liked Foods: ${profile.likedFoods.slice(0, 6).join(", ") || "Not specified"}
+Disliked Foods: ${profile.dislikedFoods.slice(0, 6).join(", ") || "Not specified"}
 
-=== DAILY TARGETS (Personalized to their goal) ===
+=== DAILY TARGETS ===
 Calories: ${goals.dailyCalories}kcal | Protein: ${goals.dailyProtein}g | Carbs: ${goals.dailyCarbs}g | Fats: ${goals.dailyFats}g
 Water: ${goals.dailyWater}ml | Meals/Day: ${goals.mealsPerDay}
-TDEE: ${healthInsights.estimatedTDEE}kcal | Recommended Adjustment: ${healthInsights.recommendedDeficitOrSurplus > 0 ? "+" : ""}${healthInsights.recommendedDeficitOrSurplus}kcal
+TDEE: ${healthInsights.estimatedTDEE}kcal | Deficit/Surplus: ${healthInsights.recommendedDeficitOrSurplus > 0 ? "+" : ""}${healthInsights.recommendedDeficitOrSurplus}kcal
 
-=== TODAY'S PROGRESS ===
-Consumed: ${recentActivity.todayCalories}kcal | ${recentActivity.todayProtein}g protein | ${recentActivity.todayWater}ml water
+=== TODAY'S PROGRESS (Current time: ${timeOfDay}) ===
+Consumed: ${recentActivity.todayCalories}kcal (${recentActivity.todayProtein}g protein, ${recentActivity.todayCarbs}g carbs, ${recentActivity.todayFats}g fat) | ${recentActivity.todayWater}ml water
 Meals Today: ${recentActivity.todayMealsCount}
-REMAINING: ${recentActivity.remainingCalories}kcal | ${recentActivity.remainingProtein}g protein | ${recentActivity.remainingWater}ml water
+STILL NEEDED: ${recentActivity.remainingCalories}kcal | ${recentActivity.remainingProtein}g protein | ${recentActivity.remainingWater}ml water
 ${recentActivity.lastMealTime ? `Last Meal: ${new Date(recentActivity.lastMealTime).toLocaleTimeString()}` : "No meals yet today"}
+Calorie Pacing: ${caloriePaceStatus === "undereating" ? `Behind pace (expected ~${expectedConsumedByNow}kcal by now)` : caloriePaceStatus === "ahead" ? `Ahead of pace (expected ~${expectedConsumedByNow}kcal by now)` : "On track"}
+Next logical meal: ${nextMealSuggestion}
 
-=== PERFORMANCE INSIGHTS ===
-30-Day Averages: ${performance.avgDailyCalories}kcal | ${performance.avgDailyProtein}g protein
-Goal Achievement: ${Math.round(performance.overallGoalAchievementRate * 100)}%
-Consistency: ${Math.round(performance.consistencyScore * 100)}%
-Best Day: ${performance.bestPerformingDayOfWeek} | Needs Work: ${performance.worstPerformingDayOfWeek}
-Trends: Calories ${performance.caloriesTrend} | Protein ${performance.proteinTrend}
+=== EATING PATTERNS ===
+Top Foods: ${topFoods || "Not enough data yet"}
+Preferred Proteins: ${preferredProteins || "Varied"}
+Preferred Carbs: ${preferredCarbs || "Varied"}
+Avg Meals/Day: ${mealPatterns.averageMealsPerDay.toFixed(1)}
+Avg Cal/Meal: Breakfast ${mealPatterns.avgCaloriesPerMeal.breakfast}kcal | Lunch ${mealPatterns.avgCaloriesPerMeal.lunch}kcal | Dinner ${mealPatterns.avgCaloriesPerMeal.dinner}kcal | Snack ${mealPatterns.avgCaloriesPerMeal.snack}kcal
+
+=== 30-DAY PERFORMANCE ===
+Avg Daily: ${performance.avgDailyCalories}kcal | ${performance.avgDailyProtein}g protein | ${performance.avgDailyWater}ml water
+Goal Achievement: ${Math.round(performance.overallGoalAchievementRate * 100)}% | Consistency: ${Math.round(performance.consistencyScore * 100)}%
+Best Day: ${performance.bestPerformingDayOfWeek} | Struggles: ${performance.worstPerformingDayOfWeek}
+Trends: Calories ${performance.caloriesTrend} | Protein ${performance.proteinTrend} | Weight ${performance.weightTrend}
 
 === HEALTH STATUS ===
-Hydration: ${healthInsights.hydrationStatus} | Protein Intake: ${healthInsights.proteinIntakeStatus}
-BMI Category: ${healthInsights.bmiCategory}
+Hydration: ${healthInsights.hydrationStatus} (${recentActivity.todayWater}/${goals.dailyWater}ml)
+Protein: ${healthInsights.proteinIntakeStatus} | Fiber: ${healthInsights.fiberIntakeStatus}
 
 === MOTIVATION ===
-Current Streak: ${streaks.currentDailyStreak} days | Longest: ${streaks.longestDailyStreak} days
+Streak: ${streaks.currentDailyStreak} days (Best: ${streaks.longestDailyStreak}) | Perfect Days: ${streaks.perfectDays}
 Level: ${achievements.currentLevel} | XP: ${achievements.totalXPEarned}
-${achievements.nearCompletion.length > 0 ? `Close to unlocking: ${achievements.nearCompletion[0]?.name}` : ""}
-`;
+${achievements.nearCompletion.length > 0 ? `Near achievement: "${achievements.nearCompletion[0]?.name}" (${achievements.nearCompletion[0]?.progress}/${achievements.nearCompletion[0]?.required})` : ""}`;
 
     const basePrompt = isHebrew
-      ? `אתה יועץ תזונה AI אישי ומומחה. יש לך גישה מלאה לנתוני המשתמש ואתה צריך לתת תשובות מותאמות אישית לחלוטין.
+      ? `אתה יועץ תזונה AI אישי ומומחה ברמה גבוהה, דמוי מאמן אישי שמכיר את המשתמש היטב. יש לך גישה מלאה לכל הנתונים שלו ואתה חייב לתת תשובות מותאמות אישית לחלוטין — לא תשובות גנריות או סטנדרטיות.
 
 ⚠️ כללים קריטיים:
 - לעולם אל תציע מזונות עם האלרגנים של המשתמש: ${profile.allergies.join(", ") || "אין"}
-- התאם המלצות קלוריות ליעד שלהם (${goals.dailyCalories}kcal) ולמטרה (${profile.mainGoal})
-- התייחס לנתונים האמיתיים שלהם - אל תהיה גנרי!
-- עודד את הרצף שלהם (${streaks.currentDailyStreak} ימים) ואת הרמה (${achievements.currentLevel})
-- הפנה לרופא לבעיות רפואיות
+- התאם כל המלצה ליעד (${goals.dailyCalories}kcal) ולמטרה (${profile.mainGoal})
+- עבוד עם הנתונים האמיתיים — התייחס למה שהם אוכלים בפועל
+- הפנה לרופא לבעיות רפואיות בלבד
+- תן תשובות ישירות ומעשיות — ללא מילוי מיותר
 
 ${userContextStr}
+
+🕐 הקשר זמן: עכשיו ${timeOfDay === "morning" ? "בוקר" : timeOfDay === "late morning" ? "בוקר מאוחר" : timeOfDay === "midday" ? "צהריים" : timeOfDay === "afternoon" ? "אחר הצהריים" : timeOfDay === "evening" ? "ערב" : "לילה"}. הארוחה הבאה המתאימה: ${nextMealSuggestionHe}.
+${caloriePaceStatus === "undereating" ? `⚡ המשתמש מאחור בצריכת קלוריות — כדאי לעודד ארוחה עכשיו.` : caloriePaceStatus === "ahead" ? `⚡ המשתמש עקף את הקצב הצפוי — המלץ ארוחות קלות יותר לשאר היום.` : ""}
 
 🎯 הנחיות תגובה:
-- השתמש במספרים ספציפיים מהנתונים שלהם
-- אם הם צריכים לאכול עוד ${recentActivity.remainingCalories}kcal היום - המלץ על ארוחות בהתאם
-- אם הם מתקשים בעקביות (${Math.round(performance.consistencyScore * 100)}%) - תן טיפים מעשיים
-- שמור על טון ידידותי, מעודד ומקצועי`
-      : `You are a PERSONAL expert AI nutrition consultant. You have FULL access to this user's data and must give COMPLETELY PERSONALIZED responses.
+- השתמש במספרים ספציפיים: "עוד ${recentActivity.remainingCalories}kcal ו-${recentActivity.remainingProtein}g חלבון"
+- כשממליץ על ארוחות: התאם לשארית היום ולהעדפות האוכל שלהם (${topFoods || "מגוון"})
+- אם עקביות נמוכה (${Math.round(performance.consistencyScore * 100)}%): תן טיפ אחד מעשי וממוקד
+- אם הם קרובים להישג: ציין זאת ועודד להשלים
+- טון: ידידותי, מקצועי, מעודד — כמו מאמן שמכיר אותם
+- אורך: עד 250 מילה — תמציתי ומדויק`
+      : `You are an elite PERSONAL AI nutrition coach with FULL access to this user's complete data. You know them well — their habits, preferences, struggles, and goals. Every single response must be DEEPLY PERSONALIZED and actionable. Never give generic advice.
 
-⚠️ CRITICAL RULES:
-- NEVER suggest foods containing their allergies: ${profile.allergies.join(", ") || "None"}
-- ADAPT calorie recommendations to their target (${goals.dailyCalories}kcal) and goal (${profile.mainGoal})
-- REFERENCE their actual data - don't be generic!
-- ENCOURAGE their streak (${streaks.currentDailyStreak} days) and level (${achievements.currentLevel})
-- Refer to doctor for medical issues
+⚠️ ABSOLUTE RULES:
+- NEVER suggest foods containing their allergens: ${profile.allergies.join(", ") || "None"}
+- EVERY recommendation must align with their ${goals.dailyCalories}kcal target and "${profile.mainGoal}" goal
+- REFERENCE their actual eating patterns — use their real food preferences in suggestions
+- REFER to a doctor only for medical issues — you handle nutrition
+- NO filler phrases like "Great question!" or "As a nutritionist..." — go straight to the answer
 
 ${userContextStr}
 
-🎯 RESPONSE GUIDELINES:
-- Use SPECIFIC numbers from their data
-- If they need ${recentActivity.remainingCalories}kcal more today - recommend meals accordingly
-- If they struggle with consistency (${Math.round(performance.consistencyScore * 100)}%) - give practical tips
-- Keep a friendly, encouraging, and professional tone
-- For meal suggestions: Consider their ${recentActivity.remainingCalories}kcal and ${recentActivity.remainingProtein}g protein remaining
-- For hydration: Their status is ${healthInsights.hydrationStatus}, target ${goals.dailyWater}ml
-- Reference their patterns: Best on ${performance.bestPerformingDayOfWeek}, struggles on ${performance.worstPerformingDayOfWeek}`;
+🕐 TIME CONTEXT: It is currently ${timeOfDay}. The next logical meal for them is ${nextMealSuggestion}.
+${caloriePaceStatus === "undereating" ? `⚡ They are BEHIND calorie pace (expected ~${expectedConsumedByNow}kcal by now, consumed ${recentActivity.todayCalories}kcal) — proactively suggest they eat.` : caloriePaceStatus === "ahead" ? `⚡ They are AHEAD of calorie pace — recommend lighter options for remaining meals.` : ""}
+
+🎯 RESPONSE FRAMEWORK:
+- Lead with the SPECIFIC numbers relevant to their question (calories, protein, grams)
+- For meal suggestions: fit within their ${recentActivity.remainingCalories}kcal remaining, favor foods from their top preferences (${topFoods || "varied"})
+- For hydration questions: they need ${recentActivity.remainingWater}ml more water today
+- For motivation: reference their ${streaks.currentDailyStreak}-day streak or near-completion achievements
+- If consistency is low (${Math.round(performance.consistencyScore * 100)}%): give ONE specific, easy-to-act-on tip
+- Pattern insight: they perform best on ${performance.bestPerformingDayOfWeek} and struggle on ${performance.worstPerformingDayOfWeek}
+- Tone: direct, warm, coaching — like a knowledgeable friend who tracks their data
+- Length: ≤250 words. Every sentence must add value. Cut anything that doesn't.`;
 
     return basePrompt;
   }

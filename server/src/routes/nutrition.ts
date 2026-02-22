@@ -91,8 +91,6 @@ router.post(
     }
 
     try {
-      console.log("💧 Water intake request:", req.body);
-
       const validationResult = waterIntakeSchema.safeParse(req.body);
       if (!validationResult.success) {
         return res.status(400).json({
@@ -102,8 +100,9 @@ router.post(
       }
 
       const { cups_consumed, date } = validationResult.data;
-      const trackingDate = date ? new Date(date) : new Date();
-      trackingDate.setHours(0, 0, 0, 0);
+      // Use UTC midnight to avoid timezone drift between server and client dates
+      const dateStr = date ? date : new Date().toISOString().split("T")[0];
+      const trackingDate = new Date(`${dateStr}T00:00:00.000Z`);
 
       // Calculate milliliters
       const milliliters_consumed = cups_consumed * 250;
@@ -191,8 +190,12 @@ router.get(
     }
 
     try {
-      const trackingDate = new Date(date);
-      trackingDate.setHours(0, 0, 0, 0);
+      // Use UTC midnight to match how water intake dates are stored
+      const trackingDate = new Date(`${date}T00:00:00.000Z`);
+
+      if (isNaN(trackingDate.getTime())) {
+        return res.status(400).json({ success: false, error: "Invalid date format" });
+      }
 
       const waterRecord = await prisma.waterIntake.findUnique({
         where: {
@@ -220,16 +223,6 @@ router.get(
 // Analyze meal endpoint
 router.post("/analyze", authenticateToken, async (req: AuthRequest, res) => {
   try {
-    console.log("Analyze meal request received");
-    console.log("Request body keys:", Object.keys(req.body));
-    console.log("User ID:", req.user.user_id);
-    console.log("Language:", req.body.language);
-    console.log("Has update text:", !!req.body.updateText);
-    console.log(
-      "Edited ingredients count:",
-      req.body.editedIngredients?.length || 0
-    );
-
     const limitCheck = await UsageTrackingService.checkMealScanLimit(
       req.user.user_id
     );
@@ -260,13 +253,16 @@ router.post("/analyze", authenticateToken, async (req: AuthRequest, res) => {
 
     const {
       imageBase64,
-      language = "english",
       date,
       updateText,
       editedIngredients = [],
       mealType,
       mealPeriod,
     } = req.body;
+
+    // Always derive language from the user's preferred_lang stored in the DB.
+    // This is the single source of truth — the client does not control this.
+    const language = req.user?.preferred_lang === "HE" ? "hebrew" : "english";
 
     if (!imageBase64 || imageBase64.trim() === "") {
       return res.status(400).json({
@@ -300,15 +296,10 @@ router.post("/analyze", authenticateToken, async (req: AuthRequest, res) => {
       });
     }
 
-    console.log("Processing meal analysis for user:", req.user.user_id);
-    console.log("Image data length:", cleanBase64.length);
-    console.log("Edited ingredients:", editedIngredients.length);
-    console.log("Update text:", updateText ? "provided" : "not provided");
-
     // Validate request data
     const analysisSchema = z.object({
       imageBase64: z.string().min(1, "Image data is required"),
-      language: z.string().default("english"),
+      language: z.enum(["english", "hebrew"]).default("english"),
       date: z.string().optional(),
       updateText: z.string().optional(),
       editedIngredients: z.array(z.any()).default([]),
@@ -336,30 +327,16 @@ router.post("/analyze", authenticateToken, async (req: AuthRequest, res) => {
       mealPeriod: validatedData.mealPeriod,
     });
 
-    console.log("✅ Analysis completed successfully");
-    console.log("📊 Result summary:", {
-      success: result.success,
-      mealName: result.data?.meal_name,
-      calories: result.data?.calories,
-      ingredientsCount: result.data?.ingredients?.length || 0,
-    });
-
     await UsageTrackingService.incrementMealScanCount(req.user.user_id);
 
-    const responseData = {
+    res.json({
       ...result,
       usage: {
         current: limitCheck.current + 1,
         limit: limitCheck.limit,
         remaining: limitCheck.remaining - 1,
       },
-    };
-
-    // Log response size to help debug any remaining issues
-    const responseSize = JSON.stringify(responseData).length;
-    console.log(`📤 Sending response (${Math.round(responseSize / 1024)}KB)`);
-
-    res.json(responseData);
+    });
   } catch (error) {
     console.error("Analyze meal error:", error);
     const message =
@@ -388,14 +365,17 @@ router.put("/update", authenticateToken, async (req: AuthRequest, res) => {
       });
     }
 
-    const { meal_id, updateText, language } = validationResult.data;
+    const { meal_id, updateText } = validationResult.data;
+
+    // Language always comes from the user's DB preference, not from the client
+    const updateLanguage = req.user?.preferred_lang === "HE" ? "hebrew" : "english";
 
     console.log("Updating meal for user:", req.user.user_id);
 
     const meal = await NutritionService.updateMeal(req.user.user_id, {
       meal_id,
       updateText,
-      language,
+      language: updateLanguage,
     });
 
     console.log("Meal updated successfully");
@@ -426,8 +406,6 @@ router.put(
       const userId = req.user.user_id;
       const mealData = req.body;
 
-      console.log("Direct meal update for user:", userId, "meal:", mealId);
-
       // Validate meal belongs to user
       const existingMeal = await prisma.meal.findFirst({
         where: {
@@ -443,58 +421,36 @@ router.put(
         });
       }
 
+      // Safe numeric parser — rejects NaN to prevent data corruption
+      const safeNum = (val: any, fallback: number | null): number | null => {
+        if (val === undefined || val === null || val === "") return fallback;
+        const parsed = parseFloat(val);
+        return isNaN(parsed) ? fallback : parsed;
+      };
+
       // Update meal with provided data
       const updatedMeal = await prisma.meal.update({
-        where: {
-          meal_id: parseInt(mealId),
-        },
+        where: { meal_id: parseInt(mealId) },
         data: {
           meal_name: mealData.meal_name || existingMeal.meal_name,
-          calories: mealData.calories
-            ? parseFloat(mealData.calories)
-            : existingMeal.calories,
-          protein_g: mealData.protein_g
-            ? parseFloat(mealData.protein_g)
-            : existingMeal.protein_g,
-          carbs_g: mealData.carbs_g
-            ? parseFloat(mealData.carbs_g)
-            : existingMeal.carbs_g,
-          fats_g: mealData.fats_g
-            ? parseFloat(mealData.fats_g)
-            : existingMeal.fats_g,
-          fiber_g: mealData.fiber_g
-            ? parseFloat(mealData.fiber_g)
-            : existingMeal.fiber_g,
-          sugar_g: mealData.sugar_g
-            ? parseFloat(mealData.sugar_g)
-            : existingMeal.sugar_g,
-          sodium_mg: mealData.sodium_mg
-            ? parseFloat(mealData.sodium_mg)
-            : existingMeal.sodium_mg,
-          saturated_fats_g: mealData.saturated_fats_g
-            ? parseFloat(mealData.saturated_fats_g)
-            : existingMeal.saturated_fats_g,
-          polyunsaturated_fats_g: mealData.polyunsaturated_fats_g
-            ? parseFloat(mealData.polyunsaturated_fats_g)
-            : existingMeal.polyunsaturated_fats_g,
-          monounsaturated_fats_g: mealData.monounsaturated_fats_g
-            ? parseFloat(mealData.monounsaturated_fats_g)
-            : existingMeal.monounsaturated_fats_g,
-          cholesterol_mg: mealData.cholesterol_mg
-            ? parseFloat(mealData.cholesterol_mg)
-            : existingMeal.cholesterol_mg,
-          serving_size_g: mealData.serving_size_g
-            ? parseFloat(mealData.serving_size_g)
-            : existingMeal.serving_size_g,
+          calories: safeNum(mealData.calories, existingMeal.calories),
+          protein_g: safeNum(mealData.protein_g, existingMeal.protein_g),
+          carbs_g: safeNum(mealData.carbs_g, existingMeal.carbs_g),
+          fats_g: safeNum(mealData.fats_g, existingMeal.fats_g),
+          fiber_g: safeNum(mealData.fiber_g, existingMeal.fiber_g),
+          sugar_g: safeNum(mealData.sugar_g, existingMeal.sugar_g),
+          sodium_mg: safeNum(mealData.sodium_mg, existingMeal.sodium_mg),
+          saturated_fats_g: safeNum(mealData.saturated_fats_g, existingMeal.saturated_fats_g),
+          polyunsaturated_fats_g: safeNum(mealData.polyunsaturated_fats_g, existingMeal.polyunsaturated_fats_g),
+          monounsaturated_fats_g: safeNum(mealData.monounsaturated_fats_g, existingMeal.monounsaturated_fats_g),
+          cholesterol_mg: safeNum(mealData.cholesterol_mg, existingMeal.cholesterol_mg),
+          serving_size_g: safeNum(mealData.serving_size_g, existingMeal.serving_size_g),
           ingredients: mealData.ingredients || existingMeal.ingredients,
           food_category: mealData.food_category || existingMeal.food_category,
-          cooking_method:
-            mealData.cooking_method || existingMeal.cooking_method,
+          cooking_method: mealData.cooking_method || existingMeal.cooking_method,
           updated_at: new Date(),
         },
       });
-
-      console.log("Meal updated successfully");
 
       res.json({
         success: true,
@@ -516,8 +472,6 @@ router.put(
 // Save meal endpoint
 router.post("/save", authenticateToken, async (req: AuthRequest, res) => {
   try {
-    console.log("Save meal request received");
-
     const { mealData, imageBase64 } = req.body;
 
     if (!mealData) {
@@ -526,8 +480,6 @@ router.post("/save", authenticateToken, async (req: AuthRequest, res) => {
         error: "Meal data is required",
       });
     }
-
-    console.log("Saving meal for user:", req.user.user_id);
 
     const meal = await NutritionService.saveMeal(
       req.user.user_id,
@@ -555,40 +507,22 @@ router.post("/save", authenticateToken, async (req: AuthRequest, res) => {
 // Get range statistics
 router.get("/stats/range", authenticateToken, async (req: AuthRequest, res) => {
   try {
-    // 🔍 ENHANCED DEBUGGING - Log everything we receive
-    console.log("📊 === RANGE STATS DEBUG START ===");
-    console.log(
-      "📊 Full req.query object:",
-      JSON.stringify(req.query, null, 2)
-    );
-    console.log("📊 req.query keys:", Object.keys(req.query));
-    console.log("📊 req.query values:", Object.values(req.query));
-
     // Try both parameter name variations
     const startDate = req.query.startDate || req.query.start;
     const endDate = req.query.endDate || req.query.end;
 
-    console.log("📊 Extracted parameters:", { startDate, endDate });
-
-    // Validate required parameters
     if (!startDate || !endDate) {
-      console.error("❌ Missing parameters:", { startDate, endDate });
       return res.status(400).json({
         success: false,
         error: "Both startDate and endDate are required",
       });
     }
 
-    // Ensure dates are strings and trim whitespace
     const startDateStr = String(startDate).trim();
     const endDateStr = String(endDate).trim();
 
-    console.log("📊 Received dates:", { startDateStr, endDateStr });
-
-    // Validate date format (YYYY-MM-DD) - more strict validation
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(startDateStr)) {
-      console.error("❌ Invalid startDate format:", startDateStr);
       return res.status(400).json({
         success: false,
         error: `Date must be in YYYY-MM-DD format. Received startDate: '${startDateStr}'`,
@@ -596,41 +530,26 @@ router.get("/stats/range", authenticateToken, async (req: AuthRequest, res) => {
     }
 
     if (!dateRegex.test(endDateStr)) {
-      console.error("❌ Invalid endDate format:", endDateStr);
       return res.status(400).json({
         success: false,
         error: `Date must be in YYYY-MM-DD format. Received endDate: '${endDateStr}'`,
       });
     }
 
-    // Parse dates to verify they are valid - use local time instead of UTC
     const startDateObj = new Date(startDateStr);
     const endDateObj = new Date(endDateStr);
 
     if (isNaN(startDateObj.getTime())) {
-      return res.status(400).json({
-        success: false,
-        error: `Invalid start date: '${startDateStr}'`,
-      });
+      return res.status(400).json({ success: false, error: `Invalid start date: '${startDateStr}'` });
     }
 
     if (isNaN(endDateObj.getTime())) {
-      return res.status(400).json({
-        success: false,
-        error: `Invalid end date: '${endDateStr}'`,
-      });
+      return res.status(400).json({ success: false, error: `Invalid end date: '${endDateStr}'` });
     }
 
-    // Validate date range (startDate should be before or equal to endDate)
     if (startDateObj > endDateObj) {
-      return res.status(400).json({
-        success: false,
-        error: "startDate must be before or equal to endDate",
-      });
+      return res.status(400).json({ success: false, error: "startDate must be before or equal to endDate" });
     }
-
-    console.log("✅ Date validation passed:", { startDateStr, endDateStr });
-    console.log("📊 Fetching range statistics for user:", req.user.user_id);
 
     const statistics = await NutritionService.getRangeStatistics(
       req.user.user_id,
@@ -658,6 +577,13 @@ router.get("/stats/range", authenticateToken, async (req: AuthRequest, res) => {
 });
 // NEW ENDPOINTS FOR HISTORY FEATURES
 
+const feedbackSchema = z.object({
+  taste_rating: z.number().int().min(1).max(5).optional(),
+  satiety_rating: z.number().int().min(1).max(5).optional(),
+  energy_rating: z.number().int().min(1).max(5).optional(),
+  heaviness_rating: z.number().int().min(1).max(5).optional(),
+});
+
 // Save meal feedback (ratings)
 router.post(
   "/meals/:mealId/feedback",
@@ -665,15 +591,19 @@ router.post(
   async (req: AuthRequest, res) => {
     try {
       const { mealId } = req.params;
-      const feedback = req.body;
 
-      console.log("💬 Save feedback request for meal:", mealId);
-      console.log("📊 Feedback data:", feedback);
+      const validation = feedbackSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid feedback data. Ratings must be integers between 1 and 5.",
+        });
+      }
 
       const result = await NutritionService.saveMealFeedback(
         req.user.user_id,
         mealId,
-        feedback
+        validation.data
       );
 
       res.json({
@@ -699,8 +629,6 @@ router.post(
   async (req: AuthRequest, res) => {
     try {
       const { mealId } = req.params;
-
-      console.log("❤️ Toggle favorite request for meal:", mealId);
 
       const result = await NutritionService.toggleMealFavorite(
         req.user.user_id,
@@ -731,10 +659,6 @@ router.post(
     try {
       const { mealId } = req.params;
       const { newDate } = req.body;
-
-      console.log("📋 Duplicate meal request for meal:", mealId);
-      console.log("📅 New date:", newDate);
-      console.log("🔍 Request body:", req.body);
 
       // Validate mealId
       if (!mealId || mealId === "undefined") {
@@ -986,17 +910,14 @@ router.get(
   authenticateToken,
   async (req: AuthRequest, res: Response) => {
     try {
-      console.log("📥 Get meals request for user:", req.user.user_id);
-
       const { offset = 0, limit = 100 } = req.query;
+      const safeLimit = Math.min(Number(limit), 500);
 
       const meals = await NutritionService.getUserMeals(
         req.user.user_id,
         Number(offset),
-        Number(limit)
+        safeLimit
       );
-
-      console.log("✅ Retrieved", meals.length, "meals");
       res.json({
         success: true,
         data: meals,
@@ -1019,8 +940,6 @@ router.get(
   authenticateToken,
   async (req: AuthRequest, res: Response) => {
     try {
-      console.log("📥 Get meal history request for user:", req.user.user_id);
-
       const { period = "week" } = req.query;
 
       // Calculate date range based on period
@@ -1055,6 +974,7 @@ router.get(
         orderBy: {
           created_at: "desc",
         },
+        take: 500,
         select: {
           meal_id: true,
           meal_name: true,
@@ -1076,8 +996,6 @@ router.get(
           confidence: true,
         },
       });
-
-      console.log("✅ Retrieved", meals.length, "meal history items");
       res.json({
         success: true,
         data: meals,
