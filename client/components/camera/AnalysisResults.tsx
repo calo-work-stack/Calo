@@ -11,7 +11,7 @@ import {
   StatusBar,
   ImageBackground,
 } from "react-native";
-import { Heart, ArrowLeft, Flame } from "lucide-react-native";
+import { Heart, ArrowLeft, Flame, Droplets, Zap, Activity } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { useTranslation } from "react-i18next";
@@ -35,6 +35,7 @@ interface AnalysisResultsProps {
   mealName: string;
   nutrition: NutritionData;
   estimatedPrice?: number;
+  healthScore?: number;
   onBack?: () => void;
 }
 
@@ -43,6 +44,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   mealName,
   nutrition,
   estimatedPrice,
+  healthScore,
   onBack,
 }) => {
   const { t } = useTranslation();
@@ -357,6 +359,33 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               </View>
             </View>
 
+            {/* Health Score */}
+            {healthScore !== undefined && healthScore > 0 && (
+              <View style={styles.healthScoreSection}>
+                <View style={styles.healthScoreRow}>
+                  <View style={styles.healthScoreLabelRow}>
+                    <Activity size={14} color="rgba(255,255,255,0.7)" strokeWidth={2.5} />
+                    <Text style={styles.healthScoreLabel}>{t("camera.analysis.healthScore").toUpperCase()}</Text>
+                  </View>
+                  <Text style={[
+                    styles.healthScoreValue,
+                    { color: healthScore >= 75 ? "#10B981" : healthScore >= 50 ? "#F59E0B" : "#EF4444" }
+                  ]}>
+                    {healthScore}<Text style={styles.healthScoreMax}>/100</Text>
+                  </Text>
+                </View>
+                <View style={styles.healthScoreBarBg}>
+                  <View style={[
+                    styles.healthScoreBarFill,
+                    {
+                      width: `${Math.min(100, healthScore)}%` as any,
+                      backgroundColor: healthScore >= 75 ? "#10B981" : healthScore >= 50 ? "#F59E0B" : "#EF4444",
+                    }
+                  ]} />
+                </View>
+              </View>
+            )}
+
             {/* Macros - Compact Horizontal Row (all 3 visible) */}
             <View style={styles.macrosSection}>
               <View style={styles.macrosHeader}>
@@ -377,6 +406,28 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                   />
                 ))}
               </View>
+            </View>
+
+            {/* Micro-nutrients Strip */}
+            <View style={styles.microNutrientStrip}>
+              {nutrition.fiber > 0 && (
+                <View style={styles.microNutrientChip}>
+                  <Zap size={11} color="#A78BFA" strokeWidth={2.5} />
+                  <Text style={styles.microNutrientText}>{nutrition.fiber}g {t("camera.analysis.fiber").toLowerCase()}</Text>
+                </View>
+              )}
+              {nutrition.sugar > 0 && (
+                <View style={styles.microNutrientChip}>
+                  <Droplets size={11} color="#F472B6" strokeWidth={2.5} />
+                  <Text style={styles.microNutrientText}>{nutrition.sugar}g {t("camera.analysis.sugar").toLowerCase()}</Text>
+                </View>
+              )}
+              {nutrition.sodium > 0 && (
+                <View style={styles.microNutrientChip}>
+                  <Activity size={11} color="#60A5FA" strokeWidth={2.5} />
+                  <Text style={styles.microNutrientText}>{nutrition.sodium}mg {t("camera.analysis.sodium").toLowerCase()}</Text>
+                </View>
+              )}
             </View>
 
             {/* Estimated Price Section */}
@@ -629,6 +680,76 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.5,
     textTransform: "uppercase",
+  },
+  healthScoreSection: {
+    marginBottom: 28,
+    paddingBottom: 28,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.12)",
+  },
+  healthScoreRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  healthScoreLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  healthScoreLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.6)",
+    letterSpacing: 1.5,
+  },
+  healthScoreValue: {
+    fontSize: 26,
+    fontWeight: "900",
+    letterSpacing: -1,
+  },
+  healthScoreMax: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.45)",
+  },
+  healthScoreBarBg: {
+    height: 6,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  healthScoreBarFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  microNutrientStrip: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: -12,
+    marginBottom: 28,
+    paddingBottom: 28,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.12)",
+  },
+  microNutrientChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  microNutrientText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.75)",
+    letterSpacing: 0.2,
   },
   priceSection: {
     marginTop: 28,

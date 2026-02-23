@@ -1,5 +1,5 @@
 import { mapMealDataToPrismaFields, isMealMandatory } from "../utils/nutrition";
-import { OpenAIService } from "./openai";
+import { OpenAIService, DietaryContext } from "./openai";
 import { prisma } from "../lib/database";
 import { MealAnalysisInput, MealUpdateInput } from "../types/nutrition";
 import { AuthService } from "./auth";
@@ -157,6 +157,34 @@ export class NutritionService {
     console.log("🔄 Final meal type determined:", finalMealType);
     console.log("📅 Original meal period:", data.mealPeriod);
 
+    // Fetch dietary context from the user's latest questionnaire
+    let dietaryContext: DietaryContext | undefined;
+    try {
+      const questionnaire = await prisma.userQuestionnaire.findFirst({
+        where: { user_id },
+        orderBy: { date_completed: "desc" },
+        select: {
+          kosher: true,
+          dietary_style: true,
+          allergies: true,
+          dietary_restrictions: true,
+          disliked_foods: true,
+        },
+      });
+      if (questionnaire) {
+        dietaryContext = {
+          kosher: questionnaire.kosher ?? false,
+          dietary_style: questionnaire.dietary_style ?? undefined,
+          allergies: questionnaire.allergies ?? [],
+          dietary_restrictions: questionnaire.dietary_restrictions ?? [],
+          disliked_foods: questionnaire.disliked_foods ?? [],
+        };
+        console.log("🥗 Dietary context loaded:", JSON.stringify(dietaryContext));
+      }
+    } catch (dietaryErr) {
+      console.warn("⚠️ Could not load dietary context (non-fatal):", dietaryErr);
+    }
+
     // Perform AI analysis with timeout and proper error handling
     let analysis;
     try {
@@ -166,6 +194,7 @@ export class NutritionService {
           language,
           data.updateText,
           data.editedIngredients,
+          dietaryContext,
         ),
         new Promise<never>((_, reject) =>
           setTimeout(
@@ -347,13 +376,23 @@ export class NutritionService {
       0
     );
 
+    // Normalize recommendations to array for consistent client rendering
+    const recommendationsRaw = analysis.recommendations || analysis.healthNotes;
+    const isHebrew = data.language === "hebrew";
+    const fallbackRecommendation = isHebrew
+      ? "ניתוח הארוחה הושלם בהצלחה."
+      : "Meal analysis completed successfully.";
+    const recommendations: string[] = Array.isArray(recommendationsRaw)
+      ? recommendationsRaw
+      : recommendationsRaw
+      ? [recommendationsRaw]
+      : [fallbackRecommendation];
+
     // ✅ CORRECT CODE - PRESERVES NUTRITION DATA + AI PRICING
     const responseData = {
-      healthScore: (analysis.confidence || 75).toString(),
-      recommendations:
-        analysis.healthNotes ||
-        analysis.recommendations ||
-        "Meal analysis completed successfully.",
+      healthScore: (analysis.confidence || 0.75),
+      health_score: analysis.health_score ?? Math.round((analysis.confidence || 0.75) * 100),
+      recommendations,
       estimated_price: Math.round(totalEstimatedPrice * 100) / 100, // Total meal price from AI
       ...mappedMealWithoutImage, // Spread to include all nutrition fields
       ingredients, // Override after spread to use enriched ingredients array

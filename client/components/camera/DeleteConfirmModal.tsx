@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native";
 import { TriangleAlert as AlertTriangle } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 
 interface DeleteConfirmModalProps {
   visible: boolean;
@@ -14,9 +15,14 @@ export function DeleteConfirmModal({
   visible,
   onCancel,
   onConfirm,
-  title = "Delete Analysis",
-  message = "Are you sure you want to delete this meal analysis?",
+  title,
+  message,
 }: DeleteConfirmModalProps) {
+  const { t } = useTranslation();
+
+  const resolvedTitle = title ?? t("camera.delete_analysis");
+  const resolvedMessage = message ?? t("camera.delete_confirmation");
+
   return (
     <Modal
       visible={visible}
@@ -27,22 +33,22 @@ export function DeleteConfirmModal({
       <View style={styles.modalOverlay}>
         <View style={styles.confirmModalContent}>
           <AlertTriangle size={48} color="#EF4444" />
-          <Text style={styles.confirmTitle}>{title}</Text>
-          <Text style={styles.confirmMessage}>{message}</Text>
+          <Text style={styles.confirmTitle}>{resolvedTitle}</Text>
+          <Text style={styles.confirmMessage}>{resolvedMessage}</Text>
 
           <View style={styles.confirmActions}>
             <TouchableOpacity
               style={styles.confirmCancelButton}
               onPress={onCancel}
             >
-              <Text style={styles.confirmCancelText}>Cancel</Text>
+              <Text style={styles.confirmCancelText}>{t("common.cancel")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.confirmDeleteButton}
               onPress={onConfirm}
             >
-              <Text style={styles.confirmDeleteText}>Delete</Text>
+              <Text style={styles.confirmDeleteText}>{t("common.delete")}</Text>
             </TouchableOpacity>
           </View>
         </View>

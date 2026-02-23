@@ -478,6 +478,7 @@ function CameraScreenContent() {
               mealName={getMealName(displayData)}
               nutrition={totalNutrition}
               estimatedPrice={calculateEstimatedPrice(displayData)}
+              healthScore={typeof displayData?.health_score === "number" ? displayData.health_score : undefined}
             />
 
             <ActionButtons

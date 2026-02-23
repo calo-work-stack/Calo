@@ -35,7 +35,8 @@ export interface Ingredient {
 }
 
 export interface MealAnalysisResult {
-  recommendations: string;
+  recommendations: string | string[];
+  health_score?: number;
   // Basic identification
   name: string;
   description?: string;

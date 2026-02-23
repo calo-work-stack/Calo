@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -20,9 +20,21 @@ import {
   X,
   Flame,
   Dumbbell,
-  Package,
   Sparkles,
-  TrendingUp,
+  Edit3,
+  CheckCheck,
+  Beef,
+  Fish,
+  Egg,
+  Milk,
+  Wheat,
+  Apple,
+  Carrot,
+  Droplets,
+  Coffee,
+  Leaf,
+  Cookie,
+  Salad,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/src/context/ThemeContext";
@@ -65,97 +77,127 @@ interface ShoppingListProps {
   }>;
 }
 
-// Emoji mapping for quick ingredient visualization
+// Lucide icon resolution for ingredient names
+const INGREDIENT_ICON_MAP: {
+  keywords: string[];
+  Icon: React.ComponentType<any>;
+  color: string;
+}[] = [
+  { keywords: ["beef", "steak", "meat", "veal", "lamb", "pork", "burger", "mince", "brisket", "ribs", "chicken", "turkey", "duck", "breast", "thigh", "wing"], Icon: Beef, color: "#C2410C" },
+  { keywords: ["fish", "salmon", "tuna", "cod", "tilapia", "shrimp", "prawn", "seafood", "crab", "lobster", "anchovy", "sardine", "trout"], Icon: Fish, color: "#0284C7" },
+  { keywords: ["egg", "eggs", "omelette", "omelet"], Icon: Egg, color: "#D97706" },
+  { keywords: ["milk", "cream", "cheese", "yogurt", "dairy", "butter", "ricotta", "mozzarella", "cheddar", "parmesan", "feta", "brie", "cottage", "whey"], Icon: Milk, color: "#93C5FD" },
+  { keywords: ["bread", "rice", "pasta", "wheat", "oat", "cereal", "flour", "noodle", "grain", "barley", "quinoa", "bagel", "wrap", "tortilla", "pita", "rye"], Icon: Wheat, color: "#A16207" },
+  { keywords: ["apple", "banana", "orange", "grape", "strawberry", "berry", "mango", "peach", "pear", "cherry", "melon", "kiwi", "pineapple", "lemon", "avocado", "fig", "blueberry", "raspberry"], Icon: Apple, color: "#EF4444" },
+  { keywords: ["carrot", "broccoli", "lettuce", "spinach", "kale", "onion", "garlic", "pepper", "tomato", "cucumber", "celery", "cabbage", "cauliflower", "beet", "mushroom", "zucchini", "eggplant", "corn", "pea", "bean", "lentil", "chickpea", "pumpkin"], Icon: Carrot, color: "#F97316" },
+  { keywords: ["oil", "olive", "coconut", "dressing", "sauce", "mayo", "vinegar", "soy", "ketchup", "mustard", "tahini", "hummus"], Icon: Droplets, color: "#10B981" },
+  { keywords: ["coffee", "tea", "juice", "water", "drink", "soda", "shake", "smoothie", "latte", "espresso", "cappuccino", "matcha"], Icon: Coffee, color: "#92400E" },
+  { keywords: ["herb", "spice", "salt", "cumin", "turmeric", "cinnamon", "basil", "oregano", "thyme", "rosemary", "mint", "parsley", "ginger", "paprika", "curry"], Icon: Leaf, color: "#16A34A" },
+  { keywords: ["salad", "bowl", "mix", "plate", "soup", "stew"], Icon: Salad, color: "#4ADE80" },
+  { keywords: ["cookie", "cake", "chocolate", "candy", "sweet", "dessert", "pie", "brownie", "muffin", "donut", "sugar", "honey", "nut", "almond", "walnut", "cashew", "peanut", "pistachio", "chip", "snack"], Icon: Cookie, color: "#F472B6" },
+];
+
+const getIngredientIconEntry = (name: string) => {
+  const lower = name.toLowerCase();
+  for (const entry of INGREDIENT_ICON_MAP) {
+    if (entry.keywords.some((kw) => lower.includes(kw))) return entry;
+  }
+  return null;
+};
+
+const getIngredientColor = (name: string, metadata?: any): string => {
+  if (metadata?.ing_color) return metadata.ing_color;
+  const entry = getIngredientIconEntry(name);
+  if (entry) return entry.color;
+  const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#6C5CE7"];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+};
+
 const getIngredientEmoji = (name: string, metadata?: any): string => {
   if (metadata?.ing_emoji) return metadata.ing_emoji;
-
-  const lowerName = name.toLowerCase();
-  const emojiMap: { [key: string]: string } = {
+  const lower = name.toLowerCase();
+  const map: { [k: string]: string } = {
     chicken: "🍗", beef: "🥩", fish: "🐟", salmon: "🍣", egg: "🥚", turkey: "🦃",
-    milk: "🥛", cheese: "🧀", yogurt: "🥛", butter: "🧈", cream: "🥛",
-    bread: "🍞", rice: "🍚", pasta: "🍝", oats: "🌾", flour: "🌾", noodle: "🍜",
-    apple: "🍎", banana: "🍌", orange: "🍊", tomato: "🍅", lemon: "🍋", grape: "🍇",
-    carrot: "🥕", broccoli: "🥦", lettuce: "🥬", onion: "🧅", spinach: "🥬",
-    potato: "🥔", garlic: "🧄", pepper: "🌶️", cucumber: "🥒", avocado: "🥑",
+    milk: "🥛", cheese: "🧀", yogurt: "🥛", butter: "🧈",
+    bread: "🍞", rice: "🍚", pasta: "🍝", oats: "🌾", noodle: "🍜",
+    apple: "🍎", banana: "🍌", orange: "🍊", tomato: "🍅", lemon: "🍋",
+    carrot: "🥕", broccoli: "🥦", lettuce: "🥬", onion: "🧅", potato: "🥔",
+    garlic: "🧄", pepper: "🌶️", cucumber: "🥒", avocado: "🥑",
     salt: "🧂", sugar: "🍬", honey: "🍯", oil: "🫒", olive: "🫒",
-    coffee: "☕", tea: "🍵", juice: "🧃", water: "💧", wine: "🍷",
-    chocolate: "🍫", nuts: "🥜", peanut: "🥜", almond: "🥜", walnut: "🥜",
-    shrimp: "🦐", crab: "🦀", lobster: "🦞", meat: "🥩", pork: "🥓",
-    corn: "🌽", mushroom: "🍄", eggplant: "🍆", bean: "🫘", pea: "🫛",
+    coffee: "☕", tea: "🍵", juice: "🧃", water: "💧",
+    chocolate: "🍫", cookie: "🍪", cake: "🎂",
+    almond: "🌰", walnut: "🌰", peanut: "🥜",
   };
-
-  for (const [key, emoji] of Object.entries(emojiMap)) {
-    if (lowerName.includes(key)) return emoji;
+  for (const [k, v] of Object.entries(map)) {
+    if (lower.includes(k)) return v;
   }
   return "🛒";
 };
 
-// Color palette for ingredients
-const getIngredientColor = (name: string, metadata?: any): string => {
-  if (metadata?.ing_color) return metadata.ing_color;
-
-  const colors = [
-    "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4",
-    "#FFEAA7", "#DDA0DD", "#98D8C8", "#F8B500",
-    "#6C5CE7", "#FF7675", "#74B9FF", "#55EFC4"
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length];
-};
-
-// Memoized Item Component for better performance
+// Item row component
 const ShoppingItem = React.memo(({
   item,
   colors,
+  isDark,
   onToggle,
   onEdit,
   onDelete,
-  isToggling
+  isToggling,
 }: {
   item: ShoppingListItemData;
   colors: any;
+  isDark: boolean;
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
   isToggling: boolean;
 }) => {
+  const iconEntry = !item.metadata?.ing_img ? getIngredientIconEntry(item.name) : null;
   const emoji = getIngredientEmoji(item.name, item.metadata);
-  const bgColor = getIngredientColor(item.name, item.metadata);
+  const accentColor = getIngredientColor(item.name, item.metadata);
   const hasNutrition = item.metadata?.calories || item.metadata?.protein;
 
   return (
-    <Animated.View
+    <View
       style={[
         styles.itemCard,
         {
-          backgroundColor: colors.card,
-          borderColor: item.is_purchased ? colors.success + "40" : colors.border,
-          opacity: item.is_purchased ? 0.75 : 1,
+          backgroundColor: isDark ? colors.card : "#FFFFFF",
+          borderColor: item.is_purchased
+            ? "#10B981" + "35"
+            : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+          shadowColor: accentColor,
         },
       ]}
     >
+      {/* Left accent strip */}
+      <View style={[styles.itemAccentStrip, { backgroundColor: item.is_purchased ? "#10B981" : accentColor }]} />
+
       {/* Checkbox */}
       <TouchableOpacity
         style={[
           styles.checkbox,
           {
-            borderColor: item.is_purchased ? colors.success : colors.border,
-            backgroundColor: item.is_purchased ? colors.success : "transparent",
+            borderColor: item.is_purchased ? "#10B981" : isDark ? "rgba(255,255,255,0.3)" : "#D1D5DB",
+            backgroundColor: item.is_purchased ? "#10B981" : "transparent",
           },
         ]}
         onPress={onToggle}
         disabled={isToggling}
         activeOpacity={0.7}
       >
-        {item.is_purchased && <Check size={14} color="#FFF" strokeWidth={3} />}
+        {item.is_purchased && <Check size={13} color="#FFF" strokeWidth={3} />}
       </TouchableOpacity>
 
-      {/* Emoji Badge */}
-      <View style={[styles.emojiBadge, { backgroundColor: bgColor + "20" }]}>
-        <Text style={styles.emojiText}>{emoji}</Text>
+      {/* Icon badge */}
+      <View style={[styles.iconBadge, { backgroundColor: accentColor + "18", borderColor: accentColor + "30" }]}>
+        {item.metadata?.ing_img ? null : iconEntry ? (
+          <iconEntry.Icon size={20} color={accentColor} strokeWidth={1.8} />
+        ) : (
+          <Text style={styles.emojiText}>{emoji}</Text>
+        )}
       </View>
 
       {/* Content */}
@@ -164,8 +206,9 @@ const ShoppingItem = React.memo(({
           style={[
             styles.itemName,
             {
-              color: colors.text,
+              color: isDark ? "#FFF" : "#111",
               textDecorationLine: item.is_purchased ? "line-through" : "none",
+              opacity: item.is_purchased ? 0.55 : 1,
             },
           ]}
           numberOfLines={1}
@@ -178,17 +221,17 @@ const ShoppingItem = React.memo(({
           </Text>
           {hasNutrition && (
             <View style={styles.nutritionChips}>
-              {item.metadata?.calories && (
-                <View style={[styles.chip, { backgroundColor: "#FF6B6B15" }]}>
-                  <Flame size={10} color="#FF6B6B" />
+              {!!item.metadata?.calories && (
+                <View style={styles.chip}>
+                  <Flame size={9} color="#FF6B6B" strokeWidth={2.5} />
                   <Text style={[styles.chipText, { color: "#FF6B6B" }]}>
                     {Math.round(item.metadata.calories)}
                   </Text>
                 </View>
               )}
-              {item.metadata?.protein && (
-                <View style={[styles.chip, { backgroundColor: "#6366F115" }]}>
-                  <Dumbbell size={10} color="#6366F1" />
+              {!!item.metadata?.protein && (
+                <View style={[styles.chip, { backgroundColor: "#6366F110" }]}>
+                  <Dumbbell size={9} color="#6366F1" strokeWidth={2.5} />
                   <Text style={[styles.chipText, { color: "#6366F1" }]}>
                     {Math.round(item.metadata.protein)}g
                   </Text>
@@ -202,14 +245,21 @@ const ShoppingItem = React.memo(({
       {/* Actions */}
       <View style={styles.itemActions}>
         <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: colors.error + "12" }]}
+          style={[styles.actionBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#FFFBEB", borderColor: "#F59E0B30" }]}
+          onPress={onEdit}
+          activeOpacity={0.7}
+        >
+          <Edit3 size={14} color="#F59E0B" strokeWidth={2.5} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#FEF2F2", borderColor: "#EF444430" }]}
           onPress={onDelete}
           activeOpacity={0.7}
         >
-          <Trash2 size={16} color={colors.error} />
+          <Trash2 size={14} color="#EF4444" strokeWidth={2.5} />
         </TouchableOpacity>
       </View>
-    </Animated.View>
+    </View>
   );
 });
 
@@ -220,7 +270,6 @@ export default function ShoppingList({
 }: ShoppingListProps) {
   const { colors, isDark } = useTheme();
   const { t, isRTL } = useLanguage();
-
   const {
     shoppingList,
     isLoading,
@@ -241,49 +290,23 @@ export default function ShoppingList({
   const [smartModalEditItem, setSmartModalEditItem] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Process initial items when opening
-  useEffect(() => {
-    if (visible && initialItems.length > 0) {
-      const itemsToAdd = initialItems.map((item) => ({
-        name: item.name,
-        quantity: item.quantity || 1,
-        unit: item.unit || "pieces",
-        category: item.category || "From Meal",
-        added_from: "meal",
-        estimated_cost: 0,
-        is_purchased: false,
-        metadata: item.metadata,
-      }));
-
-      if (itemsToAdd.length === 1) {
-        addItem(itemsToAdd[0]);
-      } else {
-        bulkAddItems(itemsToAdd);
-      }
-    }
-  }, [visible, initialItems]);
-
-  // Memoized lists for performance
+  // Memoized lists
   const { unpurchasedItems, purchasedItems, totalNutrition } = useMemo(() => {
     const unpurchased = shoppingList.filter((item: any) => !item.is_purchased);
     const purchased = shoppingList.filter((item: any) => item.is_purchased);
-
-    // Calculate total nutrition for unpurchased items
-    const nutrition = unpurchased.reduce((acc: any, item: any) => ({
-      calories: acc.calories + (item.metadata?.calories || 0),
-      protein: acc.protein + (item.metadata?.protein || 0),
-    }), { calories: 0, protein: 0 });
-
+    const nutrition = unpurchased.reduce(
+      (acc: any, item: any) => ({
+        calories: acc.calories + (item.metadata?.calories || 0),
+        protein: acc.protein + (item.metadata?.protein || 0),
+      }),
+      { calories: 0, protein: 0 }
+    );
     return { unpurchasedItems: unpurchased, purchasedItems: purchased, totalNutrition: nutrition };
   }, [shoppingList]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    try {
-      await forceRefresh();
-    } finally {
-      setRefreshing(false);
-    }
+    try { await forceRefresh(); } finally { setRefreshing(false); }
   }, [forceRefresh]);
 
   const handleSmartModalSave = useCallback((item: any) => {
@@ -302,7 +325,7 @@ export default function ShoppingList({
         name: item.name.trim(),
         quantity: item.quantity,
         unit: item.unit,
-        category: item.category || "Manual",
+        category: item.category || t("shopping.from_meal_analysis"),
         added_from: "manual",
         estimated_cost: item.estimated_cost || 0,
         is_purchased: undefined,
@@ -311,100 +334,95 @@ export default function ShoppingList({
     }
     setSmartModalEditItem(null);
     setShowSmartModal(false);
-  }, [smartModalEditItem, updateItem, addItem]);
+  }, [smartModalEditItem, updateItem, addItem, t]);
 
   const handleOpenSmartModal = useCallback((item?: ShoppingListItemData) => {
     setSmartModalEditItem(item || null);
     setShowSmartModal(true);
   }, []);
 
-  const handleTogglePurchased = useCallback((id: string) => {
-    togglePurchased(id);
-  }, [togglePurchased]);
-
   const handleDeleteItem = useCallback((id: string, name: string) => {
     Alert.alert(
-      t("shopping.delete_confirm_title") || "Delete Item",
-      `${t("shopping.delete_confirm_message") || "Remove"} "${name}"?`,
+      t("shopping.delete_confirm_title"),
+      `${t("shopping.delete_confirm_message")} "${name}"?`,
       [
-        { text: t("common.cancel") || "Cancel", style: "cancel" },
-        {
-          text: t("common.delete") || "Delete",
-          style: "destructive",
-          onPress: () => deleteItem(id),
-        },
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("common.delete"), style: "destructive", onPress: () => deleteItem(id) },
       ]
     );
   }, [deleteItem, t]);
+
+  const handleClearPurchased = useCallback(() => {
+    if (purchasedItems.length === 0) return;
+    Alert.alert(
+      t("shopping.clear_purchased_title") || "Clear Purchased",
+      t("shopping.clear_purchased_message") || "Remove all purchased items from the list?",
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("common.delete"),
+          style: "destructive",
+          onPress: () => purchasedItems.forEach((item: any) => deleteItem(item.id)),
+        },
+      ]
+    );
+  }, [purchasedItems, deleteItem, t]);
 
   const renderItem = useCallback((item: ShoppingListItemData) => (
     <ShoppingItem
       key={item.id}
       item={item}
       colors={colors}
-      onToggle={() => handleTogglePurchased(item.id)}
+      isDark={isDark}
+      onToggle={() => togglePurchased(item.id)}
       onEdit={() => handleOpenSmartModal(item)}
       onDelete={() => handleDeleteItem(item.id, item.name)}
       isToggling={isToggling}
     />
-  ), [colors, handleTogglePurchased, handleOpenSmartModal, handleDeleteItem, isToggling]);
+  ), [colors, isDark, togglePurchased, handleOpenSmartModal, handleDeleteItem, isToggling]);
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
-          {/* Header with Gradient */}
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <View style={[styles.sheet, { backgroundColor: isDark ? colors.background : "#F8FAFC" }]}>
+
+          {/* Header */}
           <LinearGradient
             colors={isDark ? ["#1F2937", "#111827"] : ["#10B981", "#059669"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.header}
           >
-            <View style={styles.headerContent}>
+            {/* Handle */}
+            <View style={styles.handle} />
+
+            <View style={styles.headerRow}>
               <View style={styles.headerLeft}>
-                <View style={styles.headerIconBg}>
-                  <ShoppingCart size={24} color="#FFF" />
+                <View style={styles.headerIcon}>
+                  <ShoppingCart size={22} color="#FFF" strokeWidth={2} />
                 </View>
                 <View>
-                  <Text style={styles.headerTitle}>
-                    {t("shopping.title") || "Shopping List"}
-                  </Text>
-                  <Text style={styles.headerSubtitle}>
-                    {unpurchasedItems.length} {t("shopping.items_remaining") || "items to buy"}
+                  <Text style={styles.headerTitle}>{t("shopping.title")}</Text>
+                  <Text style={styles.headerSub}>
+                    {unpurchasedItems.length} {t("shopping.items_remaining")}
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity
-                onPress={onClose}
-                style={styles.closeBtn}
-                activeOpacity={0.8}
-              >
-                <X size={22} color="#FFF" />
+              <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.8}>
+                <X size={20} color="#FFF" strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
 
-            {/* Quick Stats */}
+            {/* Stats strip */}
             {totalNutrition.calories > 0 && (
               <View style={styles.statsRow}>
-                <View style={styles.statCard}>
-                  <Flame size={14} color="#FFF" />
-                  <Text style={styles.statValue}>{Math.round(totalNutrition.calories)}</Text>
-                  <Text style={styles.statLabel}>cal</Text>
+                <View style={styles.statPill}>
+                  <Flame size={12} color="#FFF" strokeWidth={2.5} />
+                  <Text style={styles.statText}>{Math.round(totalNutrition.calories)} cal</Text>
                 </View>
-                <View style={styles.statCard}>
-                  <Dumbbell size={14} color="#FFF" />
-                  <Text style={styles.statValue}>{Math.round(totalNutrition.protein)}g</Text>
-                  <Text style={styles.statLabel}>protein</Text>
-                </View>
-                <View style={styles.statCard}>
-                  <Package size={14} color="#FFF" />
-                  <Text style={styles.statValue}>{unpurchasedItems.length}</Text>
-                  <Text style={styles.statLabel}>items</Text>
+                <View style={styles.statPill}>
+                  <Dumbbell size={12} color="#FFF" strokeWidth={2.5} />
+                  <Text style={styles.statText}>{Math.round(totalNutrition.protein)}g protein</Text>
                 </View>
               </View>
             )}
@@ -412,59 +430,49 @@ export default function ShoppingList({
 
           {/* Content */}
           <ScrollView
-            style={styles.scrollContent}
+            style={styles.scroll}
             contentContainerStyle={styles.scrollInner}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                colors={[colors.primary]}
-                tintColor={colors.primary}
-              />
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
             }
           >
             {isLoading ? (
-              <View style={styles.loadingState}>
+              <View style={styles.centered}>
                 <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-                  {t("common.loading") || "Loading..."}
-                </Text>
               </View>
             ) : shoppingList.length === 0 ? (
               <View style={styles.emptyState}>
                 <View style={[styles.emptyIconBg, { backgroundColor: colors.primary + "15" }]}>
-                  <Sparkles size={48} color={colors.primary} />
+                  <Sparkles size={44} color={colors.primary} />
                 </View>
                 <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                  {t("shopping.empty_title") || "Your list is empty"}
+                  {t("shopping.empty_title")}
                 </Text>
                 <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-                  {t("shopping.empty_subtitle") || "Tap + to add your first item"}
+                  {t("shopping.empty_subtitle")}
                 </Text>
                 <TouchableOpacity
                   style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
                   onPress={() => handleOpenSmartModal()}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                 >
-                  <Plus size={20} color="#FFF" />
-                  <Text style={styles.emptyBtnText}>
-                    {t("shopping.add_item") || "Add Item"}
-                  </Text>
+                  <Plus size={18} color="#FFF" strokeWidth={2.5} />
+                  <Text style={styles.emptyBtnText}>{t("shopping.add_item")}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <>
-                {/* To Buy Section */}
+                {/* To Buy */}
                 {unpurchasedItems.length > 0 && (
                   <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                       <View style={[styles.sectionDot, { backgroundColor: colors.primary }]} />
                       <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                        {t("shopping.to_buy") || "To Buy"}
+                        {t("shopping.to_buy")}
                       </Text>
-                      <View style={[styles.sectionBadge, { backgroundColor: colors.primary + "20" }]}>
+                      <View style={[styles.sectionBadge, { backgroundColor: colors.primary + "18" }]}>
                         <Text style={[styles.sectionBadgeText, { color: colors.primary }]}>
                           {unpurchasedItems.length}
                         </Text>
@@ -476,19 +484,27 @@ export default function ShoppingList({
                   </View>
                 )}
 
-                {/* Purchased Section */}
+                {/* Purchased */}
                 {purchasedItems.length > 0 && (
                   <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                      <View style={[styles.sectionDot, { backgroundColor: colors.success }]} />
-                      <Text style={[styles.sectionTitle, { color: colors.success }]}>
-                        {t("shopping.purchased") || "Purchased"}
+                      <View style={[styles.sectionDot, { backgroundColor: "#10B981" }]} />
+                      <Text style={[styles.sectionTitle, { color: "#10B981" }]}>
+                        {t("shopping.purchased")}
                       </Text>
-                      <View style={[styles.sectionBadge, { backgroundColor: colors.success + "20" }]}>
-                        <Text style={[styles.sectionBadgeText, { color: colors.success }]}>
+                      <View style={[styles.sectionBadge, { backgroundColor: "#10B98118" }]}>
+                        <Text style={[styles.sectionBadgeText, { color: "#10B981" }]}>
                           {purchasedItems.length}
                         </Text>
                       </View>
+                      <TouchableOpacity
+                        style={styles.clearBtn}
+                        onPress={handleClearPurchased}
+                        activeOpacity={0.7}
+                      >
+                        <CheckCheck size={13} color="#10B981" strokeWidth={2.5} />
+                        <Text style={styles.clearBtnText}>{t("shopping.clear") || "Clear"}</Text>
+                      </TouchableOpacity>
                     </View>
                     <View style={styles.itemsList}>
                       {purchasedItems.map(renderItem)}
@@ -499,9 +515,9 @@ export default function ShoppingList({
             )}
           </ScrollView>
 
-          {/* Floating Add Button */}
+          {/* FAB */}
           <TouchableOpacity
-            style={[styles.fab, { backgroundColor: colors.primary }]}
+            style={styles.fab}
             onPress={() => handleOpenSmartModal()}
             activeOpacity={0.9}
           >
@@ -511,20 +527,16 @@ export default function ShoppingList({
               end={{ x: 1, y: 1 }}
               style={styles.fabGradient}
             >
-              <Plus size={28} color="#FFF" strokeWidth={2.5} />
+              <Plus size={26} color="#FFF" strokeWidth={2.5} />
             </LinearGradient>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Smart Add Modal */}
       <SmartShoppingItemModal
         visible={showSmartModal}
         editingItem={smartModalEditItem}
-        onClose={() => {
-          setShowSmartModal(false);
-          setSmartModalEditItem(null);
-        }}
+        onClose={() => { setShowSmartModal(false); setSmartModalEditItem(null); }}
         onSave={handleSmartModalSave}
       />
     </Modal>
@@ -532,23 +544,31 @@ export default function ShoppingList({
 }
 
 const styles = StyleSheet.create({
-  modalOverlay: {
+  overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0,0,0,0.55)",
   },
-  modalContent: {
+  sheet: {
     flex: 1,
-    marginTop: 50,
+    marginTop: 48,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     overflow: "hidden",
   },
   header: {
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingTop: 12,
+    paddingBottom: 18,
     paddingHorizontal: 20,
   },
-  headerContent: {
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.35)",
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -556,118 +576,109 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 12,
   },
-  headerIconBg: {
-    width: 48,
-    height: 48,
+  headerIcon: {
+    width: 44,
+    height: 44,
     borderRadius: 14,
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "800",
     color: "#FFF",
     letterSpacing: -0.5,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.8)",
+  headerSub: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.75)",
     marginTop: 2,
   },
   closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.18)",
     justifyContent: "center",
     alignItems: "center",
   },
   statsRow: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 16,
+    gap: 8,
+    marginTop: 14,
   },
-  statCard: {
-    flex: 1,
+  statPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 5,
     backgroundColor: "rgba(255,255,255,0.15)",
-    paddingVertical: 10,
+    paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: 20,
   },
-  statValue: {
-    fontSize: 16,
-    fontWeight: "700",
+  statText: {
+    fontSize: 12,
+    fontWeight: "600",
     color: "#FFF",
   },
-  statLabel: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.7)",
-  },
-  scrollContent: {
+  scroll: {
     flex: 1,
   },
   scrollInner: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 110,
   },
-  loadingState: {
+  centered: {
     paddingVertical: 80,
     alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 15,
   },
   emptyState: {
     paddingVertical: 60,
     alignItems: "center",
+    gap: 12,
   },
   emptyIconBg: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 8,
   },
   emptyTitle: {
     fontSize: 22,
     fontWeight: "700",
-    marginBottom: 8,
   },
   emptySubtitle: {
-    fontSize: 15,
+    fontSize: 14,
     textAlign: "center",
-    marginBottom: 24,
-    maxWidth: 260,
+    maxWidth: 240,
   },
   emptyBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 14,
+    marginTop: 8,
   },
   emptyBtnText: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
     color: "#FFF",
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
-    gap: 8,
+    marginBottom: 10,
+    gap: 7,
   },
   sectionDot: {
     width: 8,
@@ -675,100 +686,135 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     flex: 1,
   },
   sectionBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
   sectionBadgeText: {
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  clearBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: "#10B98112",
+  },
+  clearBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#10B981",
   },
   itemsList: {
-    gap: 10,
+    gap: 9,
   },
   itemCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
     borderRadius: 16,
-    borderWidth: 1.5,
-    gap: 12,
+    borderWidth: 1,
+    overflow: "hidden",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  itemAccentStrip: {
+    width: 4,
+    alignSelf: "stretch",
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
   },
   checkbox: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 7,
     borderWidth: 2,
     justifyContent: "center",
     alignItems: "center",
+    marginLeft: 10,
+    flexShrink: 0,
   },
-  emojiBadge: {
-    width: 44,
-    height: 44,
+  iconBadge: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+    marginLeft: 8,
+    borderWidth: 1,
+    flexShrink: 0,
   },
   emojiText: {
-    fontSize: 22,
+    fontSize: 20,
   },
   itemContent: {
     flex: 1,
+    paddingVertical: 12,
+    paddingLeft: 10,
   },
   itemName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     letterSpacing: -0.2,
   },
   itemMeta: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 4,
-    gap: 10,
+    marginTop: 3,
+    gap: 8,
+    flexWrap: "wrap",
   },
   itemQuantity: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "500",
   },
   nutritionChips: {
     flexDirection: "row",
-    gap: 6,
+    gap: 5,
   },
   chip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: "#FF6B6B10",
   },
   chipText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "600",
   },
   itemActions: {
     flexDirection: "row",
     gap: 6,
+    paddingRight: 12,
+    paddingLeft: 6,
   },
   actionBtn: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
   },
   fab: {
     position: "absolute",
     bottom: 28,
     right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 20,
+    width: 58,
+    height: 58,
+    borderRadius: 18,
     overflow: "hidden",
     shadowColor: "#10B981",
     shadowOffset: { width: 0, height: 8 },

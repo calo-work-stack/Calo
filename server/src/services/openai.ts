@@ -184,6 +184,97 @@ function getIngredientColor(ingredientName: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
+// ─── Dietary context passed from user questionnaire ───────────────────────────
+export interface DietaryContext {
+  kosher?: boolean;
+  dietary_style?: string;
+  allergies?: string[];
+  dietary_restrictions?: string[];
+  disliked_foods?: string[];
+}
+
+/**
+ * Builds a hard dietary-constraint block injected into every AI prompt so the
+ * model never returns ingredients that violate the user's diet or religion.
+ */
+function buildDietaryConstraints(ctx?: DietaryContext): string {
+  if (!ctx) return "";
+
+  const rules: string[] = [];
+
+  if (ctx.kosher) {
+    rules.push(
+      "DIETARY LAW — KOSHER: This user strictly observes kosher dietary laws. " +
+      "NEVER identify pork, bacon, ham, lard, shellfish, shrimp, lobster, crab, " +
+      "clams, oysters, or any non-kosher animal product as an ingredient. " +
+      "If a meat in a soup or ramen is ambiguous, assume chicken, beef, or another kosher-compliant protein — NEVER pork. " +
+      "NEVER mix dairy and meat in the same dish — if both seem present, flag it in health_risk_notes only."
+    );
+  }
+
+  if (ctx.dietary_style) {
+    const style = ctx.dietary_style.toLowerCase();
+    if (style.includes("vegan")) {
+      rules.push(
+        "DIETARY STYLE — VEGAN: NEVER identify any animal product including meat, poultry, fish, seafood, dairy, eggs, honey, or gelatin. " +
+        "If an item could be plant-based, treat it as such."
+      );
+    } else if (style.includes("vegetarian")) {
+      rules.push(
+        "DIETARY STYLE — VEGETARIAN: NEVER identify meat, poultry, or fish as ingredients. " +
+        "If a protein appears ambiguous, default to a vegetarian alternative (e.g., tofu, paneer, legumes)."
+      );
+    } else if (
+      style !== "standard" &&
+      style !== "regular" &&
+      style !== "everything" &&
+      style !== "none"
+    ) {
+      rules.push(
+        `DIETARY STYLE: User follows a ${ctx.dietary_style} diet. ` +
+        "Never identify ingredients that conflict with this dietary style."
+      );
+    }
+  }
+
+  if (ctx.allergies?.length) {
+    const list = ctx.allergies.filter(Boolean).join(", ");
+    if (list) {
+      rules.push(
+        `ALLERGIES: User is allergic to: ${list}. ` +
+        "NEVER list these as ingredients. If an allergen is plausible but not certain, choose the allergen-free alternative."
+      );
+    }
+  }
+
+  if (ctx.dietary_restrictions?.length) {
+    const list = ctx.dietary_restrictions.filter(Boolean).join(", ");
+    if (list) {
+      rules.push(
+        `DIETARY RESTRICTIONS: User strictly avoids: ${list}. ` +
+        "Do NOT identify any of these as ingredients under any circumstances."
+      );
+    }
+  }
+
+  if (ctx.disliked_foods?.length) {
+    const list = ctx.disliked_foods.filter(Boolean).join(", ");
+    if (list) {
+      rules.push(
+        `USER PREFERENCES: User dislikes: ${list}. ` +
+        "Avoid these unless you are absolutely certain they are present and there is no reasonable alternative identification."
+      );
+    }
+  }
+
+  if (rules.length === 0) return "";
+
+  return (
+    "\n\nUSER DIETARY PROFILE — APPLY THESE AS HARD RULES, NOT SUGGESTIONS:\n" +
+    rules.map((r, i) => `${i + 1}. ${r}`).join("\n")
+  );
+}
+
 export class OpenAIService {
   private static openai: OpenAI | null = null;
 
@@ -284,10 +375,14 @@ export class OpenAIService {
     imageBase64: string,
     language: string = "english",
     updateText?: string,
-    editedIngredients?: any[]
+    editedIngredients?: any[],
+    dietaryContext?: DietaryContext
   ): Promise<MealAnalysisResult> {
     console.log("🤖 Starting meal image analysis...");
     console.log("🥗 Edited ingredients count:", editedIngredients?.length || 0);
+    if (dietaryContext) {
+      console.log("🥗 Dietary context:", JSON.stringify(dietaryContext));
+    }
 
     // Validate and clean the image data
     let cleanBase64: string;
@@ -314,49 +409,26 @@ export class OpenAIService {
         cleanBase64,
         language,
         updateText,
-        editedIngredients
+        editedIngredients,
+        dietaryContext
       );
     } catch (openaiError: unknown) {
       const errorMsg = getErrorMessage(openaiError);
-      console.log("⚠️ OpenAI analysis failed:", errorMsg);
+      console.error("💥 OpenAI analysis failed:", errorMsg);
 
-      // If it's a quota/billing issue, use fallback
-      if (errorMessageIncludesAny(openaiError, ["quota", "billing", "rate limit"])) {
-        console.log("🆘 Using fallback due to quota/billing limits");
-        return this.getIntelligentFallbackAnalysis(
-          language,
-          updateText,
-          editedIngredients
-        );
+      // Surface all real errors directly — no fake fallback data
+      // Only real API errors (quota, rate limit) re-throw with a clear message
+      if (errorMessageIncludesAny(openaiError, ["quota", "billing", "insufficient_quota"])) {
+        throw new Error("AI service quota exceeded. Please try again later.");
       }
 
-      // If it's a network/API issue, use fallback
-      if (errorMessageIncludesAny(openaiError, ["network", "timeout", "connection"])) {
-        console.log("🆘 Using fallback due to network issues");
-        return this.getIntelligentFallbackAnalysis(
-          language,
-          updateText,
-          editedIngredients
-        );
+      if (errorMessageIncludesAny(openaiError, ["rate limit", "rate_limit"])) {
+        throw new Error("Too many requests. Please wait a moment and try again.");
       }
 
-      // If AI couldn't analyze the image, use fallback
-      if (errorMessageIncludesAny(openaiError, ["couldn't analyze", "clearer photo", "invalid response"])) {
-        console.log("🆘 Using fallback due to image analysis failure");
-        return this.getIntelligentFallbackAnalysis(
-          language,
-          updateText,
-          editedIngredients
-        );
-      }
-
-      // For other errors, still try fallback before failing completely
-      console.log("🆘 Using fallback due to unexpected error");
-      return this.getIntelligentFallbackAnalysis(
-        language,
-        updateText,
-        editedIngredients
-      );
+      // Re-throw everything else (image parse failure, refused, etc.) so the
+      // nutrition.ts layer returns a proper error to the client
+      throw openaiError;
     }
   }
 
@@ -703,7 +775,8 @@ export class OpenAIService {
     cleanBase64: string,
     language: string,
     updateText?: string,
-    editedIngredients?: any[]
+    editedIngredients?: any[],
+    dietaryContext?: DietaryContext
   ): Promise<MealAnalysisResult> {
     // Build context from edited ingredients if provided
     let ingredientsContext = "";
@@ -716,55 +789,77 @@ export class OpenAIService {
         .join("; ")}`;
     }
 
-    const systemPrompt = `You are an expert clinical nutritionist and food scientist with deep knowledge of portion estimation, food composition, and culinary techniques. Your sole task is to analyze food images and return precise, evidence-based nutritional data.
+    // Build dietary constraint block — these are hard rules, not hints
+    const dietaryConstraints = buildDietaryConstraints(dietaryContext);
 
-OUTPUT RULE: Respond with ONLY a valid JSON object — no markdown fences, no explanations, no apologies. If you are uncertain about any value, make a calibrated estimate rather than refusing.
+    const systemPrompt = `You are an elite clinical nutritionist, food scientist, and registered dietitian with 20+ years of experience analyzing food images for medical nutrition therapy. Your task is to produce the most accurate, detailed nutritional analysis possible from a single image.
 
-LANGUAGE: All string values (meal_name, food_category, cooking_method, health_risk_notes, ingredient names, allergens) must be in ${language === "hebrew" ? "Hebrew" : "English"}.
+OUTPUT RULE: Respond with ONLY a valid JSON object — no markdown fences, no explanations, no preamble. Every field must be present. Use calibrated estimates for uncertain values rather than refusing.
+
+LANGUAGE: ALL string values (meal_name, food_category, cooking_method, health_risk_notes, ingredient names, allergens, recommendations) must be in ${language === "hebrew" ? "Hebrew" : "English"}.
+${dietaryConstraints}
 
 ANALYSIS METHODOLOGY:
-1. IDENTIFICATION — Name every visible component specifically. Use culinary precision:
-   - "grilled chicken breast (skinless)" not "chicken" or "meat"
-   - "basmati rice, steamed" not "rice" or "grain"
-   - "extra virgin olive oil" not "oil" or "fat"
-   - "whole egg, scrambled" not "egg"
+1. IDENTIFICATION — Name every visible component with culinary precision:
+   - "grilled chicken breast (skinless, ~170g)" not "chicken"
+   - "basmati rice, steamed (¾ cup cooked)" not "rice"
+   - "extra virgin olive oil (~1 tbsp)" not "oil"
+   - Include ALL hidden components: cooking oils, sauces, dressings, marinades, garnishes
 
-2. PORTION ESTIMATION — Estimate weight in grams using visual anchors:
-   - Standard dinner plate ≈ 26–28 cm diameter
-   - Typical restaurant chicken breast ≈ 150–180g
-   - Cup of cooked rice ≈ 180–200g
-   - Be conservative: slightly underestimate rather than overestimate
+2. PORTION ESTIMATION — Use visual anchors for accurate gram weights:
+   - Standard dinner plate ≈ 26–28 cm diameter; fills ~400–700g of food
+   - Restaurant chicken breast ≈ 150–200g; home portion ≈ 100–150g
+   - Cup of cooked rice ≈ 180–200g; pasta ≈ 220–250g
+   - Slice of bread ≈ 30–40g; burger bun ≈ 60–70g
+   - Be accurate: neither underestimate nor overestimate
 
-3. MACRONUTRIENT CALCULATION — Use Atwater factors:
-   - Protein & Carbohydrates: 4 kcal/g
-   - Fat: 9 kcal/g
-   - Alcohol: 7 kcal/g
-   - Cross-check: total calories should equal (protein×4) + (carbs×4) + (fat×9)
+3. MACRONUTRIENT CALCULATION — Apply Atwater factors precisely:
+   - Protein & Carbohydrates: 4 kcal/g | Fat: 9 kcal/g | Alcohol: 7 kcal/g
+   - MANDATORY cross-check: total calories must equal (protein×4) + (carbs×4) + (fat×9) ±5%
+   - Ingredient calories must sum to ±8% of total meal calories
 
-4. COOKING METHOD IMPACT — Adjust fat content based on preparation:
-   - Deep-fried: add 8–15g fat per 100g
-   - Sautéed/stir-fried: add 3–8g fat per 100g
-   - Grilled/baked: minimal added fat
-   - Always account for cooking oils, marinades, and sauces
+4. COOKING METHOD IMPACT — Adjust nutrition for preparation method:
+   - Deep-fried: +8–15g fat per 100g raw weight
+   - Sautéed: +3–8g fat per 100g
+   - Boiled/steamed: negligible added fat
+   - Always add cooking oil/butter used as a separate ingredient
 
-5. ALLERGEN DETECTION — Carefully identify potential allergens: gluten, dairy, eggs, tree nuts, peanuts, shellfish, fish, soy, sesame, mustard, sulfites
+5. ALLERGEN DETECTION — Identify from the 14 major allergens:
+   gluten, dairy, eggs, tree nuts, peanuts, shellfish, fish, soy, sesame, mustard, celery, lupin, molluscs, sulfites
 
-6. CONFIDENCE SCORE — Set 0.0–1.0 based on:
-   - 0.85–0.95: Clear image, single known dish, all ingredients visible
-   - 0.70–0.84: Slight ambiguity in portions or minor hidden ingredients
-   - 0.55–0.69: Blurry image, complex mixed dish, or many hidden components
-${updateText ? `\n7. USER CONTEXT — The user provided this note: "${updateText}". Adjust your analysis to incorporate this information (e.g., if they mention added butter, include it as an ingredient).` : ""}
+6. CONFIDENCE SCORING:
+   - 0.88–0.97: Crystal-clear image, single recognizable dish, all portions visible
+   - 0.72–0.87: Slight ambiguity in portions or 1–2 hidden components
+   - 0.55–0.71: Blurry, complex plated dish, or significant hidden ingredients
+${updateText ? `\n7. USER CONTEXT — Important note from the user: "${updateText}". Incorporate this fully into your analysis. If they mention specific ingredients, include them. If they mention a cooking technique, adjust the fat content accordingly.` : ""}
+
+8. HEALTH SCORE — Rate this meal 0–100 based on:
+   - Macronutrient balance (protein 20–35%, carbs 40–55%, fat 20–35% of calories): 30pts
+   - Micronutrient density (fiber ≥5g, vitamins, minerals): 25pts
+   - Processing level (whole foods vs ultra-processed): 20pts
+   - Caloric appropriateness (300–600 kcal for main meal): 15pts
+   - Allergen/risk profile: 10pts
+
+9. RECOMMENDATIONS — Generate exactly 4 specific, actionable health insights about THIS meal:
+   - CRITICAL: Write ALL recommendations in ${language === "hebrew" ? "Hebrew" : "English"} only
+   - Be specific to what's actually on the plate (mention exact ingredient names from the image)
+   - Structure:
+     • Insight 1 — a genuine positive (e.g. protein source, micronutrient benefit)
+     • Insight 2 — a specific improvement (swap, reduce, or add something concrete)
+     • Insight 3 — a nutritional tip or macro balance observation
+     • Insight 4 — a lifestyle or timing tip (e.g. best time to eat, pairing suggestion)
+   - Each insight: 10–20 words, concrete and actionable, not generic
+   - ${language === "hebrew" ? "Hebrew examples: \"החלבון מהחזה העוף תומך בבניית שריר\", \"הפחת נתרן על ידי השמטת הרוטב\", \"הוסף ירקות ירוקים להגדלת הסיבים\"" : "English examples: \"High protein from grilled chicken breast supports muscle recovery\", \"Skip the creamy sauce to cut 120 calories and excess sodium\", \"Add a side of leafy greens to boost fiber and folate\", \"Best consumed 1–2 hours before a workout for sustained energy\""}
 
 CRITICAL RULES:
-- NEVER use vague names like "Unknown ingredient", "Mixed vegetables", "Various spices"
-- ALWAYS account for hidden calories: cooking fats, sauces, dressings, marinades
-- If multiple portions are visible on one plate, analyze ONE standard serving
-- Sauces and dressings can add 100–300 kcal — include them explicitly
-- The ingredients array calories MUST approximately sum to the total meal calories (±10%)
+- NEVER output vague names: "mixed vegetables", "various spices", "unknown sauce"
+- ALWAYS include hidden calories: cooking fats, dressings, sauces, glazes
+- One standard serving per plate (even if multiple portions visible)
+- Every ingredient must have all 8 nutritional fields filled
 
 REQUIRED JSON STRUCTURE:
 {
-  "meal_name": "descriptive meal name",
+  "meal_name": "precise descriptive meal name",
   "calories": number,
   "protein_g": number,
   "carbs_g": number,
@@ -772,15 +867,20 @@ REQUIRED JSON STRUCTURE:
   "fiber_g": number,
   "sugar_g": number,
   "sodium_mg": number,
+  "saturated_fats_g": number,
+  "cholesterol_mg": number,
   "serving_size_g": number,
-  "confidence": number (0.0-1.0),
+  "confidence": number,
+  "health_score": number (0-100),
   "food_category": "Breakfast|Lunch|Dinner|Snack|Dessert|Beverage",
-  "cooking_method": "specific method(s)",
-  "health_risk_notes": "brief health observations (max 2 sentences)",
-  "allergens_json": { "possible_allergens": ["list", "of", "allergens"] },
+  "cooking_method": "specific cooking technique(s)",
+  "processing_level": "Whole foods|Minimally processed|Processed|Ultra-processed",
+  "health_risk_notes": "1-2 sentences on key nutritional considerations for this meal",
+  "recommendations": ["specific insight 1", "specific insight 2", "specific insight 3"],
+  "allergens_json": { "possible_allergens": ["allergen1", "allergen2"] },
   "ingredients": [
     {
-      "name": "specific ingredient name",
+      "name": "precise ingredient name with preparation",
       "calories": number,
       "protein_g": number,
       "carbs_g": number,
@@ -788,13 +888,14 @@ REQUIRED JSON STRUCTURE:
       "fiber_g": number,
       "sugar_g": number,
       "sodium_mg": number,
+      "saturated_fats_g": number,
       "estimated_portion_g": number
     }
   ]
 }`;
 
     const userPromptParts: string[] = [
-      "Analyze this food image in detail. Identify every component separately — include main ingredients, side dishes, sauces, dressings, and garnishes. Provide accurate portion weights and complete nutritional data for each ingredient and the total meal.",
+      "Analyze this food image with maximum precision. Identify and name EVERY visible component separately — main proteins, carbohydrates, vegetables, sauces, dressings, garnishes, and any cooking oils or condiments. Estimate gram weights for each component using the visual anchors provided. Calculate complete nutritional data for each ingredient individually and verify that ingredient calories sum to the total meal calories. Return all required JSON fields including health_score (0-100) and recommendations array (3-4 specific insights).",
     ];
     if (updateText) {
       userPromptParts.push(`User note: ${updateText}`);
@@ -807,7 +908,7 @@ REQUIRED JSON STRUCTURE:
     console.log("🚀 CALLING OPENAI API!");
 
     const response = await this.openai!.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
@@ -824,14 +925,14 @@ REQUIRED JSON STRUCTURE:
               type: "image_url",
               image_url: {
                 url: `data:image/jpeg;base64,${cleanBase64}`,
-                detail: "high", // High detail for accurate ingredient and portion recognition
+                detail: "high",
               },
             },
           ],
         },
       ],
-      max_completion_tokens: 3000, // Enough for detailed ingredient breakdown with full nutritional data
-      temperature: 0.3, // Low temperature for factual, consistent nutritional estimates
+      max_completion_tokens: 4000,
+      temperature: 0.2,
       top_p: 0.85,
     });
 
@@ -843,20 +944,19 @@ REQUIRED JSON STRUCTURE:
     console.log("🤖 OpenAI response received successfully!");
     console.log("📄 Raw content preview:", content.substring(0, 200) + "...");
 
-    // Check for non-English responses that indicate inability to analyze
-    const hebrewRefusal =
-      content.includes("מצטער") || content.includes("לא יכול");
-    const englishRefusal =
-      content.toLowerCase().includes("sorry") ||
-      content.toLowerCase().includes("cannot") ||
-      content.toLowerCase().includes("unable") ||
-      content.toLowerCase().includes("can't");
+    // Check for refusals — retry with a simpler prompt instead of failing
+    const isRefusal =
+      content.includes("מצטער") ||
+      content.includes("לא יכול") ||
+      (content.toLowerCase().includes("sorry") && !content.includes("{")) ||
+      (content.toLowerCase().includes("cannot") && !content.includes("{")) ||
+      (content.toLowerCase().includes("unable") && !content.includes("{")) ||
+      (content.toLowerCase().includes("can't") && !content.includes("{")) ||
+      (content.toLowerCase().includes("i'm not able") && !content.includes("{"));
 
-    if (hebrewRefusal || englishRefusal) {
-      console.log("⚠️ OpenAI refused to analyze the image");
-      throw new Error(
-        "The AI couldn't analyze this image. Please try a clearer photo with better lighting and make sure the food is clearly visible."
-      );
+    if (isRefusal) {
+      console.log("⚠️ Initial analysis was refused — retrying with simplified prompt...");
+      return await this.retryWithSimplePrompt(cleanBase64, language, updateText, editedIngredients, dietaryContext);
     }
 
     // Check if response is JSON or text
@@ -899,26 +999,12 @@ REQUIRED JSON STRUCTURE:
             throw new Error("Could not recover JSON from partial response");
           }
         } catch (recoveryError: any) {
-          console.log("💥 Recovery failed:", recoveryError.message);
-
-          // Use fallback analysis if parsing completely fails
-          console.log("🆘 Using fallback analysis due to parsing failure");
-          return this.getIntelligentFallbackAnalysis(
-            language,
-            updateText,
-            editedIngredients
-          );
+          console.log("💥 Recovery failed, retrying with simple prompt...");
+          return await this.retryWithSimplePrompt(cleanBase64, language, updateText, editedIngredients, dietaryContext);
         }
       } else {
-        // Use fallback analysis for completely invalid responses
-        console.log(
-          "🆘 Using fallback analysis due to invalid response format"
-        );
-        return this.getIntelligentFallbackAnalysis(
-          language,
-          updateText,
-          editedIngredients
-        );
+        console.log("🔄 Invalid response format — retrying with simplified prompt...");
+        return await this.retryWithSimplePrompt(cleanBase64, language, updateText, editedIngredients, dietaryContext);
       }
     }
 
@@ -1079,7 +1165,8 @@ REQUIRED JSON STRUCTURE:
     }
     const analysisResult: MealAnalysisResult = {
       name: parsed.meal_name || "AI Analyzed Meal",
-      recommendations: parsed.healthNotes || parsed.recommendations || "",
+      recommendations: parsed.recommendations || parsed.healthNotes || [],
+      health_score: parsed.health_score ? Math.min(100, Math.max(0, Math.round(Number(parsed.health_score)))) : undefined,
       description: parsed.description || "",
       calories: Math.max(0, Number(parsed.calories) || 0),
       // Check both field name variants - AI may return protein or protein_g
@@ -1210,6 +1297,12 @@ REQUIRED JSON STRUCTURE:
               sodium_mg: ing.sodium_mg
                 ? Math.max(0, Number(ing.sodium_mg))
                 : undefined,
+              saturated_fats_g: ing.saturated_fats_g
+                ? Math.max(0, Number(ing.saturated_fats_g))
+                : undefined,
+              cholesterol_mg: ing.cholesterol_mg
+                ? Math.max(0, Number(ing.cholesterol_mg))
+                : undefined,
               estimated_portion_g: ing.estimated_portion_g
                 ? Math.max(0, Number(ing.estimated_portion_g))
                 : undefined,
@@ -1315,6 +1408,153 @@ REQUIRED JSON STRUCTURE:
     }
 
     return analysisResult;
+  }
+
+  /**
+   * Retry analysis with a minimal, direct prompt when the detailed one is refused.
+   * This is the ONLY fallback — it always hits the real OpenAI API, never returns fake data.
+   */
+  private static async retryWithSimplePrompt(
+    cleanBase64: string,
+    language: string,
+    updateText?: string,
+    editedIngredients?: any[],
+    dietaryContext?: DietaryContext
+  ): Promise<MealAnalysisResult> {
+    console.log("🔄 Retrying with simplified prompt...");
+
+    if (!this.openai) throw new Error("OpenAI client not available");
+
+    const langNote = language === "hebrew"
+      ? "IMPORTANT: Respond in Hebrew for ALL text fields including meal_name, food_category, cooking_method, health_risk_notes, ingredient names, and recommendations. Do not mix languages."
+      : "IMPORTANT: Respond in English for ALL text fields including meal_name, food_category, cooking_method, health_risk_notes, ingredient names, and recommendations.";
+
+    const userNote = updateText ? ` User note: ${updateText}.` : "";
+    const dietaryConstraints = buildDietaryConstraints(dietaryContext);
+
+    const simpleResponse = await this.openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: `You are a nutrition analysis assistant for a health tracking mobile app. Your ONLY job is to analyze food images and return JSON nutrition data. You MUST always analyze whatever food appears in the image — never refuse, never apologize, never explain. Just return the JSON. ${langNote}${dietaryConstraints ? `\n\n${dietaryConstraints}` : ""}`,
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Analyze the food in this image and return ONLY a JSON object with these exact fields:
+{
+  "meal_name": "name of the meal",
+  "calories": number,
+  "protein_g": number,
+  "carbs_g": number,
+  "fats_g": number,
+  "fiber_g": number,
+  "sugar_g": number,
+  "sodium_mg": number,
+  "serving_size_g": number,
+  "confidence": number between 0 and 1,
+  "health_score": number between 0 and 100,
+  "food_category": "Breakfast or Lunch or Dinner or Snack",
+  "cooking_method": "cooking method",
+  "health_risk_notes": "one sentence about this meal",
+  "recommendations": ["specific insight 1 in ${language === "hebrew" ? "Hebrew" : "English"}", "specific insight 2", "specific insight 3", "specific insight 4"],
+  "allergens_json": { "possible_allergens": [] },
+  "ingredients": [
+    { "name": "ingredient", "calories": number, "protein_g": number, "carbs_g": number, "fats_g": number, "fiber_g": number, "sugar_g": number, "sodium_mg": number, "estimated_portion_g": number }
+  ]
+}
+${userNote}
+Return ONLY the JSON object, nothing else.`,
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${cleanBase64}`,
+                detail: "high",
+              },
+            },
+          ],
+        },
+      ],
+      max_completion_tokens: 3000,
+      temperature: 0.2,
+    });
+
+    const retryContent = simpleResponse?.choices[0]?.message?.content;
+    if (!retryContent) throw new Error("No response from OpenAI on retry");
+
+    console.log("📄 Retry response preview:", retryContent.substring(0, 200) + "...");
+
+    // Check if retry was also refused
+    const retryRefused =
+      !retryContent.includes("{") &&
+      (retryContent.toLowerCase().includes("sorry") ||
+        retryContent.toLowerCase().includes("cannot") ||
+        retryContent.toLowerCase().includes("unable"));
+
+    if (retryRefused) {
+      throw new Error("Image could not be analyzed. Please use a clear photo of food.");
+    }
+
+    try {
+      const cleanJSON = extractCleanJSON(retryContent);
+      const fixedJSON = this.fixMalformedJSON(cleanJSON);
+      const parsed = JSON.parse(fixedJSON);
+      console.log("✅ Retry analysis successful:", parsed.meal_name);
+
+      // Build full result from simplified response
+      const ingredients = (parsed.ingredients || []).map((ing: any, i: number) => {
+        const p = Math.max(0, Number(ing.protein_g) || Number(ing.protein) || 0);
+        const c = Math.max(0, Number(ing.carbs_g) || Number(ing.carbs) || 0);
+        const f = Math.max(0, Number(ing.fats_g) || Number(ing.fat) || 0);
+        return {
+          name: ing.name || `Ingredient ${i + 1}`,
+          calories: Math.max(0, Number(ing.calories) || 0),
+          protein: p, protein_g: p,
+          carbs: c, carbs_g: c,
+          fat: f, fats_g: f,
+          fiber_g: Math.max(0, Number(ing.fiber_g) || 0) || undefined,
+          sugar_g: Math.max(0, Number(ing.sugar_g) || 0) || undefined,
+          sodium_mg: Math.max(0, Number(ing.sodium_mg) || 0) || undefined,
+          estimated_portion_g: Math.max(0, Number(ing.estimated_portion_g) || 0) || undefined,
+        };
+      });
+
+      const result: MealAnalysisResult = {
+        name: parsed.meal_name || "Analyzed Meal",
+        recommendations: parsed.recommendations || parsed.health_risk_notes || [],
+        health_score: parsed.health_score ? Math.min(100, Math.max(0, Number(parsed.health_score))) : undefined,
+        description: "",
+        calories: Math.max(0, Number(parsed.calories) || 0),
+        protein: Math.max(0, Number(parsed.protein_g) || 0),
+        carbs: Math.max(0, Number(parsed.carbs_g) || 0),
+        fat: Math.max(0, Number(parsed.fats_g) || 0),
+        fiber: Math.max(0, Number(parsed.fiber_g) || 0) || undefined,
+        sugar: Math.max(0, Number(parsed.sugar_g) || 0) || undefined,
+        sodium: Math.max(0, Number(parsed.sodium_mg) || 0) || undefined,
+        serving_size_g: Math.max(0, Number(parsed.serving_size_g) || 0) || undefined,
+        allergens_json: parsed.allergens_json || null,
+        glycemic_index: undefined,
+        insulin_index: undefined,
+        food_category: parsed.food_category || null,
+        processing_level: undefined,
+        cooking_method: parsed.cooking_method || null,
+        health_risk_notes: parsed.health_risk_notes || null,
+        confidence: Math.min(100, Math.max(0, Number(parsed.confidence) * 100 || 80)),
+        ingredients: this.addIngredientVisuals(ingredients) as any,
+        servingSize: parsed.serving_size_g ? `${parsed.serving_size_g}g` : "1 serving",
+        cookingMethod: parsed.cooking_method || "",
+        healthNotes: Array.isArray(parsed.recommendations) ? parsed.recommendations.join(" ") : (parsed.recommendations || ""),
+      };
+
+      return result;
+    } catch (err) {
+      console.error("💥 Retry parsing failed:", err);
+      throw new Error("Image analysis failed. Please try a clearer photo.");
+    }
   }
 
   private static getIntelligentFallbackAnalysis(

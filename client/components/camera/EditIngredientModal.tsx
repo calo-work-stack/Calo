@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { X } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { Ingredient } from "@/src/types/camera";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -33,6 +34,8 @@ export function EditIngredientModal({
   onSave,
   onUpdateField,
 }: EditIngredientModalProps) {
+  const { t } = useTranslation();
+
   if (!ingredient) return null;
 
   return (
@@ -49,7 +52,7 @@ export function EditIngredientModal({
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
-              {isEditing ? "Edit" : "Add"} Ingredient
+              {isEditing ? t("smartIngredient.editIngredient") : t("smartIngredient.addIngredient")}
             </Text>
             <TouchableOpacity onPress={onClose}>
               <X size={24} color="#6B7280" />
@@ -62,19 +65,19 @@ export function EditIngredientModal({
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Name *</Text>
+              <Text style={styles.inputLabel}>{t("smartIngredient.ingredientName")} *</Text>
               <TextInput
                 style={styles.modalInput}
                 value={ingredient.name}
                 onChangeText={(text) => onUpdateField("name", text)}
-                placeholder="Enter ingredient name"
+                placeholder={t("smartIngredient.inputPlaceholder")}
                 placeholderTextColor="#9CA3AF"
               />
             </View>
 
             <View style={styles.inputRow}>
               <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.inputLabel}>Calories</Text>
+                <Text style={styles.inputLabel}>{t("camera.analysis.totalCalories")}</Text>
                 <TextInput
                   style={styles.modalInput}
                   value={ingredient.calories?.toString() || "0"}
@@ -88,7 +91,7 @@ export function EditIngredientModal({
               </View>
 
               <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.inputLabel}>Protein (g)</Text>
+                <Text style={styles.inputLabel}>{t("camera.analysis.protein")} (g)</Text>
                 <TextInput
                   style={styles.modalInput}
                   value={ingredient.protein?.toString() || "0"}
@@ -104,7 +107,7 @@ export function EditIngredientModal({
 
             <View style={styles.inputRow}>
               <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.inputLabel}>Carbs (g)</Text>
+                <Text style={styles.inputLabel}>{t("camera.analysis.carbs")} (g)</Text>
                 <TextInput
                   style={styles.modalInput}
                   value={ingredient.carbs?.toString() || "0"}
@@ -118,7 +121,7 @@ export function EditIngredientModal({
               </View>
 
               <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.inputLabel}>Fat (g)</Text>
+                <Text style={styles.inputLabel}>{t("camera.analysis.fat")} (g)</Text>
                 <TextInput
                   style={styles.modalInput}
                   value={ingredient.fat?.toString() || "0"}
@@ -134,7 +137,7 @@ export function EditIngredientModal({
 
             <View style={styles.inputRow}>
               <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.inputLabel}>Fiber (g)</Text>
+                <Text style={styles.inputLabel}>{t("camera.analysis.fiber")} (g)</Text>
                 <TextInput
                   style={styles.modalInput}
                   value={ingredient.fiber?.toString() || "0"}
@@ -148,7 +151,7 @@ export function EditIngredientModal({
               </View>
 
               <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.inputLabel}>Sugar (g)</Text>
+                <Text style={styles.inputLabel}>{t("camera.analysis.sugar")} (g)</Text>
                 <TextInput
                   style={styles.modalInput}
                   value={ingredient.sugar?.toString() || "0"}
@@ -163,7 +166,7 @@ export function EditIngredientModal({
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Sodium (mg)</Text>
+              <Text style={styles.inputLabel}>{t("camera.analysis.sodium")} (mg)</Text>
               <TextInput
                 style={styles.modalInput}
                 value={ingredient.sodium_mg?.toString() || "0"}
@@ -182,11 +185,11 @@ export function EditIngredientModal({
               style={styles.modalCancelButton}
               onPress={onClose}
             >
-              <Text style={styles.modalCancelText}>Cancel</Text>
+              <Text style={styles.modalCancelText}>{t("common.cancel")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.modalSaveButton} onPress={onSave}>
-              <Text style={styles.modalSaveText}>Save</Text>
+              <Text style={styles.modalSaveText}>{t("common.save")}</Text>
             </TouchableOpacity>
           </View>
         </View>

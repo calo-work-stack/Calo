@@ -30,7 +30,10 @@
       "Bash(pkill:*)",
       "WebSearch",
       "Bash(__NEW_LINE_6ca9698622160aa7__ echo \"\")",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(git:*)",
+      "Bash(node:*)",
+      "Bash(printf %s:*)"
     ]
   }
 }

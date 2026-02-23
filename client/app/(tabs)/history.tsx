@@ -40,6 +40,7 @@ import {
   Heart,
   Star,
   Flame,
+  Utensils,
 } from "lucide-react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { LinearGradient } from "expo-linear-gradient";
@@ -56,6 +57,21 @@ import {
 } from "@/components/loaders";
 
 const { width } = Dimensions.get("window");
+
+const formatDateHeader = (dateKey: string, t: any) => {
+  const date = new Date(dateKey + "T12:00:00");
+  const today = new Date().toISOString().split("T")[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+  if (dateKey === today) return t("common.today");
+  if (dateKey === yesterday) return t("common.yesterday");
+
+  return date.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  });
+};
 
 export default function HistoryScreen() {
   const { t } = useTranslation();
@@ -422,6 +438,41 @@ export default function HistoryScreen() {
         return <InsightsCard insights={item.data} />;
       }
 
+      if (item.type === "date_header") {
+        return (
+          <View style={styles.dateHeader}>
+            <View style={styles.dateHeaderLeft}>
+              <Text style={[styles.dateHeaderTitle, { color: colors.text }]}>
+                {formatDateHeader(item.dateKey, t)}
+              </Text>
+              <View style={styles.dateHeaderMeta}>
+                <Utensils size={11} color={colors.muted} />
+                <Text style={[styles.dateHeaderSub, { color: colors.muted }]}>
+                  {item.mealCount}{" "}
+                  {t("history.insights.totalMeals").toLowerCase()}
+                </Text>
+              </View>
+            </View>
+            <View
+              style={[
+                styles.dateHeaderCalBadge,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255,159,10,0.15)"
+                    : "#FFF8EE",
+                },
+              ]}
+            >
+              <Flame size={13} color="#FF9F0A" />
+              <Text style={styles.dateHeaderCalText}>
+                {item.totalCalories.toLocaleString()}
+              </Text>
+              <Text style={styles.dateHeaderCalUnit}>kcal</Text>
+            </View>
+          </View>
+        );
+      }
+
       const mealId = item.meal_id?.toString() || item.id?.toString();
 
       return (
@@ -443,24 +494,64 @@ export default function HistoryScreen() {
       handleDuplicateMeal,
       handleSaveRatings,
       highlightedMealId,
+      colors,
+      isDark,
+      t,
     ],
   );
 
-  // List data with insights card
+  // List data with insights card + date-grouped meals
   const listData = useMemo(() => {
     const data: any[] = [];
     if (insights) {
       data.push({ type: "insights", data: insights, key: "insights" });
     }
-    return data.concat(
-      filteredMeals.map((meal: any) => ({
-        ...meal,
-        key:
-          meal.meal_id?.toString() ||
-          meal.id?.toString() ||
-          Math.random().toString(),
-      })),
-    );
+
+    // Group meals by date
+    const groups: Record<string, any[]> = {};
+    filteredMeals.forEach((meal: any) => {
+      const dateStr = meal.created_at || meal.upload_time || "";
+      const dateKey = dateStr.split("T")[0] || dateStr.substring(0, 10) || "unknown";
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push(meal);
+    });
+
+    // Sort dates descending
+    const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+    sortedDates.forEach((dateKey) => {
+      const dayMeals = groups[dateKey];
+      const dayCalories = dayMeals.reduce(
+        (sum: number, m: any) => sum + (Number(m.calories) || 0),
+        0,
+      );
+      const dayProtein = dayMeals.reduce(
+        (sum: number, m: any) =>
+          sum + (Number(m.protein_g) || Number(m.protein) || 0),
+        0,
+      );
+
+      data.push({
+        type: "date_header",
+        dateKey,
+        mealCount: dayMeals.length,
+        totalCalories: Math.round(dayCalories),
+        totalProtein: Math.round(dayProtein),
+        key: `header_${dateKey}`,
+      });
+
+      dayMeals.forEach((meal: any) => {
+        data.push({
+          ...meal,
+          key:
+            meal.meal_id?.toString() ||
+            meal.id?.toString() ||
+            Math.random().toString(),
+        });
+      });
+    });
+
+    return data;
   }, [filteredMeals, insights]);
 
   // Empty state
@@ -586,6 +677,66 @@ export default function HistoryScreen() {
               )}
             </TouchableOpacity>
           </Animated.View>
+
+          {/* Quick Filters */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.quickFiltersScroll}
+            contentContainerStyle={styles.quickFilters}
+          >
+            {[
+              { key: "all", label: t("history.filters.all") },
+              { key: "today", label: t("history.filters.today") },
+              { key: "week", label: t("history.filters.thisWeek") },
+              { key: "month", label: t("history.filters.thisMonth") },
+              {
+                key: "favorites",
+                label: t("history.filters.favorites"),
+                icon: Heart,
+              },
+            ].map((filter) => {
+              const isActive = quickFilter === filter.key;
+              const FilterIcon = filter.icon;
+              return (
+                <TouchableOpacity
+                  key={filter.key}
+                  style={[
+                    styles.quickFilterChip,
+                    {
+                      backgroundColor: isActive ? colors.primary : colors.card,
+                      borderColor: isActive ? colors.primary : colors.border,
+                    },
+                  ]}
+                  onPress={() => setQuickFilter(filter.key as any)}
+                  activeOpacity={0.7}
+                >
+                  {FilterIcon && (
+                    <FilterIcon
+                      size={13}
+                      color={isActive ? "#FFF" : colors.muted}
+                      fill={
+                        isActive && filter.key === "favorites"
+                          ? "#FFF"
+                          : "transparent"
+                      }
+                    />
+                  )}
+                  <Text
+                    style={[
+                      styles.quickFilterText,
+                      {
+                        color: isActive ? "#FFF" : colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    {filter.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
           <TouchableOpacity
             style={[styles.fab]}
             onPress={() => setShowManualMealModal(true)}
@@ -762,7 +913,8 @@ const styles = StyleSheet.create({
   },
   quickFiltersScroll: {
     flexGrow: 0,
-    marginBottom: 8,
+    marginTop: 14,
+    marginBottom: 4,
   },
   quickFilters: {
     flexDirection: "row",
@@ -815,6 +967,51 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 24,
     opacity: 0.7,
+  },
+  dateHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 8,
+  },
+  dateHeaderLeft: {
+    gap: 4,
+  },
+  dateHeaderMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  dateHeaderTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.4,
+  },
+  dateHeaderSub: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  dateHeaderCalBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 12,
+    gap: 4,
+  },
+  dateHeaderCalText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#FF9F0A",
+    letterSpacing: -0.3,
+  },
+  dateHeaderCalUnit: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#FF9F0A",
+    opacity: 0.75,
   },
   clearFiltersButton: {
     marginTop: 24,

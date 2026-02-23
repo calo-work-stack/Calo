@@ -10,6 +10,7 @@ import {
   Switch,
   ActivityIndicator,
   Alert,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,7 +22,6 @@ import {
   Shield,
   CircleHelp as HelpCircle,
   LogOut,
-  ChevronLeft,
   CreditCard as Edit,
   Target,
   Scale,
@@ -30,7 +30,10 @@ import {
   Moon,
   ChevronRight,
   Camera,
-  Image as ImageIcon,
+  Star,
+  Flame,
+  Trophy,
+  Zap,
 } from "lucide-react-native";
 import EditProfile from "@/components/EditProfile";
 import NotificationSettings from "@/components/NotificationSettings";
@@ -46,6 +49,17 @@ import { useTheme } from "@/src/context/ThemeContext";
 import LanguageSelector from "@/components/LanguageSelector";
 import { MenuSection } from "@/src/types/profile";
 
+const { width } = Dimensions.get("window");
+
+const SECTION_BG_COLORS = [
+  "rgba(0,158,173,0.13)",
+  "rgba(245,158,11,0.13)",
+  "rgba(139,92,246,0.13)",
+  "rgba(59,130,246,0.13)",
+  "rgba(16,185,129,0.13)",
+  "rgba(239,68,68,0.13)",
+];
+
 export default function ProfileScreen() {
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
@@ -54,7 +68,6 @@ export default function ProfileScreen() {
   const { isDark, toggleTheme, colors } = useTheme();
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
-  const [notifications, setNotifications] = useState(true);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState({
     pushNotifications: true,
@@ -72,9 +85,7 @@ export default function ProfileScreen() {
       {
         text: t("profile.signout"),
         style: "destructive",
-        onPress: () => {
-          dispatch(signOut());
-        },
+        onPress: () => dispatch(signOut()),
       },
     ]);
   };
@@ -122,11 +133,6 @@ export default function ProfileScreen() {
       ...prev,
       [key]: !prev[key as keyof typeof prev],
     }));
-    console.log(
-      "🔔 Notification setting changed:",
-      key,
-      !notificationSettings[key as keyof typeof notificationSettings]
-    );
   };
 
   const handleMenuPress = (itemId: string) => {
@@ -148,10 +154,7 @@ export default function ProfileScreen() {
       [
         { text: t("common.cancel"), style: "cancel" },
         { text: t("profile.avatar.take_photo"), onPress: handleTakePhoto },
-        {
-          text: t("profile.avatar.choose_gallery"),
-          onPress: handleChooseFromGallery,
-        },
+        { text: t("profile.avatar.choose_gallery"), onPress: handleChooseFromGallery },
       ]
     );
   };
@@ -160,41 +163,30 @@ export default function ProfileScreen() {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          t("profile.avatar.permission_needed"),
-          t("profile.avatar.camera_permission")
-        );
+        Alert.alert(t("profile.avatar.permission_needed"), t("profile.avatar.camera_permission"));
         return;
       }
-
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
         base64: true,
       });
-
       if (!result.canceled && result.assets[0].base64) {
         await uploadAvatar(result.assets[0].base64);
       }
-    } catch (error) {
-      console.error("Camera error:", error);
+    } catch {
       Alert.alert(t("common.error"), t("profile.avatar.upload_error"));
     }
   };
 
   const handleChooseFromGallery = async () => {
     try {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          t("profile.avatar.permission_needed"),
-          t("profile.avatar.gallery_permission")
-        );
+        Alert.alert(t("profile.avatar.permission_needed"), t("profile.avatar.gallery_permission"));
         return;
       }
-
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -202,12 +194,10 @@ export default function ProfileScreen() {
         quality: 0.8,
         base64: true,
       });
-
       if (!result.canceled && result.assets[0].base64) {
         await uploadAvatar(result.assets[0].base64);
       }
-    } catch (error) {
-      console.error("Gallery error:", error);
+    } catch {
       Alert.alert(t("common.error"), t("profile.avatar.upload_error"));
     }
   };
@@ -215,31 +205,34 @@ export default function ProfileScreen() {
   const uploadAvatar = async (base64: string) => {
     try {
       setIsUploadingAvatar(true);
-
-      const response = await userAPI.uploadAvatar(
-        `data:image/jpeg;base64,${base64}`
-      );
-
+      const response = await userAPI.uploadAvatar(`data:image/jpeg;base64,${base64}`);
       if (response.success) {
-        dispatch(
-          updateUser({
-            avatar_url: response.avatar_url,
-          })
-        );
-
+        dispatch(updateUser({ avatar_url: response.avatar_url }));
         Alert.alert(t("common.success"), t("profile.avatar.upload_success"));
       } else {
         throw new Error(response.error || t("profile.avatar.upload_error"));
       }
     } catch (error: any) {
-      console.error("Avatar upload error:", error);
-      Alert.alert(
-        t("common.error"),
-        error.message || t("profile.avatar.upload_error")
-      );
+      Alert.alert(t("common.error"), error.message || t("profile.avatar.upload_error"));
     } finally {
       setIsUploadingAvatar(false);
     }
+  };
+
+  const getSubscriptionBadge = (type: string) => {
+    switch (type) {
+      case "PREMIUM":
+        return { color: "#FFD700", text: t("profile.PREMIUM") };
+      case "GOLD":
+        return { color: "#FF6B35", text: t("profile.GOLD") };
+      default:
+        return { color: "rgba(255,255,255,0.25)", text: t("profile.FREE") };
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return t("profile.status.not_set");
+    return new Date(dateString).toLocaleDateString();
   };
 
   const menuSections: MenuSection[] = [
@@ -249,19 +242,19 @@ export default function ProfileScreen() {
         {
           id: "editProfile",
           title: t("profile.edit_profile"),
-          icon: <Edit size={20} color={colors.icon} />,
+          icon: <Edit size={20} color="#009EAD" />,
           onPress: () => handleMenuPress("editProfile"),
         },
         {
           id: "changeAvatar",
           title: t("profile.change_avatar"),
-          icon: <Camera size={20} color={colors.icon} />,
+          icon: <Camera size={20} color="#009EAD" />,
           onPress: handleAvatarPress,
         },
         {
           id: "personalData",
           title: t("profile.personal_data"),
-          icon: <Target size={20} color={colors.icon} />,
+          icon: <Target size={20} color="#009EAD" />,
           onPress: () => handleMenuPress("personalData"),
         },
       ],
@@ -272,11 +265,9 @@ export default function ProfileScreen() {
         {
           id: "changePlan",
           title: t("profile.change_plan"),
-          icon: <Edit size={20} color={colors.icon} />,
+          icon: <Edit size={20} color="#F59E0B" />,
           onPress: handleChangePlan,
-          subtitle: `${t("profile.current")}: ${t(
-            `profile.${user?.subscription_type}`
-          )}`,
+          subtitle: `${t("profile.current")}: ${t(`profile.${user?.subscription_type}`)}`,
         },
         ...(user?.subscription_type !== "FREE"
           ? [
@@ -297,14 +288,12 @@ export default function ProfileScreen() {
         {
           id: "notifications",
           title: t("profile.notifications"),
-          icon: <Bell size={20} color={colors.icon} />,
+          icon: <Bell size={20} color="#8B5CF6" />,
           rightComponent: (
             <Switch
               value={notificationSettings.pushNotifications}
-              onValueChange={() =>
-                handleNotificationToggle("pushNotifications")
-              }
-              trackColor={{ false: colors.muted, true: colors.primary }}
+              onValueChange={() => handleNotificationToggle("pushNotifications")}
+              trackColor={{ false: colors.muted, true: "#8B5CF6" }}
               thumbColor={colors.surface}
             />
           ),
@@ -312,12 +301,12 @@ export default function ProfileScreen() {
         {
           id: "darkMode",
           title: t("profile.dark_mode"),
-          icon: <Moon size={20} color={colors.icon} />,
+          icon: <Moon size={20} color="#8B5CF6" />,
           rightComponent: (
             <Switch
               value={isDark}
               onValueChange={toggleTheme}
-              trackColor={{ false: colors.muted, true: colors.primary }}
+              trackColor={{ false: colors.muted, true: "#8B5CF6" }}
               thumbColor={colors.surface}
             />
           ),
@@ -325,7 +314,7 @@ export default function ProfileScreen() {
         {
           id: "language",
           title: t("profile.language"),
-          icon: <Globe size={20} color={colors.icon} />,
+          icon: <Globe size={20} color="#8B5CF6" />,
           subtitle: isRTL ? "עברית" : "English",
           onPress: () => setShowLanguageModal(true),
         },
@@ -337,13 +326,13 @@ export default function ProfileScreen() {
         {
           id: "support",
           title: t("profile.support"),
-          icon: <HelpCircle size={20} color={colors.icon} />,
+          icon: <HelpCircle size={20} color="#3B82F6" />,
           onPress: () => handleMenuPress("support"),
         },
         {
           id: "about",
           title: t("profile.about"),
-          icon: <User size={20} color={colors.icon} />,
+          icon: <User size={20} color="#3B82F6" />,
           onPress: () => handleMenuPress("about"),
         },
       ],
@@ -354,7 +343,7 @@ export default function ProfileScreen() {
         {
           id: "privacy",
           title: t("profile.privacy"),
-          icon: <Shield size={20} color={colors.icon} />,
+          icon: <Shield size={20} color="#10B981" />,
           onPress: () => handleMenuPress("privacy"),
         },
       ],
@@ -379,29 +368,13 @@ export default function ProfileScreen() {
         return <EditProfile onClose={() => setActiveSection(null)} />;
       case "notifications":
         return (
-          <View
-            style={[
-              styles.sectionContent,
-              { backgroundColor: colors.surfaceVariant },
-            ]}
-          >
-            <Text style={[styles.sectionContentTitle, { color: colors.text }]}>
+          <View style={styles.expandedInner}>
+            <Text style={[styles.expandedTitle, { color: colors.text }]}>
               {t("profile.notification_settings.title")}
             </Text>
             {Object.entries(notificationSettings).map(([key, value]) => (
-              <View
-                key={key}
-                style={[
-                  styles.notificationItem,
-                  { borderBottomColor: colors.border },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.notificationLabel,
-                    { color: colors.onSurface },
-                  ]}
-                >
+              <View key={key} style={[styles.notifRow, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.notifLabel, { color: colors.text }]}>
                   {t(`profile.notification_settings.${key}`)}
                 </Text>
                 <Switch
@@ -414,48 +387,13 @@ export default function ProfileScreen() {
             ))}
           </View>
         );
-      case "privacy":
-        return (
-          <View
-            style={[
-              styles.sectionContent,
-              { backgroundColor: colors.surfaceVariant },
-            ]}
-          >
-            <Text style={[styles.sectionContentTitle, { color: colors.text }]}>
-              {t("profile.privacy_settings.title")}
-            </Text>
-            <Text
-              style={[
-                styles.sectionContentText,
-                { color: colors.textSecondary },
-              ]}
-            >
-              {t("profile.privacy_settings.description")}
-              {"\n\n"}• {t("profile.privacy_settings.data_export")}
-              {"\n"}• {t("profile.privacy_settings.privacy_preferences")}
-              {"\n"}• {t("profile.privacy_settings.cookie_settings")}
-              {"\n"}• {t("profile.privacy_settings.third_party")}
-            </Text>
-          </View>
-        );
       case "support":
         return (
-          <View
-            style={[
-              styles.sectionContent,
-              { backgroundColor: colors.surfaceVariant },
-            ]}
-          >
-            <Text style={[styles.sectionContentTitle, { color: colors.text }]}>
+          <View style={styles.expandedInner}>
+            <Text style={[styles.expandedTitle, { color: colors.text }]}>
               {t("profile.help_support.title")}
             </Text>
-            <Text
-              style={[
-                styles.sectionContentText,
-                { color: colors.textSecondary },
-              ]}
-            >
+            <Text style={[styles.expandedBody, { color: colors.textSecondary }]}>
               {t("profile.help_support.welcome")}
               {"\n\n"}• {t("profile.help_support.tip_camera")}
               {"\n"}• {t("profile.help_support.tip_water")}
@@ -466,30 +404,14 @@ export default function ProfileScreen() {
         );
       case "about":
         return (
-          <View
-            style={[
-              styles.sectionContent,
-              { backgroundColor: colors.surfaceVariant },
-            ]}
-          >
-            <Text style={[styles.sectionContentTitle, { color: colors.text }]}>
+          <View style={styles.expandedInner}>
+            <Text style={[styles.expandedTitle, { color: colors.text }]}>
               {t("profile.about_app.title")}
             </Text>
-            <Text
-              style={[
-                styles.sectionContentText,
-                { color: colors.textSecondary },
-              ]}
-            >
+            <Text style={[styles.expandedBody, { color: colors.textSecondary }]}>
               {t("profile.about_app.version")}
               {"\n\n"}
               {t("profile.about_app.description")}
-              {"\n\n"}
-              {t("profile.about_app.features")}
-              {"\n"}• {t("profile.about_app.feature_ai")}
-              {"\n"}• {t("profile.about_app.feature_tracking")}
-              {"\n"}• {t("profile.about_app.feature_goals")}
-              {"\n"}• {t("profile.about_app.feature_recommendations")}
             </Text>
           </View>
         );
@@ -498,289 +420,165 @@ export default function ProfileScreen() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return t("profile.status.not_set");
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  const getSubscriptionBadge = (type: string) => {
-    switch (type) {
-      case "PREMIUM":
-        return { color: "#FFD700", text: t("profile.PREMIUM") };
-      case "GOLD":
-        return { color: "#FF6B35", text: t("profile.GOLD") };
-      default:
-        return { color: colors.tabIconDefault, text: t("profile.FREE") };
-    }
-  };
-
-  const profileStats = [
-    {
-      label: t("profile.lable.ai_requests"),
-      value: (user?.ai_requests_count || 0).toString(),
-      icon: <Target size={20} color={colors.error} />,
-    },
-    {
-      label: t("profile.lable.member_since"),
-      value: formatDate(user?.created_at ?? ""),
-      icon: <Scale size={20} color={colors.warning} />,
-    },
-    {
-      label: t("profile.lable.profile_status"),
-      value: user?.is_questionnaire_completed
-        ? t("profile.complete")
-        : t("profile.incomplete"),
-      icon: <Activity size={20} color={colors.primary} />,
-    },
-  ];
+  const badge = getSubscriptionBadge(user?.subscription_type ?? "");
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-    >
-      <StatusBar
-        barStyle={isDark ? "light-content" : "dark-content"}
-        backgroundColor={colors.background}
-      />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={[styles.header, isRTL && styles.headerRTL]}>
-          <View>
-            <Text
-              style={[
-                styles.title,
-                { color: colors.text },
-                isRTL && styles.titleRTL,
-              ]}
-            >
-              {t("profile.title")}
-            </Text>
-            <Text
-              style={[
-                styles.subtitle,
-                { color: colors.textSecondary },
-                isRTL && styles.subtitleRTL,
-              ]}
-            >
-              {t("profile.subtitle")}
-            </Text>
-          </View>
-        </View>
 
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <LinearGradient
-            colors={[colors.primary, colors.primaryContainer]}
-            style={styles.profileGradient}
+        {/* ── Hero gradient ── */}
+        <LinearGradient
+          colors={isDark ? ["#005F6B", "#001E26"] : ["#009EAD", "#006070"]}
+          style={styles.heroGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.heroDecor1} />
+          <View style={styles.heroDecor2} />
+
+          <TouchableOpacity
+            style={styles.heroAvatarWrap}
+            onPress={handleAvatarPress}
+            disabled={isUploadingAvatar}
           >
-            <TouchableOpacity
-              style={styles.profileAvatar}
-              onPress={handleAvatarPress}
-              disabled={isUploadingAvatar}
+            <LinearGradient
+              colors={["rgba(255,255,255,0.4)", "rgba(255,255,255,0.1)"]}
+              style={styles.heroAvatarRing}
             >
               {user?.avatar_url && user.avatar_url.trim() !== "" ? (
-                <Image
-                  source={{ uri: user.avatar_url }}
-                  style={styles.avatarImage}
-                  onError={(error) => {
-                    console.warn("Avatar image failed to load:", error);
-                  }}
-                />
+                <Image source={{ uri: user.avatar_url }} style={styles.heroAvatarImg} />
               ) : (
-                <View
-                  style={[
-                    styles.avatarImage,
-                    styles.avatarPlaceholder,
-                    { backgroundColor: colors.surfaceVariant },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.avatarPlaceholderText,
-                      { color: colors.primary },
-                    ]}
-                  >
+                <View style={[styles.heroAvatarImg, styles.heroAvatarFallback]}>
+                  <Text style={styles.heroAvatarLetter}>
                     {(user?.name || "U").charAt(0).toUpperCase()}
                   </Text>
                 </View>
               )}
-              <View style={styles.avatarOverlay}>
-                {isUploadingAvatar ? (
-                  <ActivityIndicator size="small" color={colors.onPrimary} />
-                ) : (
-                  <Camera size={16} color={colors.onPrimary} />
-                )}
-              </View>
-            </TouchableOpacity>
-            <View style={[styles.profileInfo, isRTL && styles.profileInfoRTL]}>
-              <Text
-                style={[
-                  styles.profileName,
-                  { color: colors.onPrimary },
-                  isRTL && styles.profileNameRTL,
-                ]}
-              >
-                {user?.name || t("profile.name")}
-              </Text>
-              <Text
-                style={[
-                  styles.profileEmail,
-                  { color: colors.onPrimary },
-                  isRTL && styles.profileEmailRTL,
-                ]}
-              >
-                {user?.email || t("profile.email")}
-              </Text>
-              <View
-                style={[
-                  styles.subscriptionBadge,
-                  {
-                    backgroundColor: getSubscriptionBadge(
-                      user?.subscription_type ?? ""
-                    ).color,
-                  },
-                ]}
-              >
-                <Text
-                  style={[styles.subscriptionText, { color: colors.onPrimary }]}
-                >
-                  {getSubscriptionBadge(user?.subscription_type ?? "").text}
-                </Text>
-              </View>
+            </LinearGradient>
+            <View style={styles.heroEditDot}>
+              {isUploadingAvatar ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Camera size={13} color="#FFF" />
+              )}
             </View>
-          </LinearGradient>
-        </View>
+          </TouchableOpacity>
 
-        {/* Profile Stats */}
-        <View style={styles.section}>
-          <Text
-            style={[
-              styles.sectionTitle,
-              { color: colors.text },
-              isRTL && styles.sectionTitleRTL,
-            ]}
-          >
-            {t("profile.stats")}
-          </Text>
-          <View style={styles.statsContainer}>
-            {profileStats.map((stat, index) => (
-              <View key={index} style={styles.statCard}>
-                <LinearGradient
-                  colors={[colors.card, colors.surface]}
-                  style={styles.statGradient}
-                >
-                  <View style={styles.statHeader}>
-                    {stat.icon}
-                    <Text
-                      style={[
-                        styles.statLabel,
-                        { color: colors.onSurface },
-                        isRTL && styles.statLabelRTL,
-                      ]}
-                    >
-                      {stat.label}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.statValue,
-                      { color: colors.success },
-                      isRTL && styles.statValueRTL,
-                    ]}
-                  >
-                    {stat.value}
-                  </Text>
-                </LinearGradient>
-              </View>
-            ))}
+          <Text style={styles.heroName}>{user?.name || t("profile.name")}</Text>
+          <Text style={styles.heroEmail}>{user?.email || t("profile.email")}</Text>
+
+          <View style={[styles.heroPlanBadge, { backgroundColor: badge.color }]}>
+            <Text style={styles.heroPlanText}>{badge.text}</Text>
+          </View>
+        </LinearGradient>
+
+        {/* ── Floating stats strip ── */}
+        <View style={[styles.statsStrip, { backgroundColor: colors.surface }]}>
+          <View style={styles.stripStat}>
+            <Star size={20} color="#FFD700" fill="#FFD700" strokeWidth={0} />
+            <Text style={[styles.stripValue, { color: colors.text }]}>{user?.level || 1}</Text>
+            <Text style={[styles.stripLabel, { color: colors.muted }]}>{t("home.level")}</Text>
+          </View>
+          <View style={[styles.stripDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.stripStat}>
+            <Flame size={20} color="#FF6B6B" />
+            <Text style={[styles.stripValue, { color: colors.text }]}>{user?.current_streak || 0}</Text>
+            <Text style={[styles.stripLabel, { color: colors.muted }]}>{t("home.streak")}</Text>
+          </View>
+          <View style={[styles.stripDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.stripStat}>
+            <Trophy size={20} color="#FF9500" />
+            <Text style={[styles.stripValue, { color: colors.text }]}>{(user?.total_points || 0).toLocaleString()}</Text>
+            <Text style={[styles.stripLabel, { color: colors.muted }]}>{t("home.totalXP")}</Text>
           </View>
         </View>
 
-        {/* Menu Sections */}
+        {/* ── Account info grid ── */}
+        <View style={styles.infoSection}>
+          <View style={styles.infoGrid}>
+            <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
+              <View style={[styles.infoIconBox, { backgroundColor: "rgba(239,68,68,0.12)" }]}>
+                <Zap size={18} color="#EF4444" />
+              </View>
+              <Text style={[styles.infoValue, { color: colors.text }]}>{user?.ai_requests_count || 0}</Text>
+              <Text style={[styles.infoLabel, { color: colors.muted }]}>{t("profile.lable.ai_requests")}</Text>
+            </View>
+            <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
+              <View style={[styles.infoIconBox, { backgroundColor: "rgba(245,158,11,0.12)" }]}>
+                <Scale size={18} color="#F59E0B" />
+              </View>
+              <Text style={[styles.infoValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                {formatDate(user?.created_at ?? "")}
+              </Text>
+              <Text style={[styles.infoLabel, { color: colors.muted }]}>{t("profile.lable.member_since")}</Text>
+            </View>
+            <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
+              <View style={[styles.infoIconBox, { backgroundColor: "rgba(16,185,129,0.12)" }]}>
+                <Activity size={18} color="#10B981" />
+              </View>
+              <Text style={[styles.infoValue, { color: user?.is_questionnaire_completed ? "#10B981" : "#EF4444" }]}>
+                {user?.is_questionnaire_completed ? t("profile.complete") : t("profile.incomplete")}
+              </Text>
+              <Text style={[styles.infoLabel, { color: colors.muted }]}>{t("profile.lable.profile_status")}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Menu sections ── */}
         {menuSections.map((section, sectionIndex) => (
-          <View key={sectionIndex} style={styles.section}>
-            <Text
-              style={[
-                styles.sectionTitle,
-                { color: colors.text },
-                isRTL && styles.sectionTitleRTL,
-              ]}
-            >
-              {section.title}
+          <View key={sectionIndex} style={styles.menuSection}>
+            <Text style={[styles.menuSectionLabel, { color: colors.muted }]}>
+              {section.title.toUpperCase()}
             </Text>
-            <View
-              style={[
-                styles.menuContainer,
-                { backgroundColor: colors.surface },
-              ]}
-            >
+            <View style={[styles.menuCard, { backgroundColor: colors.surface }]}>
               {section.items.map((item, itemIndex) => (
                 <View key={itemIndex}>
                   <TouchableOpacity
                     style={[
-                      styles.menuItem,
-                      { borderBottomColor: colors.border },
+                      styles.menuRow,
+                      itemIndex < section.items.length - 1 && {
+                        borderBottomWidth: 1,
+                        borderBottomColor: colors.border,
+                      },
                       activeSection === item.id && {
-                        backgroundColor: colors.surfaceVariant,
+                        backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)",
                       },
                     ]}
                     onPress={item.onPress}
-                    activeOpacity={0.8}
+                    activeOpacity={0.7}
                   >
-                    <View
-                      style={[
-                        styles.menuItemLeft,
-                        isRTL && styles.menuItemLeftRTL,
-                      ]}
-                    >
+                    <View style={styles.menuRowLeft}>
                       <View
                         style={[
-                          styles.menuItemIcon,
-                          { backgroundColor: colors.card },
-                          item.danger && {
-                            backgroundColor: colors.error + "20",
+                          styles.menuIconBox,
+                          {
+                            backgroundColor: item.danger
+                              ? "rgba(239,68,68,0.12)"
+                              : SECTION_BG_COLORS[sectionIndex] || "rgba(0,158,173,0.12)",
                           },
                         ]}
                       >
                         {item.icon}
                       </View>
-                      <View>
-                        <Text
-                          style={[
-                            styles.menuItemTitle,
-                            { color: colors.text },
-                            item.danger && { color: colors.error },
-                            isRTL && styles.menuItemTitleRTL,
-                          ]}
-                        >
+                      <View style={styles.menuTexts}>
+                        <Text style={[styles.menuItemTitle, { color: item.danger ? colors.error : colors.text }]}>
                           {item.title}
                         </Text>
                         {item.subtitle && (
-                          <Text
-                            style={[
-                              styles.menuItemSubtitle,
-                              { color: colors.textSecondary },
-                              isRTL && styles.menuItemSubtitleRTL,
-                            ]}
-                          >
+                          <Text style={[styles.menuItemSubtitle, { color: colors.muted }]}>
                             {item.subtitle}
                           </Text>
                         )}
                       </View>
                     </View>
-                    <View style={styles.menuItemRight}>
-                      {item.rightComponent ||
-                        (isRTL ? (
-                          <ChevronRight size={20} color={colors.icon} />
-                        ) : (
-                          <ChevronLeft size={20} color={colors.icon} />
-                        ))}
+                    <View style={styles.menuRowRight}>
+                      {item.rightComponent || <ChevronRight size={17} color={colors.muted} />}
                     </View>
                   </TouchableOpacity>
 
-                  {/* Render section content */}
                   {activeSection === item.id && (
-                    <View style={styles.sectionContent}>
+                    <View style={[styles.expandedSection, { borderTopColor: colors.border }]}>
                       {renderSectionContent()}
                     </View>
                   )}
@@ -789,239 +587,276 @@ export default function ProfileScreen() {
             </View>
           </View>
         ))}
+
+        <View style={styles.bottomSpacing} />
       </ScrollView>
+
+      <LanguageSelector showModal={showLanguageModal} onToggleModal={() => setShowLanguageModal(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  container: { flex: 1 },
+
+  /* ── Hero ── */
+  heroGradient: {
+    paddingTop: 60,
+    paddingBottom: 56,
+    alignItems: "center",
+    overflow: "hidden",
+    position: "relative",
+  },
+  heroDecor1: {
+    position: "absolute",
+    top: -60,
+    right: -60,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.07)",
+  },
+  heroDecor2: {
+    position: "absolute",
+    bottom: -50,
+    left: -50,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  heroAvatarWrap: {
+    position: "relative",
+    marginBottom: 18,
+  },
+  heroAvatarRing: {
+    width: 106,
+    height: 106,
+    borderRadius: 53,
+    padding: 3,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  heroAvatarImg: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  heroAvatarFallback: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  heroAvatarLetter: {
+    fontSize: 40,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  heroEditDot: {
+    position: "absolute",
+    bottom: 3,
+    right: 3,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderWidth: 2,
+    borderColor: "#FFF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  heroName: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    letterSpacing: -0.5,
+    marginBottom: 5,
+  },
+  heroEmail: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.78)",
+    fontWeight: "500",
+    marginBottom: 18,
+  },
+  heroPlanBadge: {
+    paddingHorizontal: 18,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  heroPlanText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#FFF",
+    letterSpacing: 0.8,
   },
 
-  /* ================= HEADER ================= */
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
+  /* ── Stats strip ── */
+  statsStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 24,
+    marginTop: -30,
+    borderRadius: 24,
+    paddingVertical: 22,
+    paddingHorizontal: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.13,
+    shadowRadius: 20,
+    elevation: 10,
   },
-  headerRTL: {
-    alignItems: "flex-end",
+  stripStat: {
+    flex: 1,
+    alignItems: "center",
+    gap: 5,
   },
-  title: {
-    fontSize: 30,
+  stripValue: {
+    fontSize: 22,
     fontWeight: "800",
     letterSpacing: -0.5,
+    marginTop: 3,
   },
-  titleRTL: {
-    textAlign: "right",
+  stripLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  subtitle: {
-    fontSize: 14,
-    marginTop: 6,
-  },
-  subtitleRTL: {
-    textAlign: "right",
+  stripDivider: {
+    width: 1,
+    height: 46,
   },
 
-  /* ================= PROFILE CARD ================= */
-  profileCard: {
-    marginHorizontal: 20,
-    marginBottom: 28,
-    borderRadius: 24,
-    overflow: "hidden",
+  /* ── Info grid ── */
+  infoSection: {
+    paddingHorizontal: 24,
+    marginTop: 26,
+    marginBottom: 4,
   },
-  profileGradient: {
+  infoGrid: {
     flexDirection: "row",
-    alignItems: "center",
-    padding: 22,
-  },
-  profileAvatar: {
-    marginRight: 18,
-  },
-  avatarImage: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    borderWidth: 3,
-    borderColor: "rgba(255,255,255,0.35)",
-  },
-  avatarPlaceholder: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarPlaceholderText: {
-    fontSize: 34,
-    fontWeight: "800",
-  },
-  avatarOverlay: {
-    position: "absolute",
-    bottom: 2,
-    right: 2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "rgba(0,0,0,0.65)",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  profileInfo: {
-    flex: 1,
-  },
-  profileInfoRTL: {
-    alignItems: "flex-end",
-  },
-  profileName: {
-    fontSize: 22,
-    fontWeight: "700",
-  },
-  profileNameRTL: {
-    textAlign: "right",
-  },
-  profileEmail: {
-    fontSize: 14,
-    marginTop: 4,
-    opacity: 0.85,
-  },
-  profileEmailRTL: {
-    textAlign: "right",
-  },
-  subscriptionBadge: {
-    marginTop: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 999,
-    alignSelf: "flex-start",
-  },
-  subscriptionText: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.6,
-  },
-
-  /* ================= SECTIONS ================= */
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 28,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 14,
-  },
-  sectionTitleRTL: {
-    textAlign: "right",
-  },
-
-  /* ================= STATS ================= */
-  statsContainer: {
     gap: 12,
   },
-  statCard: {
-    borderRadius: 18,
-    overflow: "hidden",
-  },
-  statGradient: {
-    padding: 18,
-  },
-  statHeader: {
-    flexDirection: "row",
+  infoCard: {
+    flex: 1,
+    borderRadius: 20,
+    padding: 16,
     alignItems: "center",
-    marginBottom: 10,
+    gap: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  statLabel: {
+  infoIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 2,
+  },
+  infoValue: {
     fontSize: 14,
-    fontWeight: "600",
-    marginLeft: 10,
-  },
-  statLabelRTL: {
-    marginLeft: 0,
-    marginRight: 10,
-  },
-  statValue: {
-    fontSize: 22,
     fontWeight: "800",
+    letterSpacing: -0.3,
+    textAlign: "center",
   },
-  statValueRTL: {
-    textAlign: "right",
+  infoLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+    textAlign: "center",
   },
 
-  /* ================= MENU ================= */
-  menuContainer: {
+  /* ── Menu ── */
+  menuSection: {
+    paddingHorizontal: 24,
+    marginTop: 26,
+  },
+  menuSectionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.9,
+    marginBottom: 10,
+    paddingHorizontal: 2,
+  },
+  menuCard: {
     borderRadius: 20,
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  menuItem: {
+  menuRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
   },
-  menuItemLeft: {
+  menuRowLeft: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    gap: 14,
   },
-  menuItemLeftRTL: {
-    flexDirection: "row-reverse",
-  },
-  menuItemIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  menuIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
     justifyContent: "center",
     alignItems: "center",
-    marginHorizontal: 14,
+  },
+  menuTexts: {
+    flex: 1,
+    gap: 2,
   },
   menuItemTitle: {
     fontSize: 15,
     fontWeight: "600",
-  },
-  menuItemTitleRTL: {
-    textAlign: "right",
+    letterSpacing: -0.1,
   },
   menuItemSubtitle: {
-    fontSize: 13,
-    marginTop: 2,
+    fontSize: 12,
+    fontWeight: "500",
   },
-  menuItemSubtitleRTL: {
-    textAlign: "right",
-  },
-  menuItemRight: {
-    marginLeft: 10,
+  menuRowRight: {
+    marginLeft: 8,
   },
 
-  /* ================= EXPANDED CONTENT ================= */
-  sectionContent: {
-    padding: 18,
+  /* ── Expanded content ── */
+  expandedSection: {
     borderTopWidth: 1,
   },
-  sectionContentTitle: {
-    fontSize: 17,
+  expandedInner: {
+    padding: 18,
+  },
+  expandedTitle: {
+    fontSize: 16,
     fontWeight: "700",
     marginBottom: 14,
   },
-  sectionContentText: {
+  expandedBody: {
     fontSize: 14,
     lineHeight: 22,
   },
-
-  /* ================= NOTIFICATIONS ================= */
-  notificationItem: {
+  notifRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 14,
+    paddingVertical: 13,
     borderBottomWidth: 1,
   },
-  notificationLabel: {
-    fontSize: 15,
+  notifLabel: {
+    fontSize: 14,
     fontWeight: "500",
     flex: 1,
   },
+
+  bottomSpacing: { height: 52 },
 });

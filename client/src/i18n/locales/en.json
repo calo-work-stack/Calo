@@ -654,10 +654,20 @@
       "protein": "Protein",
       "fat": "Fat",
       "carbs": "Carbs",
+      "fiber": "Fiber",
+      "sugar": "Sugar",
+      "sodium": "Sodium",
+      "healthScore": "Health Score",
       "macronutrients": "Macronutrients",
       "swipeToExplore": "Swipe to explore",
       "ofTotalMacros": "of total macros"
     },
+    "ingredients": {
+      "addToList": "Add to list",
+      "addAll": "Add all to list"
+    },
+    "delete_analysis": "Delete Analysis",
+    "delete_confirmation": "Are you sure you want to delete this meal analysis?",
     "healthInsights": "Health Insights",
     "aiRecommendations": "AI-powered recommendations",
     "nutritionalAnalysis": "Nutritional Analysis",
@@ -685,7 +695,10 @@
     "delete_confirm_title": "Delete Item",
     "delete_confirm_message": "Remove",
     "total_nutrition": "Total Nutrition",
-    "items_count": "{{count}} items"
+    "items_count": "{{count}} items",
+    "clear": "Clear",
+    "clear_purchased_title": "Clear Purchased",
+    "clear_purchased_message": "Remove all purchased items from the list?"
   },
   "foodScanner": {
     "title": "Food Scanner",
@@ -3030,5 +3043,12 @@
     "upcoming": "Upcoming",
     "today": "Today",
     "currently_active": "Currently Active"
+  },
+  "units": {
+    "grams": "g",
+    "pieces": "pcs",
+    "kcal": "kcal",
+    "mg": "mg",
+    "ml": "ml"
   }
 }

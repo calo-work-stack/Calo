@@ -51,8 +51,9 @@ export interface AnalysisData {
   cholesterol_mg?: number;
   serving_size_g?: number;
   ingredients?: Ingredient[];
-  healthScore?: string;
-  recommendations?: string;
+  healthScore?: string | number;
+  health_score?: number;
+  recommendations?: string | string[];
   cookingMethod?: string;
   cooking_method?: string;
   food_category?: string;

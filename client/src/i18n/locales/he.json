@@ -873,9 +873,17 @@
       "protein": "חלבון",
       "fat": "שומן",
       "carbs": "פחמימות",
+      "fiber": "סיבים",
+      "sugar": "סוכר",
+      "sodium": "נתרן",
+      "healthScore": "ציון בריאות",
       "macronutrients": "מקרו‑נוטריינטים",
       "swipeToExplore": "גלול",
       "ofTotalMacros": "מתוך סך כל הערכים התזונתיים"
+    },
+    "ingredients": {
+      "addToList": "הוסף לרשימה",
+      "addAll": "הוסף הכל לרשימה"
     },
     "mealType": {
       "title": "בחר סוג ארוחה",
@@ -2401,7 +2409,10 @@
     "delete_confirm_title": "מחיקת פריט",
     "delete_confirm_message": "הסרת",
     "total_nutrition": "ערכים תזונתיים",
-    "items_count": "{{count}} פריטים"
+    "items_count": "{{count}} פריטים",
+    "clear": "נקה",
+    "clear_purchased_title": "נקה פריטים שנקנו",
+    "clear_purchased_message": "להסיר את כל הפריטים שנקנו מהרשימה?"
   },
   "ingredients": {
     "title": "מרכיבים",
@@ -2920,5 +2931,12 @@
     "upcoming": "עתידי",
     "today": "היום",
     "currently_active": "פעיל כעת"
+  },
+  "units": {
+    "grams": "גר'",
+    "pieces": "יח'",
+    "kcal": "קק\"ל",
+    "mg": "מ\"ג",
+    "ml": "מ\"ל"
   }
 }

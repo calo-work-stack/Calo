@@ -58,6 +58,20 @@ import { HomeScreenSkeleton, MealImagePlaceholder } from "@/components/loaders";
 
 const { width } = Dimensions.get("window");
 
+const MEAL_PERIOD_COLORS: Record<string, string> = {
+  breakfast: "#FF9F0A",
+  lunch: "#FF6B6B",
+  dinner: "#8B5CF6",
+  snack: "#10B981",
+  late_night: "#6366F1",
+  other: "#8E8E93",
+};
+
+const getMealPeriodColor = (period?: string) => {
+  const key = (period || "other").toLowerCase().replace(/\s+/g, "_");
+  return MEAL_PERIOD_COLORS[key] ?? MEAL_PERIOD_COLORS.other;
+};
+
 const HomeScreen = React.memo(() => {
   const dispatch = useDispatch<AppDispatch>();
   const { t } = useTranslation();
@@ -683,7 +697,31 @@ const HomeScreen = React.memo(() => {
                   >
                     {getCurrentDate()}
                   </Text>
+                  {(user?.current_streak ?? 0) > 0 && (
+                    <View style={styles.headerStreakRow}>
+                      <Flame size={11} color="#FF6B6B" />
+                      <Text style={styles.headerStreakText}>
+                        {user!.current_streak} {t("home.daysInARow")}
+                      </Text>
+                    </View>
+                  )}
                 </View>
+              </View>
+              {/* Level badge */}
+              <View
+                style={[
+                  styles.headerLevelBadge,
+                  {
+                    backgroundColor: isDark
+                      ? "rgba(255,215,0,0.12)"
+                      : "#FFFBEB",
+                  },
+                ]}
+              >
+                <Star size={13} color="#FFD700" fill="#FFD700" strokeWidth={0} />
+                <Text style={[styles.headerLevelText, { color: colors.text }]}>
+                  {t("home.level")} {user?.level || 1}
+                </Text>
               </View>
             </View>
           </View>
@@ -867,6 +905,10 @@ const HomeScreen = React.memo(() => {
                       >
                         {t("home.keepItUp")}
                       </Text>
+                      {/* XP mini progress bar */}
+                      <View style={[styles.xpTrack, { backgroundColor: isDark ? "rgba(255,215,0,0.1)" : "rgba(255,215,0,0.2)" }]}>
+                        <View style={[styles.xpFill, { width: `${Math.min(((user?.total_points || 0) % 500) / 5, 100)}%` }]} />
+                      </View>
                     </View>
                   </View>
                 </LinearGradient>
@@ -924,6 +966,25 @@ const HomeScreen = React.memo(() => {
                       >
                         {t("home.daysInARow")}
                       </Text>
+                      {/* 7-day streak dots */}
+                      <View style={styles.streakDots}>
+                        {[...Array(7)].map((_, i) => (
+                          <View
+                            key={i}
+                            style={[
+                              styles.streakDot,
+                              {
+                                backgroundColor:
+                                  i < (user?.current_streak || 0)
+                                    ? "#FF6B6B"
+                                    : isDark
+                                    ? "rgba(255,255,255,0.12)"
+                                    : "rgba(255,107,107,0.18)",
+                              },
+                            ]}
+                          />
+                        ))}
+                      </View>
                     </View>
                   </View>
                 </LinearGradient>
@@ -1098,6 +1159,13 @@ const HomeScreen = React.memo(() => {
                     }}
                     activeOpacity={0.7}
                   >
+                    {/* Meal period accent bar */}
+                    <View
+                      style={[
+                        styles.mealAccentBar,
+                        { backgroundColor: getMealPeriodColor((meal as any).meal_period) },
+                      ]}
+                    />
                     {meal.image_url && !meal.image_url.includes("placeholder") ? (
                       <View style={styles.mealImageWrapper}>
                         <Image
@@ -1123,6 +1191,23 @@ const HomeScreen = React.memo(() => {
                       >
                         {meal.created_at && formatTime(meal.created_at)}
                       </Text>
+                      <View style={styles.activityMacros}>
+                        <View style={[styles.miniMacroPill, { backgroundColor: "rgba(255,59,48,0.1)" }]}>
+                          <Text style={[styles.miniMacroText, { color: "#FF3B30" }]}>
+                            P {Math.round(meal.protein_g || meal.protein || 0)}g
+                          </Text>
+                        </View>
+                        <View style={[styles.miniMacroPill, { backgroundColor: "rgba(52,199,89,0.1)" }]}>
+                          <Text style={[styles.miniMacroText, { color: "#34C759" }]}>
+                            C {Math.round(meal.carbs_g || meal.carbs || 0)}g
+                          </Text>
+                        </View>
+                        <View style={[styles.miniMacroPill, { backgroundColor: "rgba(0,122,255,0.1)" }]}>
+                          <Text style={[styles.miniMacroText, { color: "#007AFF" }]}>
+                            F {Math.round((meal as any).fats_g || meal.fat || 0)}g
+                          </Text>
+                        </View>
+                      </View>
                     </View>
                     <View style={styles.caloriesBadge}>
                       <Text
@@ -1740,8 +1825,11 @@ const styles = StyleSheet.create({
   activityItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 18,
-    gap: 14,
+    paddingVertical: 16,
+    paddingRight: 18,
+    paddingLeft: 0,
+    gap: 12,
+    overflow: "hidden",
   },
   mealImageWrapper: {},
   mealImage: {
@@ -1756,9 +1844,81 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  // Header extras
+  headerStreakRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 4,
+  },
+  headerStreakText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FF6B6B",
+  },
+  headerLevelBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    gap: 6,
+  },
+  headerLevelText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+
+  // XP progress bar
+  xpTrack: {
+    height: 4,
+    borderRadius: 2,
+    marginTop: 8,
+    overflow: "hidden",
+  },
+  xpFill: {
+    height: "100%",
+    backgroundColor: "#FFD700",
+    borderRadius: 2,
+  },
+
+  // Streak dots
+  streakDots: {
+    flexDirection: "row",
+    gap: 4,
+    marginTop: 8,
+  },
+  streakDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+
+  // Meal accent bar
+  mealAccentBar: {
+    width: 3,
+    alignSelf: "stretch",
+    borderRadius: 2,
+    marginRight: 2,
+  },
+
   activityContent: {
     flex: 1,
+    gap: 3,
+  },
+  activityMacros: {
+    flexDirection: "row",
     gap: 4,
+    marginTop: 2,
+  },
+  miniMacroPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  miniMacroText: {
+    fontSize: 10,
+    fontWeight: "700",
   },
   activityTitle: {
     fontSize: 16,
