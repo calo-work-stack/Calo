@@ -771,6 +771,32 @@ const HomeScreen = React.memo(() => {
                   </View>
                 </View>
 
+                {/* Calorie progress bar */}
+                <View style={styles.greetingCalProgress}>
+                  <View style={styles.greetingCalProgressHeader}>
+                    <Flame size={12} color="rgba(255,255,255,0.9)" strokeWidth={2.5} />
+                    <Text style={styles.greetingCalProgressText}>
+                      {dailyGoals.calories} / {dailyGoals.targetCalories} kcal
+                    </Text>
+                    <Text style={styles.greetingCalProgressPct}>
+                      {Math.round(Math.min((dailyGoals.calories / (dailyGoals.targetCalories || 1)) * 100, 100))}%
+                    </Text>
+                  </View>
+                  <View style={styles.greetingCalTrack}>
+                    <View
+                      style={[
+                        styles.greetingCalFill,
+                        {
+                          width: `${Math.min(
+                            (dailyGoals.calories / (dailyGoals.targetCalories || 1)) * 100,
+                            100
+                          )}%` as any,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+
                 {/* Decorative Elements */}
                 <View style={styles.decorativeCircle1} />
                 <View style={styles.decorativeCircle2} />
@@ -1021,6 +1047,9 @@ const HomeScreen = React.memo(() => {
                   <Text style={[styles.actionLabel, { color: colors.text }]}>
                     {t("home.addMeal")}
                   </Text>
+                  <Text style={[styles.actionSubLabel, { color: colors.textSecondary }]}>
+                    {t("home.addMealSub")}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -1046,6 +1075,9 @@ const HomeScreen = React.memo(() => {
                   </View>
                   <Text style={[styles.actionLabel, { color: colors.text }]}>
                     {t("home.scanFood")}
+                  </Text>
+                  <Text style={[styles.actionSubLabel, { color: colors.textSecondary }]}>
+                    {t("home.scanFoodSub")}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -1073,6 +1105,9 @@ const HomeScreen = React.memo(() => {
                   <Text style={[styles.actionLabel, { color: colors.text }]}>
                     {t("home.shopping")}
                   </Text>
+                  <Text style={[styles.actionSubLabel, { color: colors.textSecondary }]}>
+                    {t("home.shoppingSub")}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -1099,6 +1134,9 @@ const HomeScreen = React.memo(() => {
                   <Text style={[styles.actionLabel, { color: colors.text }]}>
                     {t("home.statistics")}
                   </Text>
+                  <Text style={[styles.actionSubLabel, { color: colors.textSecondary }]}>
+                    {t("home.statisticsSub")}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -1124,6 +1162,37 @@ const HomeScreen = React.memo(() => {
                   strokeWidth={2.5}
                 />
               </TouchableOpacity>
+            </View>
+
+            {/* Daily macro totals summary */}
+            <View style={[styles.macroTotalsBar, { backgroundColor: colors.surface }]}>
+              {[
+                { label: "P", value: Math.round(dailyGoals.protein), target: dailyGoals.targetProtein, color: "#FF3B30" },
+                { label: "C", value: Math.round(dailyGoals.carbs), target: dailyGoals.targetCarbs, color: "#34C759" },
+                { label: "F", value: Math.round(dailyGoals.fat), target: dailyGoals.targetFat, color: "#007AFF" },
+              ].map((macro) => (
+                <View key={macro.label} style={styles.macroTotalItem}>
+                  <View style={[styles.macroTotalDot, { backgroundColor: macro.color }]} />
+                  <Text style={[styles.macroTotalValue, { color: colors.text }]}>
+                    {macro.value}
+                    <Text style={[styles.macroTotalUnit, { color: colors.textSecondary }]}>g</Text>
+                  </Text>
+                  <View style={[styles.macroTotalTrack, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }]}>
+                    <View
+                      style={[
+                        styles.macroTotalFill,
+                        {
+                          backgroundColor: macro.color,
+                          width: `${Math.min((macro.value / (macro.target || 1)) * 100, 100)}%` as any,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={[styles.macroTotalGoal, { color: colors.textSecondary }]}>
+                    / {macro.target}g
+                  </Text>
+                </View>
+              ))}
             </View>
 
             <View
@@ -1682,6 +1751,40 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     letterSpacing: 0.2,
   },
+  // Greeting calorie progress
+  greetingCalProgress: {
+    marginTop: 20,
+    zIndex: 2,
+  },
+  greetingCalProgressHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  greetingCalProgressText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.9)",
+  },
+  greetingCalProgressPct: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  greetingCalTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    overflow: "hidden",
+  },
+  greetingCalFill: {
+    height: "100%",
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.85)",
+  },
+
   decorativeCircle1: {
     position: "absolute",
     top: -40,
@@ -1795,6 +1898,54 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     letterSpacing: -0.2,
+  },
+  actionSubLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+
+  // Macro totals bar
+  macroTotalsBar: {
+    flexDirection: "row",
+    borderRadius: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginBottom: 12,
+    justifyContent: "space-around",
+  },
+  macroTotalItem: {
+    alignItems: "center",
+    gap: 5,
+    flex: 1,
+  },
+  macroTotalDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  macroTotalValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  macroTotalUnit: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  macroTotalTrack: {
+    height: 4,
+    width: "80%",
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  macroTotalFill: {
+    height: "100%",
+    borderRadius: 2,
+  },
+  macroTotalGoal: {
+    fontSize: 11,
+    fontWeight: "600",
   },
 
   // Enhanced Activity Section
