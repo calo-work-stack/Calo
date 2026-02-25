@@ -40,6 +40,13 @@ export interface GenerateMenuParams {
   targetCalories?: number;
   dietaryPreferences?: string[];
   excludedIngredients?: string[];
+  previousReview?: {
+    rating: number;
+    liked?: string | null;
+    disliked?: string | null;
+    suggestions?: string | null;
+    wouldRecommend?: boolean;
+  };
 }
 
 export interface MenuCompletionSummary {
@@ -342,9 +349,28 @@ export class RecommendedMenuService {
         nutritionPlan,
       );
 
+      // Fetch the most recent menu review so the AI can learn from past feedback
+      const latestReview = await prisma.menuReview.findFirst({
+        where: { user_id: params.userId },
+        orderBy: { created_at: "desc" },
+      });
+
+      const paramsWithReview: GenerateMenuParams = {
+        ...params,
+        ...(latestReview && {
+          previousReview: {
+            rating: latestReview.rating ?? 0,
+            liked: latestReview.liked,
+            disliked: latestReview.disliked,
+            suggestions: latestReview.suggestions,
+            wouldRecommend: latestReview.would_recommend ?? false,
+          },
+        }),
+      };
+
       // Generate menu using AI with comprehensive context or fallback
       const menuData = await this.generateMenuWithAI(
-        params,
+        paramsWithReview,
         questionnaire,
         nutritionPlan,
         userContext,
@@ -640,7 +666,15 @@ TDEE: ${healthInsights.estimatedTDEE}kcal | Recommended Adjustment: ${healthInsi
 - Cooking methods: ${questionnaire.available_cooking_methods?.join(", ") || "All methods"}
 ${params.customRequest ? `- Special request: ${params.customRequest}` : ""}
 
-=== PERSONALIZATION INSTRUCTIONS ===
+${params.previousReview ? `=== PREVIOUS MENU FEEDBACK ===
+Rating: ${params.previousReview.rating}/5 stars
+What they liked: ${params.previousReview.liked || "Not specified"}
+What they disliked: ${params.previousReview.disliked || "Not specified"}
+Suggestions for improvement: ${params.previousReview.suggestions || "None"}
+Would recommend: ${params.previousReview.wouldRecommend ? "Yes" : "No"}
+→ IMPORTANT: Use this feedback to improve this new menu. Include more of what they liked, avoid what they disliked, and act on their suggestions.
+
+` : ""}=== PERSONALIZATION INSTRUCTIONS ===
 1. Each day's total should match ~${dynamicTargets.calories}kcal with ${dynamicTargets.protein}g protein
 2. Use their PREFERRED foods: ${profile.likedFoods.slice(0, 5).join(", ")}
 3. AVOID their disliked foods completely

@@ -546,7 +546,7 @@ export default function HistoryScreen() {
           key:
             meal.meal_id?.toString() ||
             meal.id?.toString() ||
-            Math.random().toString(),
+            `${meal.upload_time ?? meal.created_at ?? ""}__${meal.meal_name ?? ""}__${dateKey}`,
         });
       });
     });

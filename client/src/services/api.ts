@@ -1130,6 +1130,40 @@ export const mealAPI = {
   },
 };
 
+// ==================== RECOMMENDED MENU API ====================
+
+export const recommendedMenuAPI = {
+  async getPendingReview(): Promise<any> {
+    const response = await api.get("/recommended-menus/pending-review");
+    if (!response.data.success) {
+      throw new APIError(
+        response.data.error || "Failed to check pending review",
+      );
+    }
+    return response.data;
+  },
+
+  async submitReview(
+    menuId: string,
+    data: {
+      rating: number;
+      liked?: string;
+      disliked?: string;
+      suggestions?: string;
+      wouldRecommend?: boolean;
+    },
+  ): Promise<any> {
+    const response = await api.post(
+      `/recommended-menus/${menuId}/review`,
+      data,
+    );
+    if (!response.data.success) {
+      throw new APIError(response.data.error || "Failed to submit review");
+    }
+    return response.data;
+  },
+};
+
 // ==================== MEAL PLAN API ====================
 
 export const mealPlanAPI = {

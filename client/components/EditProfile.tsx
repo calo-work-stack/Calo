@@ -10,7 +10,6 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { useSelector, useDispatch } from "react-redux";
@@ -24,10 +23,12 @@ import {
   AlertCircle,
   User,
   Calendar,
-  ChevronRight,
   ChevronDown,
-  Save,
   Check,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Trash2,
 } from "lucide-react-native";
 import { userAPI } from "@/src/services/api";
 import { signOut } from "@/src/store/authSlice";
@@ -45,17 +46,17 @@ export default function EditProfile({ onClose }: EditProfileProps) {
   const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
 
+  // ── Profile state ──────────────────────────────────────────────────────────
   const [profile, setProfile] = useState({
     name: user?.name || "",
     email: user?.email || "",
     birth_date: user?.birth_date || "",
   });
-  const [date, setDate] = useState(
-    profile.birth_date ? new Date(profile.birth_date) : new Date()
-  );
+  const [date, setDate] = useState(profile.birth_date ? new Date(profile.birth_date) : new Date());
   const [showPicker, setShowPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // ── Password state ─────────────────────────────────────────────────────────
   const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [isRequestingCode, setIsRequestingCode] = useState(false);
   const [codeRequested, setCodeRequested] = useState(false);
@@ -63,41 +64,33 @@ export default function EditProfile({ onClose }: EditProfileProps) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
 
+  // ── Danger zone state ──────────────────────────────────────────────────────
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
 
   const onChangeDate = (event: any, selectedDate?: Date) => {
     setShowPicker(Platform.OS === "ios");
     if (selectedDate) {
       setDate(selectedDate);
-      setProfile({
-        ...profile,
-        birth_date: selectedDate.toISOString().split("T")[0],
-      });
+      setProfile({ ...profile, birth_date: selectedDate.toISOString().split("T")[0] });
     }
   };
 
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      const response = await userAPI.updateProfile(profile);
-
-      // Update Redux state with new profile data
-      dispatch(updateUser({
-        name: profile.name,
-        email: profile.email,
-        birth_date: profile.birth_date,
-      }));
-
+      await userAPI.updateProfile(profile);
+      dispatch(updateUser({ name: profile.name, email: profile.email, birth_date: profile.birth_date }));
       Alert.alert(t("common.success"), t("profile.profile_updated"), [
         { text: t("common.ok"), onPress: onClose },
       ]);
     } catch (error: any) {
-      Alert.alert(
-        t("common.error"),
-        error.message || t("profile.update_failed")
-      );
+      Alert.alert(t("common.error"), error.message || t("profile.update_failed"));
     } finally {
       setIsSaving(false);
     }
@@ -109,28 +102,15 @@ export default function EditProfile({ onClose }: EditProfileProps) {
       const response = await userAPI.requestPasswordChange();
       if (response.success) {
         setCodeRequested(true);
-        Alert.alert(
-          t("common.success"),
-          t("auth.reset_password.reset_link_sent"),
-          [{ text: t("common.ok") }]
-        );
+        Alert.alert(t("common.success"), t("auth.reset_password.reset_link_sent"), [{ text: t("common.ok") }]);
         if (response.verificationCode) {
-          console.log(
-            `🔐 ${t("auth.email_verification.verification_code")}: ${
-              response.verificationCode
-            }`
-          );
+          console.log(`🔐 Code: ${response.verificationCode}`);
         }
       } else {
-        throw new Error(
-          response.error || t("auth.reset_password.reset_failed")
-        );
+        throw new Error(response.error || t("auth.reset_password.reset_failed"));
       }
     } catch (error: any) {
-      Alert.alert(
-        t("common.error"),
-        error.message || t("auth.reset_password.reset_failed")
-      );
+      Alert.alert(t("common.error"), error.message || t("auth.reset_password.reset_failed"));
     } finally {
       setIsRequestingCode(false);
     }
@@ -141,77 +121,41 @@ export default function EditProfile({ onClose }: EditProfileProps) {
       Alert.alert(t("common.error"), t("auth.email_verification.enter_code"));
       return;
     }
-
     if (newPassword.length < 6) {
-      Alert.alert(
-        t("common.error"),
-        t("auth.reset_password.password_too_short")
-      );
+      Alert.alert(t("common.error"), t("auth.reset_password.password_too_short"));
       return;
     }
-
     if (newPassword !== confirmPassword) {
-      Alert.alert(
-        t("common.error"),
-        t("auth.reset_password.passwords_dont_match")
-      );
+      Alert.alert(t("common.error"), t("auth.reset_password.passwords_dont_match"));
       return;
     }
-
     try {
       setIsChangingPassword(true);
-      const response = await userAPI.changePassword(
-        verificationCode,
-        newPassword
-      );
+      const response = await userAPI.changePassword(verificationCode, newPassword);
       if (response.success) {
-        Alert.alert(
-          t("common.success"),
-          t("auth.reset_password.reset_successful"),
-          [
-            {
-              text: t("common.ok"),
-              onPress: () => {
-                dispatch(signOut() as any);
-              },
-            },
-          ]
-        );
+        Alert.alert(t("common.success"), t("auth.reset_password.reset_successful"), [
+          { text: t("common.ok"), onPress: () => dispatch(signOut() as any) },
+        ]);
       } else {
-        throw new Error(
-          response.error || t("auth.reset_password.reset_failed")
-        );
+        throw new Error(response.error || t("auth.reset_password.reset_failed"));
       }
     } catch (error: any) {
-      Alert.alert(
-        t("common.error"),
-        error.message || t("auth.reset_password.reset_failed")
-      );
+      Alert.alert(t("common.error"), error.message || t("auth.reset_password.reset_failed"));
     } finally {
       setIsChangingPassword(false);
     }
   };
 
   const handleDeleteAccount = async () => {
-    const confirmWord = "DELETE";
-    if (deleteConfirmText !== confirmWord) {
-      Alert.alert(
-        t("common.error"),
-        `${t("common.type")} "${confirmWord}" ${t("common.to_confirm")}`
-      );
+    if (deleteConfirmText !== "DELETE") {
+      Alert.alert(t("common.error"), `${t("common.type")} "DELETE" ${t("common.to_confirm")}`);
       return;
     }
-
     try {
       const response = await userAPI.deleteAccount();
       if (response.success) {
         Alert.alert(t("common.success"), t("profile.accountDeleted"), [
-          {
-            text: t("common.ok"),
-            onPress: () => {
-              dispatch(signOut() as any);
-            },
-          },
+          { text: t("common.ok"), onPress: () => dispatch(signOut() as any) },
         ]);
       }
     } catch (error: any) {
@@ -219,339 +163,234 @@ export default function EditProfile({ onClose }: EditProfileProps) {
     }
   };
 
+  // ── Small helpers ──────────────────────────────────────────────────────────
+
+  const inputStyle = [
+    styles.input,
+    { backgroundColor: colors.surfaceVariant, color: colors.text, borderColor: colors.border },
+  ];
+
+  // ── JSX ────────────────────────────────────────────────────────────────────
+
   return (
-    <View style={styles.container}>
-      {/* Header with Save Button */}
-      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={onClose}
-        >
-          <X size={24} color={colors.text} />
+    <View style={styles.root}>
+
+      {/* ─── Header ──────────────────────────────────────── */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+          <X size={22} color={colors.textSecondary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {t("profile.edit_profile")}
-        </Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t("profile.edit_profile")}</Text>
         <TouchableOpacity
-          style={[styles.saveButton, { backgroundColor: colors.primary }]}
+          style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: isSaving ? 0.7 : 1 }]}
           onPress={handleSave}
           disabled={isSaving}
         >
-          {isSaving ? (
-            <ActivityIndicator size="small" color={colors.onPrimary} />
-          ) : (
-            <>
-              <Check size={16} color={colors.onPrimary} />
-              <Text style={[styles.saveButtonText, { color: colors.onPrimary }]}>
-                {t("common.save")}
-              </Text>
-            </>
-          )}
+          {isSaving
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <><Check size={15} color="#fff" /><Text style={styles.saveBtnText}>{t("common.save")}</Text></>}
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Personal Information Section */}
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.sectionHeader}>
-            <LinearGradient
-              colors={[colors.primary, colors.primaryContainer]}
-              style={styles.sectionIconBg}
-            >
-              <User size={18} color={colors.onPrimary} />
-            </LinearGradient>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {t("profile.personal_info")}
+      <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+
+        {/* ─── PERSONAL INFORMATION ────────────────────────── */}
+        <View style={styles.sectionWrap}>
+          <View style={styles.sectionLabelRow}>
+            <View style={[styles.sectionDot, { backgroundColor: colors.primary }]} />
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+              {t("profile.personal_info").toUpperCase()}
             </Text>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>
-              {t("profile.name")}
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.surfaceVariant,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-              value={profile.name}
-              onChangeText={(text) => setProfile({ ...profile, name: text })}
-              placeholder={t("auth.name")}
-              placeholderTextColor={colors.textTertiary}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>
-              {t("auth.email")}
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.surfaceVariant,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-              value={profile.email}
-              onChangeText={(text) => setProfile({ ...profile, email: text })}
-              placeholder={t("auth.enter_email")}
-              placeholderTextColor={colors.textTertiary}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>
-              {t("auth.birth_date")}
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.dateInput,
-                {
-                  backgroundColor: colors.surfaceVariant,
-                  borderColor: colors.border,
-                },
-              ]}
-              onPress={() => setShowPicker(true)}
-            >
-              <Calendar size={20} color={colors.primary} />
-              <Text style={[styles.dateText, { color: colors.text }]}>
-                {date.toLocaleDateString()}
-              </Text>
-              <ChevronRight size={20} color={colors.textTertiary} />
-            </TouchableOpacity>
-
-            {showPicker && (
-              <DateTimePicker
-                value={date}
-                mode="date"
-                display="default"
-                onChange={onChangeDate}
-                maximumDate={new Date()}
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {/* Name */}
+            <View style={styles.field}>
+              <View style={styles.fieldLabelRow}>
+                <User size={14} color={colors.primary} />
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t("profile.name")}</Text>
+              </View>
+              <TextInput
+                style={inputStyle}
+                value={profile.name}
+                onChangeText={(text) => setProfile({ ...profile, name: text })}
+                placeholder={t("auth.name")}
+                placeholderTextColor={colors.muted}
               />
-            )}
+            </View>
+
+            <View style={[styles.fieldDivider, { backgroundColor: colors.border }]} />
+
+            {/* Email */}
+            <View style={styles.field}>
+              <View style={styles.fieldLabelRow}>
+                <Mail size={14} color={colors.primary} />
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t("auth.email")}</Text>
+              </View>
+              <TextInput
+                style={inputStyle}
+                value={profile.email}
+                onChangeText={(text) => setProfile({ ...profile, email: text })}
+                placeholder={t("auth.enter_email")}
+                placeholderTextColor={colors.muted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={[styles.fieldDivider, { backgroundColor: colors.border }]} />
+
+            {/* Birth date */}
+            <View style={styles.field}>
+              <View style={styles.fieldLabelRow}>
+                <Calendar size={14} color={colors.primary} />
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t("auth.birth_date")}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.datePicker, { backgroundColor: colors.surfaceVariant, borderColor: colors.border }]}
+                onPress={() => setShowPicker(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.dateValue, { color: colors.text }]}>{date.toLocaleDateString()}</Text>
+                <ChevronDown size={16} color={colors.muted} />
+              </TouchableOpacity>
+              {showPicker && (
+                <DateTimePicker
+                  value={date}
+                  mode="date"
+                  display="default"
+                  onChange={onChangeDate}
+                  maximumDate={new Date()}
+                />
+              )}
+            </View>
           </View>
         </View>
 
-        {/* Password Section */}
-        <View
-          style={[
-            styles.section,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
+        {/* ─── PASSWORD ─────────────────────────────────────── */}
+        <View style={styles.sectionWrap}>
           <TouchableOpacity
-            style={styles.sectionHeader}
+            style={styles.sectionLabelRow}
             onPress={() => setShowPasswordSection(!showPasswordSection)}
+            activeOpacity={0.7}
           >
-            <LinearGradient
-              colors={[colors.warning, colors.warning + "CC"]}
-              style={styles.sectionIconBg}
-            >
-              <Lock size={18} color="#FFF" />
-            </LinearGradient>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {t("auth.reset_password.title")}
+            <View style={[styles.sectionDot, { backgroundColor: "#F59E0B" }]} />
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary, flex: 1 }]}>
+              {t("auth.reset_password.title").toUpperCase()}
             </Text>
             <ChevronDown
-              size={20}
-              color={colors.textSecondary}
-              style={{
-                transform: [{ rotate: showPasswordSection ? "180deg" : "0deg" }],
-              }}
+              size={16}
+              color={colors.muted}
+              style={{ transform: [{ rotate: showPasswordSection ? "180deg" : "0deg" }] }}
             />
           </TouchableOpacity>
 
           {showPasswordSection && (
-            <View style={styles.sectionContent}>
+            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
               {!codeRequested ? (
-                <View>
-                  <View
-                    style={[
-                      styles.infoBox,
-                      { backgroundColor: colors.primaryContainer },
-                    ]}
-                  >
-                    <Mail size={18} color={colors.onPrimaryContainer} />
-                    <Text
-                      style={[
-                        styles.infoText,
-                        { color: colors.onPrimaryContainer },
-                      ]}
-                    >
+                <View style={styles.pwRequestWrap}>
+                  <View style={[styles.infoBanner, { backgroundColor: "rgba(245,158,11,0.1)", borderColor: "rgba(245,158,11,0.3)" }]}>
+                    <Lock size={16} color="#F59E0B" />
+                    <Text style={[styles.infoBannerText, { color: colors.textSecondary }]}>
                       {t("auth.reset_password.subtitle")}
                     </Text>
                   </View>
-
                   <TouchableOpacity
-                    style={[
-                      styles.primaryButton,
-                      { backgroundColor: colors.primary },
-                    ]}
+                    style={[styles.primaryBtn, { backgroundColor: "#F59E0B" }]}
                     onPress={handleRequestPasswordChange}
                     disabled={isRequestingCode}
                   >
-                    {isRequestingCode ? (
-                      <ActivityIndicator
-                        size="small"
-                        color={colors.onPrimary}
-                      />
-                    ) : (
-                      <Text
-                        style={[
-                          styles.primaryButtonText,
-                          { color: colors.onPrimary },
-                        ]}
-                      >
-                        {t("auth.reset_password.send_reset_link")}
-                      </Text>
-                    )}
+                    {isRequestingCode
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <><Mail size={16} color="#fff" /><Text style={styles.primaryBtnText}>{t("auth.reset_password.send_reset_link")}</Text></>}
                   </TouchableOpacity>
                 </View>
               ) : (
-                <View>
-                  <View
-                    style={[
-                      styles.infoBox,
-                      { backgroundColor: colors.primaryContainer },
-                    ]}
-                  >
-                    <Shield size={18} color={colors.onPrimaryContainer} />
-                    <Text
-                      style={[
-                        styles.infoText,
-                        { color: colors.onPrimaryContainer },
-                      ]}
-                    >
+                <View style={styles.pwChangeWrap}>
+                  <View style={[styles.infoBanner, { backgroundColor: "rgba(16,185,129,0.1)", borderColor: "rgba(16,185,129,0.3)" }]}>
+                    <Shield size={16} color="#10B981" />
+                    <Text style={[styles.infoBannerText, { color: colors.textSecondary }]}>
                       {t("auth.reset_password_verify.enter_code")}
                     </Text>
                   </View>
 
-                  <View style={styles.inputGroup}>
-                    <Text
-                      style={[styles.label, { color: colors.textSecondary }]}
-                    >
+                  {/* Code field */}
+                  <View style={styles.field}>
+                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                       {t("auth.email_verification.verification_code")}
                     </Text>
                     <TextInput
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: colors.surfaceVariant,
-                          color: colors.text,
-                          borderColor: colors.border,
-                        },
-                      ]}
+                      style={inputStyle}
                       value={verificationCode}
                       onChangeText={setVerificationCode}
                       placeholder="000000"
-                      placeholderTextColor={colors.textTertiary}
+                      placeholderTextColor={colors.muted}
                       keyboardType="numeric"
                       maxLength={6}
                     />
                   </View>
 
-                  <View style={styles.inputGroup}>
-                    <Text
-                      style={[styles.label, { color: colors.textSecondary }]}
-                    >
+                  {/* New password */}
+                  <View style={styles.field}>
+                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                       {t("auth.reset_password.new_password")}
                     </Text>
-                    <TextInput
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: colors.surfaceVariant,
-                          color: colors.text,
-                          borderColor: colors.border,
-                        },
-                      ]}
-                      value={newPassword}
-                      onChangeText={setNewPassword}
-                      placeholder={t("auth.reset_password.enter_new_password")}
-                      placeholderTextColor={colors.textTertiary}
-                      secureTextEntry
-                    />
+                    <View style={styles.pwInputWrap}>
+                      <TextInput
+                        style={[inputStyle, { flex: 1, borderRightWidth: 0, borderTopRightRadius: 0, borderBottomRightRadius: 0 }]}
+                        value={newPassword}
+                        onChangeText={setNewPassword}
+                        placeholder={t("auth.reset_password.enter_new_password")}
+                        placeholderTextColor={colors.muted}
+                        secureTextEntry={!showNewPw}
+                      />
+                      <TouchableOpacity
+                        style={[styles.eyeBtn, { backgroundColor: colors.surfaceVariant, borderColor: colors.border }]}
+                        onPress={() => setShowNewPw(!showNewPw)}
+                      >
+                        {showNewPw ? <Eye size={16} color={colors.muted} /> : <EyeOff size={16} color={colors.muted} />}
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
-                  <View style={styles.inputGroup}>
-                    <Text
-                      style={[styles.label, { color: colors.textSecondary }]}
-                    >
+                  {/* Confirm password */}
+                  <View style={styles.field}>
+                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                       {t("auth.reset_password.confirm_new_password")}
                     </Text>
-                    <TextInput
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: colors.surfaceVariant,
-                          color: colors.text,
-                          borderColor: colors.border,
-                        },
-                      ]}
-                      value={confirmPassword}
-                      onChangeText={setConfirmPassword}
-                      placeholder={t(
-                        "auth.reset_password.confirm_new_password"
-                      )}
-                      placeholderTextColor={colors.textTertiary}
-                      secureTextEntry
-                    />
+                    <View style={styles.pwInputWrap}>
+                      <TextInput
+                        style={[inputStyle, { flex: 1, borderRightWidth: 0, borderTopRightRadius: 0, borderBottomRightRadius: 0 }]}
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                        placeholder={t("auth.reset_password.confirm_new_password")}
+                        placeholderTextColor={colors.muted}
+                        secureTextEntry={!showConfirmPw}
+                      />
+                      <TouchableOpacity
+                        style={[styles.eyeBtn, { backgroundColor: colors.surfaceVariant, borderColor: colors.border }]}
+                        onPress={() => setShowConfirmPw(!showConfirmPw)}
+                      >
+                        {showConfirmPw ? <Eye size={16} color={colors.muted} /> : <EyeOff size={16} color={colors.muted} />}
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
-                  <View style={styles.buttonRow}>
+                  <View style={styles.btnRow}>
                     <TouchableOpacity
-                      style={[
-                        styles.secondaryButton,
-                        { backgroundColor: colors.surfaceVariant },
-                      ]}
-                      onPress={() => {
-                        setCodeRequested(false);
-                        setVerificationCode("");
-                        setNewPassword("");
-                        setConfirmPassword("");
-                      }}
+                      style={[styles.secondaryBtn, { borderColor: colors.border, backgroundColor: colors.surfaceVariant }]}
+                      onPress={() => { setCodeRequested(false); setVerificationCode(""); setNewPassword(""); setConfirmPassword(""); }}
                     >
-                      <Text
-                        style={[
-                          styles.secondaryButtonText,
-                          { color: colors.text },
-                        ]}
-                      >
-                        {t("common.cancel")}
-                      </Text>
+                      <Text style={[styles.secondaryBtnText, { color: colors.textSecondary }]}>{t("common.cancel")}</Text>
                     </TouchableOpacity>
-
                     <TouchableOpacity
-                      style={[
-                        styles.primaryButton,
-                        { backgroundColor: colors.primary, flex: 1 },
-                      ]}
+                      style={[styles.primaryBtn, { backgroundColor: "#F59E0B", flex: 1 }]}
                       onPress={handleChangePassword}
                       disabled={isChangingPassword}
                     >
-                      {isChangingPassword ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={colors.onPrimary}
-                        />
-                      ) : (
-                        <Text
-                          style={[
-                            styles.primaryButtonText,
-                            { color: colors.onPrimary },
-                          ]}
-                        >
-                          {t("common.update")}
-                        </Text>
-                      )}
+                      {isChangingPassword
+                        ? <ActivityIndicator size="small" color="#fff" />
+                        : <><KeyRound size={16} color="#fff" /><Text style={styles.primaryBtnText}>{t("common.update")}</Text></>}
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -560,105 +399,59 @@ export default function EditProfile({ onClose }: EditProfileProps) {
           )}
         </View>
 
-        {/* Danger Zone */}
-        <View
-          style={[
-            styles.section,
-            styles.dangerSection,
-            {
-              backgroundColor: colors.error + "10",
-              borderColor: colors.error + "40",
-            },
-          ]}
-        >
-          <View style={styles.sectionHeader}>
-            <LinearGradient
-              colors={[colors.error, colors.error + "CC"]}
-              style={styles.sectionIconBg}
-            >
-              <AlertCircle size={18} color="#FFF" />
-            </LinearGradient>
-            <Text style={[styles.sectionTitle, { color: colors.error }]}>
-              {t("profile.dangerZone")}
+        {/* ─── DANGER ZONE ─────────────────────────────────── */}
+        <View style={styles.sectionWrap}>
+          <View style={styles.sectionLabelRow}>
+            <View style={[styles.sectionDot, { backgroundColor: "#EF4444" }]} />
+            <Text style={[styles.sectionLabel, { color: "#EF4444" }]}>
+              {t("profile.dangerZone").toUpperCase()}
             </Text>
           </View>
 
-          {!showDeleteConfirm ? (
-            <TouchableOpacity
-              style={[styles.dangerButton, { backgroundColor: colors.error }]}
-              onPress={() => setShowDeleteConfirm(true)}
-            >
-              <Text style={styles.dangerButtonText}>
-                {t("profile.deleteAccount")}
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.sectionContent}>
-              <View
-                style={[
-                  styles.warningBox,
-                  {
-                    backgroundColor: colors.error + "20",
-                    borderColor: colors.error,
-                  },
-                ]}
+          <View style={[styles.card, styles.dangerCard, { borderColor: "rgba(239,68,68,0.35)", backgroundColor: "rgba(239,68,68,0.05)" }]}>
+            {!showDeleteConfirm ? (
+              <TouchableOpacity
+                style={[styles.dangerBtn, { borderColor: "rgba(239,68,68,0.4)" }]}
+                onPress={() => setShowDeleteConfirm(true)}
+                activeOpacity={0.75}
               >
-                <AlertCircle size={20} color={colors.error} />
-                <Text style={[styles.warningText, { color: colors.error }]}>
-                  {t("common.warning")}: {t("common.type")} "DELETE"{" "}
-                  {t("common.to_confirm")}
-                </Text>
-              </View>
-
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surface,
-                    color: colors.text,
-                    borderColor: colors.error,
-                    borderWidth: 2,
-                  },
-                ]}
-                value={deleteConfirmText}
-                onChangeText={setDeleteConfirmText}
-                placeholder="DELETE"
-                placeholderTextColor={colors.textTertiary}
-                autoCapitalize="characters"
-              />
-
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.secondaryButton,
-                    { backgroundColor: colors.surfaceVariant },
-                  ]}
-                  onPress={() => {
-                    setShowDeleteConfirm(false);
-                    setDeleteConfirmText("");
-                  }}
-                >
-                  <Text
-                    style={[styles.secondaryButtonText, { color: colors.text }]}
+                <Trash2 size={18} color="#EF4444" />
+                <Text style={styles.dangerBtnText}>{t("profile.deleteAccount")}</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.deleteConfirmWrap}>
+                <View style={[styles.warningBanner, { borderColor: "rgba(239,68,68,0.5)", backgroundColor: "rgba(239,68,68,0.08)" }]}>
+                  <AlertCircle size={18} color="#EF4444" />
+                  <Text style={styles.warningBannerText}>
+                    {t("common.warning")}: {t("common.type")} "DELETE" {t("common.to_confirm")}
+                  </Text>
+                </View>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: "#EF4444", borderWidth: 2 }]}
+                  value={deleteConfirmText}
+                  onChangeText={setDeleteConfirmText}
+                  placeholder="DELETE"
+                  placeholderTextColor="rgba(239,68,68,0.4)"
+                  autoCapitalize="characters"
+                />
+                <View style={styles.btnRow}>
+                  <TouchableOpacity
+                    style={[styles.secondaryBtn, { borderColor: colors.border, backgroundColor: colors.surfaceVariant }]}
+                    onPress={() => { setShowDeleteConfirm(false); setDeleteConfirmText(""); }}
                   >
-                    {t("common.cancel")}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.dangerButton,
-                    { backgroundColor: colors.error, flex: 1 },
-                  ]}
-                  onPress={handleDeleteAccount}
-                >
-                  <Text style={styles.dangerButtonText}>
-                    {t("profile.confirmDelete")}
-                  </Text>
-                </TouchableOpacity>
+                    <Text style={[styles.secondaryBtnText, { color: colors.textSecondary }]}>{t("common.cancel")}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.primaryBtn, { backgroundColor: "#EF4444", flex: 1 }]}
+                    onPress={handleDeleteAccount}
+                  >
+                    <Trash2 size={16} color="#fff" />
+                    <Text style={styles.primaryBtnText}>{t("profile.confirmDelete")}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          )}
+            )}
+          </View>
         </View>
 
         <View style={{ height: 40 }} />
@@ -668,168 +461,107 @@ export default function EditProfile({ onClose }: EditProfileProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  root: { flex: 1 },
+
+  /* ── Header ── */
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, gap: 12,
   },
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
+  closeBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    justifyContent: "center", alignItems: "center",
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    flex: 1,
-    textAlign: "center",
+  headerTitle: { flex: 1, fontSize: 17, fontWeight: "700", textAlign: "center" },
+  saveBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 16, paddingVertical: 9, borderRadius: 18,
   },
-  saveButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    gap: 6,
+  saveBtnText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+
+  /* ── Body ── */
+  body: { flex: 1, padding: 16 },
+
+  /* ── Section wrap ── */
+  sectionWrap: { marginBottom: 20 },
+  sectionLabelRow: {
+    flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10,
   },
-  saveButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  sectionIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  section: {
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 16,
+  sectionDot: { width: 3, height: 14, borderRadius: 2 },
+  sectionLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.8 },
+
+  /* ── Card ── */
+  card: {
+    borderRadius: 16, borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    gap: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    flex: 1,
-  },
-  sectionContent: {
-    padding: 16,
-    paddingTop: 0,
-    gap: 16,
-  },
-  inputGroup: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
+  dangerCard: { borderWidth: 1.5 },
+
+  /* ── Field ── */
+  field: { padding: 16, gap: 8 },
+  fieldDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
+  fieldLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  fieldLabel: { fontSize: 13, fontWeight: "600", letterSpacing: -0.1 },
   input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 15,
-    fontWeight: "500",
+    borderWidth: 1, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 13,
+    fontSize: 15, fontWeight: "500",
   },
-  dateInput: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 14,
-    gap: 12,
+
+  /* ── Date picker ── */
+  datePicker: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    borderWidth: 1, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 13,
   },
-  dateText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "500",
+  dateValue: { fontSize: 15, fontWeight: "500" },
+
+  /* ── Info banner ── */
+  infoBanner: {
+    flexDirection: "row", alignItems: "flex-start", gap: 10,
+    padding: 12, borderRadius: 10, borderWidth: 1, margin: 16, marginBottom: 0,
   },
-  infoBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    borderRadius: 10,
-    gap: 10,
+  infoBannerText: { flex: 1, fontSize: 13, lineHeight: 19, fontWeight: "500" },
+
+  /* ── Password request ── */
+  pwRequestWrap: { paddingBottom: 16, gap: 14 },
+  pwChangeWrap: { paddingBottom: 16, gap: 0 },
+  pwInputWrap: { flexDirection: "row" },
+  eyeBtn: {
+    borderWidth: 1, borderLeftWidth: 0,
+    borderTopRightRadius: 12, borderBottomRightRadius: 12,
+    paddingHorizontal: 14, justifyContent: "center", alignItems: "center",
   },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "500",
-    lineHeight: 18,
+
+  /* ── Buttons ── */
+  primaryBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 14, borderRadius: 12,
+    marginHorizontal: 16, marginTop: 14,
   },
-  primaryButton: {
-    padding: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
+  primaryBtnText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+  secondaryBtn: {
+    flex: 1, paddingVertical: 14, borderRadius: 12,
+    borderWidth: 1, alignItems: "center", justifyContent: "center",
   },
-  primaryButtonText: {
-    fontSize: 15,
-    fontWeight: "700",
+  secondaryBtnText: { fontSize: 15, fontWeight: "600" },
+  btnRow: { flexDirection: "row", gap: 10, paddingHorizontal: 16, marginTop: 14 },
+
+  /* ── Danger ── */
+  dangerBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 10, paddingVertical: 15, margin: 16,
+    borderRadius: 12, borderWidth: 1.5,
   },
-  secondaryButton: {
-    padding: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    flex: 1,
+  dangerBtnText: { fontSize: 15, fontWeight: "700", color: "#EF4444" },
+  deleteConfirmWrap: { paddingBottom: 16, gap: 0 },
+  warningBanner: {
+    flexDirection: "row", alignItems: "flex-start", gap: 10,
+    padding: 12, borderRadius: 10, borderWidth: 1, margin: 16,
   },
-  secondaryButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  buttonRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  dangerSection: {
-    borderWidth: 2,
-  },
-  dangerButton: {
-    padding: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    marginHorizontal: 16,
-    marginBottom: 16,
-  },
-  dangerButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  warningBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    borderRadius: 10,
-    gap: 10,
-    borderWidth: 1,
-  },
-  warningText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "600",
-    lineHeight: 18,
+  warningBannerText: {
+    flex: 1, fontSize: 13, fontWeight: "600",
+    color: "#EF4444", lineHeight: 18,
   },
 });

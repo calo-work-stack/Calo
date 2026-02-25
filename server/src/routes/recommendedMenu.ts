@@ -73,6 +73,73 @@ router.get("/", authenticateToken, async (req: AuthRequest, res: Response) => {
   }
 });
 
+// MUST be defined before /:menuId to avoid route shadowing
+// GET /api/recommended-menus/pending-review
+// Returns the most recently expired menu (within last 14 days) that has no review yet
+router.get(
+  "/pending-review",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.user_id;
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, error: "User not authenticated" });
+      }
+
+      const fourteenDaysAgo = new Date();
+      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+      const now = new Date();
+
+      const expiredMenus = await prisma.recommendedMenu.findMany({
+        where: {
+          user_id: userId,
+          is_active: false,
+          end_date: { gte: fourteenDaysAgo, lt: now },
+        },
+        orderBy: { end_date: "desc" },
+        take: 5,
+      });
+
+      for (const menu of expiredMenus) {
+        const review = await prisma.menuReview.findFirst({
+          where: { menu_id: menu.menu_id, user_id: userId },
+        });
+        if (!review) {
+          const [totalMeals, completedMeals] = await Promise.all([
+            prisma.recommendedMeal.count({
+              where: { menu_id: menu.menu_id },
+            }),
+            prisma.recommendedMeal.count({
+              where: { menu_id: menu.menu_id, is_completed: true },
+            }),
+          ]);
+          return res.json({
+            success: true,
+            data: {
+              menu_id: menu.menu_id,
+              title: menu.title,
+              days_count: menu.days_count,
+              start_date: menu.start_date,
+              end_date: menu.end_date,
+              total_meals: totalMeals,
+              completed_meals: completedMeals,
+            },
+          });
+        }
+      }
+
+      return res.json({ success: true, data: null });
+    } catch (error) {
+      console.error("💥 Error checking pending review:", error);
+      res
+        .status(500)
+        .json({ success: false, error: "Failed to check pending review" });
+    }
+  },
+);
+
 // Get specific menu details
 router.get(
   "/:menuId",

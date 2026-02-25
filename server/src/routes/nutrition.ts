@@ -766,6 +766,84 @@ router.get(
   }
 );
 
+// Get meal history for a user — MUST be defined before /meals/:meal_id to avoid route shadowing
+router.get(
+  "/meals/history",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { period = "week" } = req.query;
+
+      // Calculate date range based on period
+      const now = new Date();
+      let startDate = new Date();
+
+      switch (period) {
+        case "today":
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case "week":
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case "month":
+          startDate.setMonth(now.getMonth() - 1);
+          break;
+        case "all":
+          startDate = new Date(0); // Beginning of time
+          break;
+        default:
+          startDate.setDate(now.getDate() - 7);
+      }
+
+      const meals = await prisma.meal.findMany({
+        where: {
+          user_id: req.user.user_id,
+          created_at: {
+            gte: startDate,
+            lte: now,
+          },
+        },
+        orderBy: {
+          created_at: "desc",
+        },
+        take: 500,
+        select: {
+          meal_id: true,
+          meal_name: true,
+          meal_period: true,
+          image_url: true,
+          created_at: true,
+          upload_time: true,
+          calories: true,
+          protein_g: true,
+          carbs_g: true,
+          fats_g: true,
+          fiber_g: true,
+          sugar_g: true,
+          sodium_mg: true,
+          liquids_ml: true,
+          ingredients: true,
+          food_category: true,
+          cooking_method: true,
+          confidence: true,
+        },
+      });
+      res.json({
+        success: true,
+        data: meals,
+      });
+    } catch (error) {
+      console.error("💥 Get meal history error:", error);
+      const message =
+        error instanceof Error ? error.message : "Failed to fetch meal history";
+      res.status(500).json({
+        success: false,
+        error: message,
+      });
+    }
+  }
+);
+
 router.get(
   "/meals/:meal_id",
   authenticateToken,
@@ -805,56 +883,6 @@ router.get(
     }
   }
 );
-
-// PUT /api/nutrition/meals/:id - Update meal
-router.put("/meals/:id", authenticateToken, async (req: AuthRequest, res) => {
-  try {
-    const mealId = parseInt(req.params.id);
-    const userId = req.user.user_id;
-    const updates = req.body;
-
-    // Verify meal belongs to user
-    const existingMeal = await prisma.meal.findFirst({
-      where: {
-        meal_id: mealId,
-        user_id: userId,
-      },
-    });
-
-    if (!existingMeal) {
-      return res.status(404).json({
-        success: false,
-        error: "Meal not found",
-      });
-    }
-
-    // Update meal
-    const updatedMeal = await prisma.meal.update({
-      where: { meal_id: mealId },
-      data: {
-        ...updates,
-        updated_at: new Date(),
-      },
-    });
-
-    // Smart cache update - update meal directly without refetching
-    NutritionService.updateMealInCache(userId, updatedMeal);
-
-    console.log("✅ Meal updated successfully:", mealId);
-
-    res.json({
-      success: true,
-      message: "Meal updated successfully",
-      data: updatedMeal,
-    });
-  } catch (error) {
-    console.error("💥 Error updating meal:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to update meal",
-    });
-  }
-});
 
 // DELETE /api/nutrition/meals/:id - Delete meal
 router.delete(
@@ -926,84 +954,6 @@ router.get(
       console.error("💥 Get meals error:", error);
       const message =
         error instanceof Error ? error.message : "Failed to fetch meals";
-      res.status(500).json({
-        success: false,
-        error: message,
-      });
-    }
-  }
-);
-
-// Get meal history for a user
-router.get(
-  "/meals/history",
-  authenticateToken,
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const { period = "week" } = req.query;
-
-      // Calculate date range based on period
-      const now = new Date();
-      let startDate = new Date();
-
-      switch (period) {
-        case "today":
-          startDate.setHours(0, 0, 0, 0);
-          break;
-        case "week":
-          startDate.setDate(now.getDate() - 7);
-          break;
-        case "month":
-          startDate.setMonth(now.getMonth() - 1);
-          break;
-        case "all":
-          startDate = new Date(0); // Beginning of time
-          break;
-        default:
-          startDate.setDate(now.getDate() - 7);
-      }
-
-      const meals = await prisma.meal.findMany({
-        where: {
-          user_id: req.user.user_id,
-          created_at: {
-            gte: startDate,
-            lte: now,
-          },
-        },
-        orderBy: {
-          created_at: "desc",
-        },
-        take: 500,
-        select: {
-          meal_id: true,
-          meal_name: true,
-          meal_period: true,
-          image_url: true,
-          created_at: true,
-          upload_time: true,
-          calories: true,
-          protein_g: true,
-          carbs_g: true,
-          fats_g: true,
-          fiber_g: true,
-          sugar_g: true,
-          sodium_mg: true,
-          liquids_ml: true,
-          ingredients: true,
-          food_category: true,
-          cooking_method: true,
-          confidence: true,
-        },
-      });
-      res.json({
-        success: true,
-        data: meals,
-      });
-    } catch (error) {
-      console.error("💥 Get meal history error:", error);
-      const message =
-        error instanceof Error ? error.message : "Failed to fetch meal history";
       res.status(500).json({
         success: false,
         error: message,

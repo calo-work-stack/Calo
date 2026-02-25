@@ -278,7 +278,7 @@ model NutritionPlan {
   duration_days    Int?
   notes            String?
   created_at       DateTime @default(now())
-  user             User     @relation(fields: [user_id], references: [user_id])
+  user             User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
 
 model SubscriptionPayment {
@@ -289,7 +289,7 @@ model SubscriptionPayment {
   payment_date   DateTime         @default(now())
   payment_method String?
   created_at     DateTime         @default(now())
-  user           User             @relation(fields: [user_id], references: [user_id])
+  user           User             @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
 
 model MealTemplate {
@@ -803,12 +803,6 @@ enum DeviceType {
   HUAWEI_HEALTH
 }
 
-enum MealPlanType {
-  DAILY
-  WEEKLY
-  THREE_DAYS
-}
-
 enum MealTiming {
   BREAKFAST
   LUNCH
@@ -831,20 +825,6 @@ enum DietaryCategory {
   BALANCED
 }
 
-enum Gender {
-  MALE
-  FEMALE
-  OTHER
-}
-
-enum ActivityLevel {
-  SEDENTARY
-  LIGHTLY_ACTIVE
-  MODERATELY_ACTIVE
-  VERY_ACTIVE
-  EXTREMELY_ACTIVE
-}
-
 enum BadgeRarity {
   COMMON
   RARE
@@ -852,12 +832,6 @@ enum BadgeRarity {
   LEGENDARY
 }
 
-enum AchievementCategory {
-  STREAK
-  GOAL
-  IMPROVEMENT
-  CONSISTENCY
-}
 
 // Push Notification Device Tokens
 model DeviceToken {

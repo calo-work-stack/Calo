@@ -337,6 +337,26 @@ router.post("/", authenticateToken, async (req: AuthRequest, res) => {
       "GENERAL_HEALTH"
     );
 
+    // ── PRE-SAVE CONTENT FILTER ──────────────────────────────────────────────
+    // Run AI (or rule-based) per-item filtering on every free-text array field
+    // BEFORE Zod validation and DB write. Items that don't fit their field's
+    // context (e.g. "rocks" in allergies) are silently dropped here so they
+    // are never stored in the database.
+    try {
+      const filteredData =
+        await QuestionnaireValidationService.filterAllFreeTextArrays(
+          questionnaireData,
+        );
+      Object.assign(questionnaireData, filteredData);
+    } catch (filterErr) {
+      // Fail-open: if filtering itself crashes, continue with sanitized data
+      console.error(
+        "⚠️ Pre-save content filter failed, proceeding with original data:",
+        filterErr,
+      );
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // Validate using the imported schema
     const validationResult = questionnaireSchema.safeParse(questionnaireData);
 

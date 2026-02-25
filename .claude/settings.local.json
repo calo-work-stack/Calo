@@ -33,7 +33,8 @@
       "Bash(head:*)",
       "Bash(git:*)",
       "Bash(node:*)",
-      "Bash(printf %s:*)"
+      "Bash(printf %s:*)",
+      "Bash(grep -r \"interface.*User\\\\|type.*User\" /c/Code/Work/Calo/Calo/client/src --include=\"*.ts\" --include=\"*.tsx\" 2>/dev/null | grep -v node_modules | head -20)"
     ]
   }
 }

@@ -269,20 +269,6 @@ export default function ScannerCamera({
               { transform: [{ scale: pulseAnimation }] },
             ]}
           >
-            <View
-              style={[
-                styles.aiBadge,
-                {
-                  backgroundColor: colors.primary + "22",
-                  borderColor: colors.primary + "55",
-                },
-              ]}
-            >
-              <Zap size={14} color={colors.primary} strokeWidth={2.5} />
-              <Text style={[styles.aiBadgeText, { color: colors.primary }]}>
-                AI
-              </Text>
-            </View>
           </Animated.View>
         </View>
 

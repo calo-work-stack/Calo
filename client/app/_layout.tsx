@@ -25,6 +25,8 @@ import { I18nextProvider } from "react-i18next";
 import i18n from "@/src/i18n";
 import LanguageToolbar from "@/components/ToolBar";
 import { NotificationService } from "@/src/services/notifications";
+import { recommendedMenuAPI } from "@/src/services/api";
+import { MenuEndedReviewModal } from "@/components/menu/MenuEndedReviewModal";
 import React from "react";
 import { I18nManager } from "react-native";
 import { useOptimizedAuthSelector } from "@/hooks/useOptimizedSelector";
@@ -570,12 +572,75 @@ const AppContent = React.memo(() => {
 const MainApp = React.memo(() => {
   const helpContent = useHelpContent();
   const authState = useOptimizedAuthSelector();
+  const { isAuthenticated = false, user = null } = authState || {};
+
+  const [pendingReview, setPendingReview] = useState<{
+    menu_id: string;
+    title: string;
+    days_count: number;
+    start_date: string;
+    end_date: string;
+    total_meals: number;
+    completed_meals: number;
+  } | null>(null);
+
+  // Check for a pending menu review whenever the user is authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !user?.user_id) return;
+
+    const checkPendingReview = async () => {
+      try {
+        const result = await recommendedMenuAPI.getPendingReview();
+        if (!result.data) return;
+
+        // Check if the user already dismissed this review in this session
+        const dismissedKey = `dismissed_review_${result.data.menu_id}`;
+        const dismissed = await AsyncStorage.getItem(dismissedKey);
+        if (!dismissed) {
+          setPendingReview(result.data);
+        }
+      } catch {
+        // Silently fail — don't interrupt app startup
+      }
+    };
+
+    // Slight delay so the app finishes routing before the modal appears
+    const timer = setTimeout(checkPendingReview, 1500);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, user?.user_id]);
+
+  const handleReviewSubmit = async (
+    menuId: string,
+    data: {
+      rating: number;
+      liked?: string;
+      disliked?: string;
+      suggestions?: string;
+      wouldRecommend?: boolean;
+    },
+  ) => {
+    await recommendedMenuAPI.submitReview(menuId, data);
+    setPendingReview(null);
+  };
+
+  const handleReviewSkip = async (menuId: string) => {
+    await AsyncStorage.setItem(`dismissed_review_${menuId}`, "true").catch(
+      () => {},
+    );
+    setPendingReview(null);
+  };
 
   return (
     <View style={styles.container}>
       <AppContent />
       <LanguageToolbar helpContent={helpContent} />
       <ToastWrapper />
+      <MenuEndedReviewModal
+        visible={pendingReview !== null}
+        pendingReview={pendingReview}
+        onSubmit={handleReviewSubmit}
+        onSkip={handleReviewSkip}
+      />
     </View>
   );
 });

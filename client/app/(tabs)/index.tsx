@@ -110,7 +110,6 @@ const HomeScreen = React.memo(() => {
   const [waterGoalMl, setWaterGoalMl] = useState(2500);
   const waterGoalCups = Math.ceil(waterGoalMl / 250);
   const [refreshing, setRefreshing] = useState(false);
-  const [, setIsDataLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
   const [waterCups, setWaterCups] = useState(0);
@@ -460,7 +459,6 @@ const HomeScreen = React.memo(() => {
       }
 
       isLoadingRef.current = true;
-      setIsDataLoading(true);
       setDataError(null);
 
       try {
@@ -488,13 +486,12 @@ const HomeScreen = React.memo(() => {
         );
         setRetryCount((prev) => prev + 1);
       } finally {
-        setIsDataLoading(false);
         setInitialLoading(false);
         isLoadingRef.current = false;
         lastDataLoadRef.current = now;
       }
     },
-    [user?.user_id, dispatch, retryCount, loadDailyGoals, t],
+    [user?.user_id, dispatch, loadDailyGoals, t],
   );
 
   const onRefresh = useCallback(async () => {
@@ -590,12 +587,6 @@ const HomeScreen = React.memo(() => {
       }
     };
   }, [user?.user_id, initialLoading]);
-
-  useEffect(() => {
-    if (user?.user_id) {
-      loadDailyGoals();
-    }
-  }, [user?.user_id, loadDailyGoals]);
 
   if (initialLoading) {
     return <HomeScreenSkeleton />;
