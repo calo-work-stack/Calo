@@ -98,6 +98,7 @@ const StackScreens = React.memo(() => (
     <Stack.Screen name="payment" />
     <Stack.Screen name="questionnaire" />
     <Stack.Screen name="privacy-policy" />
+    <Stack.Screen name="edit-profile" />
     <Stack.Screen name="menu/[id]" />
     <Stack.Screen name="+not-found" />
   </Stack>

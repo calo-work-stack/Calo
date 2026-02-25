@@ -4,6 +4,7 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import OptionCard from "./OptionCard";
+import { t } from "i18next";
 
 interface OptionGroupProps {
   label: string;
@@ -43,7 +44,7 @@ const OptionGroup: React.FC<OptionGroupProps> = ({
         </Text>
         {required && (
           <View style={[styles.requiredBadge, { backgroundColor: `${colors.error}15` }]}>
-            <Text style={[styles.requiredText, { color: colors.error }]}>Required</Text>
+            <Text style={[styles.requiredText, { color: colors.error }]}>{t("common.required")}</Text>
           </View>
         )}
       </View>

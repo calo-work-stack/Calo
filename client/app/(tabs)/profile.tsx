@@ -38,7 +38,6 @@ import {
   CheckCircle,
   XCircle,
 } from "lucide-react-native";
-import EditProfile from "@/components/EditProfile";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/src/store";
 import { signOut, updateUser } from "@/src/store/authSlice";
@@ -150,7 +149,9 @@ export default function ProfileScreen() {
   };
 
   const handleMenuPress = (itemId: string) => {
-    if (itemId === "personalData") {
+    if (itemId === "editProfile") {
+      router.push("/edit-profile");
+    } else if (itemId === "personalData") {
       router.push("/(tabs)/questionnaire?mode=edit");
     } else if (itemId === "privacy") {
       router.push("/privacy-policy");
@@ -275,8 +276,6 @@ export default function ProfileScreen() {
 
   const renderSectionContent = () => {
     switch (activeSection) {
-      case "editProfile":
-        return <EditProfile onClose={() => setActiveSection(null)} />;
       case "notifications":
         return (
           <View style={styles.expandedInner}>
@@ -614,11 +613,7 @@ export default function ProfileScreen() {
           <View style={styles.heroActions}>
             <TouchableOpacity
               style={styles.heroActionBtn}
-              onPress={() =>
-                setActiveSection(
-                  activeSection === "editProfile" ? null : "editProfile",
-                )
-              }
+              onPress={() => router.push("/edit-profile")}
             >
               <Edit size={15} color="#fff" />
               <Text style={styles.heroActionText}>
@@ -791,18 +786,6 @@ export default function ProfileScreen() {
             </Text>
           </View>
         </View>
-
-        {/* inline edit profile if active */}
-        {activeSection === "editProfile" && (
-          <View
-            style={[
-              styles.inlineEdit,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            <EditProfile onClose={() => setActiveSection(null)} />
-          </View>
-        )}
 
         {/* ─── MENU GROUPS ───────────────────────────────────── */}
         {menuGroups.map((group, gi) => (
@@ -1101,15 +1084,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.3,
     textAlign: "center",
-  },
-
-  /* ── Inline edit ── */
-  inlineEdit: {
-    marginHorizontal: 20,
-    marginTop: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    overflow: "hidden",
   },
 
   /* ── Menu groups ── */
