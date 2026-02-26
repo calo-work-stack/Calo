@@ -23,9 +23,9 @@ import {
   Activity,
   Droplets,
   Wheat,
-  Award,
   Grid3x3,
   List,
+  ChevronRight,
 } from "lucide-react-native";
 
 const { width } = Dimensions.get("window");
@@ -35,6 +35,7 @@ import { useLanguage } from "@/src/i18n/context/LanguageContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { api } from "@/src/services/api";
 import { ToastService } from "@/src/services/totastService";
+import { LinearGradient } from "expo-linear-gradient";
 
 interface NutritionData {
   calories: number;
@@ -70,17 +71,22 @@ interface Props {
   onClose: () => void;
 }
 
+const SCORE_CONFIG = (score: number) => {
+  if (score >= 80) return { color: "#10B981", label: "Great", bg: "#EDFAF4" };
+  if (score >= 60) return { color: "#3B82F6", label: "Good", bg: "#EFF6FF" };
+  if (score >= 40) return { color: "#F59E0B", label: "Fair", bg: "#FFFBEB" };
+  return { color: "#EF4444", label: "Poor", bg: "#FEF2F2" };
+};
+
 export default function MinimalProductGallery({ visible, onClose }: Props) {
   const { t } = useTranslation();
   const { language } = useLanguage();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   const [products, setProducts] = useState<ScannedProduct[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<ScannedProduct | null>(
-    null,
-  );
+  const [selectedProduct, setSelectedProduct] = useState<ScannedProduct | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [fadeAnim] = useState(new Animated.Value(0));
@@ -94,6 +100,8 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
         friction: 8,
         useNativeDriver: true,
       }).start();
+    } else {
+      fadeAnim.setValue(0);
     }
   }, [visible]);
 
@@ -123,7 +131,6 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
 
   const filteredProducts = useMemo(() => {
     let filtered = [...products];
-
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -133,21 +140,11 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
           p.category?.toLowerCase().includes(query),
       );
     }
-
     if (selectedCategory !== "all") {
       filtered = filtered.filter((p) => p.category === selectedCategory);
     }
-
     return filtered;
   }, [products, searchQuery, selectedCategory]);
-
-  const getScoreColor = (score?: number): string => {
-    if (!score) return colors.textTertiary;
-    if (score >= 80) return "#10B981";
-    if (score >= 60) return "#3B82F6";
-    if (score >= 40) return "#F59E0B";
-    return "#EF4444";
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -155,150 +152,171 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
     const diffInDays = Math.floor(
       (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
     );
-
     if (diffInDays === 0) return t("date.today");
     if (diffInDays === 1) return t("date.yesterday");
     if (diffInDays < 7) return t("date.daysAgo", { count: diffInDays });
-    return date.toLocaleDateString(language, {
-      month: "short",
-      day: "numeric",
-    });
+    return date.toLocaleDateString(language, { month: "short", day: "numeric" });
   };
 
-  const ProductCard = ({
-    product,
-    index,
-  }: {
-    product: ScannedProduct;
-    index: number;
-  }) => {
-    const scoreColor = getScoreColor(product.health_score);
-    const isGrid = viewMode === "grid";
+  /* ─── Grid Card ─── */
+  const GridCard = ({ product, index }: { product: ScannedProduct; index: number }) => {
+    const score = product.health_score;
+    const cfg = score ? SCORE_CONFIG(score) : null;
 
     return (
       <TouchableOpacity
-        key={`${viewMode}-${product.id}-${index}`}
         style={[
-          isGrid ? styles.gridCard : styles.listCard,
-          { backgroundColor: colors.card, borderColor: colors.border + "30" },
+          styles.gridCard,
+          {
+            backgroundColor: isDark ? colors.card : "#FFFFFF",
+            shadowColor: "#000",
+          },
         ]}
         onPress={() => setSelectedProduct(product)}
-        activeOpacity={0.7}
+        activeOpacity={0.88}
       >
-        {/* Image Section */}
-        <View
-          style={[
-            isGrid ? styles.gridImage : styles.listImage,
-            { backgroundColor: colors.surface },
-          ]}
-        >
+        {/* Image */}
+        <View style={[styles.gridImg, { backgroundColor: isDark ? colors.surface : "#F5F5F7" }]}>
           {product.image_url ? (
             <Image
               source={{ uri: product.image_url }}
-              style={[StyleSheet.absoluteFill, { resizeMode: 'contain' }]}
+              style={StyleSheet.absoluteFill}
+              resizeMode="contain"
             />
           ) : (
-            <View style={styles.imagePlaceholder}>
-              <Package
-                size={isGrid ? 32 : 24}
-                color={colors.textTertiary}
-                strokeWidth={1.5}
-              />
-            </View>
+            <Package size={36} color={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"} strokeWidth={1.5} />
           )}
 
-          {product.health_score && (
-            <View style={[styles.scoreBadge, { backgroundColor: scoreColor }]}>
-              <Text style={styles.scoreText}>{product.health_score}</Text>
+          {/* Score pill */}
+          {cfg && score && (
+            <View style={[styles.gridScorePill, { backgroundColor: cfg.color }]}>
+              <Text style={styles.gridScoreText}>{score}</Text>
             </View>
           )}
         </View>
 
-        {/* Content Section */}
-        <View style={isGrid ? styles.gridContent : styles.listContent}>
-          <View style={styles.contentTop}>
+        {/* Content */}
+        <View style={styles.gridBody}>
+          {(product.brand || product.category) && (
             <Text
-              style={[styles.brandText, { color: colors.textTertiary }]}
+              style={[styles.gridBrand, { color: colors.primary }]}
               numberOfLines={1}
             >
               {product.brand || product.category}
             </Text>
-            <Text
-              style={[styles.nameText, { color: colors.text }]}
-              numberOfLines={isGrid ? 2 : 1}
-            >
-              {product.name || product.product_name}
-            </Text>
-          </View>
+          )}
+          <Text
+            style={[styles.gridName, { color: colors.text }]}
+            numberOfLines={2}
+          >
+            {product.name || product.product_name}
+          </Text>
 
-          <View style={styles.contentBottom}>
-            <View style={styles.stats}>
-              <View style={styles.stat}>
-                <Flame size={14} color={colors.textSecondary} strokeWidth={2} />
-                <Text
-                  style={[styles.statText, { color: colors.textSecondary }]}
-                >
-                  {Number(product.nutrition_per_100g?.calories || 0).toFixed(1)}
-                </Text>
-              </View>
-              <View style={styles.stat}>
-                <Activity
-                  size={14}
-                  color={colors.textSecondary}
-                  strokeWidth={2}
-                />
-                <Text
-                  style={[styles.statText, { color: colors.textSecondary }]}
-                >
-                  {Number(product.nutrition_per_100g?.protein || 0).toFixed(1)}g
-                </Text>
-              </View>
-            </View>
-
-            {!isGrid && (
-              <Text style={[styles.dateText, { color: colors.textTertiary }]}>
-                {formatDate(product.created_at)}
+          {/* Mini macros */}
+          <View style={styles.gridMacros}>
+            <View style={styles.gridMacroItem}>
+              <Flame size={10} color="#EF4444" />
+              <Text style={[styles.gridMacroVal, { color: colors.textSecondary }]}>
+                {Number(product.nutrition_per_100g?.calories || 0).toFixed(0)}
               </Text>
-            )}
+            </View>
+            <View style={styles.gridMacroDot} />
+            <View style={styles.gridMacroItem}>
+              <Activity size={10} color="#10B981" />
+              <Text style={[styles.gridMacroVal, { color: colors.textSecondary }]}>
+                {Number(product.nutrition_per_100g?.protein || 0).toFixed(1)}g
+              </Text>
+            </View>
           </View>
         </View>
       </TouchableOpacity>
     );
   };
 
+  /* ─── List Card ─── */
+  const ListCard = ({ product }: { product: ScannedProduct }) => {
+    const score = product.health_score;
+    const cfg = score ? SCORE_CONFIG(score) : null;
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.listCard,
+          {
+            backgroundColor: isDark ? colors.card : "#FFFFFF",
+            shadowColor: "#000",
+          },
+        ]}
+        onPress={() => setSelectedProduct(product)}
+        activeOpacity={0.88}
+      >
+        {/* Left: image */}
+        <View style={[styles.listImg, { backgroundColor: isDark ? colors.surface : "#F5F5F7" }]}>
+          {product.image_url ? (
+            <Image
+              source={{ uri: product.image_url }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="contain"
+            />
+          ) : (
+            <Package size={24} color={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"} strokeWidth={1.5} />
+          )}
+        </View>
+
+        {/* Middle: info */}
+        <View style={styles.listInfo}>
+          {(product.brand || product.category) && (
+            <Text style={[styles.listBrand, { color: colors.primary }]} numberOfLines={1}>
+              {product.brand || product.category}
+            </Text>
+          )}
+          <Text style={[styles.listName, { color: colors.text }]} numberOfLines={1}>
+            {product.name || product.product_name}
+          </Text>
+          <View style={styles.listMacros}>
+            <View style={styles.listMacroItem}>
+              <Flame size={10} color="#EF4444" />
+              <Text style={[styles.listMacroVal, { color: colors.textSecondary }]}>
+                {Number(product.nutrition_per_100g?.calories || 0).toFixed(0)} cal
+              </Text>
+            </View>
+            <View style={styles.listMacroDot} />
+            <View style={styles.listMacroItem}>
+              <Activity size={10} color="#10B981" />
+              <Text style={[styles.listMacroVal, { color: colors.textSecondary }]}>
+                {Number(product.nutrition_per_100g?.protein || 0).toFixed(1)}g protein
+              </Text>
+            </View>
+          </View>
+          <Text style={[styles.listDate, { color: colors.muted }]}>
+            {formatDate(product.created_at)}
+          </Text>
+        </View>
+
+        {/* Right: score + chevron */}
+        <View style={styles.listRight}>
+          {cfg && score && (
+            <View style={[styles.listScoreBadge, { backgroundColor: cfg.bg }]}>
+              <Text style={[styles.listScoreNum, { color: cfg.color }]}>{score}</Text>
+            </View>
+          )}
+          <ChevronRight size={16} color={colors.muted} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  /* ─── Detail Modal ─── */
   const DetailModal = () => {
     if (!selectedProduct) return null;
-    const scoreColor = getScoreColor(selectedProduct.health_score);
+    const score = selectedProduct.health_score;
+    const cfg = score ? SCORE_CONFIG(score) : null;
 
-    const nutritionItems = [
-      {
-        icon: Flame,
-        label: t("statistics.calories"),
-        value: Number(selectedProduct.nutrition_per_100g?.calories || 0).toFixed(1),
-        unit: "",
-        color: "#EF4444",
-      },
-      {
-        icon: Activity,
-        label: t("statistics.protein"),
-        value: Number(selectedProduct.nutrition_per_100g?.protein || 0).toFixed(1),
-        unit: "g",
-        color: "#10B981",
-      },
-      {
-        icon: Droplets,
-        label: t("foodScanner.carbs"),
-        value: Number(selectedProduct.nutrition_per_100g?.carbs || 0).toFixed(1),
-        unit: "g",
-        color: "#3B82F6",
-      },
-      {
-        icon: Wheat,
-        label: t("foodScanner.fat"),
-        value: Number(selectedProduct.nutrition_per_100g?.fat || 0).toFixed(1),
-        unit: "g",
-        color: "#F59E0B",
-      },
+    const macros = [
+      { icon: Flame, label: t("statistics.calories"), value: Number(selectedProduct.nutrition_per_100g?.calories || 0).toFixed(1), unit: "", color: "#EF4444", bg: "#FEF2F2" },
+      { icon: Activity, label: t("statistics.protein"), value: Number(selectedProduct.nutrition_per_100g?.protein || 0).toFixed(1), unit: "g", color: "#10B981", bg: "#EDFAF4" },
+      { icon: Droplets, label: t("foodScanner.carbs"), value: Number(selectedProduct.nutrition_per_100g?.carbs || 0).toFixed(1), unit: "g", color: "#3B82F6", bg: "#EFF6FF" },
+      { icon: Wheat, label: t("foodScanner.fat"), value: Number(selectedProduct.nutrition_per_100g?.fat || 0).toFixed(1), unit: "g", color: "#F59E0B", bg: "#FFFBEB" },
     ];
 
     return (
@@ -308,349 +326,168 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
         presentationStyle="pageSheet"
         onRequestClose={() => setSelectedProduct(null)}
       >
-        <View
-          style={[
-            styles.modalContainer,
-            { backgroundColor: colors.background },
-          ]}
-        >
+        <View style={[styles.detailContainer, { backgroundColor: colors.background }]}>
           <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-            {/* Premium Hero Section */}
-            <View style={[styles.modalHero, { backgroundColor: colors.card }]}>
-              {/* Close Button */}
+            {/* Hero */}
+            <View style={[styles.detailHero, { backgroundColor: colors.card }]}>
+              {/* Close */}
               <TouchableOpacity
                 onPress={() => setSelectedProduct(null)}
-                style={[styles.modalClose, { backgroundColor: colors.surface }]}
+                style={[styles.detailClose, { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)" }]}
               >
-                <X size={22} color={colors.text} strokeWidth={2.5} />
+                <X size={20} color={colors.text} strokeWidth={2.5} />
               </TouchableOpacity>
 
-              {/* Product Image with Floating Score */}
-              <View style={styles.modalImageSection}>
-                <View
-                  style={[
-                    styles.modalImageWrapper,
-                    { backgroundColor: colors.surface },
-                  ]}
-                >
+              {/* Image */}
+              <View style={styles.detailImgWrap}>
+                <View style={[styles.detailImgBg, { backgroundColor: isDark ? colors.surface : "#F5F5F7" }]}>
                   {selectedProduct.image_url ? (
                     <Image
                       source={{ uri: selectedProduct.image_url }}
-                      style={styles.modalProductImage}
+                      style={styles.detailImg}
                       resizeMode="contain"
                     />
                   ) : (
-                    <Package
-                      size={80}
-                      color={colors.textTertiary}
-                      strokeWidth={1.5}
-                    />
+                    <Package size={80} color={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)"} strokeWidth={1.5} />
                   )}
                 </View>
 
-                {/* Floating Health Score Badge */}
-                {selectedProduct.health_score && (
-                  <View
-                    style={[
-                      styles.floatingScore,
-                      { backgroundColor: colors.card },
-                    ]}
-                  >
-                    <View
-                      style={[styles.scoreRing, { borderColor: scoreColor }]}
-                    >
-                      <Text style={[styles.scoreNumber, { color: scoreColor }]}>
-                        {selectedProduct.health_score}
-                      </Text>
+                {/* Floating score */}
+                {cfg && score && (
+                  <View style={[styles.detailScoreFloat, { backgroundColor: colors.card }]}>
+                    <View style={[styles.detailScoreRing, { borderColor: cfg.color }]}>
+                      <Text style={[styles.detailScoreNum, { color: cfg.color }]}>{score}</Text>
                     </View>
-                    <Text
-                      style={[
-                        styles.scoreText,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
+                    <Text style={[styles.detailScoreLabel, { color: colors.textSecondary }]}>
                       {t("foodScanner.healthScore")}
                     </Text>
                   </View>
                 )}
               </View>
 
-              {/* Product Info */}
-              <View style={styles.modalProductInfo}>
-                <Text style={[styles.modalCategory, { color: colors.primary }]}>
-                  {selectedProduct.brand || selectedProduct.category}
-                </Text>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {/* Title */}
+              <View style={styles.detailTitle}>
+                {(selectedProduct.brand || selectedProduct.category) && (
+                  <Text style={[styles.detailBrand, { color: colors.primary }]}>
+                    {selectedProduct.brand || selectedProduct.category}
+                  </Text>
+                )}
+                <Text style={[styles.detailName, { color: colors.text }]}>
                   {selectedProduct.name || selectedProduct.product_name}
                 </Text>
+              </View>
 
-                {/* Quick Stats Bar */}
-                <View
-                  style={[
-                    styles.quickStats,
-                    { backgroundColor: colors.surface },
-                  ]}
-                >
-                  <View style={styles.quickStat}>
-                    <Flame size={16} color="#EF4444" strokeWidth={2.5} />
-                    <Text
-                      style={[styles.quickStatValue, { color: colors.text }]}
-                    >
-                      {Number(
-                        selectedProduct.nutrition_per_100g?.calories || 0
-                      ).toFixed(1)}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.quickStatLabel,
-                        { color: colors.textTertiary },
-                      ]}
-                    >
-                      cal
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.quickStatDivider,
-                      { backgroundColor: colors.border },
-                    ]}
-                  />
-                  <View style={styles.quickStat}>
-                    <Activity size={16} color="#10B981" strokeWidth={2.5} />
-                    <Text
-                      style={[styles.quickStatValue, { color: colors.text }]}
-                    >
-                      {Number(
-                        selectedProduct.nutrition_per_100g?.protein || 0
-                      ).toFixed(1)}
-                      g
-                    </Text>
-                    <Text
-                      style={[
-                        styles.quickStatLabel,
-                        { color: colors.textTertiary },
-                      ]}
-                    >
-                      protein
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.quickStatDivider,
-                      { backgroundColor: colors.border },
-                    ]}
-                  />
-                  <View style={styles.quickStat}>
-                    <Droplets size={16} color="#3B82F6" strokeWidth={2.5} />
-                    <Text
-                      style={[styles.quickStatValue, { color: colors.text }]}
-                    >
-                      {Number(selectedProduct.nutrition_per_100g?.carbs || 0).toFixed(
-                        1,
-                      )}
-                      g
-                    </Text>
-                    <Text
-                      style={[
-                        styles.quickStatLabel,
-                        { color: colors.textTertiary },
-                      ]}
-                    >
-                      carbs
-                    </Text>
-                  </View>
-                </View>
+              {/* Quick stats bar */}
+              <View style={[styles.detailQuickBar, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" }]}>
+                {macros.slice(0, 3).map((m, i) => (
+                  <React.Fragment key={m.label}>
+                    {i > 0 && (
+                      <View style={[styles.detailBarDivider, { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)" }]} />
+                    )}
+                    <View style={styles.detailBarStat}>
+                      <m.icon size={14} color={m.color} strokeWidth={2.5} />
+                      <Text style={[styles.detailBarVal, { color: colors.text }]}>
+                        {m.value}{m.unit}
+                      </Text>
+                      <Text style={[styles.detailBarLabel, { color: colors.muted }]}>
+                        {m.label}
+                      </Text>
+                    </View>
+                  </React.Fragment>
+                ))}
               </View>
             </View>
 
-            {/* Nutrition Details - Card Grid */}
-            <View style={styles.contentSection}>
-              <Text style={[styles.contentTitle, { color: colors.text }]}>
+            {/* Nutrition */}
+            <View style={styles.detailSection}>
+              <Text style={[styles.detailSectionTitle, { color: colors.text }]}>
                 {t("foodScanner.nutritionValues")}
               </Text>
-
-              <View style={styles.nutritionCards}>
-                {nutritionItems.map((item, index) => (
+              <View style={styles.detailMacroGrid}>
+                {macros.map((m) => (
                   <View
-                    key={index}
-                    style={[
-                      styles.nutritionBox,
-                      {
-                        backgroundColor: colors.card,
-                        borderColor: item.color + "20",
-                      },
-                    ]}
+                    key={m.label}
+                    style={[styles.detailMacroCard, { backgroundColor: isDark ? colors.card : "#FFFFFF", shadowColor: m.color }]}
                   >
-                    <View
-                      style={[
-                        styles.nutritionIconCircle,
-                        { backgroundColor: item.color + "15" },
-                      ]}
-                    >
-                      <item.icon
-                        size={20}
-                        color={item.color}
-                        strokeWidth={2.5}
-                      />
+                    <View style={[styles.detailMacroIcon, { backgroundColor: isDark ? m.color + "20" : m.bg }]}>
+                      <m.icon size={18} color={m.color} strokeWidth={2.5} />
                     </View>
-                    <View style={styles.nutritionData}>
-                      <Text
-                        style={[styles.nutritionAmount, { color: colors.text }]}
-                      >
-                        {item.value}
-                        <Text
-                          style={[
-                            styles.nutritionMetric,
-                            { color: colors.textTertiary },
-                          ]}
-                        >
-                          {item.unit}
-                        </Text>
-                      </Text>
-                      <Text
-                        style={[
-                          styles.nutritionName,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        {item.label}
-                      </Text>
-                    </View>
+                    <Text style={[styles.detailMacroVal, { color: colors.text }]}>
+                      {m.value}
+                      <Text style={[styles.detailMacroUnit, { color: colors.muted }]}>{m.unit}</Text>
+                    </Text>
+                    <Text style={[styles.detailMacroLabel, { color: colors.textSecondary }]}>{m.label}</Text>
                   </View>
                 ))}
               </View>
 
-              {/* Additional Nutrition */}
+              {/* Additional nutrition */}
               {(selectedProduct.nutrition_per_100g?.fiber !== undefined ||
                 selectedProduct.nutrition_per_100g?.sugar !== undefined ||
                 selectedProduct.nutrition_per_100g?.sodium !== undefined) && (
-                <View
-                  style={[
-                    styles.additionalNutrition,
-                    { backgroundColor: colors.card },
-                  ]}
-                >
-                  <Text
-                    style={[styles.additionalTitle, { color: colors.text }]}
-                  >
-                    {t("foodScanner.additionalInfo")}
-                  </Text>
-                  <View style={styles.additionalGrid}>
-                    {selectedProduct.nutrition_per_100g?.fiber !==
-                      undefined && (
-                      <View style={styles.additionalItem}>
-                        <Text
-                          style={[
-                            styles.additionalLabel,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {t("foodScanner.fibers")}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.additionalValue,
-                            { color: colors.text },
-                          ]}
-                        >
-                          {Number(selectedProduct.nutrition_per_100g.fiber || 0).toFixed(1)}g
-                        </Text>
-                      </View>
-                    )}
-                    {selectedProduct.nutrition_per_100g?.sugar !==
-                      undefined && (
-                      <View style={styles.additionalItem}>
-                        <Text
-                          style={[
-                            styles.additionalLabel,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {t("foodScanner.sugar")}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.additionalValue,
-                            { color: colors.text },
-                          ]}
-                        >
-                          {Number(selectedProduct.nutrition_per_100g.sugar || 0).toFixed(1)}g
-                        </Text>
-                      </View>
-                    )}
-                    {selectedProduct.nutrition_per_100g?.sodium !==
-                      undefined && (
-                      <View style={styles.additionalItem}>
-                        <Text
-                          style={[
-                            styles.additionalLabel,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {t("foodScanner.sodium")}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.additionalValue,
-                            { color: colors.text },
-                          ]}
-                        >
-                          {Number(selectedProduct.nutrition_per_100g.sodium || 0).toFixed(1)}
-                          mg
-                        </Text>
-                      </View>
-                    )}
-                  </View>
+                <View style={[styles.detailExtra, { backgroundColor: isDark ? colors.card : "#FAFAFA" }]}>
+                  {[
+                    selectedProduct.nutrition_per_100g?.fiber !== undefined && {
+                      label: t("foodScanner.fibers"),
+                      value: `${Number(selectedProduct.nutrition_per_100g.fiber).toFixed(1)}g`,
+                    },
+                    selectedProduct.nutrition_per_100g?.sugar !== undefined && {
+                      label: t("foodScanner.sugar"),
+                      value: `${Number(selectedProduct.nutrition_per_100g.sugar).toFixed(1)}g`,
+                    },
+                    selectedProduct.nutrition_per_100g?.sodium !== undefined && {
+                      label: t("foodScanner.sodium"),
+                      value: `${Number(selectedProduct.nutrition_per_100g.sodium).toFixed(1)}mg`,
+                    },
+                  ]
+                    .filter(Boolean)
+                    .map((item: any, i, arr) => (
+                      <React.Fragment key={item.label}>
+                        <View style={styles.detailExtraRow}>
+                          <Text style={[styles.detailExtraLabel, { color: colors.textSecondary }]}>
+                            {item.label}
+                          </Text>
+                          <Text style={[styles.detailExtraVal, { color: colors.text }]}>
+                            {item.value}
+                          </Text>
+                        </View>
+                        {i < arr.length - 1 && (
+                          <View style={[styles.detailExtraDivider, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" }]} />
+                        )}
+                      </React.Fragment>
+                    ))}
                 </View>
               )}
             </View>
 
             {/* Ingredients */}
             {selectedProduct.ingredients?.length > 0 && (
-              <View style={styles.contentSection}>
-                <Text style={[styles.contentTitle, { color: colors.text }]}>
+              <View style={styles.detailSection}>
+                <Text style={[styles.detailSectionTitle, { color: colors.text }]}>
                   {t("foodScanner.ingredientsIdentified")}
                 </Text>
-                <View
-                  style={[
-                    styles.ingredientsBox,
-                    { backgroundColor: colors.card },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.ingredientsContent,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
+                <View style={[styles.detailIngBox, { backgroundColor: isDark ? colors.card : "#FAFAFA" }]}>
+                  <Text style={[styles.detailIngText, { color: colors.textSecondary }]}>
                     {selectedProduct.ingredients.join(", ")}
                   </Text>
                 </View>
               </View>
             )}
 
-            {/* Allergens Warning */}
+            {/* Allergens */}
             {selectedProduct.allergens?.length > 0 && (
-              <View style={styles.contentSection}>
-                <View
-                  style={[styles.warningCard, { backgroundColor: "#FEF2F2" }]}
-                >
-                  <View style={styles.warningHeader}>
-                    <View style={styles.warningIconBox}>
-                      <AlertTriangle
-                        size={20}
-                        color="#DC2626"
-                        strokeWidth={2.5}
-                      />
+              <View style={styles.detailSection}>
+                <View style={styles.detailAllergenCard}>
+                  <View style={styles.detailAllergenHeader}>
+                    <View style={styles.detailAllergenIconBox}>
+                      <AlertTriangle size={18} color="#DC2626" strokeWidth={2.5} />
                     </View>
-                    <Text style={styles.warningTitle}>
-                      {t("foodScanner.allergens")}
-                    </Text>
+                    <Text style={styles.detailAllergenTitle}>{t("foodScanner.allergens")}</Text>
                   </View>
-                  <View style={styles.warningContent}>
-                    {selectedProduct.allergens.map((allergen, index) => (
-                      <View key={index} style={styles.warningTag}>
-                        <Text style={styles.warningTagText}>{allergen}</Text>
+                  <View style={styles.detailTagWrap}>
+                    {selectedProduct.allergens.map((a, i) => (
+                      <View key={i} style={styles.detailAllergenTag}>
+                        <Text style={styles.detailAllergenTagText}>{a}</Text>
                       </View>
                     ))}
                   </View>
@@ -660,28 +497,22 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
 
             {/* Certifications */}
             {selectedProduct.labels?.length > 0 && (
-              <View style={styles.contentSection}>
-                <Text style={[styles.contentTitle, { color: colors.text }]}>
+              <View style={styles.detailSection}>
+                <Text style={[styles.detailSectionTitle, { color: colors.text }]}>
                   {t("foodScanner.certifications")}
                 </Text>
-                <View style={styles.certificationsGrid}>
-                  {selectedProduct.labels.map((label, index) => (
-                    <View key={index} style={styles.certBadge}>
-                      <View style={styles.certIcon}>
-                        <CheckCircle2
-                          size={16}
-                          color="#10B981"
-                          strokeWidth={2.5}
-                        />
-                      </View>
-                      <Text style={styles.certLabel}>{label}</Text>
+                <View style={styles.detailTagWrap}>
+                  {selectedProduct.labels.map((label, i) => (
+                    <View key={i} style={styles.certBadge}>
+                      <CheckCircle2 size={13} color="#10B981" strokeWidth={2.5} />
+                      <Text style={styles.certText}>{label}</Text>
                     </View>
                   ))}
                 </View>
               </View>
             )}
 
-            <View style={{ height: 50 }} />
+            <View style={{ height: 60 }} />
           </ScrollView>
         </View>
       </Modal>
@@ -701,133 +532,130 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
           style={[
             styles.header,
             {
-              backgroundColor: colors.card,
-              borderBottomColor: colors.border + "20",
+              backgroundColor: isDark ? colors.card : "#FFFFFF",
+              borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
             },
           ]}
         >
           <View style={styles.headerTop}>
-            <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-              <X size={24} color={colors.text} strokeWidth={2.5} />
+            <TouchableOpacity
+              onPress={onClose}
+              style={[
+                styles.headerBtn,
+                { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)" },
+              ]}
+            >
+              <X size={20} color={colors.text} strokeWidth={2.5} />
             </TouchableOpacity>
 
-            <Text style={[styles.title, { color: colors.text }]}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
               {t("loading.history")}
             </Text>
 
             <TouchableOpacity
               onPress={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
-              style={styles.headerButton}
+              style={[
+                styles.headerBtn,
+                { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)" },
+              ]}
             >
               {viewMode === "grid" ? (
-                <List size={24} color={colors.text} strokeWidth={2.5} />
+                <List size={20} color={colors.text} strokeWidth={2.5} />
               ) : (
-                <Grid3x3 size={24} color={colors.text} strokeWidth={2.5} />
+                <Grid3x3 size={20} color={colors.text} strokeWidth={2.5} />
               )}
             </TouchableOpacity>
           </View>
 
           {/* Search */}
-          <View style={[styles.searchBar, { backgroundColor: colors.surface }]}>
-            <Search size={20} color={colors.textTertiary} strokeWidth={2.5} />
+          <View
+            style={[
+              styles.searchBar,
+              { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)" },
+            ]}
+          >
+            <Search size={18} color={colors.muted} strokeWidth={2} />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
               placeholder={t("foodScanner.searchProducts")}
-              placeholderTextColor={colors.textTertiary}
+              placeholderTextColor={colors.muted}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <X size={18} color={colors.textSecondary} strokeWidth={2.5} />
+                <X size={16} color={colors.muted} strokeWidth={2.5} />
               </TouchableOpacity>
             )}
           </View>
 
-          {/* Categories */}
+          {/* Category chips */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categories}
           >
-            {categories.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[
-                  styles.categoryChip,
-                  {
-                    backgroundColor:
-                      selectedCategory === cat
-                        ? colors.primary
-                        : colors.surface,
-                  },
-                ]}
-                onPress={() => setSelectedCategory(cat)}
-              >
-                <Text
+            {categories.map((cat) => {
+              const active = selectedCategory === cat;
+              return (
+                <TouchableOpacity
+                  key={cat}
                   style={[
-                    styles.categoryText,
+                    styles.catChip,
                     {
-                      color:
-                        selectedCategory === cat
-                          ? colors.onPrimary
-                          : colors.text,
+                      backgroundColor: active
+                        ? colors.primary
+                        : isDark
+                        ? "rgba(255,255,255,0.07)"
+                        : "rgba(0,0,0,0.05)",
                     },
                   ]}
+                  onPress={() => setSelectedCategory(cat)}
                 >
-                  {cat === "all" ? t("common.all") : cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.catText,
+                      { color: active ? "#FFF" : colors.textSecondary },
+                    ]}
+                  >
+                    {cat === "all" ? t("common.all") : cat}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
 
-        {/* Content */}
+        {/* Body */}
         {isLoading ? (
-          <View style={styles.centerContainer}>
+          <View style={styles.center}>
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : filteredProducts.length === 0 ? (
-          <View style={styles.centerContainer}>
-            <View
-              style={[styles.emptyIcon, { backgroundColor: colors.surface }]}
-            >
-              <Package
-                size={48}
-                color={colors.textTertiary}
-                strokeWidth={1.5}
-              />
+          <View style={styles.center}>
+            <View style={[styles.emptyIconBox, { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)" }]}>
+              <Package size={44} color={colors.muted} strokeWidth={1.5} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              {searchQuery
-                ? t("common.noResults")
-                : t("foodScanner.noProducts")}
+              {searchQuery ? t("common.noResults") : t("foodScanner.noProducts")}
             </Text>
-            <Text
-              style={[styles.emptySubtitle, { color: colors.textSecondary }]}
-            >
-              {searchQuery
-                ? t("common.tryDifferentSearch")
-                : t("foodScanner.startScanning")}
+            <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
+              {searchQuery ? t("common.tryDifferentSearch") : t("foodScanner.startScanning")}
             </Text>
           </View>
         ) : (
           <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
             <ScrollView
-              contentContainerStyle={
-                viewMode === "grid"
-                  ? styles.gridContainer
-                  : styles.listContainer
-              }
+              contentContainerStyle={viewMode === "grid" ? styles.gridContainer : styles.listContainer}
               showsVerticalScrollIndicator={false}
             >
-              {filteredProducts.map((product, index) => (
-                <ProductCard
-                  key={`${product.id}-${index}`}
-                  product={product}
-                  index={index}
-                />
-              ))}
+              {viewMode === "grid"
+                ? filteredProducts.map((p, i) => (
+                    <GridCard key={`grid-${p.id}-${i}`} product={p} index={i} />
+                  ))
+                : filteredProducts.map((p, i) => (
+                    <ListCard key={`list-${p.id}-${i}`} product={p} />
+                  ))}
             </ScrollView>
           </Animated.View>
         )}
@@ -839,12 +667,12 @@ export default function MinimalProductGallery({ visible, onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+
+  /* Header */
   header: {
-    paddingTop: Platform.OS === "ios" ? 50 : 20,
-    paddingBottom: 16,
+    paddingTop: Platform.OS === "ios" ? 54 : 20,
+    paddingBottom: 14,
     borderBottomWidth: 1,
   },
   headerTop: {
@@ -852,17 +680,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
   },
-  title: {
-    fontSize: 20,
+  headerTitle: {
+    fontSize: 18,
     fontWeight: "800",
     letterSpacing: -0.4,
   },
@@ -870,436 +698,467 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginHorizontal: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
-    gap: 12,
-    marginBottom: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 14,
+    gap: 10,
+    marginBottom: 14,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "500",
   },
   categories: {
     paddingHorizontal: 20,
-    gap: 10,
+    gap: 8,
   },
-  categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 16,
+  catChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
   },
-  categoryText: {
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: -0.2,
+  catText: {
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: -0.1,
   },
-  centerContainer: {
+
+  /* Empty / Center */
+  center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
-  },
-  emptyIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    letterSpacing: -0.4,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 15,
-    fontWeight: "500",
-    textAlign: "center",
-  },
-  gridContainer: {
-    padding: 20,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 16,
-  },
-  gridCard: {
-    width: (width - 56) / 2,
-    borderRadius: 20,
-    overflow: "hidden",
-    borderWidth: 1,
-  },
-  gridImage: {
-    height: 160,
-    position: "relative",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    overflow: 'hidden',
-  },
-  gridContent: {
-    padding: 14,
-    gap: 10,
-  },
-  listContainer: {
-    padding: 20,
     gap: 12,
   },
-  listCard: {
+  emptyIconBox: {
+    width: 88,
+    height: 88,
+    borderRadius: 28,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  emptySub: {
+    fontSize: 14,
+    fontWeight: "500",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+
+  /* Grid layout */
+  gridContainer: {
+    padding: 16,
     flexDirection: "row",
-    borderRadius: 20,
-    padding: 14,
+    flexWrap: "wrap",
     gap: 14,
-    borderWidth: 1,
   },
-  listImage: {
-    width: 90,
-    height: 90,
+  gridCard: {
+    width: (width - 46) / 2,
     borderRadius: 18,
-    position: "relative",
-    overflow: 'hidden',
+    overflow: "hidden",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  listContent: {
-    flex: 1,
-    justifyContent: "space-between",
-  },
-  imagePlaceholder: {
-    ...StyleSheet.absoluteFillObject,
+  gridImg: {
+    height: 150,
     justifyContent: "center",
     alignItems: "center",
   },
-  scoreBadge: {
+  gridScorePill: {
     position: "absolute",
     top: 10,
     right: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
+    minWidth: 32,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
     alignItems: "center",
   },
-  scoreText: {
-    fontSize: 13,
+  gridScoreText: {
+    fontSize: 12,
     fontWeight: "800",
-    color: "#FFFFFF",
+    color: "#FFF",
   },
-  contentTop: {
-    gap: 4,
+  gridBody: {
+    padding: 12,
+    gap: 5,
   },
-  brandText: {
-    fontSize: 11,
+  gridBrand: {
+    fontSize: 10,
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  nameText: {
-    fontSize: 15,
+  gridName: {
+    fontSize: 13,
     fontWeight: "700",
-    letterSpacing: -0.3,
-    lineHeight: 20,
+    letterSpacing: -0.2,
+    lineHeight: 18,
   },
-  contentBottom: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  stats: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  stat: {
+  gridMacros: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 6,
+    marginTop: 2,
   },
-  statText: {
-    fontSize: 12,
-    fontWeight: "700",
+  gridMacroItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
   },
-  dateText: {
-    fontSize: 12,
+  gridMacroVal: {
+    fontSize: 11,
     fontWeight: "600",
   },
+  gridMacroDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: "rgba(0,0,0,0.15)",
+  },
 
-  // Modal Styles
-  modalContainer: {
+  /* List layout */
+  listContainer: {
+    padding: 16,
+    gap: 10,
+  },
+  listCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 16,
+    padding: 12,
+    gap: 12,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  listImg: {
+    width: 72,
+    height: 72,
+    borderRadius: 14,
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 0,
+  },
+  listInfo: {
     flex: 1,
+    gap: 3,
   },
-  modalHero: {
+  listBrand: {
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  listName: {
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
+  listMacros: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
+  },
+  listMacroItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  listMacroVal: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  listMacroDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: "rgba(0,0,0,0.15)",
+  },
+  listDate: {
+    fontSize: 11,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  listRight: {
+    alignItems: "center",
+    gap: 8,
+  },
+  listScoreBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  listScoreNum: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+
+  /* Detail Modal */
+  detailContainer: { flex: 1 },
+  detailHero: {
     paddingTop: Platform.OS === "ios" ? 60 : 30,
-    paddingBottom: 32,
-    position: "relative",
+    paddingBottom: 28,
   },
-  modalClose: {
+  detailClose: {
     position: "absolute",
     top: Platform.OS === "ios" ? 60 : 30,
     right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
-  modalImageSection: {
+  detailImgWrap: {
     alignItems: "center",
     marginBottom: 24,
-    position: "relative",
   },
-  modalImageWrapper: {
-    width: 220,
-    height: 220,
-    borderRadius: 32,
+  detailImgBg: {
+    width: 200,
+    height: 200,
+    borderRadius: 28,
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 8,
   },
-  modalProductImage: {
+  detailImg: {
     width: "100%",
     height: "100%",
   },
-  floatingScore: {
+  detailScoreFloat: {
     position: "absolute",
-    bottom: -20,
+    bottom: -18,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 24,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  scoreRing: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  detailScoreRing: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 3,
     justifyContent: "center",
     alignItems: "center",
   },
-  scoreNumber: {
-    fontSize: 20,
+  detailScoreNum: {
+    fontSize: 18,
     fontWeight: "900",
     letterSpacing: -0.5,
   },
-  modalProductInfo: {
-    paddingHorizontal: 24,
-    alignItems: "center",
-    gap: 12,
-  },
-  modalCategory: {
-    fontSize: 13,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 1.5,
-  },
-  modalTitle: {
-    fontSize: 28,
-    fontWeight: "900",
-    letterSpacing: -0.7,
-    textAlign: "center",
-    lineHeight: 34,
-  },
-  quickStats: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 20,
-    gap: 16,
-    marginTop: 8,
-  },
-  quickStat: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flex: 1,
-    justifyContent: "center",
-  },
-  quickStatValue: {
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: -0.3,
-  },
-  quickStatLabel: {
-    fontSize: 11,
+  detailScoreLabel: {
+    fontSize: 12,
     fontWeight: "600",
   },
-  quickStatDivider: {
-    width: 1,
-    height: 24,
+  detailTitle: {
+    alignItems: "center",
+    paddingHorizontal: 28,
+    gap: 6,
+    marginBottom: 18,
   },
-  contentSection: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
+  detailBrand: {
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
   },
-  contentTitle: {
-    fontSize: 20,
+  detailName: {
+    fontSize: 24,
     fontWeight: "900",
-    letterSpacing: -0.5,
-    marginBottom: 16,
+    letterSpacing: -0.6,
+    textAlign: "center",
+    lineHeight: 30,
   },
-  nutritionCards: {
-    gap: 12,
+  detailQuickBar: {
+    flexDirection: "row",
+    marginHorizontal: 20,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: "center",
   },
-  nutritionBox: {
+  detailBarStat: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    padding: 18,
-    borderRadius: 20,
-    gap: 16,
-    borderWidth: 2,
+    justifyContent: "center",
+    gap: 5,
   },
-  nutritionIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  detailBarVal: {
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: -0.2,
+  },
+  detailBarLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  detailBarDivider: {
+    width: 1,
+    height: 20,
+  },
+  detailSection: {
+    paddingHorizontal: 20,
+    marginTop: 24,
+  },
+  detailSectionTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.4,
+    marginBottom: 14,
+  },
+  detailMacroGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  detailMacroCard: {
+    width: (width - 52) / 2,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "flex-start",
+    gap: 8,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  detailMacroIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
   },
-  nutritionData: {
-    flex: 1,
-  },
-  nutritionAmount: {
-    fontSize: 26,
+  detailMacroVal: {
+    fontSize: 24,
     fontWeight: "900",
-    letterSpacing: -0.7,
-    marginBottom: 2,
+    letterSpacing: -0.6,
   },
-  nutritionMetric: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  nutritionName: {
+  detailMacroUnit: {
     fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: -0.2,
+    fontWeight: "600",
   },
-  additionalNutrition: {
-    marginTop: 16,
-    padding: 20,
-    borderRadius: 20,
+  detailMacroLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: -0.1,
   },
-  additionalTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: -0.3,
-    marginBottom: 16,
+  detailExtra: {
+    marginTop: 14,
+    borderRadius: 16,
+    padding: 16,
   },
-  additionalGrid: {
-    gap: 14,
-  },
-  additionalItem: {
+  detailExtraRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingVertical: 4,
   },
-  additionalLabel: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  additionalValue: {
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: -0.3,
-  },
-  ingredientsBox: {
-    padding: 20,
-    borderRadius: 20,
-  },
-  ingredientsContent: {
-    fontSize: 15,
-    lineHeight: 26,
+  detailExtraLabel: {
+    fontSize: 14,
     fontWeight: "500",
   },
-  warningCard: {
-    padding: 20,
-    borderRadius: 20,
-    borderWidth: 2,
+  detailExtraVal: {
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
+  detailExtraDivider: {
+    height: 1,
+    marginVertical: 6,
+  },
+  detailIngBox: {
+    borderRadius: 16,
+    padding: 16,
+  },
+  detailIngText: {
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: "500",
+  },
+  detailAllergenCard: {
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1.5,
     borderColor: "#FCA5A5",
   },
-  warningHeader: {
+  detailAllergenHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
+    gap: 10,
+    marginBottom: 12,
   },
-  warningIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  detailAllergenIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: "#FEE2E2",
     justifyContent: "center",
     alignItems: "center",
   },
-  warningTitle: {
-    fontSize: 18,
-    fontWeight: "900",
+  detailAllergenTitle: {
+    fontSize: 16,
+    fontWeight: "800",
     color: "#DC2626",
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
-  warningContent: {
+  detailTagWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
+    gap: 8,
   },
-  warningTag: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
+  detailAllergenTag: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
     backgroundColor: "#FEE2E2",
     borderWidth: 1,
     borderColor: "#FCA5A5",
   },
-  warningTagText: {
-    fontSize: 14,
+  detailAllergenTagText: {
+    fontSize: 13,
     fontWeight: "700",
     color: "#DC2626",
-  },
-  certificationsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
   },
   certBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
+    gap: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
     backgroundColor: "#F0FDF4",
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: "#BBF7D0",
   },
-  certIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#DCFCE7",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  certLabel: {
-    fontSize: 14,
-    fontWeight: "800",
+  certText: {
+    fontSize: 13,
+    fontWeight: "700",
     color: "#166534",
-    letterSpacing: -0.2,
+    letterSpacing: -0.1,
   },
 });
